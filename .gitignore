@@ -1,0 +1,11 @@
+# Synthetic dataset output
+data/
+*.pyc
+__pycache__/
+.venv/
+venv/
+.env
+# Build artifacts
+*.egg-info/
+dist/
+build/

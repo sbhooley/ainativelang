@@ -1,0 +1,16 @@
+# MT5 trader bot
+S mt5 local
+
+D Position id:I symbol:S volume:F price:F sl:F tp:F
+D Signal symbol:S dir:E[Buy,Sell] strength:F
+
+E /tick L ->OnTick
+L: R api.G /signals ->sig J sig
+
+Q signals 1000 5
+
+U Trader
+T positions:A[Position]
+T signals:A[Signal]
+U PositionsTable positions
+U SignalPanel signals

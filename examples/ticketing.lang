@@ -1,0 +1,37 @@
+# Ticketing: events and tickets
+S core web /api
+S fe web /
+A jwt Authorization
+
+D Event id:I name:S venue:S date:D capacity:I
+D Ticket id:I eventId:I uid:I status:E[Reserved,Paid,Cancelled]
+
+E /events G ->L1 ->events
+L1: R db.F Event * ->events J events
+E /events P ->L2 ->event
+L2: R db.P Event * ->event J event
+E /tickets G ->L3 ->tickets
+L3: R db.F Ticket * ->tickets J tickets
+E /tickets P ->L4 ->ticket
+L4: R db.P Ticket * ->ticket J ticket
+E /my-tickets G ->L5 ->tickets
+L5: R db.F Ticket * ->tickets J tickets
+
+Rt / Dashboard
+Rt /events EventList
+Rt /event EventDetail
+Rt /my-tickets MyTickets
+Lay Shell Nav Main
+
+U Dashboard
+U EventList events
+T events:A[Event]
+U EventDetail event
+T event:Event
+U MyTickets tickets
+T tickets:A[Ticket]
+Tbl EventList Event id name venue date capacity
+Tbl MyTickets Ticket id eventId status
+Fm TicketForm Ticket eventId uid status
+
+P reserve 999 usd "Ticket reservation"

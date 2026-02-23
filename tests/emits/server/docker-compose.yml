@@ -1,0 +1,19 @@
+# AINL emitted stack
+services:
+  api:
+    build: .
+    ports:
+      - "8765:8765"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/ainl}
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ainl
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

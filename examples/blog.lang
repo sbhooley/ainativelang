@@ -1,0 +1,33 @@
+# Blog: posts and comments, full stack
+S core web /api
+S fe web /
+
+D Post id:I title:S body:S created:D author:S
+D Comment id:I postId:I body:S author:S created:D
+
+E /posts G ->L1 ->posts
+L1: R db.F Post * ->posts J posts
+E /posts P ->L2 ->post
+L2: R db.P Post * ->post J post
+E /comments G ->L3 ->comments
+L3: R db.F Comment * ->comments J comments
+E /comments P ->L4 ->comment
+L4: R db.P Comment * ->comment J comment
+
+Rt / PostList
+Rt /posts PostList
+Rt /post PostDetail
+Rt /comments CommentList
+Lay Shell Sidebar Main
+
+U PostList posts
+T posts:A[Post]
+U PostDetail post
+T post:Post
+U CommentList comments
+T comments:A[Comment]
+Fm CommentForm Comment body author
+Tbl PostList Post id title author created
+Tbl CommentList Comment id body author created
+
+C cache postList 3600

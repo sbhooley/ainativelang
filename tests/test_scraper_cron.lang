@@ -1,0 +1,16 @@
+# Scraper + cron
+S core web /api
+Sc products https://example.com/products list=.product title=h2 price=.price
+Sc prices https://prices.example.com table=#rates rate=td:nth-child(2)
+
+Cr L1 */15 * * * *
+L1: R api.G /scrape/products ->res J res
+
+Cr L2 0 */1 * * *
+L2: R api.G /scrape/prices ->rates J rates
+
+E /scrape/products G ->L1
+E /scrape/prices G ->L2
+
+Q scrape 500 3
+C scrape_cache url 1800

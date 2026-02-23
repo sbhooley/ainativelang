@@ -1,0 +1,37 @@
+# Ecom dashboard + Stripe pay (explicit E binding + routes, layout, forms, tables, events)
+S core web /api
+S fe web /
+
+D Product id:I name:S price:F sku:S
+D Order id:I uid:I total:F status:E[Pending,Paid,Shipped]
+
+E /products G ->L1 ->products
+L1: R db.F Product * ->products J products
+
+E /orders G ->L2 ->orders
+L2: R db.F Order * ->orders J orders
+
+E /checkout P ->L3
+L3: R db.F Order * ->ord J ord
+P checkout 1999 usd "Order payment"
+J ord
+
+Rt / Dashboard
+Rt /products ProductList
+Rt /orders OrderTable
+Lay Shell Sidebar Main
+
+U Dashboard
+T products:A[Product]
+T orders:A[Order]
+U ProductList products
+U OrderTable orders
+U CheckoutBtn
+
+Fm OrderForm Order id uid total status
+Tbl OrderTable Order id uid total status
+Tbl ProductList Product id name price sku
+
+Ev CheckoutBtn click /checkout
+
+C cart sessionId 3600

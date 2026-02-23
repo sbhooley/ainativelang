@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainl.dev/tooling/ainl_tool_api.schema.json",
+  "title": "AINL Tool API Request",
+  "type": "object",
+  "required": ["action"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["compile", "validate", "emit", "explain_error"]
+    },
+    "code": {
+      "type": "string",
+      "description": "AINL source text"
+    },
+    "strict": {
+      "type": "boolean",
+      "default": false
+    },
+    "target": {
+      "type": "string",
+      "enum": ["ir", "server", "react", "openapi", "prisma", "sql"],
+      "description": "Required for action=emit"
+    },
+    "error": {
+      "type": "string",
+      "description": "Compiler/runtime error text for action=explain_error"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "emit" } } },
+      "then": { "required": ["code", "target"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "compile" } } },
+      "then": { "required": ["code"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "validate" } } },
+      "then": { "required": ["code"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "explain_error" } } },
+      "then": { "required": ["error"] }
+    }
+  ]
+}

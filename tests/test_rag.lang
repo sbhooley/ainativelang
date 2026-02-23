@@ -1,0 +1,10 @@
+# RAG: sources, chunking, embed, store, index, retriever, augment, generate, pipeline
+rag.Src docs file ./data
+rag.Chunk docs_chunk docs fixed 512 64
+rag.Embed e1 sentence-transformers/all-MiniLM-L6-v2 384
+rag.Store vs1 pgvector
+rag.Idx idx1 docs docs_chunk e1 vs1
+rag.Ret ret1 idx1 5
+rag.Aug aug1 default chunks query prompt
+rag.Gen gen1 gpt-4 prompt answer
+rag.Pipe main ret1 aug1 gen1

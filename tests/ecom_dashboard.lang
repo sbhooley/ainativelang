@@ -1,0 +1,67 @@
+# Ecom dashboard — API + frontend (AINL 1.0)
+# Webserver at /api (core) + static at / (fe). All behavior defined here.
+
+S core web /api
+S fe web /
+
+# Data
+D Product id:I name:S price:F sku:S
+D Order id:I uid:I total:F status:E[Pending,Paid,Shipped]
+D Customer id:I email:S name:S
+
+# Products API
+E /products G ->L1 ->products
+L1: R db.F Product * ->products J products
+
+E /product G ->L6 ->product
+L6: R db.G Product id ->product J product
+
+E /products P ->L7 ->product
+L7: R db.C Product name price sku ->product J product
+
+# Orders API
+E /orders G ->L2 ->orders
+L2: R db.F Order * ->orders J orders
+
+E /order G ->L8 ->order
+L8: R db.G Order id ->order J order
+
+E /orders P ->L9 ->order
+L9: R db.C Order uid total status ->order J order
+
+# Checkout (payment definition is top-level; in-label use R pay.* when needed)
+E /checkout P ->L3
+L3: R db.F Order * ->ord J ord
+
+P checkout 1999 usd "Order payment"
+
+# Customers API
+E /customers G ->L10 ->customers
+L10: R db.F Customer * ->customers J customers
+
+# Frontend: routes, layout, UI, forms, tables, events
+Rt / Dashboard
+Rt /products ProductList
+Rt /orders OrderTable
+Rt /customers CustomerTable
+
+Lay Shell Sidebar Main
+
+U Dashboard
+T products:A[Product]
+T orders:A[Order]
+T customers:A[Customer]
+U ProductList products
+U OrderTable orders
+U CustomerTable customers
+U CheckoutBtn
+
+Fm OrderForm Order id uid total status
+Fm ProductForm Product id name price sku
+Tbl OrderTable Order id uid total status
+Tbl ProductList Product id name price sku
+Tbl CustomerTable Customer id email name
+
+Ev CheckoutBtn click /checkout
+
+C cart sessionId 3600

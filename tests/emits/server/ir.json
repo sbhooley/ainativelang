@@ -1,0 +1,5825 @@
+{
+  "source": {
+    "text": "# Ecom dashboard \u2014 API + frontend (AINL 1.0)\n# Webserver at /api (core) + static at / (fe). All behavior defined here.\n\nS core web /api\nS fe web /\n\n# Data\nD Product id:I name:S price:F sku:S\nD Order id:I uid:I total:F status:E[Pending,Paid,Shipped]\nD Customer id:I email:S name:S\n\n# Products API\nE /products G ->L1 ->products\nL1: R db.F Product * ->products J products\n\nE /product G ->L6 ->product\nL6: R db.G Product id ->product J product\n\nE /products P ->L7 ->product\nL7: R db.C Product name price sku ->product J product\n\n# Orders API\nE /orders G ->L2 ->orders\nL2: R db.F Order * ->orders J orders\n\nE /order G ->L8 ->order\nL8: R db.G Order id ->order J order\n\nE /orders P ->L9 ->order\nL9: R db.C Order uid total status ->order J order\n\n# Checkout (payment definition is top-level; in-label use R pay.* when needed)\nE /checkout P ->L3\nL3: R db.F Order * ->ord J ord\n\nP checkout 1999 usd \"Order payment\"\n\n# Customers API\nE /customers G ->L10 ->customers\nL10: R db.F Customer * ->customers J customers\n\n# Frontend: routes, layout, UI, forms, tables, events\nRt / Dashboard\nRt /products ProductList\nRt /orders OrderTable\nRt /customers CustomerTable\n\nLay Shell Sidebar Main\n\nU Dashboard\nT products:A[Product]\nT orders:A[Order]\nT customers:A[Customer]\nU ProductList products\nU OrderTable orders\nU CustomerTable customers\nU CheckoutBtn\n\nFm OrderForm Order id uid total status\nFm ProductForm Product id name price sku\nTbl OrderTable Order id uid total status\nTbl ProductList Product id name price sku\nTbl CustomerTable Customer id email name\n\nEv CheckoutBtn click /checkout\n\nC cart sessionId 3600\n",
+    "lines": [
+      "# Ecom dashboard \u2014 API + frontend (AINL 1.0)",
+      "# Webserver at /api (core) + static at / (fe). All behavior defined here.",
+      "",
+      "S core web /api",
+      "S fe web /",
+      "",
+      "# Data",
+      "D Product id:I name:S price:F sku:S",
+      "D Order id:I uid:I total:F status:E[Pending,Paid,Shipped]",
+      "D Customer id:I email:S name:S",
+      "",
+      "# Products API",
+      "E /products G ->L1 ->products",
+      "L1: R db.F Product * ->products J products",
+      "",
+      "E /product G ->L6 ->product",
+      "L6: R db.G Product id ->product J product",
+      "",
+      "E /products P ->L7 ->product",
+      "L7: R db.C Product name price sku ->product J product",
+      "",
+      "# Orders API",
+      "E /orders G ->L2 ->orders",
+      "L2: R db.F Order * ->orders J orders",
+      "",
+      "E /order G ->L8 ->order",
+      "L8: R db.G Order id ->order J order",
+      "",
+      "E /orders P ->L9 ->order",
+      "L9: R db.C Order uid total status ->order J order",
+      "",
+      "# Checkout (payment definition is top-level; in-label use R pay.* when needed)",
+      "E /checkout P ->L3",
+      "L3: R db.F Order * ->ord J ord",
+      "",
+      "P checkout 1999 usd \"Order payment\"",
+      "",
+      "# Customers API",
+      "E /customers G ->L10 ->customers",
+      "L10: R db.F Customer * ->customers J customers",
+      "",
+      "# Frontend: routes, layout, UI, forms, tables, events",
+      "Rt / Dashboard",
+      "Rt /products ProductList",
+      "Rt /orders OrderTable",
+      "Rt /customers CustomerTable",
+      "",
+      "Lay Shell Sidebar Main",
+      "",
+      "U Dashboard",
+      "T products:A[Product]",
+      "T orders:A[Order]",
+      "T customers:A[Customer]",
+      "U ProductList products",
+      "U OrderTable orders",
+      "U CustomerTable customers",
+      "U CheckoutBtn",
+      "",
+      "Fm OrderForm Order id uid total status",
+      "Fm ProductForm Product id name price sku",
+      "Tbl OrderTable Order id uid total status",
+      "Tbl ProductList Product id name price sku",
+      "Tbl CustomerTable Customer id email name",
+      "",
+      "Ev CheckoutBtn click /checkout",
+      "",
+      "C cart sessionId 3600",
+      ""
+    ]
+  },
+  "cst": {
+    "lines": [
+      {
+        "lineno": 1,
+        "original_line": "# Ecom dashboard \u2014 API + frontend (AINL 1.0)",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Ecom dashboard \u2014 API + frontend (AINL 1.0)",
+            "value": "# Ecom dashboard \u2014 API + frontend (AINL 1.0)",
+            "span": {
+              "line": 1,
+              "col_start": 0,
+              "col_end": 44
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 2,
+        "original_line": "# Webserver at /api (core) + static at / (fe). All behavior defined here.",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Webserver at /api (core) + static at / (fe). All behavior defined here.",
+            "value": "# Webserver at /api (core) + static at / (fe). All behavior defined here.",
+            "span": {
+              "line": 2,
+              "col_start": 0,
+              "col_end": 73
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 3,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 4,
+        "original_line": "S core web /api",
+        "op_value": "S",
+        "op_canonical": "S",
+        "slot_values": [
+          "core",
+          "web",
+          "/api"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "S",
+            "value": "S",
+            "span": {
+              "line": 4,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 4,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "core",
+            "value": "core",
+            "span": {
+              "line": 4,
+              "col_start": 2,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 4,
+              "col_start": 6,
+              "col_end": 7
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "web",
+            "value": "web",
+            "span": {
+              "line": 4,
+              "col_start": 7,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 4,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/api",
+            "value": "/api",
+            "span": {
+              "line": 4,
+              "col_start": 11,
+              "col_end": 15
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 5,
+        "original_line": "S fe web /",
+        "op_value": "S",
+        "op_canonical": "S",
+        "slot_values": [
+          "fe",
+          "web",
+          "/"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "S",
+            "value": "S",
+            "span": {
+              "line": 5,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 5,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "fe",
+            "value": "fe",
+            "span": {
+              "line": 5,
+              "col_start": 2,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 5,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "web",
+            "value": "web",
+            "span": {
+              "line": 5,
+              "col_start": 5,
+              "col_end": 8
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 5,
+              "col_start": 8,
+              "col_end": 9
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/",
+            "value": "/",
+            "span": {
+              "line": 5,
+              "col_start": 9,
+              "col_end": 10
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 6,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 7,
+        "original_line": "# Data",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Data",
+            "value": "# Data",
+            "span": {
+              "line": 7,
+              "col_start": 0,
+              "col_end": 6
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 8,
+        "original_line": "D Product id:I name:S price:F sku:S",
+        "op_value": "D",
+        "op_canonical": "D",
+        "slot_values": [
+          "Product",
+          "id:I",
+          "name:S",
+          "price:F",
+          "sku:S"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "D",
+            "value": "D",
+            "span": {
+              "line": 8,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 8,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Product",
+            "value": "Product",
+            "span": {
+              "line": 8,
+              "col_start": 2,
+              "col_end": 9
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 8,
+              "col_start": 9,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id:I",
+            "value": "id:I",
+            "span": {
+              "line": 8,
+              "col_start": 10,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 8,
+              "col_start": 14,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "name:S",
+            "value": "name:S",
+            "span": {
+              "line": 8,
+              "col_start": 15,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 8,
+              "col_start": 21,
+              "col_end": 22
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "price:F",
+            "value": "price:F",
+            "span": {
+              "line": 8,
+              "col_start": 22,
+              "col_end": 29
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 8,
+              "col_start": 29,
+              "col_end": 30
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "sku:S",
+            "value": "sku:S",
+            "span": {
+              "line": 8,
+              "col_start": 30,
+              "col_end": 35
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 9,
+        "original_line": "D Order id:I uid:I total:F status:E[Pending,Paid,Shipped]",
+        "op_value": "D",
+        "op_canonical": "D",
+        "slot_values": [
+          "Order",
+          "id:I",
+          "uid:I",
+          "total:F",
+          "status:E[Pending,Paid,Shipped]"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "D",
+            "value": "D",
+            "span": {
+              "line": 9,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 9,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Order",
+            "value": "Order",
+            "span": {
+              "line": 9,
+              "col_start": 2,
+              "col_end": 7
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 9,
+              "col_start": 7,
+              "col_end": 8
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id:I",
+            "value": "id:I",
+            "span": {
+              "line": 9,
+              "col_start": 8,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 9,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "uid:I",
+            "value": "uid:I",
+            "span": {
+              "line": 9,
+              "col_start": 13,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 9,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "total:F",
+            "value": "total:F",
+            "span": {
+              "line": 9,
+              "col_start": 19,
+              "col_end": 26
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 9,
+              "col_start": 26,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "status:E[Pending,Paid,Shipped]",
+            "value": "status:E[Pending,Paid,Shipped]",
+            "span": {
+              "line": 9,
+              "col_start": 27,
+              "col_end": 57
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 10,
+        "original_line": "D Customer id:I email:S name:S",
+        "op_value": "D",
+        "op_canonical": "D",
+        "slot_values": [
+          "Customer",
+          "id:I",
+          "email:S",
+          "name:S"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "D",
+            "value": "D",
+            "span": {
+              "line": 10,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 10,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Customer",
+            "value": "Customer",
+            "span": {
+              "line": 10,
+              "col_start": 2,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 10,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id:I",
+            "value": "id:I",
+            "span": {
+              "line": 10,
+              "col_start": 11,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 10,
+              "col_start": 15,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "email:S",
+            "value": "email:S",
+            "span": {
+              "line": 10,
+              "col_start": 16,
+              "col_end": 23
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 10,
+              "col_start": 23,
+              "col_end": 24
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "name:S",
+            "value": "name:S",
+            "span": {
+              "line": 10,
+              "col_start": 24,
+              "col_end": 30
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 11,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 12,
+        "original_line": "# Products API",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Products API",
+            "value": "# Products API",
+            "span": {
+              "line": 12,
+              "col_start": 0,
+              "col_end": 14
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 13,
+        "original_line": "E /products G ->L1 ->products",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/products",
+          "G",
+          "->L1",
+          "->products"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 13,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 13,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/products",
+            "value": "/products",
+            "span": {
+              "line": 13,
+              "col_start": 2,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 13,
+              "col_start": 11,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "G",
+            "value": "G",
+            "span": {
+              "line": 13,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 13,
+              "col_start": 13,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L1",
+            "value": "->L1",
+            "span": {
+              "line": 13,
+              "col_start": 14,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 13,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->products",
+            "value": "->products",
+            "span": {
+              "line": 13,
+              "col_start": 19,
+              "col_end": 29
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 14,
+        "original_line": "L1: R db.F Product * ->products J products",
+        "op_value": "L1:",
+        "op_canonical": "L1:",
+        "slot_values": [
+          "R",
+          "db.F",
+          "Product",
+          "*",
+          "->products",
+          "J",
+          "products"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L1:",
+            "value": "L1:",
+            "span": {
+              "line": 14,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 14,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 14,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 14,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.F",
+            "value": "db.F",
+            "span": {
+              "line": 14,
+              "col_start": 6,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 14,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Product",
+            "value": "Product",
+            "span": {
+              "line": 14,
+              "col_start": 11,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 14,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "*",
+            "value": "*",
+            "span": {
+              "line": 14,
+              "col_start": 19,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 14,
+              "col_start": 20,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->products",
+            "value": "->products",
+            "span": {
+              "line": 14,
+              "col_start": 21,
+              "col_end": 31
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 14,
+              "col_start": 31,
+              "col_end": 32
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 14,
+              "col_start": 32,
+              "col_end": 33
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 14,
+              "col_start": 33,
+              "col_end": 34
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "products",
+            "value": "products",
+            "span": {
+              "line": 14,
+              "col_start": 34,
+              "col_end": 42
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 15,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 16,
+        "original_line": "E /product G ->L6 ->product",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/product",
+          "G",
+          "->L6",
+          "->product"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 16,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 16,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/product",
+            "value": "/product",
+            "span": {
+              "line": 16,
+              "col_start": 2,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 16,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "G",
+            "value": "G",
+            "span": {
+              "line": 16,
+              "col_start": 11,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 16,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L6",
+            "value": "->L6",
+            "span": {
+              "line": 16,
+              "col_start": 13,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 16,
+              "col_start": 17,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->product",
+            "value": "->product",
+            "span": {
+              "line": 16,
+              "col_start": 18,
+              "col_end": 27
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 17,
+        "original_line": "L6: R db.G Product id ->product J product",
+        "op_value": "L6:",
+        "op_canonical": "L6:",
+        "slot_values": [
+          "R",
+          "db.G",
+          "Product",
+          "id",
+          "->product",
+          "J",
+          "product"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L6:",
+            "value": "L6:",
+            "span": {
+              "line": 17,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 17,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 17,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 17,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.G",
+            "value": "db.G",
+            "span": {
+              "line": 17,
+              "col_start": 6,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 17,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Product",
+            "value": "Product",
+            "span": {
+              "line": 17,
+              "col_start": 11,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 17,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id",
+            "value": "id",
+            "span": {
+              "line": 17,
+              "col_start": 19,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 17,
+              "col_start": 21,
+              "col_end": 22
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->product",
+            "value": "->product",
+            "span": {
+              "line": 17,
+              "col_start": 22,
+              "col_end": 31
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 17,
+              "col_start": 31,
+              "col_end": 32
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 17,
+              "col_start": 32,
+              "col_end": 33
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 17,
+              "col_start": 33,
+              "col_end": 34
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "product",
+            "value": "product",
+            "span": {
+              "line": 17,
+              "col_start": 34,
+              "col_end": 41
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 18,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 19,
+        "original_line": "E /products P ->L7 ->product",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/products",
+          "P",
+          "->L7",
+          "->product"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 19,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 19,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/products",
+            "value": "/products",
+            "span": {
+              "line": 19,
+              "col_start": 2,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 19,
+              "col_start": 11,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "P",
+            "value": "P",
+            "span": {
+              "line": 19,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 19,
+              "col_start": 13,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L7",
+            "value": "->L7",
+            "span": {
+              "line": 19,
+              "col_start": 14,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 19,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->product",
+            "value": "->product",
+            "span": {
+              "line": 19,
+              "col_start": 19,
+              "col_end": 28
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 20,
+        "original_line": "L7: R db.C Product name price sku ->product J product",
+        "op_value": "L7:",
+        "op_canonical": "L7:",
+        "slot_values": [
+          "R",
+          "db.C",
+          "Product",
+          "name",
+          "price",
+          "sku",
+          "->product",
+          "J",
+          "product"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L7:",
+            "value": "L7:",
+            "span": {
+              "line": 20,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 20,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.C",
+            "value": "db.C",
+            "span": {
+              "line": 20,
+              "col_start": 6,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Product",
+            "value": "Product",
+            "span": {
+              "line": 20,
+              "col_start": 11,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "name",
+            "value": "name",
+            "span": {
+              "line": 20,
+              "col_start": 19,
+              "col_end": 23
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 23,
+              "col_end": 24
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "price",
+            "value": "price",
+            "span": {
+              "line": 20,
+              "col_start": 24,
+              "col_end": 29
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 29,
+              "col_end": 30
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "sku",
+            "value": "sku",
+            "span": {
+              "line": 20,
+              "col_start": 30,
+              "col_end": 33
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 33,
+              "col_end": 34
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->product",
+            "value": "->product",
+            "span": {
+              "line": 20,
+              "col_start": 34,
+              "col_end": 43
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 43,
+              "col_end": 44
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 20,
+              "col_start": 44,
+              "col_end": 45
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 20,
+              "col_start": 45,
+              "col_end": 46
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "product",
+            "value": "product",
+            "span": {
+              "line": 20,
+              "col_start": 46,
+              "col_end": 53
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 21,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 22,
+        "original_line": "# Orders API",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Orders API",
+            "value": "# Orders API",
+            "span": {
+              "line": 22,
+              "col_start": 0,
+              "col_end": 12
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 23,
+        "original_line": "E /orders G ->L2 ->orders",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/orders",
+          "G",
+          "->L2",
+          "->orders"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 23,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 23,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/orders",
+            "value": "/orders",
+            "span": {
+              "line": 23,
+              "col_start": 2,
+              "col_end": 9
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 23,
+              "col_start": 9,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "G",
+            "value": "G",
+            "span": {
+              "line": 23,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 23,
+              "col_start": 11,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L2",
+            "value": "->L2",
+            "span": {
+              "line": 23,
+              "col_start": 12,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 23,
+              "col_start": 16,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->orders",
+            "value": "->orders",
+            "span": {
+              "line": 23,
+              "col_start": 17,
+              "col_end": 25
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 24,
+        "original_line": "L2: R db.F Order * ->orders J orders",
+        "op_value": "L2:",
+        "op_canonical": "L2:",
+        "slot_values": [
+          "R",
+          "db.F",
+          "Order",
+          "*",
+          "->orders",
+          "J",
+          "orders"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L2:",
+            "value": "L2:",
+            "span": {
+              "line": 24,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 24,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 24,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 24,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.F",
+            "value": "db.F",
+            "span": {
+              "line": 24,
+              "col_start": 6,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 24,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Order",
+            "value": "Order",
+            "span": {
+              "line": 24,
+              "col_start": 11,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 24,
+              "col_start": 16,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "*",
+            "value": "*",
+            "span": {
+              "line": 24,
+              "col_start": 17,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 24,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->orders",
+            "value": "->orders",
+            "span": {
+              "line": 24,
+              "col_start": 19,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 24,
+              "col_start": 27,
+              "col_end": 28
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 24,
+              "col_start": 28,
+              "col_end": 29
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 24,
+              "col_start": 29,
+              "col_end": 30
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "orders",
+            "value": "orders",
+            "span": {
+              "line": 24,
+              "col_start": 30,
+              "col_end": 36
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 25,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 26,
+        "original_line": "E /order G ->L8 ->order",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/order",
+          "G",
+          "->L8",
+          "->order"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 26,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 26,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/order",
+            "value": "/order",
+            "span": {
+              "line": 26,
+              "col_start": 2,
+              "col_end": 8
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 26,
+              "col_start": 8,
+              "col_end": 9
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "G",
+            "value": "G",
+            "span": {
+              "line": 26,
+              "col_start": 9,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 26,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L8",
+            "value": "->L8",
+            "span": {
+              "line": 26,
+              "col_start": 11,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 26,
+              "col_start": 15,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->order",
+            "value": "->order",
+            "span": {
+              "line": 26,
+              "col_start": 16,
+              "col_end": 23
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 27,
+        "original_line": "L8: R db.G Order id ->order J order",
+        "op_value": "L8:",
+        "op_canonical": "L8:",
+        "slot_values": [
+          "R",
+          "db.G",
+          "Order",
+          "id",
+          "->order",
+          "J",
+          "order"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L8:",
+            "value": "L8:",
+            "span": {
+              "line": 27,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 27,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 27,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 27,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.G",
+            "value": "db.G",
+            "span": {
+              "line": 27,
+              "col_start": 6,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 27,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Order",
+            "value": "Order",
+            "span": {
+              "line": 27,
+              "col_start": 11,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 27,
+              "col_start": 16,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id",
+            "value": "id",
+            "span": {
+              "line": 27,
+              "col_start": 17,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 27,
+              "col_start": 19,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->order",
+            "value": "->order",
+            "span": {
+              "line": 27,
+              "col_start": 20,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 27,
+              "col_start": 27,
+              "col_end": 28
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 27,
+              "col_start": 28,
+              "col_end": 29
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 27,
+              "col_start": 29,
+              "col_end": 30
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "order",
+            "value": "order",
+            "span": {
+              "line": 27,
+              "col_start": 30,
+              "col_end": 35
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 28,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 29,
+        "original_line": "E /orders P ->L9 ->order",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/orders",
+          "P",
+          "->L9",
+          "->order"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 29,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 29,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/orders",
+            "value": "/orders",
+            "span": {
+              "line": 29,
+              "col_start": 2,
+              "col_end": 9
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 29,
+              "col_start": 9,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "P",
+            "value": "P",
+            "span": {
+              "line": 29,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 29,
+              "col_start": 11,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L9",
+            "value": "->L9",
+            "span": {
+              "line": 29,
+              "col_start": 12,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 29,
+              "col_start": 16,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->order",
+            "value": "->order",
+            "span": {
+              "line": 29,
+              "col_start": 17,
+              "col_end": 24
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 30,
+        "original_line": "L9: R db.C Order uid total status ->order J order",
+        "op_value": "L9:",
+        "op_canonical": "L9:",
+        "slot_values": [
+          "R",
+          "db.C",
+          "Order",
+          "uid",
+          "total",
+          "status",
+          "->order",
+          "J",
+          "order"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L9:",
+            "value": "L9:",
+            "span": {
+              "line": 30,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 30,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.C",
+            "value": "db.C",
+            "span": {
+              "line": 30,
+              "col_start": 6,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Order",
+            "value": "Order",
+            "span": {
+              "line": 30,
+              "col_start": 11,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 16,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "uid",
+            "value": "uid",
+            "span": {
+              "line": 30,
+              "col_start": 17,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 20,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "total",
+            "value": "total",
+            "span": {
+              "line": 30,
+              "col_start": 21,
+              "col_end": 26
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 26,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "status",
+            "value": "status",
+            "span": {
+              "line": 30,
+              "col_start": 27,
+              "col_end": 33
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 33,
+              "col_end": 34
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->order",
+            "value": "->order",
+            "span": {
+              "line": 30,
+              "col_start": 34,
+              "col_end": 41
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 41,
+              "col_end": 42
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 30,
+              "col_start": 42,
+              "col_end": 43
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 30,
+              "col_start": 43,
+              "col_end": 44
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "order",
+            "value": "order",
+            "span": {
+              "line": 30,
+              "col_start": 44,
+              "col_end": 49
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 31,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 32,
+        "original_line": "# Checkout (payment definition is top-level; in-label use R pay.* when needed)",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Checkout (payment definition is top-level; in-label use R pay.* when needed)",
+            "value": "# Checkout (payment definition is top-level; in-label use R pay.* when needed)",
+            "span": {
+              "line": 32,
+              "col_start": 0,
+              "col_end": 78
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 33,
+        "original_line": "E /checkout P ->L3",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/checkout",
+          "P",
+          "->L3"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 33,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 33,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/checkout",
+            "value": "/checkout",
+            "span": {
+              "line": 33,
+              "col_start": 2,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 33,
+              "col_start": 11,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "P",
+            "value": "P",
+            "span": {
+              "line": 33,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 33,
+              "col_start": 13,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L3",
+            "value": "->L3",
+            "span": {
+              "line": 33,
+              "col_start": 14,
+              "col_end": 18
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 34,
+        "original_line": "L3: R db.F Order * ->ord J ord",
+        "op_value": "L3:",
+        "op_canonical": "L3:",
+        "slot_values": [
+          "R",
+          "db.F",
+          "Order",
+          "*",
+          "->ord",
+          "J",
+          "ord"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L3:",
+            "value": "L3:",
+            "span": {
+              "line": 34,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 34,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 34,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 34,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.F",
+            "value": "db.F",
+            "span": {
+              "line": 34,
+              "col_start": 6,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 34,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Order",
+            "value": "Order",
+            "span": {
+              "line": 34,
+              "col_start": 11,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 34,
+              "col_start": 16,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "*",
+            "value": "*",
+            "span": {
+              "line": 34,
+              "col_start": 17,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 34,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->ord",
+            "value": "->ord",
+            "span": {
+              "line": 34,
+              "col_start": 19,
+              "col_end": 24
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 34,
+              "col_start": 24,
+              "col_end": 25
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 34,
+              "col_start": 25,
+              "col_end": 26
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 34,
+              "col_start": 26,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "ord",
+            "value": "ord",
+            "span": {
+              "line": 34,
+              "col_start": 27,
+              "col_end": 30
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 35,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 36,
+        "original_line": "P checkout 1999 usd \"Order payment\"",
+        "op_value": "P",
+        "op_canonical": "P",
+        "slot_values": [
+          "checkout",
+          "1999",
+          "usd",
+          "Order payment"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "P",
+            "value": "P",
+            "span": {
+              "line": 36,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 36,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "checkout",
+            "value": "checkout",
+            "span": {
+              "line": 36,
+              "col_start": 2,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 36,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "1999",
+            "value": "1999",
+            "span": {
+              "line": 36,
+              "col_start": 11,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 36,
+              "col_start": 15,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "usd",
+            "value": "usd",
+            "span": {
+              "line": 36,
+              "col_start": 16,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 36,
+              "col_start": 19,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "string",
+            "raw": "\"Order payment\"",
+            "value": "Order payment",
+            "span": {
+              "line": 36,
+              "col_start": 20,
+              "col_end": 35
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 37,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 38,
+        "original_line": "# Customers API",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Customers API",
+            "value": "# Customers API",
+            "span": {
+              "line": 38,
+              "col_start": 0,
+              "col_end": 15
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 39,
+        "original_line": "E /customers G ->L10 ->customers",
+        "op_value": "E",
+        "op_canonical": "E",
+        "slot_values": [
+          "/customers",
+          "G",
+          "->L10",
+          "->customers"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "E",
+            "value": "E",
+            "span": {
+              "line": 39,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 39,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/customers",
+            "value": "/customers",
+            "span": {
+              "line": 39,
+              "col_start": 2,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 39,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "G",
+            "value": "G",
+            "span": {
+              "line": 39,
+              "col_start": 13,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 39,
+              "col_start": 14,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->L10",
+            "value": "->L10",
+            "span": {
+              "line": 39,
+              "col_start": 15,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 39,
+              "col_start": 20,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->customers",
+            "value": "->customers",
+            "span": {
+              "line": 39,
+              "col_start": 21,
+              "col_end": 32
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 40,
+        "original_line": "L10: R db.F Customer * ->customers J customers",
+        "op_value": "L10:",
+        "op_canonical": "L10:",
+        "slot_values": [
+          "R",
+          "db.F",
+          "Customer",
+          "*",
+          "->customers",
+          "J",
+          "customers"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "L10:",
+            "value": "L10:",
+            "span": {
+              "line": 40,
+              "col_start": 0,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 40,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "R",
+            "value": "R",
+            "span": {
+              "line": 40,
+              "col_start": 5,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 40,
+              "col_start": 6,
+              "col_end": 7
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "db.F",
+            "value": "db.F",
+            "span": {
+              "line": 40,
+              "col_start": 7,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 40,
+              "col_start": 11,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Customer",
+            "value": "Customer",
+            "span": {
+              "line": 40,
+              "col_start": 12,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 40,
+              "col_start": 20,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "*",
+            "value": "*",
+            "span": {
+              "line": 40,
+              "col_start": 21,
+              "col_end": 22
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 40,
+              "col_start": 22,
+              "col_end": 23
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "->customers",
+            "value": "->customers",
+            "span": {
+              "line": 40,
+              "col_start": 23,
+              "col_end": 34
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 40,
+              "col_start": 34,
+              "col_end": 35
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "J",
+            "value": "J",
+            "span": {
+              "line": 40,
+              "col_start": 35,
+              "col_end": 36
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 40,
+              "col_start": 36,
+              "col_end": 37
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "customers",
+            "value": "customers",
+            "span": {
+              "line": 40,
+              "col_start": 37,
+              "col_end": 46
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 41,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 42,
+        "original_line": "# Frontend: routes, layout, UI, forms, tables, events",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": [
+          {
+            "kind": "comment",
+            "raw": "# Frontend: routes, layout, UI, forms, tables, events",
+            "value": "# Frontend: routes, layout, UI, forms, tables, events",
+            "span": {
+              "line": 42,
+              "col_start": 0,
+              "col_end": 53
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 43,
+        "original_line": "Rt / Dashboard",
+        "op_value": "Rt",
+        "op_canonical": "Rt",
+        "slot_values": [
+          "/",
+          "Dashboard"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Rt",
+            "value": "Rt",
+            "span": {
+              "line": 43,
+              "col_start": 0,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 43,
+              "col_start": 2,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/",
+            "value": "/",
+            "span": {
+              "line": 43,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 43,
+              "col_start": 4,
+              "col_end": 5
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Dashboard",
+            "value": "Dashboard",
+            "span": {
+              "line": 43,
+              "col_start": 5,
+              "col_end": 14
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 44,
+        "original_line": "Rt /products ProductList",
+        "op_value": "Rt",
+        "op_canonical": "Rt",
+        "slot_values": [
+          "/products",
+          "ProductList"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Rt",
+            "value": "Rt",
+            "span": {
+              "line": 44,
+              "col_start": 0,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 44,
+              "col_start": 2,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/products",
+            "value": "/products",
+            "span": {
+              "line": 44,
+              "col_start": 3,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 44,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "ProductList",
+            "value": "ProductList",
+            "span": {
+              "line": 44,
+              "col_start": 13,
+              "col_end": 24
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 45,
+        "original_line": "Rt /orders OrderTable",
+        "op_value": "Rt",
+        "op_canonical": "Rt",
+        "slot_values": [
+          "/orders",
+          "OrderTable"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Rt",
+            "value": "Rt",
+            "span": {
+              "line": 45,
+              "col_start": 0,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 45,
+              "col_start": 2,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/orders",
+            "value": "/orders",
+            "span": {
+              "line": 45,
+              "col_start": 3,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 45,
+              "col_start": 10,
+              "col_end": 11
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "OrderTable",
+            "value": "OrderTable",
+            "span": {
+              "line": 45,
+              "col_start": 11,
+              "col_end": 21
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 46,
+        "original_line": "Rt /customers CustomerTable",
+        "op_value": "Rt",
+        "op_canonical": "Rt",
+        "slot_values": [
+          "/customers",
+          "CustomerTable"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Rt",
+            "value": "Rt",
+            "span": {
+              "line": 46,
+              "col_start": 0,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 46,
+              "col_start": 2,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/customers",
+            "value": "/customers",
+            "span": {
+              "line": 46,
+              "col_start": 3,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 46,
+              "col_start": 13,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "CustomerTable",
+            "value": "CustomerTable",
+            "span": {
+              "line": 46,
+              "col_start": 14,
+              "col_end": 27
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 47,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 48,
+        "original_line": "Lay Shell Sidebar Main",
+        "op_value": "Lay",
+        "op_canonical": "Lay",
+        "slot_values": [
+          "Shell",
+          "Sidebar",
+          "Main"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Lay",
+            "value": "Lay",
+            "span": {
+              "line": 48,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 48,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Shell",
+            "value": "Shell",
+            "span": {
+              "line": 48,
+              "col_start": 4,
+              "col_end": 9
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 48,
+              "col_start": 9,
+              "col_end": 10
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Sidebar",
+            "value": "Sidebar",
+            "span": {
+              "line": 48,
+              "col_start": 10,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 48,
+              "col_start": 17,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Main",
+            "value": "Main",
+            "span": {
+              "line": 48,
+              "col_start": 18,
+              "col_end": 22
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 49,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 50,
+        "original_line": "U Dashboard",
+        "op_value": "U",
+        "op_canonical": "U",
+        "slot_values": [
+          "Dashboard"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "U",
+            "value": "U",
+            "span": {
+              "line": 50,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 50,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Dashboard",
+            "value": "Dashboard",
+            "span": {
+              "line": 50,
+              "col_start": 2,
+              "col_end": 11
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 51,
+        "original_line": "T products:A[Product]",
+        "op_value": "T",
+        "op_canonical": "T",
+        "slot_values": [
+          "products:A[Product]"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "T",
+            "value": "T",
+            "span": {
+              "line": 51,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 51,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "products:A[Product]",
+            "value": "products:A[Product]",
+            "span": {
+              "line": 51,
+              "col_start": 2,
+              "col_end": 21
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 52,
+        "original_line": "T orders:A[Order]",
+        "op_value": "T",
+        "op_canonical": "T",
+        "slot_values": [
+          "orders:A[Order]"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "T",
+            "value": "T",
+            "span": {
+              "line": 52,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 52,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "orders:A[Order]",
+            "value": "orders:A[Order]",
+            "span": {
+              "line": 52,
+              "col_start": 2,
+              "col_end": 17
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 53,
+        "original_line": "T customers:A[Customer]",
+        "op_value": "T",
+        "op_canonical": "T",
+        "slot_values": [
+          "customers:A[Customer]"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "T",
+            "value": "T",
+            "span": {
+              "line": 53,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 53,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "customers:A[Customer]",
+            "value": "customers:A[Customer]",
+            "span": {
+              "line": 53,
+              "col_start": 2,
+              "col_end": 23
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 54,
+        "original_line": "U ProductList products",
+        "op_value": "U",
+        "op_canonical": "U",
+        "slot_values": [
+          "ProductList",
+          "products"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "U",
+            "value": "U",
+            "span": {
+              "line": 54,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 54,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "ProductList",
+            "value": "ProductList",
+            "span": {
+              "line": 54,
+              "col_start": 2,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 54,
+              "col_start": 13,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "products",
+            "value": "products",
+            "span": {
+              "line": 54,
+              "col_start": 14,
+              "col_end": 22
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 55,
+        "original_line": "U OrderTable orders",
+        "op_value": "U",
+        "op_canonical": "U",
+        "slot_values": [
+          "OrderTable",
+          "orders"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "U",
+            "value": "U",
+            "span": {
+              "line": 55,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 55,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "OrderTable",
+            "value": "OrderTable",
+            "span": {
+              "line": 55,
+              "col_start": 2,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 55,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "orders",
+            "value": "orders",
+            "span": {
+              "line": 55,
+              "col_start": 13,
+              "col_end": 19
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 56,
+        "original_line": "U CustomerTable customers",
+        "op_value": "U",
+        "op_canonical": "U",
+        "slot_values": [
+          "CustomerTable",
+          "customers"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "U",
+            "value": "U",
+            "span": {
+              "line": 56,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 56,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "CustomerTable",
+            "value": "CustomerTable",
+            "span": {
+              "line": 56,
+              "col_start": 2,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 56,
+              "col_start": 15,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "customers",
+            "value": "customers",
+            "span": {
+              "line": 56,
+              "col_start": 16,
+              "col_end": 25
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 57,
+        "original_line": "U CheckoutBtn",
+        "op_value": "U",
+        "op_canonical": "U",
+        "slot_values": [
+          "CheckoutBtn"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "U",
+            "value": "U",
+            "span": {
+              "line": 57,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 57,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "CheckoutBtn",
+            "value": "CheckoutBtn",
+            "span": {
+              "line": 57,
+              "col_start": 2,
+              "col_end": 13
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 58,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 59,
+        "original_line": "Fm OrderForm Order id uid total status",
+        "op_value": "Fm",
+        "op_canonical": "Fm",
+        "slot_values": [
+          "OrderForm",
+          "Order",
+          "id",
+          "uid",
+          "total",
+          "status"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Fm",
+            "value": "Fm",
+            "span": {
+              "line": 59,
+              "col_start": 0,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 59,
+              "col_start": 2,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "OrderForm",
+            "value": "OrderForm",
+            "span": {
+              "line": 59,
+              "col_start": 3,
+              "col_end": 12
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 59,
+              "col_start": 12,
+              "col_end": 13
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Order",
+            "value": "Order",
+            "span": {
+              "line": 59,
+              "col_start": 13,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 59,
+              "col_start": 18,
+              "col_end": 19
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id",
+            "value": "id",
+            "span": {
+              "line": 59,
+              "col_start": 19,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 59,
+              "col_start": 21,
+              "col_end": 22
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "uid",
+            "value": "uid",
+            "span": {
+              "line": 59,
+              "col_start": 22,
+              "col_end": 25
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 59,
+              "col_start": 25,
+              "col_end": 26
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "total",
+            "value": "total",
+            "span": {
+              "line": 59,
+              "col_start": 26,
+              "col_end": 31
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 59,
+              "col_start": 31,
+              "col_end": 32
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "status",
+            "value": "status",
+            "span": {
+              "line": 59,
+              "col_start": 32,
+              "col_end": 38
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 60,
+        "original_line": "Fm ProductForm Product id name price sku",
+        "op_value": "Fm",
+        "op_canonical": "Fm",
+        "slot_values": [
+          "ProductForm",
+          "Product",
+          "id",
+          "name",
+          "price",
+          "sku"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Fm",
+            "value": "Fm",
+            "span": {
+              "line": 60,
+              "col_start": 0,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 60,
+              "col_start": 2,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "ProductForm",
+            "value": "ProductForm",
+            "span": {
+              "line": 60,
+              "col_start": 3,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 60,
+              "col_start": 14,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Product",
+            "value": "Product",
+            "span": {
+              "line": 60,
+              "col_start": 15,
+              "col_end": 22
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 60,
+              "col_start": 22,
+              "col_end": 23
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id",
+            "value": "id",
+            "span": {
+              "line": 60,
+              "col_start": 23,
+              "col_end": 25
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 60,
+              "col_start": 25,
+              "col_end": 26
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "name",
+            "value": "name",
+            "span": {
+              "line": 60,
+              "col_start": 26,
+              "col_end": 30
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 60,
+              "col_start": 30,
+              "col_end": 31
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "price",
+            "value": "price",
+            "span": {
+              "line": 60,
+              "col_start": 31,
+              "col_end": 36
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 60,
+              "col_start": 36,
+              "col_end": 37
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "sku",
+            "value": "sku",
+            "span": {
+              "line": 60,
+              "col_start": 37,
+              "col_end": 40
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 61,
+        "original_line": "Tbl OrderTable Order id uid total status",
+        "op_value": "Tbl",
+        "op_canonical": "Tbl",
+        "slot_values": [
+          "OrderTable",
+          "Order",
+          "id",
+          "uid",
+          "total",
+          "status"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Tbl",
+            "value": "Tbl",
+            "span": {
+              "line": 61,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 61,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "OrderTable",
+            "value": "OrderTable",
+            "span": {
+              "line": 61,
+              "col_start": 4,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 61,
+              "col_start": 14,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Order",
+            "value": "Order",
+            "span": {
+              "line": 61,
+              "col_start": 15,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 61,
+              "col_start": 20,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id",
+            "value": "id",
+            "span": {
+              "line": 61,
+              "col_start": 21,
+              "col_end": 23
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 61,
+              "col_start": 23,
+              "col_end": 24
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "uid",
+            "value": "uid",
+            "span": {
+              "line": 61,
+              "col_start": 24,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 61,
+              "col_start": 27,
+              "col_end": 28
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "total",
+            "value": "total",
+            "span": {
+              "line": 61,
+              "col_start": 28,
+              "col_end": 33
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 61,
+              "col_start": 33,
+              "col_end": 34
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "status",
+            "value": "status",
+            "span": {
+              "line": 61,
+              "col_start": 34,
+              "col_end": 40
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 62,
+        "original_line": "Tbl ProductList Product id name price sku",
+        "op_value": "Tbl",
+        "op_canonical": "Tbl",
+        "slot_values": [
+          "ProductList",
+          "Product",
+          "id",
+          "name",
+          "price",
+          "sku"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Tbl",
+            "value": "Tbl",
+            "span": {
+              "line": 62,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 62,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "ProductList",
+            "value": "ProductList",
+            "span": {
+              "line": 62,
+              "col_start": 4,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 62,
+              "col_start": 15,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Product",
+            "value": "Product",
+            "span": {
+              "line": 62,
+              "col_start": 16,
+              "col_end": 23
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 62,
+              "col_start": 23,
+              "col_end": 24
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id",
+            "value": "id",
+            "span": {
+              "line": 62,
+              "col_start": 24,
+              "col_end": 26
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 62,
+              "col_start": 26,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "name",
+            "value": "name",
+            "span": {
+              "line": 62,
+              "col_start": 27,
+              "col_end": 31
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 62,
+              "col_start": 31,
+              "col_end": 32
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "price",
+            "value": "price",
+            "span": {
+              "line": 62,
+              "col_start": 32,
+              "col_end": 37
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 62,
+              "col_start": 37,
+              "col_end": 38
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "sku",
+            "value": "sku",
+            "span": {
+              "line": 62,
+              "col_start": 38,
+              "col_end": 41
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 63,
+        "original_line": "Tbl CustomerTable Customer id email name",
+        "op_value": "Tbl",
+        "op_canonical": "Tbl",
+        "slot_values": [
+          "CustomerTable",
+          "Customer",
+          "id",
+          "email",
+          "name"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Tbl",
+            "value": "Tbl",
+            "span": {
+              "line": 63,
+              "col_start": 0,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 63,
+              "col_start": 3,
+              "col_end": 4
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "CustomerTable",
+            "value": "CustomerTable",
+            "span": {
+              "line": 63,
+              "col_start": 4,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 63,
+              "col_start": 17,
+              "col_end": 18
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "Customer",
+            "value": "Customer",
+            "span": {
+              "line": 63,
+              "col_start": 18,
+              "col_end": 26
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 63,
+              "col_start": 26,
+              "col_end": 27
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "id",
+            "value": "id",
+            "span": {
+              "line": 63,
+              "col_start": 27,
+              "col_end": 29
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 63,
+              "col_start": 29,
+              "col_end": 30
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "email",
+            "value": "email",
+            "span": {
+              "line": 63,
+              "col_start": 30,
+              "col_end": 35
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 63,
+              "col_start": 35,
+              "col_end": 36
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "name",
+            "value": "name",
+            "span": {
+              "line": 63,
+              "col_start": 36,
+              "col_end": 40
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 64,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 65,
+        "original_line": "Ev CheckoutBtn click /checkout",
+        "op_value": "Ev",
+        "op_canonical": "Ev",
+        "slot_values": [
+          "CheckoutBtn",
+          "click",
+          "/checkout"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "Ev",
+            "value": "Ev",
+            "span": {
+              "line": 65,
+              "col_start": 0,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 65,
+              "col_start": 2,
+              "col_end": 3
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "CheckoutBtn",
+            "value": "CheckoutBtn",
+            "span": {
+              "line": 65,
+              "col_start": 3,
+              "col_end": 14
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 65,
+              "col_start": 14,
+              "col_end": 15
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "click",
+            "value": "click",
+            "span": {
+              "line": 65,
+              "col_start": 15,
+              "col_end": 20
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 65,
+              "col_start": 20,
+              "col_end": 21
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "/checkout",
+            "value": "/checkout",
+            "span": {
+              "line": 65,
+              "col_start": 21,
+              "col_end": 30
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 66,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      },
+      {
+        "lineno": 67,
+        "original_line": "C cart sessionId 3600",
+        "op_value": "C",
+        "op_canonical": "C",
+        "slot_values": [
+          "cart",
+          "sessionId",
+          "3600"
+        ],
+        "tokens": [
+          {
+            "kind": "bare",
+            "raw": "C",
+            "value": "C",
+            "span": {
+              "line": 67,
+              "col_start": 0,
+              "col_end": 1
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 67,
+              "col_start": 1,
+              "col_end": 2
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "cart",
+            "value": "cart",
+            "span": {
+              "line": 67,
+              "col_start": 2,
+              "col_end": 6
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 67,
+              "col_start": 6,
+              "col_end": 7
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "sessionId",
+            "value": "sessionId",
+            "span": {
+              "line": 67,
+              "col_start": 7,
+              "col_end": 16
+            }
+          },
+          {
+            "kind": "ws",
+            "raw": " ",
+            "value": " ",
+            "span": {
+              "line": 67,
+              "col_start": 16,
+              "col_end": 17
+            }
+          },
+          {
+            "kind": "bare",
+            "raw": "3600",
+            "value": "3600",
+            "span": {
+              "line": 67,
+              "col_start": 17,
+              "col_end": 21
+            }
+          }
+        ]
+      },
+      {
+        "lineno": 68,
+        "original_line": "",
+        "op_value": "",
+        "op_canonical": "",
+        "slot_values": [],
+        "tokens": []
+      }
+    ]
+  },
+  "services": {
+    "core": {
+      "mode": "web",
+      "path": "/api",
+      "eps": {
+        "/products": {
+          "G": {
+            "method": "G",
+            "label_id": "1",
+            "return_var": "products",
+            "tgt": "->L1"
+          },
+          "P": {
+            "method": "P",
+            "label_id": "7",
+            "return_var": "product",
+            "tgt": "->L7"
+          }
+        },
+        "/product": {
+          "G": {
+            "method": "G",
+            "label_id": "6",
+            "return_var": "product",
+            "tgt": "->L6"
+          }
+        },
+        "/orders": {
+          "G": {
+            "method": "G",
+            "label_id": "2",
+            "return_var": "orders",
+            "tgt": "->L2"
+          },
+          "P": {
+            "method": "P",
+            "label_id": "9",
+            "return_var": "order",
+            "tgt": "->L9"
+          }
+        },
+        "/order": {
+          "G": {
+            "method": "G",
+            "label_id": "8",
+            "return_var": "order",
+            "tgt": "->L8"
+          }
+        },
+        "/checkout": {
+          "P": {
+            "method": "P",
+            "label_id": "3",
+            "return_var": null,
+            "tgt": "->L3"
+          }
+        },
+        "/customers": {
+          "G": {
+            "method": "G",
+            "label_id": "10",
+            "return_var": "customers",
+            "tgt": "->L10"
+          }
+        }
+      },
+      "ui": {}
+    },
+    "fe": {
+      "mode": "web",
+      "path": "/",
+      "eps": {},
+      "ui": {
+        "Dashboard": [],
+        "ProductList": [
+          "products"
+        ],
+        "OrderTable": [
+          "orders"
+        ],
+        "CustomerTable": [
+          "customers"
+        ],
+        "CheckoutBtn": []
+      },
+      "routes": [
+        {
+          "path": "/",
+          "ui": "Dashboard"
+        },
+        {
+          "path": "/products",
+          "ui": "ProductList"
+        },
+        {
+          "path": "/orders",
+          "ui": "OrderTable"
+        },
+        {
+          "path": "/customers",
+          "ui": "CustomerTable"
+        }
+      ],
+      "layouts": {
+        "Shell": {
+          "slots": [
+            "Sidebar",
+            "Main"
+          ]
+        }
+      },
+      "states": {
+        "Dashboard": [
+          [
+            "products",
+            "A[Product]"
+          ],
+          [
+            "orders",
+            "A[Order]"
+          ],
+          [
+            "customers",
+            "A[Customer]"
+          ]
+        ]
+      },
+      "forms": {
+        "OrderForm": {
+          "type": "Order",
+          "fields": [
+            "id",
+            "uid",
+            "total",
+            "status"
+          ]
+        },
+        "ProductForm": {
+          "type": "Product",
+          "fields": [
+            "id",
+            "name",
+            "price",
+            "sku"
+          ]
+        }
+      },
+      "tables": {
+        "OrderTable": {
+          "type": "Order",
+          "columns": [
+            "id",
+            "uid",
+            "total",
+            "status"
+          ]
+        },
+        "ProductList": {
+          "type": "Product",
+          "columns": [
+            "id",
+            "name",
+            "price",
+            "sku"
+          ]
+        },
+        "CustomerTable": {
+          "type": "Customer",
+          "columns": [
+            "id",
+            "email",
+            "name"
+          ]
+        }
+      },
+      "events": [
+        {
+          "component": "CheckoutBtn",
+          "event": "click",
+          "target": "/checkout"
+        }
+      ]
+    },
+    "pay": {
+      "defs": {
+        "checkout": {
+          "amount": "1999",
+          "currency": "usd",
+          "desc": "Order payment"
+        }
+      }
+    },
+    "cache": {
+      "defs": {
+        "cart": {
+          "key": "sessionId",
+          "ttl": "3600",
+          "default": null
+        }
+      }
+    }
+  },
+  "types": {
+    "Product": {
+      "fields": {
+        "id": "I",
+        "name": "S",
+        "price": "F",
+        "sku": "S"
+      }
+    },
+    "Order": {
+      "fields": {
+        "id": "I",
+        "uid": "I",
+        "total": "F",
+        "status": "E[Pending,Paid,Shipped]"
+      }
+    },
+    "Customer": {
+      "fields": {
+        "id": "I",
+        "email": "S",
+        "name": "S"
+      }
+    }
+  },
+  "labels": {
+    "1": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Product",
+            "args": [
+              "*"
+            ],
+            "out": "products",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Product",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Product",
+              "*",
+              "->products"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "products"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Product",
+            "args": [
+              "*"
+            ],
+            "out": "products",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Product",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Product",
+              "*",
+              "->products"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "products"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.F",
+        "Product",
+        "*",
+        "->products",
+        "J",
+        "products"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "products"
+        }
+      ]
+    },
+    "6": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.G",
+            "target": "Product",
+            "args": [
+              "id"
+            ],
+            "out": "product",
+            "src": "db",
+            "req_op": "G",
+            "entity": "Product",
+            "fields": "id",
+            "raw": [
+              "db.G",
+              "Product",
+              "id",
+              "->product"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "product"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.G",
+            "target": "Product",
+            "args": [
+              "id"
+            ],
+            "out": "product",
+            "src": "db",
+            "req_op": "G",
+            "entity": "Product",
+            "fields": "id",
+            "raw": [
+              "db.G",
+              "Product",
+              "id",
+              "->product"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "product"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.G",
+        "Product",
+        "id",
+        "->product",
+        "J",
+        "product"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "product"
+        }
+      ]
+    },
+    "7": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.C",
+            "target": "Product",
+            "args": [
+              "name",
+              "price",
+              "sku"
+            ],
+            "out": "product",
+            "src": "db",
+            "req_op": "C",
+            "entity": "Product",
+            "fields": "name",
+            "raw": [
+              "db.C",
+              "Product",
+              "name",
+              "price",
+              "sku",
+              "->product"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "product"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.C",
+            "target": "Product",
+            "args": [
+              "name",
+              "price",
+              "sku"
+            ],
+            "out": "product",
+            "src": "db",
+            "req_op": "C",
+            "entity": "Product",
+            "fields": "name",
+            "raw": [
+              "db.C",
+              "Product",
+              "name",
+              "price",
+              "sku",
+              "->product"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "product"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.C",
+        "Product",
+        "name",
+        "price",
+        "sku",
+        "->product",
+        "J",
+        "product"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "product"
+        }
+      ]
+    },
+    "2": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Order",
+            "args": [
+              "*"
+            ],
+            "out": "orders",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Order",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Order",
+              "*",
+              "->orders"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "orders"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Order",
+            "args": [
+              "*"
+            ],
+            "out": "orders",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Order",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Order",
+              "*",
+              "->orders"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "orders"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.F",
+        "Order",
+        "*",
+        "->orders",
+        "J",
+        "orders"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "orders"
+        }
+      ]
+    },
+    "8": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.G",
+            "target": "Order",
+            "args": [
+              "id"
+            ],
+            "out": "order",
+            "src": "db",
+            "req_op": "G",
+            "entity": "Order",
+            "fields": "id",
+            "raw": [
+              "db.G",
+              "Order",
+              "id",
+              "->order"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "order"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.G",
+            "target": "Order",
+            "args": [
+              "id"
+            ],
+            "out": "order",
+            "src": "db",
+            "req_op": "G",
+            "entity": "Order",
+            "fields": "id",
+            "raw": [
+              "db.G",
+              "Order",
+              "id",
+              "->order"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "order"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.G",
+        "Order",
+        "id",
+        "->order",
+        "J",
+        "order"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "order"
+        }
+      ]
+    },
+    "9": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.C",
+            "target": "Order",
+            "args": [
+              "uid",
+              "total",
+              "status"
+            ],
+            "out": "order",
+            "src": "db",
+            "req_op": "C",
+            "entity": "Order",
+            "fields": "uid",
+            "raw": [
+              "db.C",
+              "Order",
+              "uid",
+              "total",
+              "status",
+              "->order"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "order"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.C",
+            "target": "Order",
+            "args": [
+              "uid",
+              "total",
+              "status"
+            ],
+            "out": "order",
+            "src": "db",
+            "req_op": "C",
+            "entity": "Order",
+            "fields": "uid",
+            "raw": [
+              "db.C",
+              "Order",
+              "uid",
+              "total",
+              "status",
+              "->order"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "order"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.C",
+        "Order",
+        "uid",
+        "total",
+        "status",
+        "->order",
+        "J",
+        "order"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "order"
+        }
+      ]
+    },
+    "3": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Order",
+            "args": [
+              "*"
+            ],
+            "out": "ord",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Order",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Order",
+              "*",
+              "->ord"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "ord"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Order",
+            "args": [
+              "*"
+            ],
+            "out": "ord",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Order",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Order",
+              "*",
+              "->ord"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "ord"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.F",
+        "Order",
+        "*",
+        "->ord",
+        "J",
+        "ord"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "ord"
+        }
+      ]
+    },
+    "10": {
+      "nodes": [
+        {
+          "id": "n1",
+          "op": "R",
+          "effect": "io",
+          "data": {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Customer",
+            "args": [
+              "*"
+            ],
+            "out": "customers",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Customer",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Customer",
+              "*",
+              "->customers"
+            ]
+          }
+        },
+        {
+          "id": "n2",
+          "op": "J",
+          "effect": "pure",
+          "data": {
+            "op": "J",
+            "var": "customers"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "n1",
+          "to": "n2",
+          "to_kind": "node"
+        }
+      ],
+      "legacy": {
+        "steps": [
+          {
+            "op": "R",
+            "adapter": "db.F",
+            "target": "Customer",
+            "args": [
+              "*"
+            ],
+            "out": "customers",
+            "src": "db",
+            "req_op": "F",
+            "entity": "Customer",
+            "fields": "*",
+            "raw": [
+              "db.F",
+              "Customer",
+              "*",
+              "->customers"
+            ]
+          },
+          {
+            "op": "J",
+            "var": "customers"
+          }
+        ]
+      },
+      "slots": [
+        "R",
+        "db.F",
+        "Customer",
+        "*",
+        "->customers",
+        "J",
+        "customers"
+      ],
+      "entry": "n1",
+      "exits": [
+        {
+          "node": "n2",
+          "var": "customers"
+        }
+      ]
+    }
+  },
+  "crons": [],
+  "config": {
+    "env": [],
+    "secrets": []
+  },
+  "observability": {
+    "metrics": [],
+    "trace": false
+  },
+  "deploy": {
+    "strategy": "rolling",
+    "env_target": "",
+    "flags": []
+  },
+  "limits": {
+    "per_path": {},
+    "per_tenant": 0
+  },
+  "roles": [],
+  "allow": [],
+  "audit": {},
+  "admin": {},
+  "desc": {
+    "endpoints": {},
+    "types": {}
+  },
+  "runbooks": {},
+  "ver": null,
+  "compat": null,
+  "tests": [],
+  "api": {
+    "style": "rest",
+    "version_prefix": "",
+    "deprecate": [],
+    "sla": {}
+  },
+  "rag": {
+    "sources": {},
+    "chunking": {},
+    "embeddings": {},
+    "stores": {},
+    "indexes": {},
+    "retrievers": {},
+    "augment": {},
+    "generate": {},
+    "pipelines": {}
+  },
+  "meta": [],
+  "errors": [],
+  "stats": {
+    "lines": 42,
+    "ops": 42
+  }
+}
