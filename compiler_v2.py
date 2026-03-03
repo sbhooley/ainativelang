@@ -6,7 +6,16 @@ Lossless: source stored exactly; tokenizer emits Token(kind, raw, value, span); 
 """
 import json
 import re
+import difflib
 from typing import Dict, Any, List, Optional, Tuple
+
+from tooling.graph_normalize import (
+    DEFAULT_PORTS,
+    VALID_PORTS as GRAPH_VALID_PORTS,
+    normalize_labels,
+)
+from tooling.effect_analysis import ADAPTER_EFFECT, annotate_labels_effect_analysis, dataflow_defined_before_use
+from tooling.ir_canonical import attach_label_and_node_hashes, graph_semantic_checksum
 
 # --- Lossless token model: kind in ("bare","string","ws","comment"), span = {line, col_start, col_end}
 # line is 1-based; columns are 0-based [col_start, col_end). ---
@@ -45,7 +54,8 @@ def default_value_for_type(typ: str) -> str:
     return "null"
 
 
-# Unprefixed module ops → canonical module.op (spec: IR must store canonical form).
+# Module ops: unprefixed aliases → canonical module.op; prefixed (ops.Env, fe.Tok) stay as-is.
+# Tokenizer keeps "module.op" as one bare token (no split on '.'); both forms normalize in IR.
 MODULE_ALIASES = {
     "Env": "ops.Env", "Sec": "ops.Sec", "M": "ops.M", "Tr": "ops.Tr",
     "Deploy": "ops.Deploy", "EnvT": "ops.EnvT", "Flag": "ops.Flag", "Lim": "ops.Lim",
@@ -83,6 +93,8 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
     "Tbl": {"scope": "top", "min_slots": 2},
     "Ev": {"scope": "top", "min_slots": 3},
     "A": {"scope": "top", "min_slots": 2},
+    "Pol": {"scope": "top", "min_slots": 1},
+    "Txn": {"scope": "top", "min_slots": 1},
     "Inc": {"scope": "top", "min_slots": 1},
     # Governance/metadata declarations
     "Role": {"scope": "top", "min_slots": 1},
@@ -112,6 +124,15 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
     "Set": {"scope": "label", "min_slots": 2},
     "Filt": {"scope": "label", "min_slots": 5},
     "Sort": {"scope": "label", "min_slots": 3},
+    "X": {"scope": "label", "min_slots": 2},
+    "Loop": {"scope": "label", "min_slots": 4},
+    "While": {"scope": "label", "min_slots": 3},
+    # Capability runtime steps
+    "CacheGet": {"scope": "label", "min_slots": 2},
+    "CacheSet": {"scope": "label", "min_slots": 3},
+    "QueuePut": {"scope": "label", "min_slots": 2},
+    "Tx": {"scope": "label", "min_slots": 2},
+    "Enf": {"scope": "label", "min_slots": 1},
 }
 
 
@@ -158,6 +179,53 @@ class AICodeCompiler:
         self._current_test: Optional[Dict[str, Any]] = None
         self.rag: Dict[str, Any] = {"sources": {}, "chunking": {}, "embeddings": {}, "stores": {}, "indexes": {}, "retrievers": {}, "augment": {}, "generate": {}, "pipelines": {}}
         self.meta: List[Dict[str, Any]] = []  # unknown ops preserved (lossless compiler)
+        self.capabilities: Dict[str, Any] = {"auth": {}, "policy": {}, "cache": {}, "queue": {}, "txn": {}}
+        self._warnings: List[str] = []
+
+    def _augment_errors_with_suggestions(self):
+        """Add suggestion hints to error messages for common mistakes."""
+        from tooling.effect_analysis import ADAPTER_EFFECT
+        # Known modules for which adapter.verb pairs exist
+        known_keys = set(ADAPTER_EFFECT.keys()) if ADAPTER_EFFECT else set()
+        # Known top-level modules
+        known_modules = {
+            "core", "cache", "http", "https", "sqlite", "fs", "email", "calendar", "social", "db", "queue", "svc", "wasm"
+        }
+
+        new_errors = []
+        for err in self._errors:
+            suggestion = None
+            # Case: unknown adapter.verb (e.g., 'http.Unknown')
+            if "unknown adapter.verb" in err:
+                m = re.search(r"adapter\.verb (.+?) (?:in|$)", err)
+                if m:
+                    unknown = m.group(1)
+                    close = difflib.get_close_matches(unknown, known_keys, n=1, cutoff=0.6)
+                    if close:
+                        suggestion = f"Did you mean '{close[0]}'?"
+            # Case: unknown module (e.g., 'htp' not found)
+            if "unknown module" in err:
+                m = re.search(r"unknown module (.+?) in", err)
+                if m:
+                    unknown_mod = m.group(1)
+                    close_mod = difflib.get_close_matches(unknown_mod, known_modules, n=3, cutoff=0.5)
+                    if close_mod:
+                        suggestion = f"Known modules: {', '.join(sorted(close_mod))}"
+            # Case: If then target must be ->L<n>
+            if "If then target must be" in err:
+                suggestion = "Use conditional jump: ->L<number> or L<number>"
+            # Case: Label graph node ids must be contiguous n1..nK
+            if "graph node ids must be contiguous" in err:
+                suggestion = "Ensure node IDs are exactly n1, n2, n3... without gaps"
+            # Case: unknown op in meta (lossless)
+            if "unknown op" in err.lower():
+                suggestion = "Check op name spelling; valid ops: X, R, L, J, If, Loop, While, Err, CacheGet, CacheSet, etc."
+
+            if suggestion:
+                err = f"{err} Suggestion: {suggestion}"
+            new_errors.append(err)
+
+        self._errors = new_errors
 
     def tokenize_line(self, line: str) -> List[str]:
         """Legacy/simple tokenizer (string tokens only).
@@ -316,7 +384,27 @@ class AICodeCompiler:
         return rec
 
     # Step ops allowed inside a label block (spec: only these execute in core).
-    STEP_OPS = frozenset({"R", "J", "If", "Err", "Retry", "Call", "Set", "Filt", "Sort"})
+    STEP_OPS = frozenset(
+        {
+            "R",
+            "J",
+            "If",
+            "Err",
+            "Retry",
+            "Call",
+            "Set",
+            "Filt",
+            "Sort",
+            "X",
+            "Loop",
+            "While",
+            "CacheGet",
+            "CacheSet",
+            "QueuePut",
+            "Tx",
+            "Enf",
+        }
+    )
 
     def _ensure_label(self, lid: str) -> None:
         if lid not in self.labels:
@@ -343,6 +431,39 @@ class AICodeCompiler:
             return tok[1:].lstrip().split(":")[0]
         return None
 
+    def _normalize_if_target(self, tok: Optional[str], allow_fallback: bool = False) -> Optional[str]:
+        """Normalize If branch target tokens to a canonical label id string."""
+        if tok is None:
+            return None
+        lid = self._parse_arrow_lbl(tok)
+        if lid is not None:
+            return lid
+        if not allow_fallback:
+            return None
+        s = str(tok)
+        if s.startswith("->"):
+            s = s[2:]
+        if s.startswith("L"):
+            s = s[1:]
+        if ":" in s:
+            s = s.split(":")[-1]
+        return s or None
+
+    @staticmethod
+    def _parse_at_node_id(tok: str) -> Optional[str]:
+        """Parse @n<num> or n<num> to canonical node id (e.g. n3); else None. For Err/Retry target."""
+        if not tok or not isinstance(tok, str):
+            return None
+        s = tok.strip()
+        if s.startswith("@"):
+            s = s[1:]
+        if not s.startswith("n"):
+            return None
+        rest = s[1:]
+        if not rest.isdigit():
+            return None
+        return "n" + str(int(rest))
+
     @staticmethod
     def _norm_lid(x: Optional[str]) -> Optional[str]:
         """Normalize label id tokens like ->L1, L1, 1, L1: to plain numeric string '1'."""
@@ -358,6 +479,98 @@ class AICodeCompiler:
         if ":" in s:
             s = s.split(":")[-1]
         return s
+
+    def _analyze_step_rw(self, s: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """Best-effort static analysis of frame reads/writes for a legacy step."""
+        op = s.get("op")
+        reads: List[str] = []
+        writes: List[str] = []
+
+        if op == "R":
+            out_var = s.get("out", "res")
+            if out_var:
+                writes.append(str(out_var))
+        elif op == "J":
+            var = s.get("var", "data")
+            if var:
+                reads.append(str(var))
+        elif op == "Set":
+            ref = s.get("ref")
+            name = s.get("name")
+            if ref is not None:
+                reads.append(str(ref))
+            if name:
+                writes.append(str(name))
+        elif op == "Filt":
+            ref = s.get("ref")
+            name = s.get("name")
+            if ref:
+                reads.append(str(ref))
+            if name:
+                writes.append(str(name))
+        elif op == "Sort":
+            ref = s.get("ref")
+            name = s.get("name")
+            if ref:
+                reads.append(str(ref))
+            if name:
+                writes.append(str(name))
+        elif op == "If":
+            cond = s.get("cond", "")
+            if isinstance(cond, str) and cond:
+                base = cond
+                if base.endswith("?"):
+                    base = base[:-1]
+                if "=" in base:
+                    base = base.split("=", 1)[0]
+                if base:
+                    reads.append(base.strip())
+        elif op == "CacheGet":
+            key = s.get("key")
+            fallback = s.get("fallback")
+            out_var = s.get("out", "data")
+            if key is not None:
+                reads.append(str(key))
+            if fallback is not None:
+                reads.append(str(fallback))
+            if out_var:
+                writes.append(str(out_var))
+        elif op == "CacheSet":
+            key = s.get("key")
+            value = s.get("value")
+            if key is not None:
+                reads.append(str(key))
+            if value is not None:
+                reads.append(str(value))
+        elif op == "QueuePut":
+            value = s.get("value")
+            out_var = s.get("out")
+            if value is not None:
+                reads.append(str(value))
+            if out_var:
+                writes.append(str(out_var))
+        elif op == "Tx":
+            action = (s.get("action") or "begin").lower()
+            if action == "begin":
+                writes.append("_txid")
+        elif op == "Enf":
+            # Policy enforcement typically inspects auth/role context.
+            reads.extend(["_auth_present", "_role"])
+
+        # De-duplicate while preserving order
+        seen_r: set = set()
+        seen_w: set = set()
+        r_out: List[str] = []
+        w_out: List[str] = []
+        for v in reads:
+            if v not in seen_r:
+                seen_r.add(v)
+                r_out.append(v)
+        for v in writes:
+            if v not in seen_w:
+                seen_w.add(v)
+                w_out.append(v)
+        return r_out, w_out
 
     def _op_spec(self, op: str) -> Dict[str, Any]:
         """Lookup canonical op spec from OP_REGISTRY with sensible defaults."""
@@ -391,13 +604,21 @@ class AICodeCompiler:
                 continue
             k += 1
             nid = f"n{k}"
-            effect = "io" if op == "R" else ("pure" if op in ("Set", "Filt", "Sort", "If") else "pure")
-            if op == "Call":
-                effect = "io"
-            nodes.append({"id": nid, "op": op, "effect": effect, "data": s})
+            effect = "io" if op in ("R", "Call", "CacheSet", "QueuePut", "Tx") else ("meta" if op in ("Err", "Retry") else "pure")
+            reads, writes = self._analyze_step_rw(s)
+            node = {
+                "id": nid,
+                "op": op,
+                "effect": effect,
+                "reads": reads,
+                "writes": writes,
+                "lineno": s.get("lineno"),
+                "data": s,
+            }
+            nodes.append(node)
             if op == "If":
                 if last_nid:
-                    edges.append({"from": last_nid, "to": nid, "to_kind": "node"})
+                    edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
                 then_id = self._norm_lid(s.get("then"))
                 else_id = self._norm_lid(s.get("else"))
                 if then_id:
@@ -405,20 +626,70 @@ class AICodeCompiler:
                 if else_id:
                     edges.append({"from": nid, "to": else_id, "port": "else", "to_kind": "label"})
                 last_nid = None
+            elif op == "Loop":
+                if last_nid:
+                    edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+                body_id = self._norm_lid(s.get("body"))
+                after_id = self._norm_lid(s.get("after"))
+                if body_id:
+                    edges.append({"from": nid, "to": body_id, "port": "body", "to_kind": "label"})
+                if after_id:
+                    edges.append({"from": nid, "to": after_id, "port": "after", "to_kind": "label"})
+                last_nid = None
+            elif op == "While":
+                if last_nid:
+                    edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+                body_id = self._norm_lid(s.get("body"))
+                after_id = self._norm_lid(s.get("after"))
+                if body_id:
+                    edges.append({"from": nid, "to": body_id, "port": "body", "to_kind": "label"})
+                if after_id:
+                    edges.append({"from": nid, "to": after_id, "port": "after", "to_kind": "label"})
+                last_nid = None
             elif op == "Err":
                 if last_nid:
-                    edges.append({"from": last_nid, "to": nid, "port": "err", "to_kind": "node"})
+                    edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+                node_ids_so_far = {n["id"] for n in nodes[:-1]}
+                source_for_err = s.get("at_node_id")
+                if source_for_err:
+                    norm = self._parse_at_node_id(source_for_err) or source_for_err
+                    if norm not in node_ids_so_far:
+                        self._errors.append(
+                            f"Label {lid!r}: Err at_node_id={source_for_err!r} must reference a prior node in this label (available: {sorted(node_ids_so_far)!r})"
+                        )
+                        source_for_err = last_nid
+                    else:
+                        source_for_err = norm
+                else:
+                    source_for_err = last_nid
+                if source_for_err:
+                    edges.append({"from": source_for_err, "to": nid, "port": "err", "to_kind": "node"})
                 handler = self._norm_lid(s.get("handler"))
                 if handler:
-                    edges.append({"from": nid, "to": handler, "to_kind": "label"})
+                    edges.append({"from": nid, "to": handler, "to_kind": "label", "port": "handler"})
                 last_nid = None
             elif op == "Retry":
                 if last_nid:
-                    edges.append({"from": last_nid, "to": nid, "port": "retry", "to_kind": "node"})
+                    edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+                node_ids_so_far = {n["id"] for n in nodes[:-1]}
+                source_for_retry = s.get("at_node_id")
+                if source_for_retry:
+                    norm = self._parse_at_node_id(source_for_retry) or source_for_retry
+                    if norm not in node_ids_so_far:
+                        self._errors.append(
+                            f"Label {lid!r}: Retry at_node_id={source_for_retry!r} must reference a prior node in this label (available: {sorted(node_ids_so_far)!r})"
+                        )
+                        source_for_retry = last_nid
+                    else:
+                        source_for_retry = norm
+                else:
+                    source_for_retry = last_nid
+                if source_for_retry:
+                    edges.append({"from": source_for_retry, "to": nid, "port": "retry", "to_kind": "node"})
                 last_nid = nid
             else:
                 if last_nid:
-                    edges.append({"from": last_nid, "to": nid, "to_kind": "node"})
+                    edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
                 last_nid = nid
         exits = [{"node": n["id"], "var": n["data"].get("var", "data")} for n in nodes if n["op"] == "J"]
         body["nodes"] = nodes
@@ -430,6 +701,177 @@ class AICodeCompiler:
         """Populate nodes/edges/entry/exits for every label from legacy.steps."""
         for lid in list(self.labels.keys()):
             self._steps_to_graph(lid)
+
+    def _validate_graphs(self) -> None:
+        """Strict-mode graph validation: canonical node ids, entry/exits, and reachability.
+
+        These checks assume graphs were produced by _steps_to_graph_all() and are intended
+        to enforce the spec's canonical graph invariants in strict mode (§3.5).
+        """
+        for lid, body in self.labels.items():
+            nodes: List[Dict[str, Any]] = body.get("nodes") or []
+            edges: List[Dict[str, Any]] = body.get("edges") or []
+            if not nodes:
+                # Allow empty graphs; step/endpoint validations handle semantic issues.
+                continue
+
+            node_ids = [n.get("id") for n in nodes]
+            node_id_set = set(node_ids)
+
+            # Basic node field invariants: effect/reads/writes shape.
+            for n in nodes:
+                effect = n.get("effect")
+                if effect not in ("io", "pure", "meta"):
+                    self._errors.append(
+                        f"Label {lid!r}: node {n.get('id')!r} has invalid effect {effect!r} (must be 'io', 'pure', or 'meta')"
+                    )
+                reads = n.get("reads")
+                writes = n.get("writes")
+                if not isinstance(reads, list) or not isinstance(writes, list):
+                    self._errors.append(
+                        f"Label {lid!r}: node {n.get('id')!r} must have list reads/writes fields"
+                    )
+                # Strict: R nodes must use a known adapter.verb (adapter contract).
+                if self.strict_mode and n.get("op") == "R":
+                    data = n.get("data") or {}
+                    ad = data.get("adapter") or data.get("src") or ""
+                    verb = (data.get("req_op") or "").upper() or "F"
+                    key = f"{ad.split('.')[0]}.{verb}" if "." in ad else (f"{ad}.{verb}" if ad else "")
+                    if key and key not in ADAPTER_EFFECT:
+                        self._errors.append(
+                            f"Label {lid!r}: node {n.get('id')!r} uses unknown adapter.verb {key!r} (strict adapter contract)"
+                        )
+
+            # Canonical ids must be n1..nK with no gaps or duplicates.
+            if any(not isinstance(nid, str) or not nid.startswith("n") for nid in node_ids):
+                self._errors.append(f"Label {lid!r}: graph nodes must use canonical ids n1..nK")
+            else:
+                expected_ids = {f"n{i}" for i in range(1, len(node_ids) + 1)}
+                if node_id_set != expected_ids:
+                    self._errors.append(
+                        f"Label {lid!r}: graph node ids must be contiguous n1..n{len(node_ids)}, "
+                        f"got {sorted(node_id_set)!r}"
+                    )
+
+            # Entry must exist and point at a known node when graph is non-empty.
+            entry = body.get("entry")
+            if entry is None:
+                self._errors.append(f"Label {lid!r}: non-empty graph must have an entry node")
+            elif entry not in node_id_set:
+                self._errors.append(
+                    f"Label {lid!r}: entry {entry!r} not found in graph node ids {sorted(node_id_set)!r}"
+                )
+
+            # Exits must align with J nodes (one exit per J, matching var).
+            exits = body.get("exits") or []
+            j_nodes = [n for n in nodes if n.get("op") == "J"]
+            id_to_jvar = {
+                n["id"]: (n.get("data") or {}).get("var", "data")
+                for n in j_nodes
+                if isinstance(n.get("id"), str)
+            }
+
+            for ex in exits:
+                nid = ex.get("node")
+                var = ex.get("var")
+                if nid not in id_to_jvar:
+                    self._errors.append(
+                        f"Label {lid!r}: exit references non-J node {nid!r} (exits must point at J nodes)"
+                    )
+                    continue
+                j_var = id_to_jvar[nid]
+                if var is not None and var != j_var:
+                    self._errors.append(
+                        f"Label {lid!r}: exit var {var!r} for node {nid!r} does not match J var {j_var!r}"
+                    )
+
+            for nid, j_var in id_to_jvar.items():
+                if not any(ex.get("node") == nid for ex in exits):
+                    self._errors.append(
+                        f"Label {lid!r}: J node {nid!r} (var={j_var!r}) missing from exits list"
+                    )
+
+            # Node-to-node edges must reference valid ids; also build adjacency for reachability.
+            # Enforce port present and valid for source op.
+            node_by_id = {n.get("id"): n for n in nodes if n.get("id")}
+            for e in edges:
+                port = e.get("port")
+                if port is None or port == "":
+                    self._errors.append(
+                        f"Label {lid!r}: edge from={e.get('from')!r} to={e.get('to')!r} missing port"
+                    )
+                else:
+                    from_node = node_by_id.get(e.get("from"))
+                    allowed = GRAPH_VALID_PORTS.get(from_node.get("op") if from_node else None, DEFAULT_PORTS)
+                    if port not in allowed:
+                        op_name = from_node.get("op") if from_node else "?"
+                        self._errors.append(
+                            f"Label {lid!r}: edge from={e.get('from')!r} port={port!r} invalid for op "
+                            f"{op_name!r} (allowed: {sorted(allowed)!r})"
+                        )
+
+            adj: Dict[str, set] = {nid: set() for nid in node_id_set}
+            for e in edges:
+                if e.get("to_kind") != "node":
+                    continue
+                src = e.get("from")
+                dst = e.get("to")
+                if src not in node_id_set or dst not in node_id_set:
+                    self._errors.append(
+                        f"Label {lid!r}: edge with invalid node reference from={src!r} to={dst!r}"
+                    )
+                    continue
+                adj.setdefault(src, set()).add(dst)
+
+            # Reachability: every node in a non-empty graph should be reachable from entry.
+            if isinstance(entry, str) and entry in node_id_set:
+                reachable: set = set()
+                stack: List[str] = [entry]
+                while stack:
+                    cur = stack.pop()
+                    if cur in reachable:
+                        continue
+                    reachable.add(cur)
+                    for nxt in adj.get(cur, ()):
+                        if nxt not in reachable:
+                            stack.append(nxt)
+                for nid in sorted(node_id_set):
+                    if nid not in reachable:
+                        self._errors.append(
+                            f"Label {lid!r}: graph node {nid!r} is unreachable from entry {entry!r}"
+                        )
+
+            # Optional strict: defined-before-use along success paths.
+            if isinstance(entry, str) and entry in node_id_set:
+                entry_defined = None
+                if lid:
+                    core = self.services.get("core") or {}
+                    for _path, _method, ep in _iter_eps(core.get("eps") or {}):
+                        if self._norm_lid(ep.get("label_id", "")) == lid and ep.get("return_var"):
+                            entry_defined = entry_defined or set()
+                            entry_defined.add(ep["return_var"])
+                violations = dataflow_defined_before_use(nodes, edges, entry, entry_defined)
+                for nid, var in violations:
+                    self._errors.append(
+                        f"Label {lid!r}: node {nid!r} reads {var!r} which may be undefined on this path"
+                    )
+
+            # Call effect inclusion: callee effects must be subset of caller effects.
+            if self.strict_mode:
+                caller_effects = set((body.get("effect_summary") or {}).get("effects") or [])
+                for e in edges:
+                    if e.get("to_kind") != "label":
+                        continue
+                    callee_lid = self._norm_lid(e.get("to", ""))
+                    if not callee_lid or callee_lid not in self.labels:
+                        continue
+                    callee_body = self.labels.get(callee_lid) or {}
+                    callee_effects = set((callee_body.get("effect_summary") or {}).get("effects") or [])
+                    if callee_effects and not (callee_effects <= caller_effects):
+                        extra = callee_effects - caller_effects
+                        self._errors.append(
+                            f"Label {lid!r}: Call to label {callee_lid!r} has effects {sorted(extra)!r} not allowed in caller"
+                        )
 
     def _parse_req_slots(self, slots: List[str]) -> Optional[Dict[str, Any]]:
         """Parse R per spec: adapter target (r_arg)* ->out. Single-token arrow; out from last slot."""
@@ -470,8 +912,42 @@ class AICodeCompiler:
         source_lines = list(lines)
         cst_lines: List[Dict[str, Any]] = []
         parsed_ops = 0
+        # Reset compiler state for deterministic multi-compile usage (eval/benchmark loops).
+        self.services = {}
+        self.labels = {}
+        self.types = {}
+        self.crons = []
+        self.current_ui = None
         self.current_label = None
+        self.config = {"env": [], "secrets": []}
+        self.observability = {"metrics": [], "trace": False}
+        self.deploy = {"strategy": "rolling", "env_target": "", "flags": []}
+        self.limits = {"per_path": {}, "per_tenant": 0}
+        self.roles = []
+        self.allow = []
+        self.audit = {}
+        self.admin = {}
+        self.desc = {"endpoints": {}, "types": {}}
+        self.runbooks = {}
+        self.ver = None
+        self.compat = None
+        self.tests = []
+        self.api_opts = {"style": "rest", "version_prefix": "", "deprecate": [], "sla": {}}
+        self._current_test = None
+        self.rag = {
+            "sources": {},
+            "chunking": {},
+            "embeddings": {},
+            "stores": {},
+            "indexes": {},
+            "retrievers": {},
+            "augment": {},
+            "generate": {},
+            "pipelines": {},
+        }
+        self.capabilities = {"auth": {}, "policy": {}, "cache": {}, "queue": {}, "txn": {}}
         self._errors = []
+        self._warnings = []
         self.meta = []
         for lineno, line in enumerate(lines, 1):
             try:
@@ -587,9 +1063,26 @@ class AICodeCompiler:
                 self._ensure_label(label)
                 self.labels[label]["slots"] = slots
                 leg = self.labels[label]["legacy"]
-                # Parse inline steps: R ... J var | If | Set | Filt | Sort | Err | Retry | Call
+                # Parse inline steps: R ... J var | If | Set | Filt | Sort | Err | Retry | Call | capability steps
                 i = 0
-                step_ops = ("J", "If", "Set", "Filt", "Sort", "Err", "Retry", "Call")
+                step_ops = (
+                    "J",
+                    "If",
+                    "Set",
+                    "Filt",
+                    "Sort",
+                    "X",
+                    "Loop",
+                    "While",
+                    "Err",
+                    "Retry",
+                    "Call",
+                    "CacheGet",
+                    "CacheSet",
+                    "QueuePut",
+                    "Tx",
+                    "Enf",
+                )
                 while i < len(slots):
                     if slots[i] == "R":
                         r_slots = []
@@ -598,47 +1091,144 @@ class AICodeCompiler:
                             r_slots.append(slots[i])
                             i += 1
                         parsed = self._parse_req_slots(r_slots)
-                        leg["steps"].append({"op": "R", **(parsed or {"raw": r_slots})})
+                        leg["steps"].append({"op": "R", "lineno": lineno, **(parsed or {"raw": r_slots})})
                     elif slots[i] == "J":
                         var = slots[i + 1] if i + 1 < len(slots) else "data"
-                        leg["steps"].append({"op": "J", "var": var})
+                        leg["steps"].append({"op": "J", "lineno": lineno, "var": var})
                         i += 2
-                    elif slots[i] == "If" and i + 2 <= len(slots):
+                    elif slots[i] == "If" and i + 2 < len(slots):
                         cond = slots[i + 1]
                         then_id = self._parse_arrow_lbl(slots[i + 2])
                         else_id = self._parse_arrow_lbl(slots[i + 3]) if i + 3 < len(slots) else None
                         if self.strict_mode and then_id is None:
                             self._errors.append(f"Line {lineno}: If then target must be ->L<n> or L<n>, got {slots[i + 2]!r}")
-                        leg["steps"].append({"op": "If", "cond": cond, "then": then_id or slots[i + 2].lstrip("L").split(":")[-1], "else": else_id})
+                        leg["steps"].append({"op": "If", "lineno": lineno, "cond": cond, "then": then_id or slots[i + 2].lstrip("L").split(":")[-1], "else": else_id})
                         i += 4 if i + 3 < len(slots) else 3
                     elif slots[i] == "Set" and i + 3 <= len(slots):
-                        leg["steps"].append({"op": "Set", "name": slots[i + 1], "ref": slots[i + 2]})
+                        leg["steps"].append({"op": "Set", "lineno": lineno, "name": slots[i + 1], "ref": slots[i + 2]})
                         i += 3
                     elif slots[i] == "Filt" and i + 6 <= len(slots):
-                        leg["steps"].append({"op": "Filt", "name": slots[i + 1], "ref": slots[i + 2], "field": slots[i + 3], "cmp": slots[i + 4], "value": slots[i + 5]})
+                        leg["steps"].append({"op": "Filt", "lineno": lineno, "name": slots[i + 1], "ref": slots[i + 2], "field": slots[i + 3], "cmp": slots[i + 4], "value": slots[i + 5]})
                         i += 6
                     elif slots[i] == "Sort" and i + 4 <= len(slots):
                         # Sort name ref field [asc|desc]: need 4 tokens min, optional 5th for order (fix #4).
                         order = slots[i + 4] if (i + 4 < len(slots) and slots[i + 4] in ("asc", "desc")) else "asc"
-                        leg["steps"].append({"op": "Sort", "name": slots[i + 1], "ref": slots[i + 2], "field": slots[i + 3], "order": order})
+                        leg["steps"].append({"op": "Sort", "lineno": lineno, "name": slots[i + 1], "ref": slots[i + 2], "field": slots[i + 3], "order": order})
                         i += 5 if (i + 4 < len(slots) and slots[i + 4] in ("asc", "desc")) else 4
                     elif slots[i] == "Err" and i + 1 < len(slots):
-                        h_id = self._parse_arrow_lbl(slots[i + 1])
-                        leg["steps"].append({"op": "Err", "handler": h_id or slots[i + 1].lstrip("L").split(":")[-1]})
-                        i += 2
-                    elif slots[i] == "Retry":
-                        count = slots[i + 1] if i + 1 < len(slots) else "3"
-                        backoff = slots[i + 2] if i + 2 < len(slots) else "0"
-                        leg["steps"].append({"op": "Retry", "count": count, "backoff_ms": backoff})
-                        if i + 2 < len(slots):
-                            i += 3
-                        elif i + 1 < len(slots):
-                            i += 2
+                        at_node = self._parse_at_node_id(slots[i + 1])
+                        if at_node is not None:
+                            if i + 2 >= len(slots):
+                                if self.strict_mode:
+                                    self._errors.append(f"Line {lineno}: Err @node_id requires handler (e.g. ->L9)")
+                                i += 2
+                            else:
+                                h_id = self._parse_arrow_lbl(slots[i + 2])
+                                step = {"op": "Err", "lineno": lineno, "handler": h_id or slots[i + 2].lstrip("L").split(":")[-1], "at_node_id": at_node}
+                                leg["steps"].append(step)
+                                i += 3
                         else:
-                            i += 1
+                            h_id = self._parse_arrow_lbl(slots[i + 1])
+                            leg["steps"].append({"op": "Err", "lineno": lineno, "handler": h_id or slots[i + 1].lstrip("L").split(":")[-1]})
+                            i += 2
+                    elif slots[i] == "Retry":
+                        at_node = self._parse_at_node_id(slots[i + 1]) if i + 1 < len(slots) else None
+                        if at_node is not None:
+                            count = slots[i + 2] if i + 2 < len(slots) else "3"
+                            backoff = slots[i + 3] if i + 3 < len(slots) else "0"
+                            leg["steps"].append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff, "at_node_id": at_node})
+                            i += 4 if i + 3 < len(slots) else (3 if i + 2 < len(slots) else 2)
+                        else:
+                            count = slots[i + 1] if i + 1 < len(slots) else "3"
+                            backoff = slots[i + 2] if i + 2 < len(slots) else "0"
+                            leg["steps"].append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff})
+                            if i + 2 < len(slots):
+                                i += 3
+                            elif i + 1 < len(slots):
+                                i += 2
+                            else:
+                                i += 1
                     elif slots[i] == "Call" and i + 1 < len(slots):
                         lid = slots[i + 1].lstrip("L").split(":")[-1]
-                        leg["steps"].append({"op": "Call", "label": lid})
+                        out_var = None
+                        if i + 2 < len(slots) and slots[i + 2].startswith("->") and not slots[i + 2].startswith("->L"):
+                            out_var = slots[i + 2][2:]
+                            i += 3
+                        elif i + 2 < len(slots) and slots[i + 2] not in step_ops and self.strict_mode:
+                            self._errors.append(
+                                f"Line {lineno}: Call optional return binding must be -><var>, got {slots[i + 2]!r}"
+                            )
+                            i += 3
+                        else:
+                            i += 2
+                        step = {"op": "Call", "lineno": lineno, "label": lid}
+                        if out_var:
+                            step["out"] = out_var
+                        leg["steps"].append(step)
+                    elif slots[i] == "X" and i + 2 < len(slots):
+                        dst = slots[i + 1]
+                        fn = slots[i + 2]
+                        args = []
+                        j = i + 3
+                        while j < len(slots) and slots[j] not in step_ops:
+                            args.append(slots[j])
+                            j += 1
+                        leg["steps"].append({"op": "X", "lineno": lineno, "dst": dst, "fn": fn, "args": args})
+                        i = j
+                    elif slots[i] == "Loop" and i + 4 < len(slots):
+                        ref = slots[i + 1]
+                        item = slots[i + 2]
+                        body = self._parse_arrow_lbl(slots[i + 3]) or slots[i + 3].lstrip("L").split(":")[-1]
+                        after = self._parse_arrow_lbl(slots[i + 4]) or slots[i + 4].lstrip("L").split(":")[-1]
+                        leg["steps"].append({"op": "Loop", "lineno": lineno, "ref": ref, "item": item, "body": body, "after": after})
+                        i += 5
+                    elif slots[i] == "While" and i + 3 < len(slots):
+                        cond = slots[i + 1]
+                        body = self._parse_arrow_lbl(slots[i + 2]) or slots[i + 2].lstrip("L").split(":")[-1]
+                        after = self._parse_arrow_lbl(slots[i + 3]) or slots[i + 3].lstrip("L").split(":")[-1]
+                        step = {"op": "While", "lineno": lineno, "cond": cond, "body": body, "after": after}
+                        if i + 4 < len(slots) and slots[i + 4].startswith("limit="):
+                            step["limit"] = slots[i + 4].split("=", 1)[1] or "10000"
+                            i += 5
+                        else:
+                            i += 4
+                        leg["steps"].append(step)
+                    elif slots[i] == "CacheGet" and i + 2 < len(slots):
+                        name = slots[i + 1]
+                        key = slots[i + 2]
+                        out = "data"
+                        fallback = None
+                        j = i + 3
+                        if j < len(slots) and slots[j].startswith("->") and not slots[j].startswith("->L"):
+                            out = slots[j][2:]
+                            j += 1
+                        if j < len(slots) and slots[j] not in step_ops:
+                            fallback = slots[j]
+                            j += 1
+                        leg["steps"].append({"op": "CacheGet", "lineno": lineno, "name": name, "key": key, "out": out, "fallback": fallback})
+                        i = j
+                    elif slots[i] == "CacheSet" and i + 3 < len(slots):
+                        name = slots[i + 1]
+                        key = slots[i + 2]
+                        value = slots[i + 3]
+                        ttl_s = slots[i + 4] if i + 4 < len(slots) and slots[i + 4] not in step_ops else "0"
+                        leg["steps"].append({"op": "CacheSet", "lineno": lineno, "name": name, "key": key, "value": value, "ttl_s": ttl_s})
+                        i += 5 if (i + 4 < len(slots) and slots[i + 4] not in step_ops) else 4
+                    elif slots[i] == "QueuePut" and i + 2 < len(slots):
+                        queue = slots[i + 1]
+                        value = slots[i + 2]
+                        out = None
+                        if i + 3 < len(slots) and slots[i + 3].startswith("->") and not slots[i + 3].startswith("->L"):
+                            out = slots[i + 3][2:]
+                            i += 4
+                        else:
+                            i += 3
+                        leg["steps"].append({"op": "QueuePut", "lineno": lineno, "queue": queue, "value": value, "out": out})
+                    elif slots[i] == "Tx" and i + 2 < len(slots):
+                        leg["steps"].append({"op": "Tx", "lineno": lineno, "action": slots[i + 1], "name": slots[i + 2]})
+                        i += 3
+                    elif slots[i] == "Enf" and i + 1 < len(slots):
+                        leg["steps"].append({"op": "Enf", "lineno": lineno, "policy": slots[i + 1]})
                         i += 2
                     else:
                         i += 1
@@ -646,16 +1236,16 @@ class AICodeCompiler:
             elif op == "R":
                 parsed = self._parse_req_slots(slots)
                 if self.current_label:
-                    self._label_steps(self.current_label).append({"op": "R", **parsed} if parsed else {"op": "R", "raw": slots})
+                    self._label_steps(self.current_label).append({"op": "R", "lineno": lineno, **parsed} if parsed else {"op": "R", "lineno": lineno, "raw": slots})
                 else:
-                    self._label_steps("_anon").append({"op": "R", **(parsed or {}), "raw": slots})
+                    self._label_steps("_anon").append({"op": "R", "lineno": lineno, **(parsed or {}), "raw": slots})
 
             elif op == "J":
                 var = slots[0] if slots else "data"
                 if self.current_label:
-                    self._label_steps(self.current_label).append({"op": "J", "var": var})
+                    self._label_steps(self.current_label).append({"op": "J", "lineno": lineno, "var": var})
                 else:
-                    self._label_steps("_anon").append({"op": "J", "var": var})
+                    self._label_steps("_anon").append({"op": "J", "lineno": lineno, "var": var})
 
             elif op == "U":
                 name = slots[0] if slots else "Anon"
@@ -680,6 +1270,7 @@ class AICodeCompiler:
                     max_sz = slots[1] if len(slots) > 1 else "100"
                     retry = slots[2] if len(slots) > 2 else "3"
                     self.services.setdefault("queue", {}).setdefault("defs", {})[name] = {"maxSize": max_sz, "retry": retry}
+                    self.capabilities.setdefault("queue", {})[name] = {"maxSize": max_sz, "retry": retry}
 
             elif op == "Sc":
                 if len(slots) >= 2:
@@ -710,6 +1301,26 @@ class AICodeCompiler:
                     name, key, ttl = slots[0], slots[1], slots[2]
                     default = slots[3] if len(slots) > 3 else None
                     self.services.setdefault("cache", {}).setdefault("defs", {})[name] = {"key": key, "ttl": ttl, "default": default}
+                    self.capabilities.setdefault("cache", {})[name] = {"key": key, "ttl": ttl, "default": default}
+
+            elif op == "Pol":
+                if len(slots) >= 1:
+                    name = slots[0]
+                    constraints: Dict[str, Any] = {}
+                    for tok in slots[1:]:
+                        if "=" in tok:
+                            k, v = tok.split("=", 1)
+                            constraints[k] = v
+                    self.services.setdefault("policy", {}).setdefault("defs", {})[name] = {"constraints": constraints, "raw": slots[1:]}
+                    self.capabilities.setdefault("policy", {})[name] = {"constraints": constraints, "raw": slots[1:]}
+
+            elif op == "Txn":
+                if len(slots) >= 1:
+                    name = slots[0]
+                    adapter = slots[1] if len(slots) > 1 else "db"
+                    mode = slots[2] if len(slots) > 2 else "readwrite"
+                    self.services.setdefault("txn", {}).setdefault("defs", {})[name] = {"adapter": adapter, "mode": mode}
+                    self.capabilities.setdefault("txn", {})[name] = {"adapter": adapter, "mode": mode}
 
             elif op == "Rt":
                 if len(slots) >= 2:
@@ -761,34 +1372,53 @@ class AICodeCompiler:
                     self.services["auth"]["arg"] = arg
                     if extra:
                         self.services["auth"]["extra"] = extra
+                    self.capabilities["auth"] = {"kind": kind, "arg": arg, "extra": extra}
 
             # --- Core: control flow, vars, composition ---
             elif op == "If":
                 if len(slots) >= 2 and self.current_label:
                     cond = slots[0]
-                    then_l = slots[1][2:] if slots[1].startswith("->") else slots[1]
-                    else_l = slots[2][2:] if len(slots) > 2 and slots[2].startswith("->") else (slots[2] if len(slots) > 2 else None)
-                    if then_l.startswith("L"):
-                        then_l = then_l[1:]
-                    if ":" in then_l:
-                        then_l = then_l.split(":")[-1]
+                    then_l = self._normalize_if_target(slots[1], allow_fallback=True)
+                    else_l = self._normalize_if_target(slots[2], allow_fallback=False) if len(slots) > 2 else None
                     self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "If", "cond": cond, "then": then_l, "else": else_l})
+                    self._label_steps(self.current_label).append({"op": "If", "lineno": lineno, "cond": cond, "then": then_l, "else": else_l})
             elif op == "Err":
                 if slots and self.current_label:
-                    handler = slots[0][2:] if slots[0].startswith("->") else slots[0]
-                    if handler.startswith("L"):
-                        handler = handler[1:]
-                    if ":" in handler:
-                        handler = handler.split(":")[-1]
-                    self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "Err", "handler": handler})
+                    at_node = self._parse_at_node_id(slots[0])
+                    if at_node is not None:
+                        handler_slot = slots[1] if len(slots) > 1 else None
+                        if not handler_slot:
+                            if self.strict_mode:
+                                self._errors.append(f"Line {lineno}: Err @node_id requires handler (e.g. ->L9)")
+                        else:
+                            handler = handler_slot[2:] if handler_slot.startswith("->") else handler_slot
+                            if handler.startswith("L"):
+                                handler = handler[1:]
+                            if ":" in handler:
+                                handler = handler.split(":")[-1]
+                            self._ensure_label(self.current_label)
+                            self._label_steps(self.current_label).append({"op": "Err", "lineno": lineno, "handler": handler, "at_node_id": at_node})
+                    else:
+                        handler = slots[0][2:] if slots[0].startswith("->") else slots[0]
+                        if handler.startswith("L"):
+                            handler = handler[1:]
+                        if ":" in handler:
+                            handler = handler.split(":")[-1]
+                        self._ensure_label(self.current_label)
+                        self._label_steps(self.current_label).append({"op": "Err", "lineno": lineno, "handler": handler})
             elif op == "Retry":
                 if self.current_label:
-                    count = slots[0] if slots else "3"
-                    backoff = slots[1] if len(slots) > 1 else "0"
-                    self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "Retry", "count": count, "backoff_ms": backoff})
+                    at_node = self._parse_at_node_id(slots[0]) if slots else None
+                    if at_node is not None:
+                        count = slots[1] if len(slots) > 1 else "3"
+                        backoff = slots[2] if len(slots) > 2 else "0"
+                        self._ensure_label(self.current_label)
+                        self._label_steps(self.current_label).append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff, "at_node_id": at_node})
+                    else:
+                        count = slots[0] if slots else "3"
+                        backoff = slots[1] if len(slots) > 1 else "0"
+                        self._ensure_label(self.current_label)
+                        self._label_steps(self.current_label).append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff})
             elif op == "Call":
                 if slots and self.current_label:
                     lid = slots[0]
@@ -796,21 +1426,87 @@ class AICodeCompiler:
                         lid = lid[1:]
                     if ":" in lid:
                         lid = lid.split(":")[-1]
+                    out_var = slots[1][2:] if len(slots) > 1 and slots[1].startswith("->") and not slots[1].startswith("->L") else None
+                    if len(slots) > 1 and out_var is None and self.strict_mode:
+                        self._errors.append(
+                            f"Line {lineno}: Call optional return binding must be -><var>, got {slots[1]!r}"
+                        )
                     self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "Call", "label": lid})
+                    step = {"op": "Call", "lineno": lineno, "label": lid}
+                    if out_var:
+                        step["out"] = out_var
+                    self._label_steps(self.current_label).append(step)
             elif op == "Set":
                 if len(slots) >= 2 and self.current_label:
                     self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "Set", "name": slots[0], "ref": slots[1]})
+                    self._label_steps(self.current_label).append({"op": "Set", "lineno": lineno, "name": slots[0], "ref": slots[1]})
             elif op == "Filt":
                 if len(slots) >= 5 and self.current_label:
                     self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "Filt", "name": slots[0], "ref": slots[1], "field": slots[2], "cmp": slots[3], "value": slots[4]})
+                    self._label_steps(self.current_label).append({"op": "Filt", "lineno": lineno, "name": slots[0], "ref": slots[1], "field": slots[2], "cmp": slots[3], "value": slots[4]})
             elif op == "Sort":
                 if len(slots) >= 3 and self.current_label:
                     order = slots[3] if len(slots) > 3 else "asc"
                     self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "Sort", "name": slots[0], "ref": slots[1], "field": slots[2], "order": order})
+                    self._label_steps(self.current_label).append({"op": "Sort", "lineno": lineno, "name": slots[0], "ref": slots[1], "field": slots[2], "order": order})
+            elif op == "X":
+                if len(slots) >= 2 and self.current_label:
+                    self._ensure_label(self.current_label)
+                    self._label_steps(self.current_label).append({"op": "X", "lineno": lineno, "dst": slots[0], "fn": slots[1], "args": slots[2:]})
+            elif op == "Loop":
+                if len(slots) >= 4 and self.current_label:
+                    body = self._parse_arrow_lbl(slots[2]) or slots[2].lstrip("L").split(":")[-1]
+                    after = self._parse_arrow_lbl(slots[3]) or slots[3].lstrip("L").split(":")[-1]
+                    self._ensure_label(self.current_label)
+                    self._label_steps(self.current_label).append({"op": "Loop", "lineno": lineno, "ref": slots[0], "item": slots[1], "body": body, "after": after})
+            elif op == "While":
+                if len(slots) >= 3 and self.current_label:
+                    body = self._parse_arrow_lbl(slots[1]) or slots[1].lstrip("L").split(":")[-1]
+                    after = self._parse_arrow_lbl(slots[2]) or slots[2].lstrip("L").split(":")[-1]
+                    limit = None
+                    if len(slots) > 3 and slots[3].startswith("limit="):
+                        limit = slots[3].split("=", 1)[1] or "10000"
+                    self._ensure_label(self.current_label)
+                    step = {"op": "While", "lineno": lineno, "cond": slots[0], "body": body, "after": after}
+                    if limit is not None:
+                        step["limit"] = limit
+                    self._label_steps(self.current_label).append(step)
+            elif op == "CacheGet":
+                if len(slots) >= 2 and self.current_label:
+                    out = "data"
+                    fallback = None
+                    idx = 2
+                    if len(slots) > idx and slots[idx].startswith("->") and not slots[idx].startswith("->L"):
+                        out = slots[idx][2:]
+                        idx += 1
+                    if len(slots) > idx:
+                        fallback = slots[idx]
+                    self._ensure_label(self.current_label)
+                    self._label_steps(self.current_label).append(
+                        {"op": "CacheGet", "lineno": lineno, "name": slots[0], "key": slots[1], "out": out, "fallback": fallback}
+                    )
+            elif op == "CacheSet":
+                if len(slots) >= 3 and self.current_label:
+                    ttl_s = slots[3] if len(slots) > 3 else "0"
+                    self._ensure_label(self.current_label)
+                    self._label_steps(self.current_label).append(
+                        {"op": "CacheSet", "lineno": lineno, "name": slots[0], "key": slots[1], "value": slots[2], "ttl_s": ttl_s}
+                    )
+            elif op == "QueuePut":
+                if len(slots) >= 2 and self.current_label:
+                    out = slots[2][2:] if len(slots) > 2 and slots[2].startswith("->") and not slots[2].startswith("->L") else None
+                    self._ensure_label(self.current_label)
+                    self._label_steps(self.current_label).append(
+                        {"op": "QueuePut", "lineno": lineno, "queue": slots[0], "value": slots[1], "out": out}
+                    )
+            elif op == "Tx":
+                if len(slots) >= 2 and self.current_label:
+                    self._ensure_label(self.current_label)
+                    self._label_steps(self.current_label).append({"op": "Tx", "lineno": lineno, "action": slots[0], "name": slots[1]})
+            elif op == "Enf":
+                if slots and self.current_label:
+                    self._ensure_label(self.current_label)
+                    self._label_steps(self.current_label).append({"op": "Enf", "lineno": lineno, "policy": slots[0]})
             elif op == "Inc":
                 if slots:
                     path = slots[0]
@@ -1006,10 +1702,16 @@ class AICodeCompiler:
 
             else:
                 # Lossless: preserve unknown ops in meta (spec §5). Module validation already done above.
+                if self.strict_mode and mod and mop and mod in KNOWN_MODULES:
+                    self._errors.append(
+                        f"Line {lineno}: unknown module.op {op!r} in strict mode"
+                    )
                 self.meta.append(self._meta_record(lineno, line_node))
 
         if emit_graph:
             self._steps_to_graph_all()
+            normalize_labels(self.labels)
+            annotate_labels_effect_analysis(self.labels)
 
         # Spec: emit only nodes, edges, legacy.steps (no bare "steps"). Runtime reads legacy.steps.
 
@@ -1058,6 +1760,16 @@ class AICodeCompiler:
                         c = self._norm_lid(s.get("label"))
                         if c:
                             targeted_labels.add(c)
+                    elif opn == "Loop":
+                        for x in (s.get("body"), s.get("after")):
+                            lx = self._norm_lid(x)
+                            if lx:
+                                targeted_labels.add(lx)
+                    elif opn == "While":
+                        for x in (s.get("body"), s.get("after")):
+                            lx = self._norm_lid(x)
+                            if lx:
+                                targeted_labels.add(lx)
 
             # Every targeted label should exist, have legacy.steps, and end with exactly one J.
             for tl in sorted(targeted_labels):
@@ -1075,6 +1787,40 @@ class AICodeCompiler:
                     continue
                 if steps[-1].get("op") != "J":
                     self._errors.append(f"Targeted label {tl!r} must end in J")
+
+            # Core-only label enforcement: every step op must be in STEP_OPS (spec §3.5).
+            for lid, body in self.labels.items():
+                for idx, s in enumerate(body.get("legacy", {}).get("steps", [])):
+                    opn = s.get("op")
+                    if opn and opn not in self.STEP_OPS:
+                        self._errors.append(
+                            f"Label {lid!r}: step at index {idx} has op {opn!r} not in core ops (strict core-only)"
+                        )
+
+            # Capability reference validation in label steps.
+            cache_defs = set((self.services.get("cache", {}).get("defs", {}) or {}).keys())
+            queue_defs = set((self.services.get("queue", {}).get("defs", {}) or {}).keys())
+            txn_defs = set((self.services.get("txn", {}).get("defs", {}) or {}).keys())
+            policy_defs = set((self.services.get("policy", {}).get("defs", {}) or {}).keys())
+            for lid, body in self.labels.items():
+                for s in body.get("legacy", {}).get("steps", []):
+                    opn = s.get("op")
+                    if opn in ("CacheGet", "CacheSet"):
+                        name = s.get("name", "")
+                        if name and name not in cache_defs:
+                            self._errors.append(f"Label {lid!r}: {opn} references undefined cache {name!r}")
+                    elif opn == "QueuePut":
+                        qn = s.get("queue", "")
+                        if qn and qn not in queue_defs:
+                            self._errors.append(f"Label {lid!r}: QueuePut references undefined queue {qn!r}")
+                    elif opn == "Tx":
+                        tn = s.get("name", "")
+                        if tn and tn not in txn_defs:
+                            self._errors.append(f"Label {lid!r}: Tx references undefined transaction {tn!r}")
+                    elif opn == "Enf":
+                        pn = s.get("policy", "")
+                        if pn and pn not in policy_defs:
+                            self._errors.append(f"Label {lid!r}: Enf references undefined policy {pn!r}")
 
             # Optional strict reachability over label references from endpoint roots.
             if self.strict_reachability and endpoint_labels:
@@ -1096,6 +1842,16 @@ class AICodeCompiler:
                             nx = self._norm_lid(s.get("label"))
                             if nx:
                                 nxt.add(nx)
+                        elif s.get("op") == "Loop":
+                            for x in (s.get("body"), s.get("after")):
+                                nx = self._norm_lid(x)
+                                if nx:
+                                    nxt.add(nx)
+                        elif s.get("op") == "While":
+                            for x in (s.get("body"), s.get("after")):
+                                nx = self._norm_lid(x)
+                                if nx:
+                                    nxt.add(nx)
                     graph[lid] = nxt
                 reachable: set = set()
                 stack = list(endpoint_labels)
@@ -1113,7 +1869,20 @@ class AICodeCompiler:
                     if lid not in reachable:
                         self._errors.append(f"Label {lid!r} is unreachable from endpoint roots")
 
-        return {
+            # Graph-level invariants on nodes/edges/entry/exits (canonical graph IR).
+            self._validate_graphs()
+
+        if self.meta:
+            self._warnings.append(f"meta contains {len(self.meta)} preserved unknown/invalid lines")
+        if self.api_opts.get("deprecate"):
+            self._warnings.append(f"api deprecations declared: {len(self.api_opts.get('deprecate', []))}")
+
+        # Add fuzzy suggestions to errors before returning IR
+        self._augment_errors_with_suggestions()
+
+        ir: Dict[str, Any] = {
+            "ir_version": self.ver or "1.0.0",
+            "graph_schema_version": "1.0",
             "source": {"text": source_text, "lines": source_lines},
             "cst": {"lines": cst_lines},
             "services": self.services,
@@ -1135,13 +1904,20 @@ class AICodeCompiler:
             "tests": self.tests,
             "api": self.api_opts,
             "rag": self.rag,
+            "capabilities": self.capabilities,
+            "runtime_policy": {"execution_mode": "graph-preferred", "unknown_op_policy": "skip"},
             "meta": self.meta,
             "errors": self._errors,
+            "warnings": self._warnings,
             "stats": {
                 "lines": len([l for l in lines if l.strip() and not l.strip().startswith("#")]),
                 "ops": parsed_ops,
             },
         }
+        # Attach semantic hashes and graph checksum without changing semantics.
+        ir = attach_label_and_node_hashes(ir)
+        ir["graph_semantic_checksum"] = graph_semantic_checksum(ir)
+        return ir
 
     def emit_source_exact(self, ir: Dict[str, Any]) -> str:
         """Return the stored original source text (byte-for-byte), not reconstructed."""
@@ -1394,13 +2170,22 @@ class AICodeCompiler:
             return "G" if mm == "L" else mm
         return {"GET": "G", "POST": "P", "PUT": "U", "DELETE": "D"}.get(mm, "G")
 
+    def _safe_py_ident(self, s: str, fallback: str = "fn") -> str:
+        """Convert arbitrary text into a safe Python identifier."""
+        base = re.sub(r"[^A-Za-z0-9_]", "_", (s or "").strip())
+        if not base:
+            base = fallback
+        if base[0].isdigit():
+            base = "_" + base
+        return base
+
     def emit_python_api(self, ir: Dict[str, Any]) -> str:
         py = "from fastapi import FastAPI\napp = FastAPI()\n\n"
         for srv, data in ir["services"].items():
             if "eps" not in data:
                 continue
             for path, method, ep in _iter_eps(data["eps"]):
-                seg = path.strip("/").replace("/", "_") or "root"
+                seg = self._safe_py_ident(path.strip("/").replace("/", "_"), fallback="root")
                 meth = self._http_method(method or ep.get("method", "G"))
                 fn_name = f"{meth}_{seg}"
                 py += f"@app.{meth}('{path}')\n"
@@ -1455,7 +2240,7 @@ class AICodeCompiler:
         return py
 
     def emit_server(self, ir: Dict[str, Any]) -> str:
-        """Emit server that runs labels via ExecutionEngine + pluggable adapters."""
+        """Emit server that runs labels via RuntimeEngine + pluggable adapters."""
         core = ir["services"].get("core", {})
         api_prefix = (core.get("path") or "/api").strip("/") or "api"
         api_prefix = "/" + api_prefix
@@ -1464,16 +2249,20 @@ class AICodeCompiler:
         py += "import json\nimport sys\nimport time\nimport uuid\nimport os\nfrom pathlib import Path\nfrom collections import defaultdict\n\n"
         py += "# Allow importing runtime + adapters (same dir in Docker, else repo root)\n"
         py += "_dir = Path(__file__).resolve().parent\n"
-        py += "_root = _dir if (_dir / 'runtime.py').exists() else _dir.parent.parent.parent\n"
+        py += "_root = _dir\n"
+        py += "for _ in range(6):\n"
+        py += "    if (_root / 'runtime.py').exists() and (_root / 'adapters').exists():\n"
+        py += "        break\n"
+        py += "    _root = _root.parent\n"
         py += "if str(_root) not in sys.path:\n    sys.path.insert(0, str(_root))\n\n"
         py += "from fastapi import FastAPI, Request\nfrom fastapi.middleware.cors import CORSMiddleware\n"
-        py += "from fastapi.staticfiles import StaticFiles\nfrom starlette.middleware.base import BaseHTTPMiddleware\n\n"
-        py += "from runtime import ExecutionEngine\nfrom adapters import mock_registry\n\n"
+        py += "from fastapi.staticfiles import StaticFiles\nfrom starlette.middleware.base import BaseHTTPMiddleware\nfrom starlette.responses import FileResponse\n\n"
+        py += "from runtime.engine import RuntimeEngine\nfrom adapters.mock import mock_registry\n\n"
         py += "# Load IR (emitted with server); use real adapters by replacing mock_registry\n"
         py += "_ir_path = Path(__file__).resolve().parent / \"ir.json\"\n"
         py += "with open(_ir_path) as f:\n    _ir = json.load(f)\n"
         py += "_registry = mock_registry(_ir.get(\"types\"))\n"
-        py += "_engine = ExecutionEngine(_ir, _registry)\n\n"
+        py += "_engine = RuntimeEngine(ir=_ir, adapters=_registry, trace=False, step_fallback=True, execution_mode='graph-preferred')\n\n"
         # Env validation at startup (config.env)
         config = ir.get("config", {})
         env_list = config.get("env", [])
@@ -1555,7 +2344,14 @@ class AICodeCompiler:
         py += "app.add_middleware(RateLimitMiddleware, requests_per_minute=_rate_limit)\n"
         py += "app.add_middleware(LoggingMiddleware)\n"
         py += "app.add_middleware(CORSMiddleware, allow_origins=[\"*\"], allow_methods=[\"*\"], allow_headers=[\"*\"])\n\n"
-        py += "def _run_label(lid):\n    r = _engine.run(lid); return {\"data\": r if r is not None else []}\n\n"
+        py += "def _run_label(lid, request: Request):\n"
+        py += "    ctx = {\n"
+        py += "        \"_role\": request.headers.get(\"X-Role\"),\n"
+        py += "        \"_auth_header\": request.headers.get(\"Authorization\") or request.headers.get(\"X-Auth\"),\n"
+        py += "        \"_auth_present\": bool(request.headers.get(\"Authorization\") or request.headers.get(\"X-Auth\")),\n"
+        py += "    }\n"
+        py += "    r = _engine.run_label(lid, frame=ctx)\n"
+        py += "    return {\"data\": r if r is not None else []}\n\n"
         py += "api = FastAPI()\n\n"
 
         auth = ir["services"].get("auth")
@@ -1618,11 +2414,11 @@ class AICodeCompiler:
             for path, method, ep in _iter_eps(data["eps"]):
                 meth = self._http_method(method or ep.get("method", "G"))
                 label_id = ep.get("label_id", "")
-                seg = path.strip("/").replace("/", "_") or "root"
+                seg = self._safe_py_ident(path.strip("/").replace("/", "_"), fallback="root")
                 fn_name = f"{meth}_{seg}"
                 py += f"@api.{meth}('{path}'{dep_str})\n"
-                py += f"def {fn_name}():\n"
-                py += f"    return _run_label('{label_id}')\n\n"
+                py += f"def {fn_name}(request: Request):\n"
+                py += f"    return _run_label('{label_id}', request)\n\n"
 
         py += "@api.get(\"/health\")\n"
         py += "def health():\n"
@@ -1632,14 +2428,24 @@ class AICodeCompiler:
         py += "    return {\"ready\": True}\n\n"
 
         py += f"app.mount(\"{api_prefix}\", api)\n\n"
-        py += "# Static: do not write user-provided content to static_dir (fix #10).\n"
+        py += "# Static: serve index.html at / when present; else simple API-only landing\n"
         py += "static_dir = Path(__file__).resolve().parent / \"static\"\n"
         py += "static_dir.mkdir(exist_ok=True)\n"
+        py += "_index_html = static_dir / \"index.html\" if static_dir.exists() else None\n"
+        py += "if _index_html and _index_html.is_file():\n"
+        py += "    @app.get(\"/\")\n"
+        py += "    def _serve_index():\n"
+        py += "        return FileResponse(_index_html)\n"
+        py += "else:\n"
+        py += "    @app.get(\"/\")\n"
+        py += "    def _root():\n"
+        py += "        from starlette.responses import HTMLResponse\n"
+        py += "        return HTMLResponse(\"<html><body><h1>API</h1><p><a href=\\\"/api\\\">/api</a></p></body></html>\")\n"
         py += "if static_dir.exists():\n"
         py += "    app.mount(\"/\", StaticFiles(directory=str(static_dir), html=True), name=\"static\")\n\n"
         py += "if __name__ == \"__main__\":\n"
         py += "    import uvicorn\n"
-        py += "    uvicorn.run(app, host=\"0.0.0.0\", port=8765)\n"
+        py += "    uvicorn.run(app, host=\"0.0.0.0\", port=int(os.environ.get(\"PORT\", \"8765\")))\n"
         return py
 
     def emit_ir_json(self, ir: Dict[str, Any]) -> str:
@@ -1666,7 +2472,9 @@ class AICodeCompiler:
             return "integer"
         if s == "J":
             return "object"
-        if s in ("F", "S", "s", "B", "D"):
+        if s == "B":
+            return "boolean"
+        if s in ("F", "S", "s", "D"):
             return "number" if s == "F" else "string"
         if s.startswith("E["):
             return "string"
@@ -1682,6 +2490,8 @@ class AICodeCompiler:
             return {"type": "object", "additionalProperties": True}
         if s in types:
             return {"$ref": f"#/components/schemas/{s}"}
+        if s == "D":
+            return {"type": "string", "format": "date-time"}
         return {"type": self._openapi_type(s)}
 
     def emit_openapi(self, ir: Dict[str, Any]) -> str:
@@ -1778,6 +2588,12 @@ class AICodeCompiler:
             "paths": paths,
             "components": {"schemas": schemas},
         }
+        auth = ir.get("services", {}).get("auth")
+        if auth:
+            hdr = auth.get("arg", "Authorization")
+            doc["components"].setdefault("securitySchemes", {})
+            doc["components"]["securitySchemes"]["HeaderAuth"] = {"type": "apiKey", "in": "header", "name": hdr}
+            doc["security"] = [{"HeaderAuth": []}]
         return json.dumps(doc, indent=2)
 
     def emit_dockerfile(self, ir: Dict[str, Any]) -> str:
