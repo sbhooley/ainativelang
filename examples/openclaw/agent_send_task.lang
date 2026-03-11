@@ -1,0 +1,39 @@
+# Agent Task Enqueue Demo (extension/OpenClaw)
+# Purpose: build a small AgentTaskRequest envelope and append it to a sandboxed
+# JSONL file via `agent.send_task`. This is a local-only, file-backed example
+# that returns just the task_id.
+
+S core agent
+
+L0: R core now ->ts J L1
+
+L1: X task {
+  "schema_version": "1.0",
+  "task_id": "demo-openclaw-monitor-001",
+  "requester_id": "openclaw.scheduler",
+  "target_agent": "openclaw.monitor",
+  "target_role": "executor",
+  "task_type": "execute_monitor",
+  "description": "Run infrastructure_watchdog monitor once and report status.",
+  "input": {
+    "refs": [
+      {
+        "kind": "ainl_program",
+        "uri": "file://examples/autonomous_ops/infrastructure_watchdog.lang"
+      }
+    ],
+    "payload": {
+      "ts": ts
+    }
+  },
+  "allowed_tools": ["svc", "cache", "queue", "extras"],
+  "approval_required": "none",
+  "callback": {
+    "file_append": "agents/openclaw.monitor/results.jsonl"
+  },
+  "metadata": {
+    "ainl.program_id": "infrastructure_watchdog.v1"
+  }
+} J L2
+
+L2: R agent send_task task ->task_id J task_id

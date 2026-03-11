@@ -1,0 +1,9 @@
+# Token Cost Advice Result Reader (extension/OpenClaw)
+# Purpose: read a single AgentTaskResult for a known token-cost advisory task
+# via `agent.read_result`. This example assumes an external orchestrator or
+# Cursor-side agent has written the result file.
+
+S agent
+
+L0: R agent read_result "token-cost-advice-20260309" ->result J result
+

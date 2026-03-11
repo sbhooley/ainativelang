@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "task_id": "demo-openclaw-monitor-001",
+  "agent_id": "openclaw.monitor",
+  "status": "ok",
+  "confidence": 0.95,
+  "output": {
+    "summary": "Infrastructure watchdog ran successfully; all services reported up.",
+    "actions": [
+      {
+        "kind": "notification",
+        "description": "No remediation required; daily infra summary only.",
+        "status": "executed"
+      }
+    ]
+  },
+  "artifact_refs": [],
+  "cost_used": {
+    "tokens": 0,
+    "usd_cents": 0
+  },
+  "time_used": {
+    "started_at": "2026-03-09T20:00:00Z",
+    "finished_at": "2026-03-09T20:00:03Z",
+    "wall_ms": 3000
+  },
+  "needs_review": {
+    "required": false,
+    "reason": null
+  },
+  "error": {
+    "kind": null,
+    "message": null
+  },
+  "provenance_ref": {
+    "ainl_graph_checksum": "sha256:...",
+    "ainl_program_id": "infrastructure_watchdog.v1",
+    "runtime_version": "ainl-runtime-1.0.0",
+    "recording_uri": "file://runs/infrastructure_watchdog/2026-03-09/calls.json"
+  }
+}
+

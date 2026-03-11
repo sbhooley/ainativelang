@@ -284,6 +284,7 @@ If you are building an autonomous agent on top of AINL, the recommended reading 
 4. `docs/GRAPH_INTROSPECTION.md` — how to inspect compiled IR/graphs.
 5. `docs/GRAPH_SCHEMA.md` + `docs/IR_SCHEMA.md` — deeper IR/graph details if needed.
 6. `docs/ADAPTER_REGISTRY.md` — adapter capabilities and tiers.
+7. `docs/AGENT_COORDINATION_CONTRACT.md` — non-canonical, extension-level JSON envelopes for agent manifests, task requests, and task results (used over queues/files, not as core semantics).
 
 When you need something AINL does **not** yet express cleanly (e.g. full meta‑monitoring), model it explicitly as “deferred” in your system design rather than assuming semantics that do not exist.
 

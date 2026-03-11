@@ -1,0 +1,8 @@
+# Agent Result Reader Demo (extension/OpenClaw)
+# Purpose: read a single AgentTaskResult envelope identified by task_id via
+# `agent.read_result`. This is a local-only, file-backed example.
+
+S agent
+
+L0: R agent read_result "demo-openclaw-monitor-001" ->result J result
+

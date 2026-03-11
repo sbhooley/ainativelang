@@ -31,7 +31,7 @@ X cloudflared_alert (core.and cloudflared_down (core.or (core.eq last_cloudflare
 X maddy_alert (core.and maddy_down (core.or (core.eq last_maddy 0) (core.gt (- now maddy_ts) 1800)))
 X crm_alert (core.and crm_down (core.or (core.eq last_crm 0) (core.gt (- now crm_ts) 1800)))
 
-# Send alert if needed; update cache timestamps only when sending alert
+# Send alert if needed; attempt restart then notify
 If caddy_alert ->L_caddy_alert ->L_after_alerts
 If cloudflared_alert ->L_cloudflared_alert ->L_after_alerts
 If maddy_alert ->L_maddy_alert ->L_after_alerts
@@ -39,25 +39,29 @@ If crm_alert ->L_crm_alert ->L_after_alerts
 J L_no_alert
 
 L_caddy_alert:
-  R queue Put "notify" ({"service":"caddy","status":"down","ts":now,"attempt_restart":true})
+  X restart_ok (svc.restart "caddy")
+  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"caddy","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
   X _ (cache.set "watchdog" "last_caddy_alert" 1)
   X _ (cache.set "watchdog" "last_caddy_ts" now)
   J L_continue
 
 L_cloudflared_alert:
-  R queue Put "notify" ({"service":"cloudflared","status":"down","ts":now,"attempt_restart":true})
+  X restart_ok (svc.restart "cloudflared")
+  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"cloudflared","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
   X _ (cache.set "watchdog" "last_cloudflared_alert" 1)
   X _ (cache.set "watchdog" "last_cloudflared_ts" now)
   J L_continue
 
 L_maddy_alert:
-  R queue Put "notify" ({"service":"maddy","status":"down","ts":now,"attempt_restart":true})
+  X restart_ok (svc.restart "maddy")
+  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"maddy","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
   X _ (cache.set "watchdog" "last_maddy_alert" 1)
   X _ (cache.set "watchdog" "last_maddy_ts" now)
   J L_continue
 
 L_crm_alert:
-  R queue Put "notify" ({"service":"crm","status":"down","ts":now,"attempt_restart":true})
+  X restart_ok (svc.restart "crm")
+  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"crm","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
   X _ (cache.set "watchdog" "last_crm_alert" 1)
   X _ (cache.set "watchdog" "last_crm_ts" now)
   J L_continue
@@ -65,4 +69,6 @@ L_crm_alert:
 L_after_alerts:
 L_continue:
 L_no_alert:
-Ret null
+  # Send summary of current status
+  R queue Put "notify" ({"module":"infrastructure_watchdog","caddy":caddy_status,"cloudflared":cloudflared_status,"maddy":maddy_status,"crm":crm_status,"any_down":any_down,"ts":now})
+  Ret null

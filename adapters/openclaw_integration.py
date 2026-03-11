@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from runtime.adapters.base import RuntimeAdapter, AdapterError
 from .extras import ExtrasAdapter
+from .agent import AgentAdapter
 import sqlite3
 from datetime import datetime, timezone
 
@@ -93,31 +94,42 @@ class SocialAdapter(RuntimeAdapter):
 class ServiceAdapter(RuntimeAdapter):
     """Adapter to check status of infrastructure services: caddy, cloudflared, maddy, crm."""
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
-        if target not in ('caddy', 'cloudflared', 'maddy', 'crm'):
-            raise AdapterError(f'unknown service: {target}')
-        try:
-            if target == 'caddy':
-                if self._port_listening(80) or self._port_listening(443):
-                    return 'up'
-                return 'down'
-            elif target == 'crm':
-                # Check if Node.js CRM is listening on port 3000
-                if self._port_listening(3000):
-                    # Optional: verify it responds to /health
-                    try:
-                        import subprocess
-                        cmd = ['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', 'http://127.0.0.1:3000/health']
-                        code = subprocess.check_output(cmd, text=True, timeout=3).strip()
-                        return 'up' if code in ('200', '201', '204') else 'down'
-                    except Exception:
-                        # If curl fails but port is listening, assume up
+        verb = str(target or "").lower()
+        # Status checks
+        if verb in ('caddy', 'cloudflared', 'maddy', 'crm'):
+            # existing status logic
+            try:
+                if verb == 'caddy':
+                    if self._port_listening(80) or self._port_listening(443):
                         return 'up'
+                    return 'down'
+                elif verb == 'crm':
+                    if self._port_listening(3000):
+                        try:
+                            import subprocess
+                            cmd = ['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', 'http://127.0.0.1:3000/health']
+                            code = subprocess.check_output(cmd, text=True, timeout=3).strip()
+                            return 'up' if code in ('200', '201', '204') else 'down'
+                        except Exception:
+                            return 'up'
+                    return 'down'
+                else:
+                    return 'up' if self._process_running(verb) else 'down'
+            except Exception as e:
+                logger.warning(f'service status error for {verb}: {e}')
                 return 'down'
-            else:
-                return 'up' if self._process_running(target) else 'down'
-        except Exception as e:
-            logger.warning(f'service status error for {target}: {e}')
-            return 'down'
+
+        # Restart actions: `svc restart <service>`
+        elif verb == 'restart':
+            if not args:
+                raise AdapterError('restart requires service name argument')
+            service = str(args[0]).lower()
+            if service not in ('caddy', 'cloudflared', 'maddy', 'crm'):
+                raise AdapterError(f'unknown service for restart: {service}')
+            return self._restart_service(service)
+
+        else:
+            raise AdapterError(f'svc unknown verb: {target}')
 
     def _port_listening(self, port: int) -> bool:
         try:
@@ -133,12 +145,51 @@ class ServiceAdapter(RuntimeAdapter):
                 return False
 
     def _process_running(self, name: str) -> bool:
+        """Check if a process with a command line containing 'name' is running."""
         try:
             out = subprocess.check_output(['pgrep', '-f', name], text=True)
             return bool(out.strip())
         except subprocess.CalledProcessError:
             return False
         except FileNotFoundError:
+            return False
+
+    def _restart_service(self, service: str) -> bool:
+        """Attempt to restart the given service. Returns True if restart command succeeded."""
+        try:
+            if service == 'caddy':
+                # caddy as a brew service
+                cmd = ['brew', 'services', 'restart', 'caddy']
+            elif service == 'cloudflared':
+                cmd = ['brew', 'services', 'restart', 'cloudflared']
+            elif service == 'maddy':
+                cmd = ['brew', 'services', 'restart', 'maddy']
+            elif service == 'crm':
+                # Try common Node process management; fallback to killing port 3000 and starting
+                # First, try to find and kill existing process
+                try:
+                    # Find PID listening on 3000 and kill
+                    subprocess.run(['pkill', '-f', 'node.*3000'], capture_output=True, timeout=5)
+                except Exception:
+                    pass
+                # Start CRM: attempt default location
+                crm_dir = Path('/Users/clawdbot/.openclaw/workspace/crm')
+                if (crm_dir / 'server.js').exists():
+                    cmd = ['node', str(crm_dir / 'server.js')]
+                else:
+                    logger.warning('CRM restart: no server.js found; cannot restart')
+                    return False
+            else:
+                return False
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                logger.info(f'Restarted {service}: {cmd}')
+                return True
+            else:
+                logger.warning(f'Restart {service} failed: {result.stderr}')
+                return False
+        except Exception as e:
+            logger.error(f'Restart exception for {service}: {e}')
             return False
 
 class DBLeadsAdapter(RuntimeAdapter):
@@ -259,6 +310,134 @@ class NotificationQueueAdapter(RuntimeAdapter):
             return 'error'
 
     def _format_message(self, payload: Dict[str, Any]) -> str:
+        # Custom text overrides everything
+        if 'text' in payload:
+            return str(payload['text'])
+
+        module = payload.get('module')
+        ts = payload.get('ts')
+        time_str = ''
+        if ts:
+            try:
+                time_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))
+            except Exception:
+                time_str = str(ts)
+
+        if module:
+            # Module-specific formatting
+            if module == 'infrastructure_watchdog':
+                # Alert payloads may have 'service' and 'status'
+                service = payload.get('service')
+                if service:
+                    status = payload.get('status', '?')
+                    restart_attempted = payload.get('restart_attempted', False)
+                    restart_ok = payload.get('restart_ok', None)
+                    msg = f"Service {service} is {status}"
+                    if restart_attempted:
+                        if restart_ok is True:
+                            msg += " (restarted successfully)"
+                        elif restart_ok is False:
+                            msg += " (restart failed)"
+                        else:
+                            msg += " (restarting)"
+                else:
+                    # Summary
+                    caddy = payload.get('caddy', '?')
+                    cloudflared = payload.get('cloudflared', '?')
+                    maddy = payload.get('maddy', '?')
+                    crm = payload.get('crm', '?')
+                    any_down = payload.get('any_down', False)
+                    services = f"caddy={caddy}, cloudflared={cloudflared}, maddy={maddy}, crm={crm}"
+                    if any_down:
+                        msg = f"⚠️ Infrastructure: service(s) down — {services}"
+                    else:
+                        msg = f"✅ Infrastructure: all services up — {services}"
+                parts = [msg]
+                if time_str:
+                    parts.append(f"🕒 {time_str}")
+                return ' | '.join(parts)
+
+            elif module == 'tiktok_sla':
+                recent_count = payload.get('recent_count', 0)
+                video_fresh = payload.get('video_fresh', False)
+                backup_fresh = payload.get('backup_fresh', False)
+                breach = payload.get('breach', False)
+                status_str = f"recent_reports={recent_count}, video_fresh={'ok' if video_fresh else 'stale'}, backup_fresh={'ok' if backup_fresh else 'stale'}"
+                if breach:
+                    msg = f"🔴 TikTok SLA breach — {status_str}"
+                else:
+                    msg = f"✅ TikTok SLA OK — {status_str}"
+                parts = [msg]
+                if time_str:
+                    parts.append(f"🕒 {time_str}")
+                return ' | '.join(parts)
+
+            elif module == 'token_cost_tracker':
+                cost_usd = payload.get('cost_usd', 0.0)
+                limit_usd = payload.get('limit_usd', 0.0)
+                limit_exceeded = payload.get('limit_exceeded', False)
+                date = payload.get('date', '')
+                cost_str = f"${cost_usd:.2f}"
+                limit_str = f"${limit_usd:.2f}"
+                # Token breakdown
+                total_tok = payload.get('total_tokens', 0)
+                prompt_tok = payload.get('total_prompt', 0)
+                completion_tok = payload.get('total_completion', 0)
+                model_names = payload.get('model_names', '')
+                # Build message
+                if limit_exceeded:
+                    msg = f"🔴 Token cost limit exceeded — {cost_str} / {limit_str} ({date})"
+                else:
+                    msg = f"✅ Token costs — {cost_str} / {limit_str} ({date})"
+                if total_tok:
+                    msg += f" | tokens: total={total_tok}, prompt={prompt_tok}, completion={completion_tok}"
+                if model_names:
+                    msg += f" | models: {model_names}"
+                parts = [msg]
+                if time_str:
+                    parts.append(f"🕒 {time_str}")
+                return ' | '.join(parts)
+
+            elif module == 'canary_sampler':
+                targets = payload.get('targets', [])
+                any_breach = payload.get('any_breach', False)
+                parts_targets = []
+                for t in targets:
+                    name = t.get('name', '?')
+                    status = t.get('status', '?')
+                    slow = t.get('slow', False)
+                    consecutive = t.get('consecutive', 0)
+                    part = f"{name}: status={status}"
+                    if slow:
+                        part += f", slow x{consecutive}"
+                    parts_targets.append(part)
+                targets_str = '; '.join(parts_targets) if parts_targets else 'no targets'
+                if any_breach:
+                    msg = f"⚠️ Canary breach — {targets_str}"
+                else:
+                    msg = f"✅ Canary OK — {targets_str}"
+                parts = [msg]
+                if time_str:
+                    parts.append(f"🕒 {time_str}")
+                return ' | '.join(parts)
+
+            elif module == 'lead_quality_audit':
+                total = payload.get('total', 0)
+                phone_ok = payload.get('phone_ok', 0)
+                website_ok = payload.get('website_ok', 0)
+                rating_ok = payload.get('rating_ok', 0)
+                reviews_ok = payload.get('reviews_ok', 0)
+                def pct(n):
+                    return f"{(n/total*100):.0f}%" if total>0 else "0%"
+                msg = f"Lead Quality Audit: total={total} | phone_ok={phone_ok} ({pct(phone_ok)}) | website_ok={website_ok} ({pct(website_ok)}) | rating_ok={rating_ok} ({pct(rating_ok)}) | reviews_ok={reviews_ok} ({pct(reviews_ok)})"
+                parts = [msg]
+                if time_str:
+                    parts.append(f"🕒 {time_str}")
+                return ' | '.join(parts)
+
+            # Unknown module: fall back to generic
+
+        # Legacy handling
         parts = []
         if 'email_count' in payload:
             parts.append(f"📧 Email: {payload['email_count']} new")
@@ -272,14 +451,8 @@ class NotificationQueueAdapter(RuntimeAdapter):
             failed = payload['failed_services']
             if failed:
                 parts.append(f"⚠️ Services down: {failed}")
-        if 'ts' in payload:
-            ts = time.strftime('%Y-%m-%d %H:%M', time.localtime(payload['ts']))
-            parts.append(f"🕒 {ts}")
-        # Custom text field support
-        if 'text' in payload and not parts:
-            return payload['text']
-        if 'text' in payload:
-            parts.append(str(payload['text']))
+        if time_str:
+            parts.append(f"🕒 {time_str}")
         return ' | '.join(parts) if parts else 'Monitor check complete.'
 
 class CacheAdapter(RuntimeAdapter):
@@ -325,7 +498,7 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     from runtime.adapters.base import AdapterRegistry
     reg = AdapterRegistry(allowed=[
         'core', 'db', 'email', 'calendar', 'social',
-        'svc', 'cache', 'queue', 'wasm', 'extras', 'tiktok'
+        'svc', 'cache', 'queue', 'wasm', 'extras', 'tiktok', 'agent'
     ])
     from runtime.adapters.builtins import CoreBuiltinAdapter
     reg.register('core', CoreBuiltinAdapter())
@@ -338,6 +511,7 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     reg.register('queue', NotificationQueueAdapter())
     reg.register('extras', ExtrasAdapter())
     reg.register('tiktok', TiktokAdapter())
+    reg.register('agent', AgentAdapter())
 
     # Optional WASM adapter if wasmtime is available and demo modules exist
     try:

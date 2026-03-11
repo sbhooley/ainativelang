@@ -1,0 +1,43 @@
+# Token Cost Advice Request (extension/OpenClaw)
+# Purpose: assemble bounded token/cost usage facts and enqueue an advisory
+# request for a Cursor-side agent via `agent.send_task`. This example is
+# advisory-only and does not perform any remediation itself.
+
+S core agent
+
+L0: R core now ->ts J L1
+
+L1: X payload {
+  "date": "2026-03-09",
+  "total_cost_usd": 12.34,
+  "daily_limit_usd": 20.0,
+  "total_tokens": 450000,
+  "prompt_tokens": 300000,
+  "completion_tokens": 150000,
+  "top_models": ["gpt-4.1-mini", "gpt-4.1", "claude-3.5-sonnet"]
+} J L2
+
+L2: X task {
+  "schema_version": "1.0",
+  "task_id": "token-cost-advice-20260309",
+  "requester_id": "openclaw.token_cost_tracker",
+  "target_agent": "cursor.advisor",
+  "target_role": "advisor",
+  "task_type": "advisory_token_cost_review",
+  "description": "Review daily token cost and suggest safe model/usage optimizations.",
+  "input": {
+    "refs": [],
+    "payload": payload
+  },
+  "allowed_tools": ["http", "fs.read-only"],
+  "approval_required": "none",
+  "callback": {
+    "file_append": "agents/openclaw.token_cost_tracker/results.jsonl"
+  },
+  "metadata": {
+    "ainl.program_id": "token_cost_advice_request.v1"
+  }
+} J L3
+
+L3: R agent send_task task ->task_id J task_id
+

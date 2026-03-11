@@ -1,5 +1,57 @@
 # Changelog
 
+## 1.0.12-local-agent-coordination-substrate (2026-03-09)
+
+### Local Agent Coordination Substrate (extension/OpenClaw)
+- Added a minimal local mailbox-style coordination adapter `agent` with a
+  **narrow shared protocol surface**:
+  - `agent.send_task(envelope) -> task_id (string)`
+  - `agent.read_result(task_id) -> AgentTaskResult (dict)`
+- Implemented the adapter as a sandboxed, file-backed extension under
+  `AINL_AGENT_ROOT`:
+  - tasks are appended to `tasks/openclaw_agent_tasks.jsonl`,
+  - results are read from `results/<task_id>.json`,
+  - all paths are checked via a sandbox root helper, and attempts to escape
+    the sandbox or use filesystem root are rejected.
+- Enforced that `AgentTaskResult` files must parse as JSON objects; invalid or
+  non-object JSON now raise `AdapterError`.
+- Locked the shared protocol surface in tests
+  (`tests/test_agent_protocol_surface.py`) so only `send_task` and
+  `read_result` remain part of the coordination API.
+
+### Agent Coordination Contract and Examples
+- Added `docs/AGENT_COORDINATION_CONTRACT.md` as the canonical design/spec for:
+  - `AgentManifest`
+  - `AgentTaskRequest`
+  - `AgentTaskResult`
+  and the local mailbox protocol under `AINL_AGENT_ROOT`.
+- Documented the shared protocol boundary (Cursor ↔ OpenClaw) and explicitly
+  excluded additional verbs such as `read_task` and `list_agents` from the
+  shared surface.
+- Added small extension/OpenClaw examples:
+  - `examples/openclaw/agent_send_task.lang` — build and enqueue a minimal
+    `AgentTaskRequest` and return the `task_id`.
+  - `examples/openclaw/agent_read_result.lang` — read a single
+    `AgentTaskResult` identified by `task_id`.
+  - `examples/openclaw/token_cost_advice_request.lang` — enqueue a bounded
+    token-cost advisory request for a Cursor-side agent.
+  - `examples/openclaw/token_cost_advice_read.lang` — read the advisory
+    `AgentTaskResult` for a known token-cost task id.
+- Updated `docs/ADAPTER_REGISTRY.md` and `docs/EXAMPLE_SUPPORT_MATRIX.md` to
+  classify the `agent` adapter and the new examples as extension/OpenClaw,
+  noncanonical surfaces.
+
+### Security Hardening
+- Hardened the `agent` adapter sandbox:
+  - rejected `AINL_AGENT_ROOT="/"` (filesystem root) as an invalid sandbox,
+  - rejected `task_id` values containing path separators or `..` in
+    `agent.read_result`,
+  - ensured all file reads/writes go through a safe-path helper.
+- Added tests in `tests/test_agent_send_task.py` to assert:
+  - sandbox escapes are rejected,
+  - filesystem-root sandboxing is rejected,
+  - invalid and non-object JSON results are rejected.
+
 ## 1.0.11-extras-metrics-and-graph-dot (2026-03-09)
 
 ### Observability Helper: `extras.metrics`

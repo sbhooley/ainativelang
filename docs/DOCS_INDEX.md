@@ -48,6 +48,7 @@ Use it as the top-level entry point before touching code.
 - Post-release issue drafts: `docs/issues/`
 - Architecture overview: `docs/ARCHITECTURE_OVERVIEW.md`
 - Glossary: `docs/GLOSSARY.md`
+ - Agent coordination contract (multi-agent envelopes/spec): `docs/AGENT_COORDINATION_CONTRACT.md`
 
 ## Training and Model Quality
 

@@ -70,6 +70,10 @@ should not be treated as the canonical public language surface.
 | `examples/openclaw/infrastructure_watchdog.lang` | `non-strict-only` | OpenClaw compatibility example |
 | `examples/openclaw/lead_enrichment.lang` | `non-strict-only` | OpenClaw compatibility example |
 | `examples/openclaw/webhook_handler.lang` | `non-strict-only` | OpenClaw compatibility example |
+| `examples/openclaw/agent_send_task.lang` | `non-strict-only` | OpenClaw compatibility example: append AgentTaskRequest envelope via agent.send_task |
+| `examples/openclaw/agent_read_result.lang` | `non-strict-only` | OpenClaw compatibility example: read AgentTaskResult envelope via agent.read_result |
+| `examples/openclaw/token_cost_advice_request.lang` | `non-strict-only` | OpenClaw compatibility example: enqueue token-cost advisory request via agent.send_task |
+| `examples/openclaw/token_cost_advice_read.lang` | `non-strict-only` | OpenClaw compatibility example: read token-cost advisory result via agent.read_result |
 
 ### Autonomous Ops Extension Pack (OpenClaw)
 

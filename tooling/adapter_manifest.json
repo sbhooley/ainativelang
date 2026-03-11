@@ -194,6 +194,14 @@
       "effect_default": "io",
       "notes": "OpenClaw monitor extras adapter for file, Docker, HTTP, backup mtime checks, and metrics summaries."
     },
+    "agent": {
+      "support_tier": "extension_openclaw",
+      "strict_contract": false,
+      "recommended_lane": "noncanonical",
+      "verbs": ["send_task", "read_result"],
+      "effect_default": "io",
+      "notes": "Extension/OpenClaw agent coordination adapter for appending AgentTaskRequest envelopes to sandboxed JSONL files under AINL_AGENT_ROOT."
+    },
     "tiktok": {
       "support_tier": "extension_openclaw",
       "strict_contract": false,
