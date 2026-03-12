@@ -529,6 +529,35 @@
         }
       },
       "returns": "F returns report objects; videos returns video objects with fields: id, tiktokId, title, description, processedAt, createdAt"
+    },
+    "memory": {
+      "description": "Extension-level memory adapter for explicit execution-facing records keyed by (namespace, record_kind, record_id).",
+      "targets": {
+        "put": {
+          "args": ["namespace", "record_kind", "record_id", "payload", "ttl_seconds?"],
+          "returns": "{ok, created, updated_at}",
+          "pure": false
+        },
+        "get": {
+          "args": ["namespace", "record_kind", "record_id"],
+          "returns": "{found, record|null}",
+          "pure": false
+        },
+        "append": {
+          "args": ["namespace", "record_kind", "record_id", "entry", "ttl_seconds?"],
+          "returns": "{ok, updated_at}",
+          "pure": false
+        }
+      },
+      "config": {
+        "db_path_env": "AINL_MEMORY_DB (default: /tmp/ainl_memory.sqlite3)"
+      },
+      "notes": [
+        "Extension/OpenClaw-only memory adapter; not part of the canonical AINL core.",
+        "Records are typed by namespace and record_kind; record_id selects instances.",
+        "payload must be a JSON object; ttl_seconds is an advisory hint only.",
+        "append is intended for log-like records (e.g. daily_log.note) and will fail on non-log payloads."
+      ]
     }
   },
   "notes": [

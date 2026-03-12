@@ -75,7 +75,10 @@ entry point for new users or unsupervised agents.
 - Safe use and threat model: `docs/SAFE_USE_AND_THREAT_MODEL.md`
 - Adapter inventory and conventions (including extension/OpenClaw adapters): `docs/ADAPTER_REGISTRY.md`, `docs/OPENCLAW_ADAPTERS.md`
 - Memory contract and v1 adapter: `docs/MEMORY_CONTRACT.md`
-  - Memory v1 bridge and CLI tools: `tooling/memory_bridge.py`, `scripts/export_memory_records.py`, `scripts/import_memory_records.py`
+  - Memory v1 bridge and CLI tools (JSON/JSONL): `tooling/memory_bridge.py`, `scripts/export_memory_records.py`, `scripts/import_memory_records.py`
+  - One-way markdown daily-log export (human-facing): `tooling/memory_markdown_bridge.py`, `scripts/export_memory_daily_log_markdown.py`
+  - Curated markdown import (long-term facts/preferences): `tooling/memory_markdown_import.py`, `scripts/import_memory_markdown.py`
+  - Legacy markdown migration helper (MEMORY.md, memory/YYYY-MM-DD.md): `tooling/memory_migrate.py`, `scripts/migrate_memory_legacy.py`
 
 ## Training and Model Quality
 

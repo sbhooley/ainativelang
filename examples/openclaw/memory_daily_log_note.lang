@@ -1,0 +1,20 @@
+# Memory Daily Log Note Example (extension/OpenClaw, advanced)
+# Purpose: append daily notes to a log-like record in the memory adapter and
+# read them back. This is an explicit, execution-facing example; it is not a
+# safe-default pattern for unsupervised agents.
+#
+# Advanced / operator-only:
+# - demonstrates `memory.append` and `memory.get` for daily_log.note
+# - relies on a local SQLite-backed memory store (AINL_MEMORY_DB)
+
+S core memory
+
+L0: X entry {
+  "ts": "2026-03-09T12:00:00Z",
+  "text": "Checked monitors; all within normal bounds."
+} J L1
+
+L1: R memory append "daily_log" "daily_log.note" "2026-03-09" entry 604800 ->append_result J L2
+
+L2: R memory get "daily_log" "daily_log.note" "2026-03-09" ->get_result J get_result
+

@@ -1,0 +1,478 @@
+## AINL Memory Contract (v1, extension-level)
+
+Status: **design + v1 adapter implementation**. This document describes the v1
+memory contract as an extension-level adapter. It does **not** change compiler
+or core runtime semantics.
+
+Memory in AINL v1 is:
+
+- **adapter-level** — implemented as a `memory` adapter,
+- **execution-facing** — used explicitly from workflows, not implicitly injected,
+- **backend-agnostic** — v1 uses SQLite by default but the contract is portable,
+- **typed** by `namespace` and `record_kind`,
+- **validator-friendly** — records have a simple canonical envelope,
+- **non-magical** — no vector search, auto-recall, or policy semantics in v1.
+
+---
+
+## 1. Canonical identity model
+
+Every memory record is uniquely identified by the triple:
+
+- `namespace: string`
+- `record_kind: string`
+- `record_id: string`
+
+All three are **required** in v1. There is no shorthand that omits
+`record_kind`.
+
+Conceptually:
+
+- `namespace` encodes **lifetime/scope**,
+- `record_kind` encodes the **logical type** of the record,
+- `record_id` is the **instance key** within that kind.
+
+The canonical envelope for a record is:
+
+```json
+{
+  "namespace": "string",
+  "record_kind": "string",
+  "record_id": "string",
+  "created_at": "RFC3339 string",
+  "updated_at": "RFC3339 string",
+  "ttl_seconds": 3600,
+  "payload": {}
+}
+```
+
+The `payload` field is always a JSON object in v1.
+
+---
+
+## 2. Namespaces and record kinds (v1)
+
+### 2.1 Namespaces (v1 whitelist)
+
+- `session` — short-lived per-session/interaction context.
+- `long_term` — durable multi-session facts/preferences.
+- `daily_log` — timestamped notes and logs, roughly per day.
+- `workflow` — per-workflow or per-pipeline state and checkpoints.
+
+### 2.2 Recommended record kinds (v1)
+
+The following record kinds are recommended in v1:
+
+- `session.context`
+- `workflow.token_cost_state`
+- `workflow.checkpoint`
+- `workflow.monitor_status_snapshot`
+- `workflow.advisory_result`
+- `long_term.user_preference`
+- `long_term.project_fact`
+- `daily_log.note`
+
+These kinds are advisory; AINL does not enforce a full schema per kind in v1,
+but validators and tooling can use them for light shape checks.
+
+---
+
+## 3. Verbs (v1)
+
+The `memory` adapter exposes four v1 verbs:
+
+### 3.1 `memory.put(namespace, record_kind, record_id, payload, ttl_seconds?)`
+
+- Creates or overwrites a record at `(namespace, record_kind, record_id)`.
+- `payload` must be a JSON object.
+- `ttl_seconds` is optional and advisory (see below).
+
+Returns a small envelope such as:
+
+```json
+{
+  "ok": true,
+  "created": true,
+  "updated_at": "2026-03-09T01:23:45Z"
+}
+```
+
+### 3.2 `memory.get(namespace, record_kind, record_id)`
+
+- Loads a record by its canonical identity.
+- Backends may treat TTL-expired records as not found.
+
+Returns:
+
+```json
+{
+  "found": true,
+  "record": {
+    "namespace": "workflow",
+    "record_kind": "workflow.checkpoint",
+    "record_id": "cp-1",
+    "created_at": "2026-03-09T01:00:00Z",
+    "updated_at": "2026-03-09T01:00:00Z",
+    "ttl_seconds": 3600,
+    "payload": { "step": 1 }
+  }
+}
+```
+
+If not found (or treated as expired), `found` is `false` and `record` is `null`.
+
+### 3.3 `memory.append(namespace, record_kind, record_id, entry, ttl_seconds?)`
+
+- Appends an `entry` object to a **log-like** record.
+- Intended primarily for log-style kinds such as:
+  - `daily_log.note`,
+  - log views of `workflow.advisory_result`,
+  - log views of `workflow.monitor_status_snapshot`.
+- Not a general-purpose mutation primitive for arbitrary JSON records.
+
+Behavior:
+
+- If no record exists at `(namespace, record_kind, record_id)`:
+  - create a new record with a log-shaped payload, e.g. `{ "entries": [entry] }`.
+- If a record exists:
+  - payload must be a JSON object with an `entries` list; otherwise an error is raised.
+  - the new `entry` is appended to that list.
+
+Returns:
+
+```json
+{
+  "ok": true,
+  "updated_at": "2026-03-09T02:00:00Z"
+}
+```
+
+### 3.4 `memory.list(namespace, record_kind?, record_id_prefix?, updated_since?)`
+
+`memory.list` provides a **narrow, structured enumeration** capability for
+discovering existing memory records without reading full payloads.
+
+- `namespace` (required): must be one of the v1 namespaces.
+- `record_kind` (optional): when provided, filters to that kind.
+- `record_id_prefix` (optional): when provided, filters to records whose
+  `record_id` starts with this prefix.
+- `updated_since` (optional): an ISO‑8601 timestamp string; when provided,
+  filters to records whose `updated_at` is greater than or equal to this
+  timestamp (string comparison on the stored ISO form).
+
+It does **not**:
+
+- scan or inspect `payload` contents,
+- implement full-text search,
+- implement semantic retrieval or vector/RAG,
+- accept arbitrary predicates or a query language.
+
+Return shape:
+
+```json
+{
+  "items": [
+    {
+      "record_kind": "workflow.checkpoint",
+      "record_id": "cp-1",
+      "created_at": "2026-03-09T01:00:00Z",
+      "updated_at": "2026-03-09T02:00:00Z",
+      "ttl_seconds": 3600
+    }
+  ]
+}
+```
+
+Results are ordered deterministically by `record_kind` then `record_id`
+ascending within the given namespace, regardless of `updated_since`.
+
+Typical usage patterns:
+
+- enumerate all records in a namespace:
+
+  ```text
+  R memory.list "workflow"
+  ```
+
+- enumerate only workflow checkpoints:
+
+  ```text
+  R memory.list "workflow" "workflow.checkpoint"
+  ```
+
+- enumerate only token cost state records with an ID prefix:
+
+  ```text
+  R memory.list "workflow" "workflow.token_cost_state" "token-"
+  ```
+
+- enumerate only records updated recently:
+
+  ```text
+  R memory.list "workflow" "workflow.checkpoint" "" "2026-03-10T00:00:00+00:00"
+  ```
+
+`memory.list` is intended as:
+
+- a lightweight discovery tool,
+- a structured way to locate record IDs,
+- an aid for humans and bots when combined with `memory.get`.
+
+It is **not** meant to replace bridge tooling or future search/index layers.
+
+---
+
+## 4. TTL semantics
+
+The `ttl_seconds` field is:
+
+- **advisory** and **best-effort**,
+- not a hard guarantee of expiration time,
+- not a precise scheduler.
+
+Backends may:
+
+- treat a TTL-expired record as not found on read, and/or
+- periodically clean up expired records.
+
+The spec does **not** require strict TTL enforcement in v1.
+
+---
+
+## 5. Backend strategy (v1: SQLite)
+
+The initial v1 adapter uses a local SQLite database, conceptually:
+
+```sql
+CREATE TABLE memory_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  namespace TEXT NOT NULL,
+  record_kind TEXT NOT NULL,
+  record_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  ttl_seconds INTEGER NULL,
+  payload_json TEXT NOT NULL
+);
+
+CREATE INDEX idx_memory_ns_kind_id
+ON memory_records(namespace, record_kind, record_id);
+```
+
+The default path is taken from `AINL_MEMORY_DB`, falling back to
+`/tmp/ainl_memory.sqlite3`.
+
+Future backends (filesystem, Obsidian, vector/RAG systems) can map the same
+canonical identity and envelope onto different storage forms without changing
+the `memory` adapter contract.
+
+---
+
+## 6. Validation expectations
+
+Validators and tooling for v1 should, at minimum:
+
+- enforce the namespace whitelist,
+- require `record_kind` and `record_id` as non-empty strings,
+- require `payload` to be a top-level JSON object,
+- ensure `ttl_seconds` is integer-or-null when present,
+- perform light checks for known record kinds:
+  - e.g. `workflow.*` kinds are used under the `workflow` namespace,
+  - `daily_log.note` payloads contain `entries` or note fields, etc.
+
+---
+
+## 7. Validator and CLI
+
+An extension-only validator is provided to help keep memory usage on the v1
+contract rails:
+
+- `tooling/memory_validator.py`
+- `scripts/validate_memory_records.py`
+
+Usage examples:
+
+- Validate a single record or an array of records from a JSON file:
+
+  ```bash
+  python -m scripts.validate_memory_records --json-file path/to/records.json
+  ```
+
+- For machine-readable output:
+
+  ```bash
+  python -m scripts.validate_memory_records --json-file path/to/records.json --json
+  ```
+
+The validator checks:
+
+- core identity fields (`namespace`, `record_kind`, `record_id`),
+- namespace whitelist,
+- payload object shape,
+- `ttl_seconds` type (integer-or-null),
+- basic namespace/record_kind consistency,
+- and emits light warnings when recognized record kinds lack common fields.
+
+It is **governance/tooling only**; it does **not** change runtime semantics.
+
+---
+
+## 8. Export/import tooling (interoperability)
+
+On top of the canonical `memory` contract, JSON/JSONL export/import tools are
+provided for advanced users and bots, plus small markdown bridges for humans:
+
+- `tooling/memory_bridge.py`
+- `scripts/export_memory_records.py`
+- `scripts/import_memory_records.py`
+- `tooling/memory_markdown_bridge.py`
+- `scripts/export_memory_daily_log_markdown.py`
+- `tooling/memory_markdown_import.py`
+- `scripts/import_memory_markdown.py`
+- `tooling/memory_migrate.py`
+- `scripts/migrate_memory_legacy.py`
+
+These tools:
+
+- treat the SQLite-backed `memory_records` table as the source of truth,
+- export records into canonical JSON/JSONL envelopes including:
+  - `namespace`, `record_kind`, `record_id`,
+  - `created_at`, `updated_at`, `ttl_seconds`,
+  - `payload`,
+  - `provenance` (e.g. `source_system`, `authored_by`, `origin_uri`),
+  - `flags` (`authoritative`, `curated`, `ephemeral`),
+- and import such envelopes back into the memory store with:
+  - validation via `tooling/memory_validator.py`,
+  - provenance/flags preserved inside `payload` under reserved keys
+    (`_provenance`, `_flags`) without changing core adapter behavior.
+
+On top of this machine-facing foundation, a **one-way, explicit, markdown
+export** exists for a single v1 kind:
+
+- `namespace = daily_log`
+- `record_kind = daily_log.note`
+
+This bridge:
+
+- renders each `daily_log.note` record into a markdown file at:
+  - `memory/daily_log/<YYYY>/<YYYY-MM-DD>.md`
+  - where `<YYYY-MM-DD>` is the `record_id`,
+- includes a small frontmatter block with:
+  - `ainl_namespace`,
+  - `ainl_record_kind`,
+  - `ainl_record_id`,
+  - `exported_from: ainl.memory`,
+- and formats note entries deterministically as bullet points:
+  - `- [<ts>] <text>` when `ts` is present,
+  - `- <text>` otherwise,
+  - sorted by `ts` when available.
+
+The markdown daily-log export is:
+
+- **export-only** (one-way, no import),
+- **tooling-only** (no runtime/compiler semantic change),
+- **not** a live mirror, sync engine, or Obsidian integration,
+- intended purely to let humans browse `daily_log.note` content in a normal
+  filesystem/note workflow.
+
+In the other direction, a **curated, frontmatter-based markdown import**
+exists for a small set of long-term kinds:
+
+- `namespace = long_term`, `record_kind = long_term.project_fact`
+- `namespace = long_term`, `record_kind = long_term.user_preference`
+
+This bridge:
+
+- only imports markdown files that explicitly opt in via frontmatter:
+  - `ainl_namespace`
+  - `ainl_record_kind`
+  - `ainl_record_id`
+- maps the markdown body into `payload.text` (trimmed),
+- for `long_term.user_preference`, additionally maps:
+  - `preference_key` / `key` → `payload.key`
+  - `preference_value` / `value` → `payload.value`,
+- attaches provenance and flags using the established bridge-layer convention:
+  - `provenance` (e.g. `source_system`, `origin_uri`, `authored_by`) and
+    `flags` (`authoritative`, `curated`, `ephemeral`) are passed to
+    `tooling.memory_bridge.import_records` and end up stored under
+    `payload._provenance` / `payload._flags`.
+
+Markdown import is:
+
+- **explicit and one-shot** (CLI-triggered, not watched or auto-synced),
+- **curated/human-authored only** (no semantic extraction from arbitrary notes),
+- **limited** to the two long-term kinds above,
+- validated via the same `tooling/memory_validator.py` contract as JSON/JSONL
+  import,
+- intended for small, structured facts and preferences, not bulk note
+  ingestion, indexing, or RAG/vector search.
+
+Finally, a **narrow legacy migration helper** exists to help bootstrap the
+SQLite-backed store from older note patterns:
+
+- `MEMORY.md` → `long_term.project_fact` records
+- `memory/YYYY-MM-DD.md` → `daily_log.note` records
+
+This migration:
+
+- is implemented by `tooling/memory_migrate.py` and
+  `scripts/migrate_memory_legacy.py`,
+- treats each `##` section in `MEMORY.md` with non-empty body as a separate
+  `long_term.project_fact` (record IDs derived from a slugified heading, e.g.
+  `memory_md.ainl_knowledge_base`),
+- treats each `memory/YYYY-MM-DD.md` file as a single `daily_log.note` record
+  with:
+  - `namespace = daily_log`,
+  - `record_kind = daily_log.note`,
+  - `record_id = YYYY-MM-DD`,
+  - `payload.entries` built from non-empty lines in the file (best-effort
+    detection of `[timestamp] text` patterns, but no semantic analysis),
+- attaches provenance/flags as:
+  - `source_system: legacy_markdown`,
+  - `origin_uri`: original file path,
+  - `authored_by: human`,
+  - conservative flags (`authoritative=False`, `curated=False`).
+
+The migration tool is:
+
+- **explicit and one-shot** (CLI-triggered, not watched or auto-synced),
+- **conservative** (skips ambiguous content rather than guessing),
+- **limited** to `MEMORY.md` and `memory/YYYY-MM-DD.md` patterns,
+- validated via the same JSON envelope import/validator path as other bridges,
+- intended for bootstrapping from legacy habits, not as a general markdown
+  ingestion pipeline.
+
+Example CLI usage:
+
+```bash
+# Export workflow advisory results to JSONL
+python -m scripts.export_memory_records \
+  --namespace workflow \
+  --record-kind workflow.advisory_result \
+  --output advisory_results.jsonl \
+  --jsonl
+
+# Import curated long_term facts from JSON
+python -m scripts.import_memory_records \
+  --json-file long_term_facts.json
+```
+
+These tools are **one-shot, explicit bridges**; they do **not** implement live
+sync, watchers, or vector/RAG semantics.
+
+---
+
+## 9. Out of scope for v1
+
+Memory v1 explicitly does **not** provide:
+
+- implicit recall into prompts,
+- automatic context injection,
+- vector or semantic search semantics,
+- policy or approval enforcement,
+- cross-agent synchronization or multi-tenant guarantees,
+- secret storage.
+
+These concerns belong to higher-level orchestrators, policy engines, or
+specialized storage systems layered on top of the v1 contract.
+

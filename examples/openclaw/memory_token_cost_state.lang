@@ -1,0 +1,21 @@
+# Memory Token Cost State Example (extension/OpenClaw, advanced)
+# Purpose: store and retrieve a simple token-cost state record using the memory
+# adapter. This is an explicit, execution-facing example; it does not perform
+# any auto-remediation and is not a safe-default pattern for unsupervised agents.
+#
+# Advanced / operator-only:
+# - demonstrates `memory.put` and `memory.get` for workflow.token_cost_state
+# - relies on a local SQLite-backed memory store (AINL_MEMORY_DB)
+
+S core memory
+
+L0: X payload {
+  "date": "2026-03-09",
+  "total_cost_usd": 12.34,
+  "total_tokens": 450000
+} J L1
+
+L1: R memory put "workflow" "workflow.token_cost_state" "token-cost-2026-03-09" payload 86400 ->put_result J L2
+
+L2: R memory get "workflow" "workflow.token_cost_state" "token-cost-2026-03-09" ->get_result J get_result
+

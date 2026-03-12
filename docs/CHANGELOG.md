@@ -1,5 +1,61 @@
 # Changelog
 
+## 1.0.15-memory-v1-and-interoperability (2026-03-09)
+
+### Extension-Level Memory Adapter and Contract (v1)
+- Added an extension-level `memory` adapter backed by SQLite with explicit record
+  identity `(namespace, record_kind, record_id)` and three core verbs:
+  - `memory.put(namespace, record_kind, record_id, payload, ttl_seconds?)`
+  - `memory.get(namespace, record_kind, record_id)`
+  - `memory.append(namespace, record_kind, record_id, entry, ttl_seconds?)`
+- Documented the v1 contract in `docs/MEMORY_CONTRACT.md`, including:
+  - namespace whitelist and recommended record kinds,
+  - advisory TTL semantics,
+  - validation expectations and backend schema.
+- Marked the adapter as `extension_openclaw` / non-canonical in
+  `tooling/adapter_manifest.json` and `docs/ADAPTER_REGISTRY.md`.
+
+### Memory Validator/Linter and JSON Bridges
+- Added an extension-only validator/linter for memory envelopes:
+  - `tooling/memory_validator.py`
+  - `scripts/validate_memory_records.py`
+- Implemented JSON/JSONL export/import tooling on top of the SQLite store:
+  - `tooling/memory_bridge.py`
+  - `scripts/export_memory_records.py`
+  - `scripts/import_memory_records.py`
+- These tools:
+  - treat the `memory_records` table as source of truth,
+  - export canonical envelopes including `provenance` and `flags`,
+  - import validated envelopes back into the store while preserving provenance
+    and flags inside `payload._provenance` / `payload._flags`.
+
+### Markdown Bridges and Legacy Migration
+- Added a one-way, human-facing markdown export for daily logs:
+  - `tooling/memory_markdown_bridge.py`
+  - `scripts/export_memory_daily_log_markdown.py`
+  - maps `daily_log.note` records to `memory/daily_log/YYYY/YYYY-MM-DD.md`.
+- Added curated, frontmatter-based markdown import for long-term kinds:
+  - `tooling/memory_markdown_import.py`
+  - `scripts/import_memory_markdown.py`
+  - supports `long_term.project_fact` and `long_term.user_preference` only.
+- Added a narrow legacy migration helper to bootstrap from existing note habits:
+  - `tooling/memory_migrate.py`
+  - `scripts/migrate_memory_legacy.py`
+  - migrates `MEMORY.md` sections to `long_term.project_fact` and
+    `memory/YYYY-MM-DD.md` files to `daily_log.note`.
+
+### Discovery/Enumeration: `memory.list`
+- Extended the `memory` adapter with a fourth verb:
+  - `memory.list(namespace, record_kind?, record_id_prefix?, updated_since?)`
+- Provides structured enumeration of records without returning payloads:
+  - filters by namespace (required), optional kind, optional record_id prefix,
+    and optional `updated_since` (ISO timestamp on `updated_at`),
+  - returns deterministic, lightweight summaries
+    (`record_kind`, `record_id`, `created_at`, `updated_at`, `ttl_seconds`).
+- Documented this as **discovery-only**, not a general query/search surface, and
+  updated tests and docs to keep the adapter manifest, registry, and contract
+  aligned.
+
 ## 1.0.14-advanced-coordination-governance (2026-03-09)
 
 ### Safe Use, Threat Model, and Advanced Framing

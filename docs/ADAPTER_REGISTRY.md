@@ -335,7 +335,7 @@ and `ADAPTER_REGISTRY.json` but do not require long-form slot schemas here:
 - **`email`**, **`calendar`**, **`social`** (tier: `extension_openclaw`, lane: `canonical`): OpenClaw monitoring adapters for unread email, upcoming calendar events, and social/web mentions.
 - **`ext`** (tier: `compatibility`, lane: `noncanonical`): test‑only external extension namespace used in runtime tests.
 - **`tiktok`** (tier: `extension_openclaw`, lane: `noncanonical`): TikTok/CRM reporting surface (`F`, `recent`, `videos`) for OpenClaw monitors.
-- **`memory`** (tier: `extension_openclaw`, lane: `noncanonical`): explicit memory adapter (`put`, `get`, `append`) as specified in `docs/MEMORY_CONTRACT.md`.
+- **`memory`** (tier: `extension_openclaw`, lane: `noncanonical`): explicit memory adapter (`put`, `get`, `append`, `list`) as specified in `docs/MEMORY_CONTRACT.md`.
 
 For exact argument lists, effect metadata, and envelopes, treat
 `tooling/adapter_manifest.json` as the source of truth and
