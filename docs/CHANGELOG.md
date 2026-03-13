@@ -2,6 +2,11 @@
 
 ## 1.0.15-memory-v1-and-interoperability (2026-03-09)
 
+### OpenClaw Autonomous Ops Programs and Docs
+- Added new autonomous ops programs (OpenClaw-created): `memory_prune`, `meta_monitor`, `session_continuity`, `token_budget_tracker`, and `monitor_system` (reference shape). Demo and `examples/autonomous_ops/` copies added; existing monitors (canary_sampler, infrastructure_watchdog, lead_quality_audit, tiktok_sla_monitor, token_cost_tracker) updated.
+- New docs: `docs/AUTONOMOUS_OPS_MONITORS.md` (monitor index and schedules), `docs/STANDARDIZED_HEALTH_ENVELOPE.md`. OpenClaw implementation notes: `openclaw/MEMORY_PRUNE_IMPLEMENTATION.md`, `openclaw/META_MONITOR_IMPLEMENTATION.md`, `openclaw/SESSION_CONTINUITY_IMPLEMENTATION.md`, `openclaw/TOKEN_BUDGET_TRACKER_IMPLEMENTATION.md`, plus update docs for existing monitors.
+- Updated `docs/DOCS_INDEX.md` (links to autonomous ops monitors and standardized health envelope), `docs/EXAMPLE_SUPPORT_MATRIX.md` and `examples/autonomous_ops/README.md` (new programs table), `tooling/artifact_profiles.json` (new example paths). Config externalization and related OpenClaw notes in `openclaw/CONFIG_EXTERNALIZATION.md`, `openclaw/CANARY_SAMPLER_UPDATE.md`, etc.
+
 ### Extension-Level Memory Adapter and Contract (v1)
 - Added an extension-level `memory` adapter backed by SQLite with explicit record
   identity `(namespace, record_kind, record_id)` and three core verbs:

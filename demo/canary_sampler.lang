@@ -1,53 +1,51 @@
 S http cron
 Cr L_tick "*/5 * * * *"
 
-# Canary targets; augment with your critical endpoints
-X targets [
+# Optional external config: can override targets and cooldown
+R memory F "config" "canary_sampler" ->cfg
+X default_targets [
   {"name":"CRM API","url":"http://localhost:3000/api/health","threshold_ms":2000},
   {"name":"Leads API","url":"http://localhost:3000/api/leads","threshold_ms":1500}
 ]
+X targets (ite cfg (or (cfg.targets) default_targets) default_targets)
+X cooldown_seconds (ite cfg (or (cfg.cooldown_seconds) 1800) 1800)
 
-# Cooldown: per-target slow‑response suppression (only alert after 3 consecutive slow hits)
 X now (core.now)
 X consecutive_key (lambda t (concat "canary:" t.name ":consecutive"))
 X alert_sent 0
 
-# Iterate over targets; record status and response time
 X results (map targets (lambda t ({
   "name": t.name,
   "url": t.url,
   "threshold_ms": t.threshold_ms,
   "status": 0,
-  "ms": 0,
   "slow": false,
   "consecutive": 0
 }))))
 
-# We'll use a loop‑unrolled approach in pure AINL: For simplicity, we check each target sequentially
 # Target 0
 X t0 (targets 0)
 R http GET t0.url ->resp0
 X status0 resp0.status
-# No precise timing in current adapters; assume status 200 is healthy. For true timing, use extras.http_status_time if available.
-If (core.ne status0 200) ->L_t0_slow ->L_t0_skip
-
-L_t0_skip:
+If (core.ne status0 200) ->L_t0_slow ->L_t0_ok
+J L_t0_ok
+L_t0_slow:
+X _ (set results 0 "slow" true)
+L_t0_ok:
 X _ (set results 0 "status" status0)
-X _ (set results 0 "slow" (core.ne status0 200))
 
-# Target 1 (same pattern)
+# Target 1 (pattern)
 X t1 (targets 1)
 R http GET t1.url ->resp1
 X status1 resp1.status
-If (core.ne status1 200) ->L_t1_slow ->L_t1_skip
+If (core.ne status1 200) ->L_t1_slow ->L_t1_ok
 J L_t1_ok
 L_t1_slow:
+X _ (set results 1 "slow" true)
 L_t1_ok:
 X _ (set results 1 "status" status1)
-X _ (set results 1 "slow" (core.ne status1 200))
 
-# Evaluate slow consecutive hits: fetch consecutive count from cache and update
-# For each result where slow=true, increment consecutive count; otherwise reset to 0
+# Consecutive counters and memory persistence
 X r0 (results 0)
 If r0.slow ->L_inc0 ->L_reset0
 L_inc0:
@@ -55,6 +53,8 @@ X prev0 (cache.get "canary" (consecutive_key r0.name))
 X cnt0 (core.add (or prev0 0) 1)
 X _ (cache.set "canary" (consecutive_key r0.name) cnt0)
 X _ (set results 0 "consecutive" cnt0)
+X evt0_id (core.join ["slow-", r0.name, "-", now])
+R memory.put "ops" "canary.slow" evt0_id {"target":r0.name,"ts":now} 604800 ->_
 J L_next0
 L_reset0:
 X _ (cache.set "canary" (consecutive_key r0.name) 0)
@@ -68,34 +68,61 @@ X prev1 (cache.get "canary" (consecutive_key r1.name))
 X cnt1 (core.add (or prev1 0) 1)
 X _ (cache.set "canary" (consecutive_key r1.name) cnt1)
 X _ (set results 1 "consecutive" cnt1)
+X evt1_id (core.join ["slow-", r1.name, "-", now])
+R memory.put "ops" "canary.slow" evt1_id {"target":r1.name,"ts":now} 604800 ->_
 J L_next1
 L_reset1:
 X _ (cache.set "canary" (consecutive_key r1.name) 0)
 X _ (set results 1 "consecutive" 0)
 L_next1:
 
-# Alert if any slow count >=3
+# Alert if any consecutive slow >=3
 X any_breach (core.or (core.ge (results 0 "consecutive") 3) (core.ge (results 1 "consecutive") 3))
-If any_breach ->L_alert ->L_done
-J L_done
+If any_breach ->L_alert ->L_pre_done
+J L_pre_done
 
 L_alert:
   X _ (set alert_sent 1)
-  R queue Put "notify" ({
+  # Build list of slow targets for granularity
+  X slow_names (filter results (lambda r r.slow) (map (lambda r r.name)))
+  X alert_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
     "module":"canary_sampler",
-    "any_breach":true,
-    "targets":results,
-    "ts":now
+    "status":"alert",
+    "ts":now,
+    "metrics": {
+      "any_breach": any_breach,
+      "targets": results,
+      "slow_targets": slow_names
+    },
+    "history_24h": {},
+    "meta": {}
   })
+  R queue Put "notify" alert_payload
+  X _ (cache.set "monitor_heartbeat" "canary_sampler" now)
+  Ret null
 
+L_pre_done:
 L_done:
-  # Send summary if no alert was sent (to avoid duplicate when breach already notified)
-  If (core.eq alert_sent 1) ->L_exit
-  R queue Put "notify" ({
+  # Compute slow event count 24h
+  X day_ago (core.sub now 0 1)
+  R memory.list "ops" "canary.slow" "" day_ago ->hist
+  X slow_24h (len hist.items)
+
+  X status (core.ite any_breach "alert" "ok")
+  X summary_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
     "module":"canary_sampler",
-    "any_breach":any_breach,
-    "targets":results,
-    "ts":now
+    "status": status,
+    "ts":now,
+    "metrics": {
+      "any_breach": any_breach,
+      "targets": results,
+      "slow_24h": slow_24h
+    },
+    "history_24h": {"slow_count": slow_24h},
+    "meta": {}
   })
-L_exit:
+  R queue Put "notify" summary_payload
+  X _ (cache.set "monitor_heartbeat" "canary_sampler" now)
   Ret null

@@ -1,0 +1,122 @@
+# Proactive Heartbeat & Monitoring System
+# Runs every 15 minutes; checks multiple sources; notifies if thresholds exceeded.
+S core cron "*/15 * * * *"
+
+# Config thresholds
+D Config email_threshold:N calendar_threshold:N social_threshold:N leads_stall_hours:N service_down_penalty:N
+
+# State (persisted in cache)
+D State last_email_check:T last_calendar_check:T last_social_check:T last_leads_check:T last_service_check:T last_notified:T
+D State last_email_count:N last_calendar_count:N last_social_count:N last_leads_count:N last_failed_services:S
+
+# Label 0: Orchestrator — run all checks in order, then decide.
+L0: R core now ->ts J L1
+
+# Email check
+L1: R cache get "state" "last_email_check" ->last_check J L2
+L2: R email G ->emails J L3
+L3: Filter emails where ts > last_check ->new_emails
+L4: X email_count len new_emails
+L5: R cache set "state" "last_email_check" ts ->_ J L6
+L6: R cache set "state" "last_email_count" email_count ->_ J L7
+L7: If (core.gt email_count Config.email_threshold) ->L8 ->L9
+L8: Set needs_notify 1 J L10
+L9: Set needs_notify 0 J L10
+
+# Calendar check
+L10: R cache get "state" "last_calendar_check" ->last_cal J L11
+L11: R calendar G ->events J L12
+L12: Filter events where start > ts ->upcoming
+L13: X cal_count len upcoming
+L14: R cache set "state" "last_calendar_check" ts ->_ J L15
+L15: R cache set "state" "last_calendar_count" cal_count ->_ J L16
+L16: If (core.gt cal_count Config.calendar_threshold) ->L17 ->L18
+L17: Set needs_notify 1 J L19
+L18: Set needs_notify 0 J L19
+
+# Social check
+L19: R cache get "state" "last_social_check" ->last_soc J L20
+L20: R social G ->mentions J L21
+L21: X social_count len mentions
+L22: R cache set "state" "last_social_check" ts ->_ J L23
+L23: R cache set "state" "last_social_count" social_count ->_ J L24
+L24: If (core.gt social_count Config.social_threshold) ->L25 ->L26
+L25: Set needs_notify 1 J L27
+L26: Set needs_notify 0 J L27
+
+# Leads check
+L27: R cache get "state" "last_leads_check" ->last_leads J L28
+L28: R db F ->leads J L29
+L29: Filter leads where (core.sub ts last_leads) > (core.mul 3600 Config.leads_stall_hours) ->stalled
+L30: X leads_count len leads
+L31: X stalled_count len stalled
+L32: R cache set "state" "last_leads_check" ts ->_ J L33
+L33: R cache set "state" "last_leads_count" leads_count ->_ J L34
+L34: If (core.gt stalled_count 0) ->L35 ->L36
+L35: Set needs_notify 1 J L37
+L36: Set needs_notify 0 J L37
+
+# Infrastructure services check
+L37: R cache get "state" "last_service_check" ->last_svc J L38
+L38: X svc_caddy (svc caddy) J L39
+L39: X svc_cloud (svc cloudflared) J L40
+L40: X svc_maddy (svc maddy) J L41
+L41: Set failed_services "" J L42
+L42: If (core.ne svc_caddy "up") ->L43 ->L44
+L43: Set failed_services (core.add failed_services "caddy,") J L44
+L44: If (core.ne svc_cloud "up") ->L45 ->L46
+L45: Set failed_services (core.add failed_services "cloudflared,") J L46
+L46: If (core.ne svc_maddy "up") ->L47 ->L48
+L47: Set failed_services (core.add failed_services "maddy,") J L48
+L48: X failed_count (core.len failed_services)
+L49: R cache set "state" "last_service_check" ts ->_ J L50
+L50: R cache set "state" "last_failed_services" failed_services ->_ J L51
+L51: If (core.gt failed_count 0) ->L52 ->L53
+L52: Set needs_notify 1 J L60
+L53: Set needs_notify 0 J L60
+
+# TikTok report freshness check
+L60: R cache get "state" "last_tiktok_check" ->last_tik J L61
+L61: X cutoff (core.sub ts 86400)
+L63: R tiktok F ->all_reports J L64
+L64: Filter all_reports where (core.gte createdAt_ts cutoff) ->fresh
+L65: X fresh_count (core.len fresh)
+L66: R cache set "state" "last_tiktok_check" ts ->_ J L67
+L67: If (core.eq fresh_count 0) ->L68 ->L69
+L68: Set needs_notify 1 J L70
+L69: Set needs_notify 0 J L70
+L70: J L71
+L71: X cutoff (core.sub ts 86400) J L72
+L72: R tiktok videos ->videos J L73
+L73: Filter videos where (core.gte processedAt_ts cutoff) ->recent_vids J L74
+L74: X recent_count (core.len recent_vids) J L75
+L75: If (core.gt recent_count 0) ->L76 ->L77
+L76: J L78
+L77: Set needs_notify 1 J L78
+L78: R extras file_exists "/Users/clawdbot/.local/bin/transcribe" ->has_transcribe J L79
+L79: R extras docker_image_exists "whisper:local" ->has_whisper J L80
+L80: X has_parts (core.add has_transcribe has_whisper) J L81
+L81: If (core.eq has_parts 2) ->L82 ->L83
+L82: J L84
+L83: Set needs_notify 1 J L84
+L84: R extras http_status "http://localhost:3000/api/reports/tiktok" ->code J L85
+L85: If (core.eq code 200) ->L86 ->L87
+L86: J L88
+L87: Set needs_notify 1 J L88
+L88: R extras newest_backup_mtime "/Users/clawdbot/.openclaw/workspace/crm/backups" ->newest_ts J L89
+L89: X backup_cutoff (core.sub ts 86400) J L90
+L90: If (core.gt backup_cutoff newest_ts) ->L91 ->L92
+L91: Set needs_notify 1 J L93
+L92: J L93
+L93: J L54
+
+# Decision: send notification if any check needs it
+L54: If (core.gt needs_notify 0) ->L55 ->L62
+L55: X now_ts (core.now)
+    R cache get "state" "last_notified" ->last_notif
+    If (core.gt (core.sub now_ts last_notif) 900) ->L56 ->L62
+L56: X health (wasm.CALL health total_score email_count cal_count social_count leads_count) ->health J L57
+L57: R queue Put "notify" {"email_count":email_count,"cal_count":cal_count,"social_count":social_count,"leads_count":leads_count,"health_score":health,"failed_services":failed_services,"ts":now_ts} ->_ J L58
+L58: R cache set "state" "last_notified" now_ts ->_ J L59
+L59: J L62
+L62:

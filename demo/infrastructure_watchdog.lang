@@ -1,16 +1,20 @@
 S svc cron
 Cr L_tick "*/5 * * * *"
 
-# Cooldown: only alert once per 30 minutes for each service
+# Optional external config: read config from memory; fall back to defaults
+R memory F "config" "infrastructure_watchdog" ->cfg
+X cooldown_seconds (ite cfg (or (cfg.cooldown_seconds) 1800) 1800)
+X ttl_seconds (ite cfg (or (cfg.ttl_seconds) 604800) 604800)
+
 X now (core.now)
-X last_caddy (cache.get "watchdog" "last_caddy_alert")
-X last_cloudflared (cache.get "watchdog" "last_cloudflared_alert")
-X last_maddy (cache.get "watchdog" "last_maddy_alert")
-X last_crm (cache.get "watchdog" "last_crm_alert")
-X caddy_ts (cache.get "watchdog" "last_caddy_ts")
-X cloudflared_ts (cache.get "watchdog" "last_cloudflared_ts")
-X maddy_ts (cache.get "watchdog" "last_maddy_ts")
-X crm_ts (cache.get "watchdog" "last_crm_ts")
+X last_caddy (cache.get "watchdog" "last_caddy_alert"))
+X last_cloudflared (cache.get "watchdog" "last_cloudflared_alert"))
+X last_maddy (cache.get "watchdog" "last_maddy_alert"))
+X last_crm (cache.get "watchdog" "last_crm_alert"))
+X caddy_ts (cache.get "watchdog" "last_caddy_ts"))
+X cloudflared_ts (cache.get "watchdog" "last_cloudflared_ts"))
+X maddy_ts (cache.get "watchdog" "last_maddy_ts"))
+X crm_ts (cache.get "watchdog" "last_crm_ts"))
 
 # Check services
 R svc caddy ->caddy_status
@@ -18,20 +22,17 @@ R svc cloudflared ->cloudflared_status
 R svc maddy ->maddy_status
 R svc crm ->crm_status
 
-# Determine if any are down and whether we should alert based on cooldown
-X any_down ((core.eq caddy_status "down") | (core.eq cloudflared_status "down") | (core.eq maddy_status "down") | (core.eq crm_status "down"))
 X caddy_down (core.eq caddy_status "down")
 X cloudflared_down (core.eq cloudflared_status "down")
 X maddy_down (core.eq maddy_status "down")
 X crm_down (core.eq crm_status "down")
 
-# Cooldown logic: alert if down and either no previous alert or >1800s since last
-X caddy_alert (core.and caddy_down (core.or (core.eq last_caddy 0) (core.gt (- now caddy_ts) 1800)))
-X cloudflared_alert (core.and cloudflared_down (core.or (core.eq last_cloudflared 0) (core.gt (- now cloudflared_ts) 1800)))
-X maddy_alert (core.and maddy_down (core.or (core.eq last_maddy 0) (core.gt (- now maddy_ts) 1800)))
-X crm_alert (core.and crm_down (core.or (core.eq last_crm 0) (core.gt (- now crm_ts) 1800)))
+# Cooldown decision: alert if down and either no previous alert or >cooldown_seconds since last
+X caddy_alert (core.and caddy_down (core.or (core.eq last_caddy 0) (core.gt (- now caddy_ts) cooldown_seconds)))
+X cloudflared_alert (core.and cloudflared_down (core.or (core.eq last_cloudflared 0) (core.gt (- now cloudflared_ts) cooldown_seconds)))
+X maddy_alert (core.and maddy_down (core.or (core.eq last_maddy 0) (core.gt (- now maddy_ts) cooldown_seconds)))
+X crm_alert (core.and crm_down (core.or (core.eq last_crm 0) (core.gt (- now crm_ts) cooldown_seconds)))
 
-# Send alert if needed; attempt restart then notify
 If caddy_alert ->L_caddy_alert ->L_after_alerts
 If cloudflared_alert ->L_cloudflared_alert ->L_after_alerts
 If maddy_alert ->L_maddy_alert ->L_after_alerts
@@ -40,35 +41,102 @@ J L_no_alert
 
 L_caddy_alert:
   X restart_ok (svc.restart "caddy")
-  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"caddy","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
+  X alert_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
+    "module":"infrastructure_watchdog",
+    "status":"alert",
+    "ts":now,
+    "metrics": {"service":"caddy","status":"down","restart_attempted":true,"restart_ok":restart_ok},
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" alert_payload
   X _ (cache.set "watchdog" "last_caddy_alert" 1)
   X _ (cache.set "watchdog" "last_caddy_ts" now)
+  X event_id (core.join ["evt-", "caddy", "-", now])
+  R memory.put "ops" "infrastructure.restart" event_id {"service":"caddy","restart_ok":restart_ok,"ts":now} ttl_seconds ->_
   J L_continue
 
 L_cloudflared_alert:
   X restart_ok (svc.restart "cloudflared")
-  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"cloudflared","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
+  X alert_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
+    "module":"infrastructure_watchdog",
+    "status":"alert",
+    "ts":now,
+    "metrics": {"service":"cloudflared","status":"down","restart_attempted":true,"restart_ok":restart_ok},
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" alert_payload
   X _ (cache.set "watchdog" "last_cloudflared_alert" 1)
   X _ (cache.set "watchdog" "last_cloudflared_ts" now)
+  X event_id (core.join ["evt-", "cloudflared", "-", now])
+  R memory.put "ops" "infrastructure.restart" event_id {"service":"cloudflared","restart_ok":restart_ok,"ts":now} ttl_seconds ->_
   J L_continue
 
 L_maddy_alert:
   X restart_ok (svc.restart "maddy")
-  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"maddy","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
+  X alert_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
+    "module":"infrastructure_watchdog",
+    "status":"alert",
+    "ts":now,
+    "metrics": {"service":"maddy","status":"down","restart_attempted":true,"restart_ok":restart_ok},
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" alert_payload
   X _ (cache.set "watchdog" "last_maddy_alert" 1)
   X _ (cache.set "watchdog" "last_maddy_ts" now)
+  X event_id (core.join ["evt-", "maddy", "-", now])
+  R memory.put "ops" "infrastructure.restart" event_id {"service":"maddy","restart_ok":restart_ok,"ts":now} ttl_seconds ->_
   J L_continue
 
 L_crm_alert:
   X restart_ok (svc.restart "crm")
-  R queue Put "notify" ({"module":"infrastructure_watchdog","service":"crm","status":"down","restart_attempted":true,"restart_ok":restart_ok,"ts":now})
+  X alert_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
+    "module":"infrastructure_watchdog",
+    "status":"alert",
+    "ts":now,
+    "metrics": {"service":"crm","status":"down","restart_attempted":true,"restart_ok":restart_ok},
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" alert_payload
   X _ (cache.set "watchdog" "last_crm_alert" 1)
   X _ (cache.set "watchdog" "last_crm_ts" now)
+  X event_id (core.join ["evt-", "crm", "-", now])
+  R memory.put "ops" "infrastructure.restart" event_id {"service":"crm","restart_ok":restart_ok,"ts":now} ttl_seconds ->_
   J L_continue
 
 L_after_alerts:
 L_continue:
 L_no_alert:
-  # Send summary of current status
-  R queue Put "notify" ({"module":"infrastructure_watchdog","caddy":caddy_status,"cloudflared":cloudflared_status,"maddy":maddy_status,"crm":crm_status,"any_down":any_down,"ts":now})
+  # Compute overall any_down now (re-evaluate from current statuses)
+  X any_down (core.or caddy_down (core.or cloudflared_down (core.or maddy_down crm_down)))
+  # Restart count last 24h (server-side filtering)
+  X day_ago (core.sub now 0 1)
+  R memory.list "ops" "infrastructure.restart" "" day_ago ->hist
+  X restarts_24h (len hist.items)
+
+  X summary_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
+    "module":"infrastructure_watchdog",
+    "status": (core.ite any_down "alert" "ok"),
+    "ts":now,
+    "metrics": {
+      "services": {
+        "caddy": caddy_status,
+        "cloudflared": cloudflared_status,
+        "maddy": maddy_status,
+        "crm": crm_status
+      }
+    },
+    "history_24h": {"restart_count": restarts_24h},
+    "meta": {}
+  })
+  R queue Put "notify" summary_payload
+  X _ (cache.set "monitor_heartbeat" "infrastructure_watchdog" now)
   Ret null

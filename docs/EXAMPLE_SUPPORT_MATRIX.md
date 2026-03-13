@@ -94,6 +94,11 @@ fully-automated agent fabric.
 | `examples/autonomous_ops/lead_quality_audit.lang` | `non-strict-only` | Extension/OpenClaw: daily lead data quality audit |
 | `examples/autonomous_ops/token_cost_tracker.lang` | `non-strict-only` | Extension/OpenClaw: OpenRouter usage + spend alert |
 | `examples/autonomous_ops/canary_sampler.lang` | `non-strict-only` | Extension/OpenClaw: endpoint health + consecutive failure detection |
+| `examples/autonomous_ops/token_budget_tracker.lang` | `non-strict-only` | Extension/OpenClaw: 7‑day token cost vs weekly budget |
+| `examples/autonomous_ops/session_continuity.lang` | `non-strict-only` | Extension/OpenClaw: extract preferences from sessions; append daily log |
+| `examples/autonomous_ops/memory_prune.lang` | `non-strict-only` | Extension/OpenClaw: physical deletion of expired memory records (daily) |
+| `examples/autonomous_ops/meta_monitor.lang` | `non-strict-only` | Extension/OpenClaw: watchdog for monitors; alerts if any monitor is stale |
+| `examples/autonomous_ops/monitor_system.lang` | `non-strict-only` | Extension/OpenClaw: multi‑monitor orchestration / reference shape |
 
 ### Golden Compatibility Family
 

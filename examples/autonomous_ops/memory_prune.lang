@@ -1,0 +1,30 @@
+S cron
+Cr L_tick "0 3 * * *"  # daily at 3 AM
+
+# Run memory.prune to physically delete expired records
+X before_stats (memory.stats)  # if available, otherwise skip
+R memory.prune ->prune_result
+
+X after_stats (memory.stats)  # optional
+
+X now_iso (core.iso)
+X payload ({
+  "module": "memory_prune",
+  "ts": now_iso,
+  "pruned_records": prune_result.pruned_count,
+  "before": before_stats,
+  "after": after_stats
+})
+
+# Always send summary; status is ok regardless of count
+R queue Put "notify" ({
+  "envelope": {"version":"1.0","generated_at":now_iso},
+  "module":"memory_prune",
+  "status":"ok",
+  "ts":now_iso,
+  "metrics": payload,
+  "history_24h": {},
+  "meta": {}
+})
+X _ (cache.set "monitor_heartbeat" "memory_prune" now_iso)
+Ret null

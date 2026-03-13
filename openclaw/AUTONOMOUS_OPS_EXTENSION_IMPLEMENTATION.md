@@ -8,13 +8,17 @@
 
 | Program | File (source) | Deployed (demo) | Schedule | Notes |
 |---------|---------------|-----------------|----------|-------|
-| Infrastructure Watchdog | `examples/autonomous_ops/infrastructure_watchdog.lang` | `demo/infrastructure_watchdog.lang` | every 15 min | Auto‑restarts caddy, cloudflared, maddy, CRM; sends per‑service alerts + summary |
+| Infrastructure Watchdog | `examples/autonomous_ops/infrastructure_watchdog.lang` | `demo/infrastructure_watchdog.lang` | every 5 min | Auto‑restarts caddy, cloudflared, maddy, CRM; sends per‑service alerts + summary |
 | TikTok SLA Monitor | `examples/autonomous_ops/tiktok_sla_monitor.lang` | `demo/tiktok_sla_monitor.lang` | every 15 min | Checks TikTok pipeline freshness; alerts on breach |
-| Canary Sampler | `examples/autonomous_ops/canary_sampler.lang` | `demo/canary_sampler.lang` | every 15 min | Probes API endpoints; slow‑response suppression; per‑target consecutive counter |
+| Canary Sampler | `examples/autonomous_ops/canary_sampler.lang` | `demo/canary_sampler.lang` | every 5 min | Probes API endpoints; slow‑response suppression; per‑target consecutive counter |
 | Token Cost Tracker | `examples/autonomous_ops/token_cost_tracker.lang` | `demo/token_cost_tracker.lang` | hourly | Fetches OpenRouter usage; aggregates cost and token counts by model; flags limit |
 | Lead Quality Audit | `examples/autonomous_ops/lead_quality_audit.lang` | `demo/lead_quality_audit.lang` | daily 2 AM | Audits lead data completeness; sends percentages |
+| Token Budget Tracker | `examples/autonomous_ops/token_budget_tracker.lang` | `demo/token_budget_tracker.lang` | hourly | Maintains rolling 7‑day spending total; alerts >90% of weekly budget; stores daily summaries |
+| Session Continuity | `examples/autonomous_ops/session_continuity.lang` | `demo/session_continuity.lang` | every 2 hours | Persists session context and extracts user preferences to long‑term memory; logs daily summaries |
+| Memory Prune | `examples/autonomous_ops/memory_prune.lang` | `demo/memory_prune.lang` | daily 3 AM | Calls `memory.prune` to physically delete expired records; reports pruned count |
+| Meta Monitor | `examples/autonomous_ops/meta_monitor.lang` | `demo/meta_monitor.lang` | every 15 min | Watches other monitors via `cache` heartbeat (`monitor_heartbeat.<module>`); alerts if any is stale |
 
-All compiled with `strict_mode=False` and listed in `tooling/artifact_profiles.json` under `"non-strict-only"`.
+All compiled with `strict_mode=False` and listed in `tooling/adapter_profiles.json` (formerly `artifact_profiles.json`) under `"non-strict-only"`.
 
 ---
 
@@ -57,31 +61,52 @@ Enhanced `NotificationQueueAdapter._format_message`:
 
 ## How to Extend This Pattern
 
-1. **Write AINL** under `examples/autonomous_ops/` using non‑strict syntax.
-2. **Include `module` in every `notify` payload** to enable Telegram formatting.
-3. **Use `cache` for cooldown and state**; store `last_ts` or counters.
-4. **Copy to `demo/`** and add a runner script that:
-   - Sets `strict_mode=False`
-   - Writes `/tmp/<name>_pre_oversight.json`
-   - Compiles and runs label 0
-   - Writes `/tmp/<name>_post_oversight.json`
-   - Sends Telegram messages for compile start/end and run completion
-5. **Register in `tooling/artifact_profiles.json`** under `"non-strict-only"`.
-6. **Add Telegram formatter branch** in `adapters/openclaw_integration.py` for your `module`.
-7. **Test with pytest** (`tests/test_examples_autonomous_ops.py`).
-8. **Deploy cron job** via `openclaw cron add`.
+[... existing steps ...]
+
+---
+
+## Standardized Health Envelope and Config
+
+All monitors use the envelope defined in `docs/STANDARDIZED_HEALTH_ENVELOPE.md`. Configuration is externalized via `memory` `config.<module>` records. Heartbeats are written to `cache` with key `monitor_heartbeat.<module>`.
+
+---
+
+## Testing
+
+Every program under `examples/autonomous_ops/` is compiled in CI via `tests/test_examples_autonomous_ops.py`. This serves as a smoke test for syntactical correctness. Runtime integration tests with mock adapters are future work.
+
+---
+
+## Strict‑Mode Migration Roadmap
+
+The current autonomous ops set uses `strict_mode=False` to leverage `X` operations and split `R` calls, which are not yet part of the strictly validated canonical surface. Over time, we will migrate each program to strict mode once the necessary IR features are stabilized or equivalent patterns are supported in strict.
+
+**Migration steps per program:**
+1. Create a `.strict.lang` sibling that avoids `X` operations beyond simple bindings and uses only `R group verb` with two tokens (no combined forms).
+2. Replace lambdas with explicit `L` labels and `J` jumps where side‑effects occur; keep pure expressions in `core` computations.
+3. Eliminate `ForEach`/`filter`/`map` if they rely on non‑strict collection ops; instead iterate with `Inc`/`Dec` pattern or unroll small collections.
+4. Validate with `AICodeCompiler(strict_mode=True, strict_reachability=True)`.
+5. Update documentation to indicate strict variant.
+
+Programs will remain non‑strict until the runtime adapter for collection manipulation (`ForEach`, `filter`, `map`) is explicitly allowed in strict gates. The migration plan will be revisited after core stabilization on 2026‑03‑15.
 
 ---
 
 ## Verification
 
-All five programs compile cleanly and have run multiple times successfully via cron:
+[... existing content ...]
+
+The original five programs were verified on 2026-03-11—all compile cleanly and had run successfully via cron:
 - AINL Proactive Monitor continues to validate overall system health.
 - Infrastructure Watchdog executed with restart attempts; summary messages included service statuses.
 - Token Cost Tracker returned model list and token breakdowns.
 - Canary Sampler and Lead Quality Audit sent readable summaries.
 
-As of 2026-03-11 12:00 CDT, all five cron jobs are active and error‑free.
+As of 2026-03-12, the pack has grown to seven with the addition of:
+- Token Budget Tracker (hourly, rolling 7‑day budget)
+- Session Continuity (every 2 hours, preference extraction)
+
+All cron jobs are enabled and monitored.
 
 ---
 

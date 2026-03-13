@@ -1,0 +1,110 @@
+S http cron
+Cr L_tick "0 * * * *"  # hourly
+
+# Optional external config
+R memory F "config" "token_budget_tracker" ->cfg
+X default_budget (ite cfg (or (cfg.default_budget) 10.0) 10.0)
+X alert_threshold (ite cfg (or (cfg.alert_threshold) 0.9) 0.9)
+
+# Configuration
+X api_key_env "OPENROUTER_API_KEY"
+X usage_url "https://openrouter.ai/api/v1/usage"
+
+# Get current budget config from memory (long_term.budget_config) if available
+R memory.get "long_term" "budget_config" "weekly" ->budget_cfg
+X budget (ite budget_cfg.found (budget_cfg.payload.budget_usd) default_budget)
+
+# Get OpenRouter usage
+X api_key (ops.Env api_key_env)
+X headers ({"Authorization":("Bearer "+api_key)})
+R http GET usage_url headers ->resp
+X status resp.status
+X body resp.body
+If (core.ne status 200) ->L_http_fail
+
+X data (parse body)
+X now_iso (core.iso)
+X week_ago (core.sub now_iso 0 7)  # ISO prefix for last 7 days
+
+# Get stored token cost state for last 7 days from memory
+R memory.list "workflow" "workflow.token_cost_state" "" week_ago ->mems
+X stored_items mems.items
+X stored_cost (core.sum (map stored_items (lambda i (i.record_id.payload.cost_usd or 0))))
+X stored_tokens (core.sum (map stored_items (lambda i (i.record_id.payload.total_tokens or 0))))
+
+# Compute today’s usage from API
+X today_date (sub now_iso 0 10)
+X todays_usage (filter data.usage (lambda u (core.eq (sub u.timestamp 0 10) today_date)))
+X day_cost (core.sum (map todays_usage (lambda u (u.cost or 0))))
+X total_tokens (core.sum (map todays_usage (lambda u (u.tokens or 0))))
+
+# Total this week = stored (7d) + today
+X week_cost (core.add stored_cost day_cost)
+X week_tokens (core.add stored_tokens total_tokens)
+X pct_used (core.div week_cost budget)
+
+# Persist today’s summary to memory (workflow.token_cost_state) with 7-day TTL
+X record_id (core.join ["tok-", today_date, "-", now_iso])
+X payload ({"date":today_date, "cost_usd":day_cost, "total_tokens":total_tokens, "ts":now_iso})
+R memory.put "workflow" "workflow.token_cost_state" record_id payload 604800 ->_
+
+# Decide if we should alert (> alert_threshold)
+X over_threshold (core.gt pct_used alert_threshold)
+X status (core.ite over_threshold "alert" "ok")
+
+X metrics ({
+  "date": today_date,
+  "week_cost_usd": week_cost,
+  "week_tokens": week_tokens,
+  "budget_usd": budget,
+  "pct_used": pct_used,
+  "day_cost_usd": day_cost,
+  "day_tokens": total_tokens
+})
+
+# Send appropriate notification
+If over_threshold ->L_alert ->L_notify
+
+L_notify:
+  X notify_payload ({
+    "envelope": {"version":"1.0","generated_at":now_iso},
+    "module":"token_budget_tracker",
+    "status": status,
+    "ts": now_iso,
+    "metrics": metrics,
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" notify_payload
+  J L_done
+
+L_alert:
+  X alert_payload ({
+    "envelope": {"version":"1.0","generated_at":now_iso},
+    "module":"token_budget_tracker",
+    "status": "alert",
+    "ts": now_iso,
+    "metrics": metrics,
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" alert_payload
+  J L_done
+
+L_http_fail:
+  X fail_payload ({
+    "envelope": {"version":"1.0","generated_at":now_iso},
+    "module":"token_budget_tracker",
+    "status": "alert",
+    "ts": now_iso,
+    "metrics": {"http_status": status, "error": "failed to fetch usage"},
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" fail_payload
+  X _ (cache.set "monitor_heartbeat" "token_budget_tracker" now_iso)
+  Ret null
+
+L_done:
+  X _ (cache.set "monitor_heartbeat" "token_budget_tracker" now_iso)
+  Ret null

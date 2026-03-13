@@ -1,0 +1,56 @@
+S cron
+Cr L_tick "*/15 * * * *"  # every 15 minutes
+
+# Optional config: override monitored modules and thresholds
+R memory F "config" "meta_monitor" ->cfg
+X default_modules [
+  {"name":"infrastructure_watchdog","interval_seconds":300},
+  {"name":"tiktok_sla_monitor","interval_seconds":900},
+  {"name":"canary_sampler","interval_seconds":300},
+  {"name":"token_cost_tracker","interval_seconds":3600},
+  {"name":"lead_quality_audit","interval_seconds":86400},
+  {"name":"token_budget_tracker","interval_seconds":3600},
+  {"name":"session_continuity","interval_seconds":7200},
+  {"name":"memory_prune","interval_seconds":86400},
+  {"name":"meta_monitor","interval_seconds":900}
+]
+X modules (ite cfg (or (cfg.modules) default_modules) default_modules)
+
+X now (core.now)
+X stale_list []
+X ok_count 0
+
+ForEach modules (lambda m (
+  X last_ts (cache.get "monitor_heartbeat" m.name)
+  X age (ite last_ts (- now last_ts) -1)
+  X stale (core.or (core.eq age -1) (core.gt age (* m.interval_seconds 2)))
+  If stale ->L_stale_append ->L_ok_inc
+  J L_next_mod
+  L_stale_append:
+    X stale_list (push stale_list {"name":m.name,"age":age,"interval":m.interval_seconds})
+    J L_next_mod
+  L_ok_inc:
+    X ok_count (core.add ok_count 1)
+  L_next_mod:
+))
+
+X stale_count (len stale_list)
+X any_stale (core.gt stale_count 0)
+X meta_status (core.ite any_stale "alert" "ok")
+
+X summary_payload ({
+  "envelope": {"version":"1.0","generated_at":now},
+  "module":"meta_monitor",
+  "status": meta_status,
+  "ts": now,
+  "metrics": {
+    "monitors_ok": ok_count,
+    "monitors_stale": stale_count,
+    "stale_details": stale_list
+  },
+  "history_24h": {},
+  "meta": {}
+})
+R queue Put "notify" summary_payload
+X _ (cache.set "monitor_heartbeat" "meta_monitor" now)
+Ret null

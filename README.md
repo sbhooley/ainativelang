@@ -39,6 +39,34 @@ Today, the project is strongest as:
 - a runtime for graph-executed workflows,
 - and a training/evaluation surface for structured code generation systems.
 
+## Token Efficiency
+
+AINL greatly reduces token usage compared to generating Python/TypeScript directly:
+
+- Complex monitors (email, calendar, db, svc, cache, queue) compile to **50–70k tokens** (program + runtime). The same logic in Python/TypeScript would be **3–5× larger** in the prompt and would lack strict validation, graph introspection, and multi-target emission.
+- New monitors are often **~1k tokens** once the adapter layer exists. The compile‑once/run‑many model eliminates repeated code‑gen per run.
+- After stabilization, AINL lowers per‑task token burn by **2–5×** for non‑trivial automation and still provides savings for simpler tasks due to DSL density.
+
+Bottom line: AINL saves tokens while increasing capability and reliability.
+
+## Standardized Health Envelope
+
+All production monitors use a common message envelope for notifications:
+
+```json
+{
+  "envelope": {"version":"1.0","generated_at":"<ISO>"},
+  "module": "<monitor_name>",
+  "status": "ok" | "alert",
+  "ts": "<ISO>",
+  "metrics": { ... },
+  "history_24h": { ... },
+  "meta": {}
+}
+```
+
+This ensures consistent parsing for Telegram, dashboards, and downstream processing. See [`docs/STANDARDIZED_HEALTH_ENVELOPE.md`](docs/STANDARDIZED_HEALTH_ENVELOPE.md).
+
 ## Best Supported Today
 
 - Canonical compile path in `compiler_v2.py`

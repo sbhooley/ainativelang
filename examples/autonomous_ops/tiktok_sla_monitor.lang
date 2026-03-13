@@ -1,38 +1,93 @@
 S tiktok cron
 Cr L_tick "*/15 * * * *"
 
-# Checkpoints: freshness of reports and videos in last 24h, backup mtime <24h
+# Optional external config
+R memory F "config" "tiktok_sla" ->cfg
+X sla_hours (ite cfg (or (cfg.sla_hours) 24) 24)
+X cooldown_seconds (ite cfg (or (cfg.cooldown_seconds) 3600) 3600)
+X backup_dir (ite cfg (or (cfg.backup_dir) "/Users/clawdbot/.openclaw/workspace/crm/backups") "/Users/clawdbot/.openclaw/workspace/crm/backups")
+
+# Checkpoints
 X now (core.now)
 X day_secs 86400
+X sla_seconds (* sla_hours 3600)
 
-# TikTok reports: any created in last 24h?
 R tiktok recent 24 ->recent_count
 R tiktok videos ->videos
 X latest_video_ts (core.max (map videos (lambda v (v.processedAt))))
-X video_fresh (core.and (> latest_video_ts 0) (core.gt (- now latest_video_ts) day_secs))
+X video_fresh (core.and (> latest_video_ts 0) (core.gt (- now latest_video_ts) sla_seconds))
 
-# Backup mtime check (crud DB backups dir)
-X backup_dir "/Users/clawdbot/.openclaw/workspace/crm/backups"
 R extras newest_backup_mtime backup_dir ->latest_backup_ts
 X backup_fresh (core.and (> latest_backup_ts 0) (core.gt (- now latest_backup_ts) day_secs))
 
-# Cooldown: store last failure flags in cache; only alert once per hour if still failing
-X last_fail_ts (cache.get "tiktok_sla" "last_fail_ts")
-X should_alert (core.or (core.eq last_fail_ts 0) (core.gt (- now last_fail_ts) 3600))
+X last_fail_ts (cache.get "tiktok_sla" "last_fail_ts"))
+X should_alert (core.or (core.eq last_fail_ts 0) (core.gt (- now last_fail_ts) cooldown_seconds)))
 
-# Detect SLA breach: either no recent reports or video not fresh or backup not fresh
 X breach (core.or (core.eq recent_count 0) (core.not video_fresh) (core.not backup_fresh))
 
 If (core.and breach should_alert) ->L_breach ->L_finish
 J L_ok
 
 L_breach:
-  R queue Put "notify" ({"module":"tiktok_sla","breach":true,"recent_count":recent_count,"video_fresh":video_fresh,"backup_fresh":backup_fresh,"ts":now})
-  X _ (cache.set "tiktok_sla" "last_fail_ts" now)
+  # Determine breach reason(s) for granular alert
+  X reasons []
+  If (core.eq recent_count 0) ->L_add_reports
+  J L_next1
+  L_add_reports:
+    X _ (set reasons (concat reasons ["reports"]))
+  L_next1:
+  If (core.not video_fresh) ->L_add_video
+  J L_next2
+  L_add_video:
+    X _ (set reasons (concat reasons ["video"]))
+  L_next2:
+  If (core.not backup_fresh) ->L_add_backup
+  J L_next3
+  L_add_backup:
+    X _ (set reasons (concat reasons ["backup"]))
+  L_next3:
+
+  X breach_id (core.join ["breach-", now])
+  R memory.put "ops" "tiktok_sla.breach" breach_id {"recent_count":recent_count,"video_fresh":video_fresh,"backup_fresh":backup_fresh,"reasons":reasons,"ts":now} 604800 ->_
+
+  X alert_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
+    "module":"tiktok_sla",
+    "status":"alert",
+    "ts":now,
+    "metrics": {
+      "recent_count": recent_count,
+      "video_fresh": video_fresh,
+      "backup_fresh": backup_fresh
+    },
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" alert_payload
+  X _ (cache.set "tiktok_sla" "last_fail_ts" now))
   J L_finish
 
 L_ok:
 L_finish:
-  # Send summary
-  R queue Put "notify" ({"module":"tiktok_sla","recent_count":recent_count,"video_fresh":video_fresh,"backup_fresh":backup_fresh,"breach":breach,"ts":now})
+  X day_ago (core.sub now 0 1)
+  R memory.list "ops" "tiktok_sla.breach" "" day_ago ->hist
+  X breaches_24h (len hist.items)
+
+  X status (core.ite breach "alert" "ok")
+  X summary_payload ({
+    "envelope": {"version":"1.0","generated_at":now},
+    "module":"tiktok_sla",
+    "status": status,
+    "ts":now,
+    "metrics": {
+      "recent_count": recent_count,
+      "video_fresh": video_fresh,
+      "backup_fresh": backup_fresh,
+      "breach": breach
+    },
+    "history_24h": {"breaches": breaches_24h},
+    "meta": {}
+  })
+  R queue Put "notify" summary_payload
+  X _ (cache.set "monitor_heartbeat" "tiktok_sla" now)
   Ret null

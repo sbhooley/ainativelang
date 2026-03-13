@@ -14,6 +14,8 @@ EXAMPLES = [
     "examples/autonomous_ops/lead_quality_audit.lang",
     "examples/autonomous_ops/token_cost_tracker.lang",
     "examples/autonomous_ops/canary_sampler.lang",
+    "examples/autonomous_ops/token_budget_tracker.lang",
+    "examples/autonomous_ops/session_continuity.lang",
 ]
 
 def main():

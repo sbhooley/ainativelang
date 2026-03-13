@@ -11,6 +11,11 @@ These examples demonstrate practical, self‑contained operational monitors buil
 | `lead_quality_audit.lang` | Daily audit of leads (`db.F`), computes quality metrics, sends summary to queue. | Daily 2 AM |
 | `token_cost_tracker.lang` | Polls OpenRouter usage endpoint; alerts when daily USD limit exceeded. | Hourly |
 | `canary_sampler.lang` | Pings critical HTTP endpoints; tracks consecutive failures; alerts after 3 in a row. | Every 5 min |
+| `token_budget_tracker.lang` | Rolling 7‑day token cost vs weekly budget; sends summary to queue. | Hourly |
+| `session_continuity.lang` | Extracts user preferences from recent sessions; appends to daily log and long‑term prefs. | Every 2 hours |
+| `memory_prune.lang` | Calls `memory.prune` to physically delete expired memory records; optional before/after stats. | Daily 3 AM |
+| `meta_monitor.lang` | Watchdog for all monitors; alerts if any monitor heartbeat is stale (configurable module list). | Every 15 min |
+| `monitor_system.lang` | Reference multi‑monitor orchestration shape (optional). | — |
 
 ## Usage
 
