@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainl.dev/tooling/capabilities.schema.json",
+  "title": "AINL Capability Registry",
+  "type": "object",
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "adapters": {
+      "type": "object",
+      "description": "Adapter-level capability metadata keyed by adapter id.",
+      "additionalProperties": {
+        "$ref": "#/$defs/adapter"
+      }
+    },
+    "adapter_verbs": {
+      "type": "array",
+      "description": "Adapter+verb level capability entries suitable for projection into Tool API v2.",
+      "items": {
+        "$ref": "#/$defs/adapter_verb"
+      }
+    },
+    "module_skills": {
+      "type": "array",
+      "description": "Module-level skills that can be projected into Tool API v2.",
+      "items": {
+        "$ref": "#/$defs/module_skill"
+      }
+    }
+  },
+  "$defs": {
+    "adapter": {
+      "type": "object",
+      "required": ["id", "support_tier", "lane"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "support_tier": {
+          "type": "string"
+        },
+        "lane": {
+          "type": "string",
+          "description": "Canonical vs compatibility vs extension lane"
+        },
+        "domain": {
+          "type": "string",
+          "description": "High-level domain grouping (e.g. math, http, memory)."
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "adapter_verb": {
+      "type": "object",
+      "required": [
+        "id",
+        "adapter",
+        "verb",
+        "name",
+        "description",
+        "inputs",
+        "outputs",
+        "effects",
+        "lane",
+        "support_tier",
+        "adapter_dependencies",
+        "safety_tags"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier, e.g. adapter.core.ADD"
+        },
+        "adapter": {
+          "type": "string"
+        },
+        "verb": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "effects": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "domain": {
+          "type": "string",
+          "description": "High-level domain grouping (e.g. http, memory, filesystem)."
+        },
+        "usage_model": {
+          "type": "string",
+          "description": "Consumption model (e.g. primitive, composite)."
+        },
+        "lane": {
+          "type": "string"
+        },
+        "support_tier": {
+          "type": "string"
+        },
+        "adapter_dependencies": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "safety_tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "module_skill": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "source",
+        "inputs",
+        "outputs",
+        "effects",
+        "lane",
+        "support_tier",
+        "adapter_dependencies",
+        "safety_tags"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier, e.g. module.examples.hello"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "source": {
+          "type": "object",
+          "required": ["program_path"],
+          "properties": {
+            "program_path": {
+              "type": "string",
+              "description": "Relative path to the AINL program implementing this skill"
+            }
+          },
+          "additionalProperties": false
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lane": {
+          "type": "string",
+          "description": "Canonical vs compatibility vs extension lane"
+        },
+        "support_tier": {
+          "type": "string",
+          "description": "Support tier such as core, compatibility, extension_openclaw"
+        },
+        "domain": {
+          "type": "string",
+          "description": "High-level domain grouping (e.g. workflow, coordination)."
+        },
+        "usage_model": {
+          "type": "string",
+          "description": "Consumption model (e.g. primitive, composite)."
+        },
+        "domain": {
+          "type": "string",
+          "description": "High-level domain grouping (e.g. workflow, coordination)."
+        },
+        "adapter_dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "safety_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

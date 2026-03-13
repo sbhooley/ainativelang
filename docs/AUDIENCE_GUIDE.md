@@ -58,6 +58,7 @@ workstreams were rebuilt, retested, and formalized in overlapping phases through
 ## For AI Agents (Any Size)
 
 - Start with:
+  - `docs/BOT_ONBOARDING.md` (entrypoint; before implementation, complete `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`; see `tooling/bot_bootstrap.json`)
   - `docs/DOCS_INDEX.md`
   - `docs/AI_AGENT_CONTINUITY.md`
   - `docs/CONTRIBUTING_AI_AGENTS.md`

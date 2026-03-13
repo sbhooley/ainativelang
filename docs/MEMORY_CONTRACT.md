@@ -410,6 +410,7 @@ provided for advanced users and bots, plus small markdown bridges for humans:
 - `scripts/import_memory_markdown.py`
 - `tooling/memory_migrate.py`
 - `scripts/migrate_memory_legacy.py`
+- `scripts/memory_retention_report.py` — read-only retention and TTL hygiene report (see below).
 
 These tools:
 
@@ -445,6 +446,149 @@ This bridge:
   - `- [<ts>] <text>` when `ts` is present,
   - `- <text>` otherwise,
   - sorted by `ts` when available.
+
+### 8.1 Memory retention report (operator visibility)
+
+The **memory retention report** is a read-only script that inspects the SQLite
+memory store and summarizes record counts, TTL coverage, age distribution, and
+records that are expiring soon or already expired (but still on disk until
+`memory.prune` runs). It is intended for operator hygiene and visibility only;
+it does not modify the store or change runtime/schema.
+
+- **Script:** `scripts/memory_retention_report.py`
+- **Data source:** The same SQLite backing store as the memory adapter
+  (`AINL_MEMORY_DB` or `/tmp/ainl_memory.sqlite3`).
+- **Output:** Plain-text summary by default; `--json` for machine-readable
+  output. Optional filters: `--namespace <ns>`, `--record-kind <kind>`.
+- **Expiring soon:** By default, records whose expiry time
+  (`created_at + ttl_seconds`) falls within the next 24 hours are reported;
+  use `--expire-soon-seconds` to change the window.
+
+Example commands:
+
+- Full report (plain text):
+  - `python3 scripts/memory_retention_report.py`
+
+- JSON output:
+  - `python3 scripts/memory_retention_report.py --json`
+
+- Filter by namespace or record kind:
+  - `python3 scripts/memory_retention_report.py --namespace workflow`
+  - `python3 scripts/memory_retention_report.py --record-kind workflow.monitor_check`
+
+The report helps answer: what is filling memory, where TTLs are missing, what
+will expire soon, and whether expired rows are accumulating before prune. It
+is **read-only** and does not invoke the compiler or runtime.
+
+### 8.2 Operator runbook: weekly memory hygiene
+
+This section describes a **lightweight, manual** workflow for checking memory
+growth and performing routine TTL cleanup using the existing retention report
+and `memory.prune`. No scheduler, daemon, or new tool is required.
+
+**When to care**
+
+- You use the memory adapter (monitors, workflow state, session or daily_log).
+- You want to avoid unbounded growth and confirm TTLs are effective.
+- You run `memory.prune` on a schedule (e.g. daily via the `memory_prune`
+  monitor) but want to **inspect** state and **decide** when to prune or
+  re-check after pruning.
+
+**What “expired but still present” means**
+
+- Records with a TTL are treated as “not found” by `memory.get` once
+  `created_at + ttl_seconds` has passed. They are **not** removed from the
+  SQLite store until something explicitly deletes them.
+- `memory.prune` is that explicit action: it physically deletes expired
+  rows. Until you run prune, expired rows remain on disk and are reported
+  by the retention report as “expired but still present.”
+- A non-zero expired count is **normal** between prune runs. React if the
+  count grows without bound or if you never run prune.
+
+**What not to overreact to**
+
+- **Some records without TTL** — `long_term` and some `session`/`daily_log`
+  usage intentionally omit TTL. Focus on namespaces/kinds that should have
+  TTLs (e.g. `workflow.monitor_check`, `workflow.token_cost_state`).
+- **Expiring soon** — informational; no action required unless you want to
+  anticipate churn.
+- **Small expired count** — expected between weekly or daily prune runs.
+
+**Step 1: Run the memory retention report**
+
+```bash
+python3 scripts/memory_retention_report.py
+```
+
+Inspect:
+
+- **Overall totals** — total records, with/without TTL.
+- **By namespace / by record kind** — where growth is coming from.
+- **TTL coverage** — whether critical kinds have TTLs.
+- **Expired but still present** — count and sample; expect some if prune
+  has not run recently.
+- **Expiring within 24h** — optional; use to anticipate turnover.
+
+Filter by namespace or record kind if you care about a subset:
+
+```bash
+python3 scripts/memory_retention_report.py --namespace workflow
+python3 scripts/memory_retention_report.py --record-kind workflow.monitor_check
+```
+
+Machine-readable output:
+
+```bash
+python3 scripts/memory_retention_report.py --json
+```
+
+**Step 2: Interpret the report**
+
+- **Totals and distribution** — identify namespaces or kinds that dominate
+  growth. Confirm they use TTLs where appropriate.
+- **Missing TTLs** — if many records have no TTL and they are short-lived
+  by design, consider adding TTLs in the writing workflow or accept the
+  growth and prune less often.
+- **Expired count** — if it is large or growing and you do not run prune
+  regularly, plan to run prune (see Step 4).
+
+**Step 3: (Optional) Inspect expired / expiring soon**
+
+- Use the “Expired but still present” sample to confirm they are
+  expected (e.g. old `workflow.monitor_check` or `workflow.token_cost_state`
+  rows). No need to act on every expired row; prune removes them in bulk.
+- “Expiring within 24h” is for awareness only.
+
+**Step 4: Run prune if needed**
+
+- Prune is **explicit and operator-triggered**. The memory adapter does not
+  prune automatically.
+- To prune **all** namespaces: run the AINL program that calls
+  `memory.prune` with no namespace argument, e.g. execute
+  `demo/memory_prune.lang` or `examples/autonomous_ops/memory_prune.lang`
+  via your usual AINL runner (e.g. `python3 run_ainl.py demo/memory_prune.lang`
+  if that runner is available).
+- To prune a **single** namespace only: use a program or one-off invocation
+  that calls `memory.prune(namespace)` with the desired namespace (e.g.
+  `workflow`). The contract supports an optional namespace filter.
+- Prune is idempotent and safe to run regularly (e.g. daily or weekly).
+
+**Step 5: Re-run the report to confirm**
+
+```bash
+python3 scripts/memory_retention_report.py
+```
+
+- **Expired (in DB)** should drop to zero or a small number after prune.
+- **Total records** will decrease by the number of expired rows that were
+  removed.
+
+**Suggested cadence**
+
+- **Weekly:** Run the retention report; run prune if expired count is high or
+  you want to keep the store lean.
+- **After adding new monitors or workflow state:** Run the report once to
+  establish a baseline and confirm TTLs are set where expected.
 
 The markdown daily-log export is:
 

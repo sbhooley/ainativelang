@@ -2,6 +2,8 @@
 
 This guide gets you from zero to generating OpenClaw automations in AINL within one session.
 
+**Before implementation work:** Follow **`docs/BOT_ONBOARDING.md`** and complete the **implementation preflight** in **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** (inspect files, confirm not duplicate, verify adapter semantics, emit required output structure). Machine-readable pointers: `tooling/bot_bootstrap.json`.
+
 ---
 
 ## 1. Environment Setup (One-Time)
@@ -27,11 +29,13 @@ If tests pass, you're ready.
 
 Read in order:
 
-1. `README.md` — project overview
-2. `docs/DOCS_INDEX.md` — map to all docs
-3. `docs/AINL_SPEC.md` (sections 0-3 only) — core syntax and execution model
-4. `examples/openclaw/daily_digest.lang` — a monitor workflow example
-5. `AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw integration strategy
+1. `docs/BOT_ONBOARDING.md` — bot entrypoint; points to preflight (required before implementation)
+2. `README.md` — project overview
+3. `docs/DOCS_INDEX.md` — map to all docs
+4. `docs/AINL_SPEC.md` (sections 0-3 only) — core syntax and execution model
+5. `examples/openclaw/daily_digest.lang` — a monitor workflow example
+6. `AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw integration strategy
+7. `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` — required before coding (steps + output structure)
 
 **Key concepts to internalize:**
 - Canonical IR = nodes/edges (graph-first)

@@ -18,7 +18,7 @@ canonical grammar references.
 | `01_web_server.ainl` | JSON API + static file server (port 8080). Shows routing, cache, fs, core utils. |
 | `02_dashboard.ainl` | Auto-refresh dashboard with metrics endpoint. Shows caching, templating, admin stub. |
 | `03_scraper.ainl` | Daily scraper with rate limiting and CSV output. Shows HTTP, pattern extraction, fs append. |
-| `04_alerting_monitor.ainl` | Service health monitor with throttling. Shows `svc` adapter, dedup, queue, WASM integration. |
+| `04_alerting_monitor.ainl` | Service health monitor with throttling. Shows `svc` adapter (OpenClaw extension, operator-only), dedup, queue, WASM integration. |
 | `05_file_processor.ainl` | Batch log processing and stats aggregation. Shows fs listing, metadata, state tracking. |
 | `CURRICULUM.md` | Progressive learning path for small models: phases 1–6 with deliverables. |
 | `ADAPTER_REGISTRY.json` | Machine-readable catalog of all adapters (core, http, sqlite, fs, email, calendar, social, svc, db, cache, queue, wasm). |

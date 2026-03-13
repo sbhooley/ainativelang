@@ -10,17 +10,18 @@ on strict canonical AINL generation.
 
 ## First-Read Checklist (Every New Session)
 
-1. Read `README.md` and `docs/DOCS_INDEX.md`.
-2. Read `docs/AINL_SPEC.md` and `SEMANTICS.md`.
-3. Read `docs/RUNTIME_COMPILER_CONTRACT.md` (compiler/runtime + grammar ownership contract).
-4. Read `docs/TRAINING_ALIGNMENT_RUNBOOK.md` before touching train/eval scripts.
-5. Read `docs/DOCS_MAINTENANCE.md` before broad documentation edits.
-6. Read latest reports:
+1. **If you will do implementation work:** Read `docs/BOT_ONBOARDING.md` and complete the steps in `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` before coding (see `tooling/bot_bootstrap.json`).
+2. Read `README.md` and `docs/DOCS_INDEX.md`.
+3. Read `docs/AINL_SPEC.md` and `SEMANTICS.md`.
+4. Read `docs/RUNTIME_COMPILER_CONTRACT.md` (compiler/runtime + grammar ownership contract).
+5. Read `docs/TRAINING_ALIGNMENT_RUNBOOK.md` before touching train/eval scripts.
+6. Read `docs/DOCS_MAINTENANCE.md` before broad documentation edits.
+7. Read latest reports:
    - `corpus/curated/alignment_run_health.json`
    - `corpus/curated/model_eval_trends.json`
-7. Inspect current generation quality report:
+8. Inspect current generation quality report:
    - `corpus/curated/model_eval_report_v5_aligned.json` (or latest variant)
-8. **If planning an integration or major change**, review consultant reports:
+9. **If planning an integration or major change**, review consultant reports:
    - `AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw `ocl` adapter integration strategy
 
 ## Ground Rules for Safe Progress

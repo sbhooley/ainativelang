@@ -1,0 +1,97 @@
+# Service Health Trend Monitor
+# Daily analysis of infrastructure service uptime trends using historical memory.
+# Alerts when a service's downtime ratio increases significantly vs baseline.
+S svc cron "0 6 * * *"
+
+D Config trend_alert_pct:N 150  # relative increase threshold (percent)
+D Config trend_alert_abs:N 5    # absolute increase threshold (percentage points)
+
+L0: R core now ->now J L1
+
+L1: X today_bucket (core.idiv now 86400)
+    X week_ago_sec (core.sub now 604800)
+    R memory.list "workflow" "workflow.service_check" "" None ->list
+    X items list.items
+
+    # Accumulators: service -> down count / total count
+    X today_down_map {}
+    X today_total_map {}
+    X baseline_down_map {}
+    X baseline_total_map {}
+
+    # Process each record: get payload, filter by time, assign to bucket
+    X _ (ForEach items (lambda item (
+        X rec_id item.record_id
+        R memory.get "workflow" "workflow.service_check" rec_id ->rec
+        If rec.found ->L_have ->L_skip
+      L_have:
+        X payload rec.payload
+        X ts payload.ts
+        # Skip records older than 7 days
+        If (core.lt ts week_ago_sec) ->L_skip
+        X day (core.idiv ts 86400)
+        X svc payload.service
+        X down_val (if (core.eq payload.status "down") 1 0)
+        If (core.eq day today_bucket) ->L_today ->L_baseline
+      L_today:
+        X cur_down (or (get today_down_map svc) 0)
+        X new_down (core.add cur_down down_val)
+        Set today_down_map svc new_down
+        X cur_total (or (get today_total_map svc) 0)
+        X new_total (core.add cur_total 1)
+        Set today_total_map svc new_total
+        J L_next
+      L_baseline:
+        X cur_down (or (get baseline_down_map svc) 0)
+        X new_down (core.add cur_down down_val)
+        Set baseline_down_map svc new_down
+        X cur_total (or (get baseline_total_map svc) 0)
+        X new_total (core.add cur_total 1)
+        Set baseline_total_map svc new_total
+        J L_next
+      L_skip: Ret null
+      L_next: Ret null
+    )))
+
+    # Evaluate per-service trends
+    X services ["caddy","cloudflared","maddy","crm"]
+    X alert_services []
+    X metrics {}
+
+    X _ (ForEach services (lambda svc (
+        X td (or (get today_down_map svc) 0)
+        X tt (or (get today_total_map svc) 0)
+        X bd (or (get baseline_down_map svc) 0)
+        X bt (or (get baseline_total_map svc) 0)
+        X tr (if (core.gt tt 0) (core.div td tt) 0)
+        X br (if (core.gt bt 0) (core.div bd bt) 0)
+        X pct_factor (core.div Config.trend_alert_pct 100)
+        X rel_trigger (if (core.gt br 0) (core.gt tr (core.mul br pct_factor)) false)
+        X abs_trigger (core.gt (core.sub tr br) (core.div Config.trend_alert_abs 100))
+        X svc_alert (core.or rel_trigger abs_trigger)
+        If svc_alert ->L_alert ->L_none
+      L_alert:
+        X _ (set alert_services (core.add alert_services [svc]))
+        X svc_metrics {"today_ratio":tr,"baseline_ratio":br,"today_down":td,"today_total":tt,"baseline_down":bd,"baseline_total":bt}
+        X _ (set metrics svc svc_metrics)
+        J L_after
+      L_none:
+        X svc_metrics {"today_ratio":tr,"baseline_ratio":br}
+        X _ (set metrics svc svc_metrics)
+      L_after: Ret null
+    )))
+
+    X any_alert (core.gt (len alert_services) 0)
+    X status (core.ite any_alert "alert" "ok")
+    X envelope {"version":"1.0","generated_at":now}
+    X payload {
+      "envelope": envelope,
+      "module": "service_health_trends",
+      "status": status,
+      "ts": now,
+      "metrics": metrics,
+      "history_24h": {},
+      "meta": {}
+    }
+    R queue Put "notify" payload ->_
+    Ret null

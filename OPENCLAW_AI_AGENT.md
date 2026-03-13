@@ -83,6 +83,9 @@ tooling:
   - python scripts/validate_ainl.py
 documentation_index: docs/DOCS_INDEX.md
 canonical_spec: docs/AINL_SPEC.md
+bot_onboarding: docs/BOT_ONBOARDING.md
+implementation_preflight: docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md
+bot_bootstrap: tooling/bot_bootstrap.json
 quickstart: AI_AGENT_QUICKSTART_OPENCLAW.md
 consultant_report: AI_CONSULTANT_REPORT_APOLLO.md
 test_profile: openclaw

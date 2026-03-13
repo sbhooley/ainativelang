@@ -15,7 +15,7 @@ class CoreBuiltinAdapter(RuntimeAdapter):
       add/sub/mul/div/min/max/clamp
       concat/split/join/lower/upper/replace
       parse/stringify
-      now/iso/sleep
+      now/iso/iso_ts/sleep
     """
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
@@ -71,6 +71,9 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             return int(time.time())
         if t == "iso":
             return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        if t == "iso_ts":
+            ts = int(_num(args[0])) if args else int(time.time())
+            return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
         if t == "echo":
             return args[0] if args else None
         if t == "sleep":

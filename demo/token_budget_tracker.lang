@@ -41,7 +41,8 @@ X total_tokens (core.sum (map todays_usage (lambda u (u.tokens or 0))))
 # Total this week = stored (7d) + today
 X week_cost (core.add stored_cost day_cost)
 X week_tokens (core.add stored_tokens total_tokens)
-X pct_used (core.div week_cost budget)
+X safe_budget (core.max budget 0.01)
+X pct_used (core.div week_cost safe_budget)
 
 # Persist today’s summary to memory (workflow.token_cost_state) with 7-day TTL
 X record_id (core.join ["tok-", today_date, "-", now_iso])

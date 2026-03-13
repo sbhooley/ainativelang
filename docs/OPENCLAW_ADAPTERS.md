@@ -2,6 +2,8 @@
 
 This document sketches how to expose **OpenClaw actions** as AINL adapters so that AINL programs can drive OpenClaw workflows.
 
+**Before implementation work:** Agents and contributors should follow **`docs/BOT_ONBOARDING.md`** and complete **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** (see `tooling/bot_bootstrap.json`).
+
 ---
 
 ## 1. Design

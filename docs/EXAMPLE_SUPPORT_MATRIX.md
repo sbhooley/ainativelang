@@ -107,7 +107,7 @@ fully-automated agent fabric.
 | `examples/golden/01_web_server.ainl` | `non-strict-only` | Compatibility/golden artifact |
 | `examples/golden/02_dashboard.ainl` | `non-strict-only` | Compatibility/golden artifact |
 | `examples/golden/03_scraper.ainl` | `non-strict-only` | Compatibility/golden artifact |
-| `examples/golden/04_alerting_monitor.ainl` | `non-strict-only` | Compatibility/golden artifact |
+| `examples/golden/04_alerting_monitor.ainl` | `non-strict-only` | Compatibility/golden artifact; uses operator-only `svc` adapter |
 | `examples/golden/05_file_processor.ainl` | `non-strict-only` | Compatibility/golden artifact |
 
 ## Deprecated Examples

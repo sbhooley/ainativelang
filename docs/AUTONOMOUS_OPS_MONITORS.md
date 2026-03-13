@@ -29,6 +29,7 @@ This document provides a quick reference for all AINL autonomous operations moni
 - Each monitor writes a heartbeat to `cache` with key `monitor_heartbeat.<module>` upon successful completion, enabling `meta_monitor`.
 - Memory records use sensible TTLs (7–90 days) to bound retention; `memory_prune` enforces physical cleanup.
 - Runner scripts are located in `scripts/run_*.py` and are added to OpenClaw cron with `openclaw cron add`.
+- **For agents implementing or changing monitors:** Follow `docs/BOT_ONBOARDING.md` and `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` before coding.
 
 ---
 

@@ -108,15 +108,26 @@ L89: X backup_cutoff (core.sub ts 86400) J L90
 L90: If (core.gt backup_cutoff newest_ts) ->L91 ->L92
 L91: Set needs_notify 1 J L93
 L92: J L93
-L93: J L54
+L93: J L_persist
+
+# Persist this run's check summary to memory (7d TTL) for history_24h
+L_persist: X record_id (core.concat "run-" (core.stringify ts))
+    X summary {"email_count":email_count,"cal_count":cal_count,"social_count":social_count,"leads_count":leads_count,"failed_services":failed_services,"ts":ts,"needs_notify":needs_notify}
+    R memory put "workflow" "workflow.monitor_check" record_id summary 604800 ->_
+    J L54
 
 # Decision: send notification if any check needs it
 L54: If (core.gt needs_notify 0) ->L55 ->L62
 L55: X now_ts (core.now)
     R cache get "state" "last_notified" ->last_notif
+    X day_ago_ts (core.sub now_ts 86400)
+    R core iso_ts day_ago_ts ->day_ago_iso
+    R memory list "workflow" "workflow.monitor_check" "" day_ago_iso ->hist
+    X hist_count len hist.items
+    X status (core.ite (core.gt needs_notify 0) "alert" "ok")
     If (core.gt (core.sub now_ts last_notif) 900) ->L56 ->L62
 L56: X health (wasm.CALL health total_score email_count cal_count social_count leads_count) ->health J L57
-L57: R queue Put "notify" {"email_count":email_count,"cal_count":cal_count,"social_count":social_count,"leads_count":leads_count,"health_score":health,"failed_services":failed_services,"ts":now_ts} ->_ J L58
+L57: R queue Put "notify" {"envelope":{"version":"1.0","generated_at":now_ts},"module":"monitor_system","status":status,"ts":now_ts,"metrics":{"email_count":email_count,"cal_count":cal_count,"social_count":social_count,"leads_count":leads_count,"health_score":health,"failed_services":failed_services},"history_24h":{"checks":hist_count},"meta":{}} ->_ J L58
 L58: R cache set "state" "last_notified" now_ts ->_ J L59
 L59: J L62
 L62:

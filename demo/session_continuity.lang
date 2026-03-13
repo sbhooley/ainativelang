@@ -65,7 +65,7 @@ ForEach prefs_to_store (lambda p (
 X pref_count (len prefs_to_store)
 
 # Send summary notification with envelope
-X summary_status (core.ite (core.gt pref_count 0) "ok" "alert")  # if no prefs captured, mark alert? maybe "ok". Let's treat any sessions as ok.
+X summary_status "ok"
 X summary_payload ({
   "envelope": {"version":"1.0","generated_at":now_iso},
   "module":"session_continuity",

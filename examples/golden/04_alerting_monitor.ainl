@@ -1,6 +1,7 @@
 # Golden Example 4: Alerting monitor with throttling
 # Checks service health and sends alerts only once per 15 minutes per failure.
 # Shows: service checks, stateful dedup, notification queue, WASM health score.
+# Uses `svc` adapter (OpenClaw extension, operator-only).
 
 S core cron "*/5 * * * *"  # every 5 minutes
 

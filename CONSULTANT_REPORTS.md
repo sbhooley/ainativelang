@@ -18,6 +18,8 @@ This directory collects formal analysis reports from AI consultants who have eva
 - **Developer guide**: Patterns, examples, and tooling for AI agents
 - **Continuity**: Enable new AI agents to pick up work without context loss
 
+**Agents implementing from these reports:** Follow `docs/BOT_ONBOARDING.md` and `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` before coding (see `tooling/bot_bootstrap.json`).
+
 ## Template
 
 All consultants should use `AI_CONSULTANT_REPORT_TEMPLATE.md` as a starting point. The template includes:

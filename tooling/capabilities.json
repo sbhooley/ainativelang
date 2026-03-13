@@ -1,0 +1,795 @@
+{
+  "schema_version": "1.0",
+  "adapters": {
+    "core": {
+      "id": "core",
+      "support_tier": "core",
+      "lane": "canonical",
+      "domain": "math",
+      "notes": "Built-in deterministic helper operations."
+    },
+    "queue": {
+      "id": "queue",
+      "support_tier": "core",
+      "lane": "canonical",
+      "domain": "queue",
+      "notes": "Queue write namespace."
+    },
+    "http": {
+      "id": "http",
+      "support_tier": "core",
+      "lane": "canonical",
+      "domain": "http",
+      "notes": "Runtime HTTP adapter namespace."
+    },
+    "memory": {
+      "id": "memory",
+      "support_tier": "extension_openclaw",
+      "lane": "noncanonical",
+      "domain": "memory",
+      "notes": "Extension-level memory adapter for explicit execution-facing records keyed by (namespace, record_kind, record_id)."
+    },
+    "sqlite": {
+      "id": "sqlite",
+      "support_tier": "core",
+      "lane": "canonical",
+      "domain": "storage",
+      "notes": "Runtime SQLite adapter namespace."
+    },
+    "fs": {
+      "id": "fs",
+      "support_tier": "core",
+      "lane": "canonical",
+      "domain": "filesystem",
+      "notes": "Runtime filesystem adapter namespace."
+    },
+    "tools": {
+      "id": "tools",
+      "support_tier": "core",
+      "lane": "canonical",
+      "domain": "tools",
+      "notes": "Runtime tool bridge namespace."
+    },
+    "svc": {
+      "id": "svc",
+      "support_tier": "extension_openclaw",
+      "lane": "noncanonical",
+      "domain": "service_health",
+      "notes": "OpenClaw service health adapter used by the monitor demo."
+    },
+    "extras": {
+      "id": "extras",
+      "support_tier": "extension_openclaw",
+      "lane": "noncanonical",
+      "domain": "service_health",
+      "notes": "OpenClaw monitor extras adapter for file, Docker, HTTP, backup mtime checks, and metrics summaries."
+    },
+    "agent": {
+      "id": "agent",
+      "support_tier": "extension_openclaw",
+      "lane": "noncanonical",
+      "domain": "coordination",
+      "notes": "Extension/OpenClaw agent coordination adapter."
+    }
+  },
+  "adapter_verbs": [
+    {
+      "id": "adapter.core.ADD",
+      "adapter": "core",
+      "verb": "ADD",
+      "name": "core.ADD",
+      "description": "Core arithmetic addition helper.",
+      "inputs": [
+        {
+          "name": "left",
+          "description": "First operand (number)."
+        },
+        {
+          "name": "right",
+          "description": "Second operand (number)."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "description": "Sum of left and right."
+        }
+      ],
+      "effects": [
+        "pure"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "math",
+      "usage_model": "primitive",
+      "common_pattern": "numeric add",
+      "adapter_dependencies": [
+        "core"
+      ],
+      "safety_tags": [
+        "safe_default"
+      ]
+    },
+    {
+      "id": "adapter.queue.Put",
+      "adapter": "queue",
+      "verb": "Put",
+      "name": "queue.Put",
+      "description": "Enqueue a payload onto a named queue.",
+      "inputs": [
+        {
+          "name": "queue_name",
+          "description": "Logical queue name."
+        },
+        {
+          "name": "payload",
+          "description": "Structured payload frame to enqueue."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "message_id",
+          "description": "Backend-assigned message identifier, if available."
+        }
+      ],
+      "effects": [
+        "io",
+        "queue_write"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "queue",
+      "usage_model": "primitive",
+      "common_pattern": "enqueue message",
+      "adapter_dependencies": [
+        "queue"
+      ],
+      "safety_tags": [
+        "side_effecting"
+      ]
+    },
+    {
+      "id": "adapter.core.SUB",
+      "adapter": "core",
+      "verb": "SUB",
+      "name": "core.SUB",
+      "description": "Subtract two numbers.",
+      "inputs": [
+        {
+          "name": "left",
+          "description": "Minuend (number)."
+        },
+        {
+          "name": "right",
+          "description": "Subtrahend (number)."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "description": "Difference left - right."
+        }
+      ],
+      "effects": [
+        "pure"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "math",
+      "usage_model": "primitive",
+      "common_pattern": "numeric subtract",
+      "adapter_dependencies": [
+        "core"
+      ],
+      "safety_tags": [
+        "safe_default"
+      ]
+    },
+    {
+      "id": "adapter.core.CONCAT",
+      "adapter": "core",
+      "verb": "CONCAT",
+      "name": "core.CONCAT",
+      "description": "Concatenate one or more strings.",
+      "inputs": [
+        {
+          "name": "parts",
+          "description": "One or more string parts to concatenate."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "description": "Concatenated string."
+        }
+      ],
+      "effects": [
+        "pure"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "math",
+      "usage_model": "primitive",
+      "common_pattern": "string concatenate",
+      "adapter_dependencies": [
+        "core"
+      ],
+      "safety_tags": [
+        "safe_default"
+      ]
+    },
+    {
+      "id": "adapter.core.NOW",
+      "adapter": "core",
+      "verb": "NOW",
+      "name": "core.NOW",
+      "description": "Return the current time as a numeric timestamp.",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "ts",
+          "description": "Current time (number)."
+        }
+      ],
+      "effects": [
+        "time_read"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "time",
+      "usage_model": "primitive",
+      "common_pattern": "time now",
+      "adapter_dependencies": [
+        "core"
+      ],
+      "safety_tags": [
+        "safe_default"
+      ]
+    },
+    {
+      "id": "adapter.http.GET",
+      "adapter": "http",
+      "verb": "GET",
+      "name": "http.GET",
+      "description": "HTTP GET with host allowlist and response size limits.",
+      "inputs": [
+        {
+          "name": "url",
+          "description": "URL to request."
+        },
+        {
+          "name": "headers",
+          "description": "Optional request headers map."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "response",
+          "description": "Response envelope {status, headers, body}."
+        }
+      ],
+      "effects": [
+        "io",
+        "network"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "http",
+      "usage_model": "primitive",
+      "common_pattern": "fetch resource",
+      "adapter_dependencies": [
+        "http"
+      ],
+      "safety_tags": [
+        "side_effecting"
+      ]
+    },
+    {
+      "id": "adapter.http.POST",
+      "adapter": "http",
+      "verb": "POST",
+      "name": "http.POST",
+      "description": "HTTP POST with optional body, headers, and timeout.",
+      "inputs": [
+        {
+          "name": "url",
+          "description": "URL to request."
+        },
+        {
+          "name": "body",
+          "description": "Optional request body."
+        },
+        {
+          "name": "headers",
+          "description": "Optional request headers map."
+        },
+        {
+          "name": "timeout",
+          "description": "Optional timeout in seconds."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "response",
+          "description": "Response envelope {status, headers, body}."
+        }
+      ],
+      "effects": [
+        "io",
+        "network"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "http",
+      "usage_model": "primitive",
+      "common_pattern": "send payload",
+      "adapter_dependencies": [
+        "http"
+      ],
+      "safety_tags": [
+        "side_effecting"
+      ]
+    },
+    {
+      "id": "adapter.memory.put",
+      "adapter": "memory",
+      "verb": "put",
+      "name": "memory.put",
+      "description": "Write or replace a memory record identified by (namespace, record_kind, record_id).",
+      "inputs": [
+        {
+          "name": "namespace",
+          "description": "Logical namespace."
+        },
+        {
+          "name": "record_kind",
+          "description": "Record kind string."
+        },
+        {
+          "name": "record_id",
+          "description": "Stable record id."
+        },
+        {
+          "name": "payload",
+          "description": "JSON-serializable payload."
+        },
+        {
+          "name": "ttl_seconds",
+          "description": "Optional TTL in seconds."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ok",
+          "description": "True if the write succeeded."
+        }
+      ],
+      "effects": [
+        "io",
+        "storage_write"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "memory",
+      "usage_model": "primitive",
+      "common_pattern": "key-value write",
+      "adapter_dependencies": [
+        "memory"
+      ],
+      "safety_tags": [
+        "side_effecting",
+        "operator_only"
+      ]
+    },
+    {
+      "id": "adapter.memory.get",
+      "adapter": "memory",
+      "verb": "get",
+      "name": "memory.get",
+      "description": "Read a memory record by (namespace, record_kind, record_id).",
+      "inputs": [
+        {
+          "name": "namespace",
+          "description": "Logical namespace."
+        },
+        {
+          "name": "record_kind",
+          "description": "Record kind string."
+        },
+        {
+          "name": "record_id",
+          "description": "Stable record id."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "record",
+          "description": "Record envelope or null if missing/expired."
+        }
+      ],
+      "effects": [
+        "io",
+        "storage_read"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "memory",
+      "usage_model": "primitive",
+      "common_pattern": "key-value read",
+      "adapter_dependencies": [
+        "memory"
+      ],
+      "safety_tags": [
+        "safe_default"
+      ]
+    },
+    {
+      "id": "adapter.memory.list",
+      "adapter": "memory",
+      "verb": "list",
+      "name": "memory.list",
+      "description": "Enumerate memory records (discovery-only) with optional kind, id prefix, and updated_since filters.",
+      "inputs": [
+        {
+          "name": "namespace",
+          "description": "Logical namespace."
+        },
+        {
+          "name": "record_kind",
+          "description": "Optional record kind."
+        },
+        {
+          "name": "record_id_prefix",
+          "description": "Optional record id prefix."
+        },
+        {
+          "name": "updated_since",
+          "description": "Optional ISO timestamp filter."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "items",
+          "description": "List of record summaries."
+        }
+      ],
+      "effects": [
+        "io",
+        "storage_read"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "memory",
+      "usage_model": "primitive",
+      "common_pattern": "metadata enumeration",
+      "adapter_dependencies": [
+        "memory"
+      ],
+      "safety_tags": [
+        "safe_default"
+      ]
+    },
+    {
+      "id": "adapter.memory.prune",
+      "adapter": "memory",
+      "verb": "prune",
+      "name": "memory.prune",
+      "description": "Operator-oriented TTL prune helper that deletes expired records.",
+      "inputs": [
+        {
+          "name": "namespace",
+          "description": "Optional namespace filter."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pruned",
+          "description": "Number of records pruned."
+        }
+      ],
+      "effects": [
+        "io",
+        "storage_write"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "memory",
+      "usage_model": "primitive",
+      "common_pattern": "ttl cleanup",
+      "adapter_dependencies": [
+        "memory"
+      ],
+      "safety_tags": [
+        "side_effecting",
+        "operator_only"
+      ]
+    },
+    {
+      "id": "adapter.sqlite.Query",
+      "adapter": "sqlite",
+      "verb": "Query",
+      "name": "sqlite.Query",
+      "description": "Execute a read-only SQL query and return rows.",
+      "inputs": [
+        {
+          "name": "sql",
+          "description": "SQL query string."
+        },
+        {
+          "name": "params",
+          "description": "Optional parameter list or mapping."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "rows",
+          "description": "Result rows."
+        }
+      ],
+      "effects": [
+        "io",
+        "storage_read"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "storage",
+      "usage_model": "primitive",
+      "common_pattern": "read-only query",
+      "adapter_dependencies": [
+        "sqlite"
+      ],
+      "safety_tags": [
+        "side_effecting"
+      ]
+    },
+    {
+      "id": "adapter.fs.Read",
+      "adapter": "fs",
+      "verb": "Read",
+      "name": "fs.Read",
+      "description": "Read file contents from a sandboxed path.",
+      "inputs": [
+        {
+          "name": "path",
+          "description": "Path to read (sandboxed)."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "content",
+          "description": "File contents as string."
+        }
+      ],
+      "effects": [
+        "io",
+        "fs_read"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "filesystem",
+      "usage_model": "primitive",
+      "common_pattern": "read file contents",
+      "adapter_dependencies": [
+        "fs"
+      ],
+      "safety_tags": [
+        "side_effecting"
+      ]
+    },
+    {
+      "id": "adapter.tools.Call",
+      "adapter": "tools",
+      "verb": "Call",
+      "name": "tools.Call",
+      "description": "Bridge call to an external tool by id.",
+      "inputs": [
+        {
+          "name": "tool_id",
+          "description": "Logical tool identifier."
+        },
+        {
+          "name": "args",
+          "description": "Argument payload (JSON-serializable)."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "description": "Tool result payload."
+        }
+      ],
+      "effects": [
+        "io"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "tools",
+      "usage_model": "primitive",
+      "common_pattern": "bridge external tool",
+      "adapter_dependencies": [
+        "tools"
+      ],
+      "safety_tags": [
+        "side_effecting"
+      ]
+    },
+    {
+      "id": "adapter.svc.caddy",
+      "adapter": "svc",
+      "verb": "caddy",
+      "name": "svc.caddy",
+      "description": "Check caddy service health (OpenClaw extension).",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "health",
+          "description": "Service health envelope."
+        }
+      ],
+      "effects": [
+        "io",
+        "network"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "service_health",
+      "usage_model": "primitive",
+      "common_pattern": "service health check",
+      "adapter_dependencies": [
+        "svc"
+      ],
+      "safety_tags": [
+        "operator_only"
+      ]
+    },
+    {
+      "id": "adapter.extras.file_exists",
+      "adapter": "extras",
+      "verb": "file_exists",
+      "name": "extras.file_exists",
+      "description": "Check whether a file exists at a path.",
+      "inputs": [
+        {
+          "name": "path",
+          "description": "Filesystem path to check (monitoring sandbox)."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "exists",
+          "description": "Boolean flag indicating existence."
+        }
+      ],
+      "effects": [
+        "io",
+        "fs_read"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "service_health",
+      "usage_model": "primitive",
+      "common_pattern": "filesystem existence check",
+      "adapter_dependencies": [
+        "extras"
+      ],
+      "safety_tags": [
+        "operator_only"
+      ]
+    },
+    {
+      "id": "adapter.agent.send_task",
+      "adapter": "agent",
+      "verb": "send_task",
+      "name": "agent.send_task",
+      "description": "Append an AgentTaskRequest envelope to a sandboxed JSONL file under AINL_AGENT_ROOT.",
+      "inputs": [
+        {
+          "name": "task",
+          "description": "AgentTaskRequest object."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "task_id",
+          "description": "Identifier for the request."
+        }
+      ],
+      "effects": [
+        "io",
+        "fs_write"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "coordination",
+      "usage_model": "primitive",
+      "common_pattern": "advisory coordination workflow",
+      "adapter_dependencies": [
+        "agent"
+      ],
+      "safety_tags": [
+        "advisory_only",
+        "operator_only"
+      ]
+    }
+  ],
+  "module_skills": [
+    {
+      "id": "module.examples.hello",
+      "name": "Hello example module",
+      "description": "Minimal hello-world style module that adds two numbers using core.ADD.",
+      "source": {
+        "program_path": "examples/hello.ainl"
+      },
+      "inputs": [
+        {
+          "name": "a",
+          "description": "First addend (number)."
+        },
+        {
+          "name": "b",
+          "description": "Second addend (number)."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sum",
+          "description": "Result of a + b."
+        }
+      ],
+      "effects": [
+        "pure"
+      ],
+      "lane": "canonical",
+      "support_tier": "core",
+      "domain": "math",
+      "usage_model": "composite",
+      "common_pattern": "example composite math skill",
+      "adapter_dependencies": [
+        "core"
+      ],
+      "safety_tags": [
+        "safe_default"
+      ],
+      "notes": "Intended as a trivial, strictly-safe demonstration module for Tool API v2 discovery."
+    },
+    {
+      "id": "module.openclaw.monitor_status_advice",
+      "name": "OpenClaw monitor status advice request",
+      "description": "Assembles a bounded monitor-status snapshot and enqueues an advisory request for a Cursor-side agent via agent.send_task.",
+      "source": {
+        "program_path": "examples/openclaw/monitor_status_advice_request.lang"
+      },
+      "inputs": [
+        {
+          "name": "snapshot_window",
+          "description": "Optional logical window used when constructing the monitor-status snapshot."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "task_id",
+          "description": "Identifier for the advisory AgentTaskRequest that was enqueued."
+        }
+      ],
+      "effects": [
+        "io",
+        "queue_write"
+      ],
+      "lane": "noncanonical",
+      "support_tier": "extension_openclaw",
+      "domain": "coordination",
+      "usage_model": "composite",
+      "common_pattern": "advisory coordination workflow",
+      "adapter_dependencies": [
+        "core",
+        "agent"
+      ],
+      "safety_tags": [
+        "advisory_only",
+        "operator_only"
+      ],
+      "notes": "Advanced / operator-only OpenClaw coordination pattern; advisory-only, no auto-remediation."
+    }
+  ]
+}
+

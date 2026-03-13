@@ -61,7 +61,89 @@ Enhanced `NotificationQueueAdapter._format_message`:
 
 ## How to Extend This Pattern
 
-[... existing steps ...]
+When adding a new autonomous ops monitor (or materially revising an existing one),
+authors should include a **capability selection step** before wiring concrete
+adapter calls.
+
+### 1) Run a quick capability report
+
+- Use the capability report to get a feel for what exists:
+
+  - `python3 scripts/capabilities_report.py`
+
+- This shows counts by `kind`, `lane`, `support_tier`, `domain`, and
+  `usage_model` so you can sanity‑check that you are staying on the expected
+  surface (e.g. `core` vs `extension_openclaw`).
+
+### 2) Discover relevant domains
+
+- List available domains:
+
+  - `python3 scripts/capabilities_filter.py --list-values domain`
+
+- For most monitors you will work primarily in:
+
+  - `http` (fetch external state),
+  - `memory` (store/recall monitor state and metrics),
+  - `queue` (enqueue notifications),
+  - `service_health` (OpenClaw service checks),
+  - `coordination` (advanced advisory workflows).
+
+### 3) Select primitives by domain and safety
+
+- Start from adapter verbs in the domain you care about:
+
+  - HTTP fetches:
+
+    - `python3 scripts/capabilities_filter.py --kind adapter_verb --domain http`
+
+    - Typical choice: `adapter.http.GET` (`common_pattern: "fetch resource"`).
+
+  - Memory lifecycle:
+
+    - `python3 scripts/capabilities_filter.py --kind adapter_verb --domain memory`
+
+    - Typical choices:
+      - `memory.put` (`common_pattern: "key-value write"`)
+      - `memory.get` (`"key-value read"`)
+      - `memory.list` (`"metadata enumeration"`)
+      - `memory.prune` (`"ttl cleanup"`)
+
+  - Queue notifications:
+
+    - `python3 scripts/capabilities_filter.py --kind adapter_verb --domain queue`
+
+    - Typical choice: `queue.Put` (`"enqueue message"`).
+
+- When you need extension/OpenClaw behavior, explicitly filter for it and
+  confirm operator‑only surfaces:
+
+  - `python3 scripts/capabilities_filter.py --support-tier extension_openclaw --has-safety-tag operator_only`
+
+  - Examples:
+    - `memory.prune` (TTL cleanup; operator‑oriented),
+    - `svc.caddy` (`service_health` check),
+    - `agent.send_task` (`coordination`, advisory‑only).
+
+### 4) Only use advanced coordination when needed
+
+- Advanced advisory flows should go through explicit module skills or the
+  `agent` adapter, not be sprinkled into every monitor by default.
+
+- To see composite skills:
+
+  - `python3 scripts/capabilities_filter.py --kind module_skill --usage-model composite --json`
+
+- Example:
+
+  - `module.openclaw.monitor_status_advice`:
+    - `domain: "coordination"`,
+    - `usage_model: "composite"`,
+    - `common_pattern: "advisory coordination workflow"`.
+
+- Use these only when you **intentionally** want a monitor to hand off an
+  advisory task to a higher‑level agent, and document that decision in the
+  monitor’s implementation notes.
 
 ---
 

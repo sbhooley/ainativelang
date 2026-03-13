@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "project": "AINL",
+  "description": "Discoverable bootstrap for bots and agents working in the AINL/OpenClaw repo. Pointers only; not an execution engine.",
+  "primary_onboarding_doc": "docs/BOT_ONBOARDING.md",
+  "implementation_preflight_doc": "docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md",
+  "docs_index": "docs/DOCS_INDEX.md",
+  "safe_default_docs": [
+    "docs/AINL_SPEC.md",
+    "docs/AINL_CANONICAL_CORE.md",
+    "docs/EXAMPLE_SUPPORT_MATRIX.md",
+    "docs/RUNTIME_COMPILER_CONTRACT.md",
+    "docs/GRAPH_INTROSPECTION.md",
+    "docs/IR_SCHEMA.md",
+    "docs/GRAPH_SCHEMA.md"
+  ],
+  "advanced_docs": [
+    "docs/OPENCLAW_ADAPTERS.md",
+    "docs/MEMORY_CONTRACT.md",
+    "docs/SAFE_USE_AND_THREAT_MODEL.md",
+    "docs/CAPABILITY_REGISTRY.md",
+    "docs/AUTONOMOUS_OPS_MONITORS.md",
+    "docs/STANDARDIZED_HEALTH_ENVELOPE.md",
+    "docs/AGENT_COORDINATION_CONTRACT.md"
+  ],
+  "required_steps": [
+    "Inspect relevant current files first",
+    "Name the exact files inspected",
+    "Confirm the task is not already implemented",
+    "Confirm relevant adapter/function semantics from code, not memory",
+    "Distinguish confirmed facts from assumptions",
+    "Explicitly state any assumption that could break the plan",
+    "Prefer the smallest practical change",
+    "Avoid inferring payload access from list/enumeration APIs unless code proves it",
+    "Provide a validation plan before coding",
+    "Choose a different task if the chosen one is already implemented"
+  ],
+  "expected_output_structure": [
+    "chosen_task",
+    "why_not_duplicate_work",
+    "files_inspected",
+    "current_behavior_found",
+    "verified_semantics",
+    "assumptions",
+    "smallest_viable_implementation",
+    "validation_plan"
+  ]
+}

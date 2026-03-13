@@ -5,6 +5,12 @@ Use it as the top-level entry point before touching code.
 
 ## Start Here
 
+### Bot onboarding and implementation preflight
+
+- **Bot onboarding:** `docs/BOT_ONBOARDING.md` — where to start, which docs matter first, and that the implementation preflight is required before coding.
+- **Implementation preflight:** `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` — required steps and output structure before selecting or implementing work (reduces duplicate work, stale assumptions, and adapter misuse).
+- **Machine-readable bootstrap:** `tooling/bot_bootstrap.json` — pointers to onboarding doc, preflight doc, safe-default docs, advanced docs, and required steps.
+
 ### Core / safe-default docs
 
 - Project origin and attribution: `docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md`

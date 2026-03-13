@@ -22,6 +22,20 @@ R svc cloudflared ->cloudflared_status
 R svc maddy ->maddy_status
 R svc crm ->crm_status
 
+# Persist each service check to memory for trend analysis (7d TTL)
+X caddy_id (core.join ["svc-", "caddy", "-", now])
+X caddy_rec {"service":"caddy","status":caddy_status,"ts":now}
+R memory.put "workflow" "workflow.service_check" caddy_id caddy_rec ttl_seconds ->_
+X cloudflared_id (core.join ["svc-", "cloudflared", "-", now])
+X cloudflared_rec {"service":"cloudflared","status":cloudflared_status,"ts":now}
+R memory.put "workflow" "workflow.service_check" cloudflared_id cloudflared_rec ttl_seconds ->_
+X maddy_id (core.join ["svc-", "maddy", "-", now])
+X maddy_rec {"service":"maddy","status":maddy_status,"ts":now}
+R memory.put "workflow" "workflow.service_check" maddy_id maddy_rec ttl_seconds ->_
+X crm_id (core.join ["svc-", "crm", "-", now])
+X crm_rec {"service":"crm","status":crm_status,"ts":now}
+R memory.put "workflow" "workflow.service_check" crm_id crm_rec ttl_seconds ->_
+
 X caddy_down (core.eq caddy_status "down")
 X cloudflared_down (core.eq cloudflared_status "down")
 X maddy_down (core.eq maddy_status "down")

@@ -11,13 +11,16 @@ or research assistants.
 
 ## Required Reading Before Changes
 
-1. `docs/DOCS_INDEX.md`
-2. `docs/AINL_SPEC.md`
-3. `SEMANTICS.md`
-4. `docs/RUNTIME_COMPILER_CONTRACT.md`
-5. `docs/TRAINING_ALIGNMENT_RUNBOOK.md`
-6. `docs/AI_AGENT_CONTINUITY.md`
-7. `docs/DOCS_MAINTENANCE.md`
+1. `docs/BOT_ONBOARDING.md` — bot entrypoint; **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** is required before implementation work (inspect files, confirm not duplicate, verify semantics, emit preflight output).
+2. `docs/DOCS_INDEX.md`
+3. `docs/AINL_SPEC.md`
+4. `SEMANTICS.md`
+5. `docs/RUNTIME_COMPILER_CONTRACT.md`
+6. `docs/TRAINING_ALIGNMENT_RUNBOOK.md`
+7. `docs/AI_AGENT_CONTINUITY.md`
+8. `docs/DOCS_MAINTENANCE.md`
+
+Machine-readable bootstrap (pointers to onboarding, preflight, safe vs advanced docs): `tooling/bot_bootstrap.json`.
 
 ## Working Protocol
 

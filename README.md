@@ -102,6 +102,8 @@ AINL also includes **advanced, extension/OpenClaw-oriented** features that are
 orchestration or multi-agent safety layer. These are intended for operators who
 understand the risks and have added their own safeguards.
 
+**Bots or agents** working in this lane should use **`docs/BOT_ONBOARDING.md`** and complete **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** before implementation; see `tooling/bot_bootstrap.json`.
+
 Key docs and tooling in this lane:
 
 - `docs/SAFE_USE_AND_THREAT_MODEL.md` — safe use, threat model, and advisory vs enforced fields.
@@ -155,6 +157,7 @@ For full attribution context, see:
 
 ## Start Here
 
+- **Bots / implementation discipline:** `docs/BOT_ONBOARDING.md` — onboarding for agents; **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** is required before implementation work. Machine-readable pointers: `tooling/bot_bootstrap.json`.
 - Audience guide: `docs/AUDIENCE_GUIDE.md`
 - Spec: `docs/AINL_SPEC.md`
 - Canonical core: `docs/AINL_CANONICAL_CORE.md`

@@ -58,10 +58,11 @@ Avoid stale transitional phrasing when behavior is already shipped.
 
 Before ending a docs-heavy session:
 
-1. Verify cross-links from `DOCS_INDEX.md`, `README.md`, and contract docs.
-2. Confirm strict-mode wording is consistent across spec/contract/conformance.
-3. Add changelog entry for meaningful behavior/contract changes.
-4. Run lints/diagnostics for touched docs.
+1. Agent implementation entrypoints: `BOT_ONBOARDING.md`, `OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`, `tooling/bot_bootstrap.json` — ensure any new agent-facing doc links these where applicable.
+2. Verify cross-links from `DOCS_INDEX.md`, `README.md`, and contract docs.
+3. Confirm strict-mode wording is consistent across spec/contract/conformance.
+4. Add changelog entry for meaningful behavior/contract changes.
+5. Run lints/diagnostics for touched docs.
 
 Automation commands:
 

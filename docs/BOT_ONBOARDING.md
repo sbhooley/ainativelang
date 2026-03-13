@@ -1,0 +1,74 @@
+# Bot onboarding (AINL / OpenClaw repo)
+
+Short entrypoint for bots (and other agents) newly exposed to this repo. Use this to orient quickly and to follow the expected implementation discipline.
+
+---
+
+## Where to start
+
+1. **Machine-readable bootstrap** — `tooling/bot_bootstrap.json`  
+   Points to onboarding doc, preflight doc, and key safe vs advanced docs. Use it to discover paths programmatically.
+
+2. **Docs index** — `docs/DOCS_INDEX.md`  
+   Top-level map of documentation (core, advanced, training, contributor path). Prefer this over guessing doc names.
+
+3. **This onboarding doc** — `docs/BOT_ONBOARDING.md`  
+   You are here. Read the next sections, then the preflight doc before any implementation work.
+
+---
+
+## Which docs matter first
+
+- **Core / safe-default:**  
+  `docs/AINL_SPEC.md`, `docs/AINL_CANONICAL_CORE.md`, `docs/EXAMPLE_SUPPORT_MATRIX.md`, `docs/RUNTIME_COMPILER_CONTRACT.md`.  
+  These describe the main language, runtime, and which examples are canonical vs compatible.
+
+- **Advanced / operator-only:**  
+  `docs/OPENCLAW_ADAPTERS.md`, `docs/MEMORY_CONTRACT.md`, `docs/SAFE_USE_AND_THREAT_MODEL.md`, `docs/CAPABILITY_REGISTRY.md`.  
+  Extension adapters, memory, and operator-only capabilities are documented here. Do not assume all adapters or examples are safe-default; check the support matrix and capability metadata.
+
+- **Implementation discipline:**  
+  **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** — required reading before implementing. It defines the preflight steps and output structure you must produce before coding.
+
+---
+
+## Preflight is required before implementation work
+
+Before writing code, tests, or implementation-oriented docs:
+
+- Read **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`**.
+- Complete the **required preflight steps** (inspect files, confirm not duplicate, verify adapter semantics from code, etc.).
+- Emit the **required output structure** (chosen task, why not duplicate, files inspected, current behavior, verified semantics, assumptions, smallest viable implementation, validation plan).
+- Then implement.
+
+Skipping the preflight increases the risk of duplicate work, wrong assumptions, and misuse of adapter/API semantics.
+
+---
+
+## Safe-default vs advanced / operator-only
+
+- **Safe-default** — Canonical compiler/runtime, core adapters, strict-valid examples, graph/IR tooling. Documented in the “Core / safe-default” section of `docs/DOCS_INDEX.md` and in `docs/AINL_CANONICAL_CORE.md`. Safe for general use and unsupervised agents within the stated scope.
+
+- **Advanced / operator-only** — Extension adapters (memory, svc, extras, agent, etc.), OpenClaw monitors, coordination, and operator-only capability tags. Documented in “Advanced / operator-only” in `docs/DOCS_INDEX.md`, `docs/OPENCLAW_ADAPTERS.md`, `docs/CAPABILITY_REGISTRY.md`, and `docs/SAFE_USE_AND_THREAT_MODEL.md`. Intended for operators and controlled environments; not the default entry path for new users or unsupervised agents.
+
+When proposing or implementing work that touches adapters or examples, check the support matrix and capability registry to see whether the surface is safe-default or advanced/operator-only, and document that in your preflight output.
+
+---
+
+## Quick reference
+
+| Need | Doc or file |
+|------|------------------|
+| Bootstrap pointers | `tooling/bot_bootstrap.json` |
+| Full doc map | `docs/DOCS_INDEX.md` |
+| Implementation preflight (required) | `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` |
+| Canonical language / core | `docs/AINL_CANONICAL_CORE.md`, `docs/AINL_SPEC.md` |
+| Example classification | `docs/EXAMPLE_SUPPORT_MATRIX.md` |
+| Adapters / capabilities | `docs/CAPABILITY_REGISTRY.md`, `tooling/capabilities.json` |
+| Memory contract | `docs/MEMORY_CONTRACT.md` |
+| Safe use / threat model | `docs/SAFE_USE_AND_THREAT_MODEL.md` |
+| OpenClaw / AI agent quickstart | `AI_AGENT_QUICKSTART_OPENCLAW.md` (see also `OPENCLAW_AI_AGENT.md`) |
+
+---
+
+This is documentation and discoverability only. No auto-execution, policy engine, or planner is implied. Follow the preflight, then implement.
