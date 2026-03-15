@@ -1,0 +1,26 @@
+D TikTokVideoRec (id: str, created_at: int)
+
+S main
+  X day_ago (core.sub (core.now) 86400)
+
+  R db F "TiktokVideo" ->videos
+
+  Filter videos where (core.ge video.created_at day_ago) ->recent
+
+  X count (core.len recent)
+
+  If (core.gt count 0) ->_healthy
+
+  # No recent videos → alert
+  R email G "TikTok Pipeline Health" "No TikTok videos analyzed in the last 24 hours."
+  R email G true
+
+: _healthy
+  # Record health status
+  X day (core.idiv (core.now) 86400)
+  X rec_id (core.join ["tiktok-health-", (core.stringify day)])
+  X payload (JsonObj {"video_count": count, "ts": (core.now)})
+  R memory.put "ops" "monitor.tiktok_health" rec_id payload (core.mul 7 86400)
+
+: _done
+  Ret 0

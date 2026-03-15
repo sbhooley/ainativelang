@@ -1,0 +1,46 @@
+D InvoiceRec (id: str, status: str, amount: float, paid_at: int)
+
+S main
+  # Get daily revenue target from memory config
+  R memory.get "config" "revenue_target_daily" ->cfg
+  X target (core.if (core.not cfg.found) 10000 cfg.payload.value)  # default $10k
+
+  # Start of today (midnight UTC)
+  X now (core.now)
+  X day_start (core.sub now (core.mod now 86400)))
+
+  R db F "Invoice" ->invoices
+
+  # Filter: status paid and paid_at >= day_start
+  Filter invoices where (core.and
+    (core.eq invoice.status "paid")
+    (core.ge invoice.paid_at day_start)
+  ) ->paid_today
+
+  X revenue (0)
+  ForEach paid_today as inv ->_sum
+    X revenue (core.add revenue (core.float_of_int inv.amount))
+  EndFor
+
+  # Alert if revenue < 80% of target
+  X threshold (core.mul target 0.8)
+  If (core.ge revenue threshold) ->_ok
+
+  R email G "Revenue Alert" (core.join [
+    "Today's revenue $"
+    core.stringify revenue
+    " below 80% of target ($"
+    core.stringify target
+    ")"
+  ])
+  R email G true
+
+: _ok
+  # Record trend
+  X day (core.idiv now 86400)
+  X rec_id (core.join ["revenue-", (core.stringify day)])
+  X payload (JsonObj {"revenue": revenue, "target": target, "ts": now})
+  R memory.put "ops" "monitor.revenue_forecast" rec_id payload (core.mul 30 86400)
+  R email G true
+
+  Ret 0

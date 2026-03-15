@@ -1,0 +1,40 @@
+D InvoiceRec (id: str, due_date: int, status: str, amount: float)
+
+S main
+  X d30 (core.mul 30 86400)
+  X cutoff (core.sub (core.now) d30)
+
+  R db F "Invoice" ->invoices
+
+  # Filter: not paid and due before cutoff
+  Filter invoices where (core.and
+    (core.ne invoice.status "paid")
+    (core.lt invoice.due_date cutoff)
+  ) ->overdue
+
+  X count (core.len overdue)
+  X total_amount (0)
+  ForEach overdue as inv ->_sum
+    X total_amount (core.add total_amount (core.float_of_int inv.amount))
+  EndFor
+
+  If (core.eq count 0) ->_ok
+
+  # Send alert
+  R email G "Invoice Aging Alert" (core.join [
+    "Overdue invoices: "
+    core.stringify count
+    " totaling $"
+    core.stringify total_amount
+  ])
+  R email G true
+
+: _ok
+  # Record trend daily
+  X day (core.idiv (core.now) 86400)
+  X rec_id (core.join ["invoice-aging-", (core.stringify day)])
+  X payload (JsonObj {"count": count, "amount": total_amount, "ts": (core.now)})
+  R memory.put "ops" "monitor.invoice_aging" rec_id payload (core.mul 30 86400)
+  R email G true
+
+  Ret 0

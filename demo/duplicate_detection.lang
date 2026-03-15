@@ -1,0 +1,69 @@
+D LeadRec (id: str, phone: str, email: str, name: str)
+
+S main
+  R db F "Lead" ->leads
+
+  X duplicate_count (0)
+  X duplicate_ids ([])
+  X threshold_match (core.float_of_int 1)  # at least one other
+
+  # For each lead, count matches on phone or email (ignore blanks)
+  ForEach leads as a ->_outer
+    X match_count (0)
+    ForEach leads as b ->_inner
+      If (core.eq a.id b.id) ->_skip_inner
+      # match on phone (non-empty and equal) OR email (non-empty and equal)
+      If (core.and
+        (core.ne a.phone "")
+        (core.eq a.phone b.phone)
+      ) ->_phone_match
+      If (core.and
+        (core.ne a.email "")
+        (core.eq a.email b.email)
+      ) ->_email_match
+      J _no_match
+: _phone_match
+      X match_count (core.add match_count 1)
+      J _found_match
+: _email_match
+      X match_count (core.add match_count 1)
+: _found_match
+      # Record duplicate pair if not already recorded
+      # We'll just mark both IDs later
+: _no_match
+      # continue inner
+: _skip_inner
+      # skip self
+    EndFor
+
+    If (core.gt match_count threshold_match) ->_is_dup
+    J _next_a
+: _is_dup
+    X duplicate_count (core.add duplicate_count 1)
+    # collect duplicate ID (a.id)
+    X duplicate_ids (core.append duplicate_ids a.id)
+: _next_a
+    # continue outer
+  EndFor
+
+  If (core.eq duplicate_count 0) ->_no_duplicates
+
+  # Send alert summary (limit IDs printed)
+  X sample_ids (core.slice duplicate_ids 0 5)
+  R email G "Duplicate Leads Detected" (core.join [
+    "Found "
+    core.stringify duplicate_count
+    " leads with duplicate phone/email. Examples: "
+    (core.join sample_ids ", ")
+  ])
+  R email G true
+
+: _no_duplicates
+  # Record trend
+  X today (core.idiv (core.now) 86400)
+  X rec_id (core.join ["duplicate-leads-", (core.stringify today)])
+  X payload (JsonObj {"count": duplicate_count, "ts": (core.now)})
+  R memory.put "ops" "monitor.duplicate_leads" rec_id payload (core.mul 30 86400)
+  R email G true
+
+  Ret 0

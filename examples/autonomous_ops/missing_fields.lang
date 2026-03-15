@@ -1,0 +1,53 @@
+D LeadRec (id: str, phone: str, email: str, website: str)
+
+S main
+  R db F "Lead" ->leads
+  X total (core.len leads)
+
+  # Count missing phone, email, or website
+  X missing_phone (0)
+  X missing_email (0)
+  X missing_website (0)
+
+  ForEach leads as l ->_check
+    If (core.or (core.eq l.phone "") (core.eq l.phone null)) ->_no_phone
+    J _next
+: _no_phone
+    X missing_phone (core.add missing_phone 1)
+: _next
+    If (core.or (core.eq l.email "") (core.eq l.email null)) ->_no_email
+    J _next2
+: _no_email
+    X missing_email (core.add missing_email 1)
+: _next2
+    If (core.or (core.eq l.website "") (core.eq l.website null)) ->_no_website
+    J _next3
+: _no_website
+    X missing_website (core.add missing_website 1)
+: _next3
+    # continue
+  EndFor
+
+  # Alert if >5% of leads missing any critical field
+  X threshold_pct (core.mul 0.05 total)
+  If (core.lt missing_phone threshold_pct) ->_phone_ok
+  R email G "Data Quality: Missing Phone" (core.join ["Phone missing on ", core.stringify missing_phone, " of ", core.stringify total, " leads."])
+  R email G true
+: _phone_ok
+  If (core.lt missing_email threshold_pct) ->_email_ok
+  R email G "Data Quality: Missing Email" (core.join ["Email missing on ", core.stringify missing_email, " of ", core.stringify total, " leads."])
+  R email G true
+: _email_ok
+  If (core.lt missing_website threshold_pct) ->_website_ok
+  R email G "Data Quality: Missing Website" (core.join ["Website missing on ", core.stringify missing_website, " of ", core.stringify total, " leads."])
+  R email G true
+: _website_ok
+
+  # Record trend
+  X today (core.idiv (core.now) 86400)
+  X rec_id (core.join ["missing-fields-", (core.stringify today)])
+  X payload (JsonObj {"phone": missing_phone, "email": missing_email, "website": missing_website, "total": total, "ts": (core.now)})
+  R memory.put "ops" "monitor.missing_fields" rec_id payload (core.mul 30 86400)
+  R email G true
+
+  Ret 0

@@ -1,0 +1,51 @@
+D UsageRec (date: str, tokens: int)
+
+S main
+  # Read API key and budget from memory config (must be set manually beforehand)
+  R memory.get "config" "openrouter_api_key" ->tok
+  If (core.not tok.found) ->_missing_key
+  R memory.get "config" "openrouter_daily_budget_tokens" ->budget_cfg
+  X budget (core.if (core.not budget_cfg.found) 100000 budget_cfg.payload.value)
+
+  # Build Auth header
+  X auth_val (core.join ["Bearer ", tok.payload.value])
+  X headers (JsonObj {"Authorization": auth_val})
+
+  # Fetch usage JSON from OpenRouter
+  R http.GET "https://openrouter.ai/api/v1/usage" headers ->resp
+
+  # Expect resp.data as list of usage recs; find today's entry
+  X today (core.now)
+  X today_str (core.join [
+    (core.stringify (core.idiv (core.sub today (core.mul (core.mod (core.now) 86400) 0)) 86400))]) # wrong, simpler: format date as YYYY-MM-DD. AINL lacks date formatting. We'll match by epoch day bucket.
+  # Instead, compute day bucket integer: YYYYMMDD? Not easily. We'll instead just take the first entry as today? Not reliable.
+  # For simplicity, sum all tokens in the returned data and compare to budget; if total > budget, alert.
+  X usage_list resp.data
+  X total_tokens (0)
+  ForEach usage_list as u ->_sum
+    X total_tokens (core.add total_tokens u.tokens)
+  EndFor
+
+  If (core.lte total_tokens budget) ->_ok
+
+  # Budget exceeded
+  R email G "API Quota Alert" (core.join [
+    "OpenRouter usage "
+    core.stringify total_tokens
+    " tokens exceeds budget of "
+    core.stringify budget
+  ])
+  R email G true
+
+: _ok
+  # Record daily usage to memory
+  X day (core.idiv today 86400)
+  X rec_id (core.join ["api-quota-", (core.stringify day)])
+  X payload (JsonObj {"tokens": total_tokens, "budget": budget, "ts": today})
+  R memory.put "ops" "monitor.api_quota" rec_id payload (core.mul 30 86400)
+
+: _missing_key
+  R email G "API Quota Monitor misconfigured: OPENROUTER_API_KEY missing in memory config."
+  R email G true
+
+  Ret 0

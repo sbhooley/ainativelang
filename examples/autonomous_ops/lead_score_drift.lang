@@ -1,0 +1,62 @@
+D LeadRec (id: str, created_at: int, score: float)
+
+S main
+  # 7 days in seconds
+  X d7 (core.mul 7 86400)
+  X now (core.now)
+  X period_cur_start (core.sub now d7)
+  X period_prev_start (core.sub now (core.mul 14 86400))
+
+  R db F "Lead" ->leads
+
+  # Current period (last 7d)
+  Filter leads where (core.and
+    (core.ge lead.created_at period_cur_start)
+    (core.lt lead.created_at now)
+  ) ->cur_set
+
+  # Previous period (7-14d ago)
+  Filter leads where (core.and
+    (core.ge lead.created_at period_prev_start)
+    (core.lt lead.created_at period_cur_start)
+  ) ->prev_set
+
+  X cur_n (core.len cur_set)
+  X prev_n (core.len prev_set)
+
+  # Sum scores
+  X cur_sum (0)
+  ForEach cur_set as l ->_add_cur
+    X cur_sum (core.add cur_sum (core.float_of_int l.score))
+  EndFor
+
+  X prev_sum (0)
+  ForEach prev_set as l ->_add_prev
+    X prev_sum (core.add prev_sum (core.float_of_int l.score))
+  EndFor
+
+  # Compute averages safely
+  X cur_avg (core.if (core.eq cur_n 0) 0 (core.div cur_sum (core.float_of_int cur_n)))
+  X prev_avg (core.if (core.eq prev_n 0) 0 (core.div prev_sum (core.float_of_int prev_n)))
+
+  # Write trend record (always)
+  X rec_id (core.join ["score-drift-", (core.idiv now 86400)])
+  X trend (JsonObj {"cur_avg": cur_avg, "prev_avg": prev_avg, "ts": now})
+  R memory.put "ops" "monitor.lead_score_drift" rec_id trend (core.mul 30 86400)
+
+  # Check for significant drop (>15%)
+  If (core.eq prev_avg 0) ->_done  # cannot compute drop
+  X drop (core.sub prev_avg cur_avg)
+  X rel_drop (core.div drop prev_avg)
+  If (core.lt rel_drop 0.15) ->_done
+
+  # Send alert
+  R email G "Lead Score Drift Alert" (core.join [
+    "Score dropped "
+    core.stringify (core.mul rel_drop 100)
+    "% (prev " core.stringify prev_avg " → cur " core.stringify cur_avg ")"
+  ])
+  R email G true
+
+: _done
+  Ret 0

@@ -1,0 +1,41 @@
+D LeadRec (id: str, created_at: int, updated_at: int, status: str, stage: str)
+
+S main
+  # Threshold: 30 days in seconds
+  X threshold_days (core.mul 30 86400)
+  X cutoff (core.sub (core.now) threshold_days)
+
+  # Fetch all leads (we'll filter locally)
+  R db F "Lead" ->leads
+
+  # Filter: created before cutoff AND status not in ('won','converted')
+  Filter leads where (core.and
+    (core.lt lead.created_at cutoff)
+    (core.not (core.or
+      (core.eq lead.status "won")
+      (core.eq lead.status "converted")
+    ))
+  ) ->aged_leads
+
+  X aged_count (core.len aged_leads)
+
+  If (core.gt aged_count 0) ->_alert
+
+  J _done
+
+: _alert
+  # Send Telegram alert
+  R email G "Lead Aging Report" (core.join [
+    "Found "
+    core.stringify aged_count
+    " leads older than 30 days that haven't converted."
+  ])
+  # Write memory trend (TTL 30 days)
+  X rec_id (core.join ["lead-aging-", (core.idiv (core.now) 86400)])
+  X payload (JsonObj {"count": aged_count, "ts": (core.now)})
+  R memory.put "ops" "monitor.lead_aging" rec_id payload (core.mul 30 86400)
+  R email G true
+  J _done
+
+: _done
+  Ret 0
