@@ -557,19 +557,21 @@ Its value is especially clear in recurring, stateful, branching, and operational
 
 ## Appendix A: Representative File Map
 
-- `compiler_v2.py`
-- `runtime/engine.py`
-- `ADAPTER_REGISTRY.json`
-- `adapters/`
-- `adapters/openclaw_integration.py`
-- `docs/AINL_SPEC.md`
-- `SEMANTICS.md`
-- `docs/TRAINING_ALIGNMENT_RUNBOOK.md`
-- `demo/monitor_system.lang`
-- `examples/openclaw/`
-- `examples/autonomous_ops/`
-- `tooling/artifact_profiles.json`
-- `tooling/benchmark_manifest.json`
+Paths are relative to the repository root. All listed paths exist in the repo.
+
+- `compiler_v2.py` — main compiler (root)
+- `runtime/engine.py` — graph-first runtime engine
+- `ADAPTER_REGISTRY.json` — adapter registry (root)
+- `adapters/` — adapter implementations
+- `adapters/openclaw_integration.py` — OpenClaw integration adapter
+- `docs/AINL_SPEC.md` — language specification
+- `SEMANTICS.md` — runtime semantics (root)
+- `docs/TRAINING_ALIGNMENT_RUNBOOK.md` — alignment/training runbook
+- `demo/monitor_system.lang` — monitor system demo
+- `examples/openclaw/` — OpenClaw example programs
+- `examples/autonomous_ops/` — autonomous ops examples
+- `tooling/artifact_profiles.json` — artifact/strict profiles
+- `tooling/benchmark_manifest.json` — benchmark manifest
 
 ---
 
