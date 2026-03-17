@@ -24,30 +24,30 @@ Instead of asking an LLM to repeatedly plan, remember prior tool calls, and carr
 
 In practice, that means:
 
--the model describes the workflow once
--the compiler validates it
--the runtime executes it deterministically
--state lives in variables, cache, memory, databases, and adapters — not in prompt history
+- The model describes the workflow once
+- The compiler validates it
+- The runtime executes it deterministically
+- State lives in variables, cache, memory, databases, and adapters — not in prompt history
 
 ## The Core Idea
 
 AINL is built around one invariant:
 
-Canonical IR = nodes + edges; everything else is serialization.
+> **Canonical IR = nodes + edges; everything else is serialization.**
 
 AINL source is a compact surface language for producing the canonical graph.
 That graph can then be:
 
--executed by the runtime
--inspected and diffed
--validated in strict mode
--emitted into other targets such as:
--FastAPI
--React/TypeScript
--Prisma
--OpenAPI
--Docker / Compose
--cron / queue / scraper / MT5 outputs
+- Executed by the runtime
+- Inspected and diffed
+- Validated in strict mode
+- Emitted into other targets such as:
+  - FastAPI
+  - React/TypeScript
+  - Prisma
+  - OpenAPI
+  - Docker / Compose
+  - Cron / queue / scraper / MT5 outputs
 
 This makes AINL both a workflow language and a canonical intermediate representation for AI-generated systems.
 
@@ -57,32 +57,33 @@ Large language models are pushing toward ever larger context windows, but long c
 
 Long prompt loops create familiar problems:
 
--prompt bloat
--rising token cost
--hidden state
--brittle orchestration
--poor auditability
--hard-to-debug tool behavior
+- Prompt bloat
+- Rising token cost
+- Hidden state
+- Brittle orchestration
+- Poor auditability
+- Hard-to-debug tool behavior
 
 AINL solves this at the programming layer.
 
 An AINL program gives an agent:
 
--explicit control flow
--explicit side effects
--compile-time validation
--capability-aware boundaries
--externalized memory
--reproducible runtime behavior
+- Explicit control flow
+- Explicit side effects
+- Compile-time validation
+- Capability-aware boundaries
+- Externalized memory
+- Reproducible runtime behavior
 
 The LLM stops being the whole control plane and becomes a reasoning component inside a deterministic system.
 
 ## What Makes AINL Different
-1. Graph-first, not prompt-first
+
+### 1. Graph-first, not prompt-first
 
 AINL programs compile to canonical graph IR. Execution follows graph semantics, not ad hoc conversational state.
 
-2. AI-oriented surface syntax
+### 2. AI-oriented surface syntax
 
 The surface language is intentionally compact and structured for parseability, determinism, and low-entropy generation by models.
 
@@ -90,14 +91,14 @@ The surface language is intentionally compact and structured for parseability, d
 
 AINL’s strict mode enforces high-value invariants such as:
 
--canonical graph emission
--no undeclared references
--no unknown module operations
--adapter arity validation
--no unreachable or duplicate nodes
--canonical node IDs
--validated call returns
--controlled exits
+- Canonical graph emission
+- No undeclared references
+- No unknown module operations
+- Adapter arity validation
+- No unreachable or duplicate nodes
+- Canonical node IDs
+- Validated call returns
+- Controlled exits
 
 4. Adapters separate “what” from “how”
 
@@ -106,17 +107,17 @@ Adapters implement how it happens.
 
 This allows the same graph language to drive:
 
--HTTP
--SQLite
--filesystem operations
--email/calendar/social integrations
--service checks
--cache/memory
--queues
--WASM modules
--OpenClaw-specific operational workflows
+- HTTP
+- SQLite
+- Filesystem operations
+- Email/calendar/social integrations
+- Service checks
+- Cache/memory
+- Queues
+- WASM modules
+- OpenClaw-specific operational workflows
 
-5. Multi-target leverage
+### 5. Multi-target leverage
 
 One AINL program can describe a workflow once and emit multiple downstream artifacts, rather than forcing an agent to regenerate parallel implementations across backend, frontend, schema, and deployment surfaces.
 
@@ -126,78 +127,78 @@ AINL is not just a speculative language design. It is already used in live OpenC
 
 The Apollo / OpenClaw stack exercises adapters such as:
 
--email
--calendar
--social
--db
--svc
--cache
--queue
--wasm
--memory
--extras
--tiktok
+- `email`
+- `calendar`
+- `social`
+- `db`
+- `svc`
+- `cache`
+- `queue`
+- `wasm`
+- `memory`
+- `extras`
+- `tiktok`
 
 Production-validated examples include:
 
--demo/monitor_system.lang
--daily digest workflows
--infrastructure watchdogs
--lead enrichment
--token cost tracking
--TikTok SLA monitoring
--canary probes
--memory pruning
--session continuity
--meta-monitoring of the monitor fleet itself
+- `demo/monitor_system.lang`
+- Daily digest workflows
+- Infrastructure watchdogs
+- Lead enrichment
+- Token cost tracking
+- TikTok SLA monitoring
+- Canary probes
+- Memory pruning
+- Session continuity
+- Meta-monitoring of the monitor fleet itself
 
 These programs demonstrate that AINL is effective not only for toy examples, but for:
 
--recurring monitors
--stateful automation
--autonomous ops
--safety-aware tool orchestration
--long-lived agent systems
+- Recurring monitors
+- Stateful automation
+- Autonomous ops
+- Safety-aware tool orchestration
+- Long-lived agent systems
 
 ## Token Efficiency: What We Can Honestly Say
 
 AINL’s compactness and cost benefits should be described carefully.
 
-What is supported today:
+**What is supported today:**
 
--AINL is often denser than equivalent generated implementation artifacts
--the benchmark is profile-scoped and mode-scoped
--minimal emit is the more honest deployment comparison
--full multitarget is best understood as downstream expansion leverage, not apples-to-apples terseness
--compile-once / run-many workflows reduce repeated model-generation cost
+- AINL is often denser than equivalent generated implementation artifacts
+- The benchmark is profile-scoped and mode-scoped
+- Minimal emit is the more honest deployment comparison
+- Full multitarget is best understood as downstream expansion leverage, not apples-to-apples terseness
+- Compile-once / run-many workflows reduce repeated model-generation cost
 
-What is not supported:
+**What is not supported:**
 
--universal compactness claims against all mainstream languages
--guaranteed tokenizer pricing savings from lexical proxy metrics alone
+- Universal compactness claims against all mainstream languages
+- Guaranteed tokenizer pricing savings from lexical proxy metrics alone
 
-Current benchmark framing:
+**Current benchmark framing:**
 
--canonical_strict_valid is the primary headline profile
--approx_chunks is a lexical-size proxy, not a tokenizer-billing metric
--in full_multitarget, canonical strict examples show strong expansion leverage
--in minimal_emit, mixed compatibility examples can be smaller or larger depending on artifact class and required targets
+- `canonical_strict_valid` is the primary headline profile
+- `approx_chunks` is a lexical-size proxy, not a tokenizer-billing metric
+- In `full_multitarget`, canonical strict examples show strong expansion leverage
+- In `minimal_emit`, mixed compatibility examples can be smaller or larger depending on artifact class and required targets
 
 This means the strongest truthful claim is:
 
-AINL provides a compact, reproducible, profile-segmented way to express graph workflows and multi-target systems, while often reducing repeated AI generation effort and avoiding repeated orchestration token burn during runtime.
+> AINL provides a compact, reproducible, profile-segmented way to express graph workflows and multi-target systems, while often reducing repeated AI generation effort and avoiding repeated orchestration token burn during runtime.
 
 ## Where AINL Helps Most
 
 AINL is most valuable when workflows are:
 
--recurring
--stateful
--branching
--safety-sensitive
--multi-step
--multi-target
--shared across teams or agents
+- Recurring
+- Stateful
+- Branching
+- Safety-sensitive
+- Multi-step
+- Multi-target
+- Shared across teams or agents
 
 That is where its graph structure, policies, adapters, and oversight deliver the most leverage.
 
@@ -215,20 +216,20 @@ So AINL gives AI systems a native substrate for those concerns.
 
 The result is a different architecture:
 
+```mermaid
 flowchart LR
 A[AINL Source] --> B[Compiler]
 B --> C[Canonical Graph IR]
 C --> D[Runtime Engine]
 D --> E[Adapters / Tools / State]
 D --> F[Optional LLM Calls]
+```
 
-The graph is the source of truth.
-The runtime is the orchestrator.
-The model is a bounded reasoning component inside the system.
+The graph is the source of truth. The runtime is the orchestrator. The model is a bounded reasoning component inside the system.
 
-In One Sentence
+### In One Sentence
 
-AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
+> AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
 
 ## Status
 
