@@ -21,12 +21,12 @@
 
 ### Links
 
-- [Getting started](docs/getting_started/README.md)
-- [Release notes](docs/RELEASE_NOTES.md)
-- [External orchestration guide](docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md)
-- [Security & threat model](docs/advanced/SAFE_USE_AND_THREAT_MODEL.md)
-- [Conformance](docs/CONFORMANCE.md)
-- [Contributing](CONTRIBUTING.md)
+- [Getting started](../getting_started/README.md)
+- [Release notes](../RELEASE_NOTES.md)
+- [External orchestration guide](../operations/EXTERNAL_ORCHESTRATION_GUIDE.md)
+- [Security & threat model](../advanced/SAFE_USE_AND_THREAT_MODEL.md)
+- [Conformance](../CONFORMANCE.md)
+- [Contributing](../../CONTRIBUTING.md)
 
 ### Licensing
 
