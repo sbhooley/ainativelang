@@ -1,5 +1,19 @@
 # AI Native Lang (AINL)
 
+<p align="center">
+  <img src="docs/assets/ainl_logo.png" alt="AINL logo" width="220" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/sbhooley/ainativelang/actions/workflows/ci.yml">
+    <img src="https://github.com/sbhooley/ainativelang/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+" />
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License: Apache-2.0" />
+  </a>
+</p>
+
 > AI-led co-development project, human-initiated by Steven Hooley (`x.com/sbhooley`, `stevenhooley.com`, `linkedin.com/in/sbhooley`). Attribution details: `docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md` and `tooling/project_provenance.json`.
 
 **AINL helps turn AI from "a smart conversation" into "a structured worker."**
