@@ -73,7 +73,7 @@ workstreams were rebuilt, retested, and formalized in overlapping phases through
 
 - Start with:
   - `docs/RELEASE_READINESS.md`
-  - `docs/TARGETS_ROADMAP.md`
+  - `docs/runtime/TARGETS_ROADMAP.md`
   - `docs/GITHUB_RELEASE_CHECKLIST.md`
 - Track latest status from:
   - `corpus/curated/alignment_run_health.json`

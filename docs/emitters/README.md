@@ -4,7 +4,7 @@ Use this section to understand how AINL expands into downstream artifacts such a
 
 ## Current anchors
 
-- [`../TARGETS_ROADMAP.md`](../TARGETS_ROADMAP.md) — target/runtime support map
+- [`TARGETS_ROADMAP.md`](../runtime/TARGETS_ROADMAP.md) — target/runtime support map
 - [`../reference/TOOL_API.md`](../reference/TOOL_API.md) — compile/validate/emit loop contract
 
 ## Related sections

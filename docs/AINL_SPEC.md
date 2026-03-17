@@ -331,7 +331,7 @@ Without strict mode, AINL becomes soft; implementations should treat it as the d
 
 ## 4. Target Matrix
 
-**Expanded roadmap (real-world / production):** see [docs/TARGETS_ROADMAP.md](TARGETS_ROADMAP.md).
+**Expanded roadmap (real-world / production):** see [docs/runtime/TARGETS_ROADMAP.md](runtime/TARGETS_ROADMAP.md).
 
 | Target | Ops / IR used | Emitter output |
 |--------|----------------|----------------|

@@ -38,7 +38,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Extension lanes and OpenClaw-specific surfaces: `docs/language/AINL_EXTENSIONS.md`
 - Canonical profile snapshot (v0.9): `docs/AINL_V0_9_PROFILE.md`
 - Runtime behavior specification (complement to `SEMANTICS.md`): `docs/ainl_runtime_spec.md`
-- Target/runtime support roadmap: `docs/TARGETS_ROADMAP.md`
+- Target/runtime support roadmap: `docs/runtime/TARGETS_ROADMAP.md`
 - Example support classification: `docs/EXAMPLE_SUPPORT_MATRIX.md`
 - Graph/IR introspection guide: `docs/architecture/GRAPH_INTROSPECTION.md`
 - Runtime semantics contract: `SEMANTICS.md`

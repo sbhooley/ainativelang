@@ -12,6 +12,32 @@ AINL is best understood as a **graph-canonical intermediate programming system**
 
 The repository also includes advanced, noncanonical extension surfaces for operator-oriented workflows, but those are not the core/safe-default entry point.
 
+## In Plain English
+
+AINL helps turn AI from “a smart conversation” into “a structured worker.”
+
+It is designed for teams building AI workflows that need:
+- multiple steps
+- state and memory
+- tool use
+- repeatable execution
+- validation and control
+- lower dependence on long prompt loops
+
+## Who AINL Is For
+
+AINL is best suited for:
+
+- AI engineers and agent builders
+- teams building internal AI workers and structured automations
+- platform and ops teams that need controlled AI workflows
+- enterprises that care about repeatability, auditability, and workflow governance
+
+AINL is less optimized for:
+- casual chatbot prototyping
+- one-off prompt hacks
+- no-code-first usage
+
 ## Why AINL Exists
 
 AINL (AI Native Lang) is a graph-first, AI-oriented programming system designed for a specific problem:
@@ -50,6 +76,21 @@ That graph can then be:
   - Cron / queue / scraper / MT5 outputs
 
 This makes AINL both a workflow language and a canonical intermediate representation for AI-generated systems.
+
+## Why Businesses Care
+
+AINL matters when AI moves beyond demos and starts doing real operational work.
+
+It is especially useful when teams need AI workflows that are:
+
+- repeatable
+- inspectable
+- stateful
+- tool-using
+- cost-aware
+- easier to validate and maintain
+
+AINL helps reduce the gap between “a clever AI demo” and “a workflow a business can actually run.”
 
 ## Why This Matters for AI Agents
 
@@ -279,7 +320,7 @@ For implementation and shipped-capability status, see:
 
 - [docs/CONFORMANCE.md](docs/CONFORMANCE.md)
 - [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md)
-- [docs/TARGETS_ROADMAP.md](docs/TARGETS_ROADMAP.md)
+- [docs/runtime/TARGETS_ROADMAP.md](docs/runtime/TARGETS_ROADMAP.md)
 - [docs/AINL_CANONICAL_CORE.md](docs/AINL_CANONICAL_CORE.md)
 - [docs/EXAMPLE_SUPPORT_MATRIX.md](docs/EXAMPLE_SUPPORT_MATRIX.md)
 - [docs/advanced/SAFE_USE_AND_THREAT_MODEL.md](docs/advanced/SAFE_USE_AND_THREAT_MODEL.md)
@@ -325,7 +366,7 @@ This ensures consistent parsing for Telegram, dashboards, and downstream process
 ## Use With Care
 
 - Compatibility examples are retained intentionally; do not assume all public examples are strict-valid.
-- Some emitters are more mature than others; treat `docs/TARGETS_ROADMAP.md` as a capability map, not a promise that every target is equally production-ready.
+- Some emitters are more mature than others; treat `docs/runtime/TARGETS_ROADMAP.md` as a capability map, not a promise that every target is equally production-ready.
 - Model-training and benchmark artifacts are included, but they should be read together with `BENCHMARK.md`, `docs/OLLAMA_EVAL.md`, and `docs/TEST_PROFILES.md` rather than as standalone proof of maturity.
 
 ## Surfaces and usage lanes
@@ -473,7 +514,7 @@ The emitted server also includes **openapi.json** for API docs, codegen, and gat
 |------|--------|
 | `docs/AINL_SPEC.md` | AINL 1.0 formal spec: principles, grammar, execution, targets |
 | `docs/CONFORMANCE.md` | Implementation conformance vs spec (IR shape, graph emission, P, meta) |
-| `docs/TARGETS_ROADMAP.md` | Expanded targets for production and adoption |
+| `docs/runtime/TARGETS_ROADMAP.md` | Expanded targets for production and adoption |
 | `docs/language/grammar.md` | Ops/slots reference (v1.0) |
 | `compiler_v2.py` | Parser + IR + all emitters (OpenAPI, Docker, K8s, Next/Vue/Svelte, SQL, env) |
 | `runtime/engine.py` | `RuntimeEngine` (graph-first execution; step fallback) |

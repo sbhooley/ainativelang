@@ -205,7 +205,7 @@ Definition of done:
 
 - `README.md`
 - `docs/CONFORMANCE.md`
-- `docs/TARGETS_ROADMAP.md`
+- `docs/runtime/TARGETS_ROADMAP.md`
 - `docs/AUDIENCE_GUIDE.md`
 - `docs/DOCS_INDEX.md`
 - `tooling/artifact_profiles.json`

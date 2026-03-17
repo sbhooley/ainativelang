@@ -74,4 +74,4 @@ The division between canonical AINL and additional extension lanes (including Op
 The formal description of how compiled IR and language constructs must behave at runtime, complementing the human-readable semantics; see `docs/ainl_runtime_spec.md` and `SEMANTICS.md`.
 
 ## Targets Roadmap
-The forward-looking map of officially supported runtimes, adapters, and deployment targets, documented in `docs/TARGETS_ROADMAP.md`.
+The forward-looking map of officially supported runtimes, adapters, and deployment targets, documented in `docs/runtime/TARGETS_ROADMAP.md`.
