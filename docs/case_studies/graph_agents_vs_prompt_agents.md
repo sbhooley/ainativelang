@@ -214,30 +214,49 @@ This enables:
 
 ---
 
-## 3. Externalized State
+## 3. Externalized State (Four-Tier State Discipline)
 
-AINL uses adapters:
+AINL manages state through explicit, tiered adapters rather than hiding state inside prompt history:
 
-* `cache` → short-term state
-* `memory` → long-term state with TTL
-* `db` → structured storage
+| Tier | Scope | Mechanism |
+|------|-------|-----------|
+| **Frame** | Single run | Built-in variables |
+| **Cache** | Runtime instance | Cache adapter with optional TTL |
+| **Persistent** | Across restarts | Memory adapter (recommended for durable state), SQLite, filesystem |
+| **Coordination** | Cross-workflow | Queue adapter, agent mailbox |
 
-No prompt-based memory accumulation.
+No prompt-based memory accumulation. Each tier has a defined lifecycle and access pattern.
+
+See `docs/architecture/STATE_DISCIPLINE.md` for the full specification.
 
 ---
 
-## 4. Strong Safety Model
+## 4. Resilient Execution
+
+The `Retry` operation supports:
+
+* fixed backoff (constant delay between retries)
+* exponential backoff (`backoff_ms * 2^(attempt-1)`, capped at configurable maximum)
+* error handlers for structured fallback
+
+This makes tool orchestration resilient to transient failures without external retry wrappers.
+
+---
+
+## 5. Strong Safety and Policy Model
 
 Adapters declare:
 
 * `safety_tags`
 * `usage_model`
 
-Policies can block unsafe combinations before execution.
+The runner service supports **optional policy-gated execution**: external orchestrators can submit a policy object with `/run` requests. If the compiled IR violates the policy, the runner returns HTTP 403 with structured violations — without executing.
+
+External orchestrators can also **discover capabilities** via `GET /capabilities` before submitting workflows.
 
 ---
 
-## 5. Observability & Debugging
+## 6. Observability & Debugging
 
 AINL provides:
 
@@ -249,7 +268,7 @@ This is fundamentally better than reading prompt logs.
 
 ---
 
-## 6. Capability-Based Architecture
+## 7. Capability-Based Architecture
 
 AINL separates:
 
@@ -266,12 +285,14 @@ This enforces clean system boundaries.
 | Feature         | Prompt Loop Agents | Graph Agents (AINL)            |
 | --------------- | ------------------ | ------------------------------ |
 | Orchestration   | LLM                | Runtime engine                 |
-| State           | prompt history     | cache / memory / DB            |
+| State           | prompt history     | four-tier: frame / cache / memory / coordination |
 | Execution       | dynamic            | deterministic                  |
-| Token usage     | grows over time    | bounded                        |
-| Debugging       | difficult          | transparent                    |
+| Token usage     | grows over time    | bounded (compile-once / run-many) |
+| Retry/resilience | ad hoc             | built-in (fixed / exponential backoff) |
+| Debugging       | difficult          | transparent (graph tracing)    |
 | Safety          | implicit           | explicit (policies + adapters) |
-| Reproducibility | low                | high                           |
+| Operator control | platform-specific  | policy-gated execution + capability discovery |
+| Reproducibility | low                | high (record/replay)           |
 
 ---
 

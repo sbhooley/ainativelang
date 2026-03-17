@@ -1,11 +1,11 @@
-# AI Native Lang: A Graph-Canonical Programming System for AI-Oriented Workflows
+# AI Native Lang (AINL): An AI-Native Programming Language for Deterministic Agent Workflows
 
-**Suggested file:** `docs/whitepaper/AINL_WHITEPAPER.md`
+Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version context:** public baseline era (v1.1.0 posture)  
+**Version:** 1.1.0  
 **Project status:** active human + AI co-development  
-**Primary implementation:** `compiler_v2.py`, `runtime/engine.py`  
-**Reference ecosystem:** OpenClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters
+**Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `scripts/runtime_runner_service.py`  
+**Reference ecosystem:** OpenClaw/NemoClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters, sandboxed operator deployments
 
 ---
 
@@ -239,11 +239,55 @@ This makes it suitable for recurring and semi-autonomous workflows.
 
 ---
 
-## 7. Adapter Model
+## 7. State Discipline
+
+AINL manages workflow state through explicit, adapter-mediated tiers rather
+than hiding state inside prompt history or ad hoc globals.
+
+### 7.1 Four-Tier State Model
+
+| Tier | Scope | Mechanism | Example |
+|------|-------|-----------|---------|
+| **Frame** (ephemeral) | Single run | Built-in variable dict | `R core.ADD 2 3 ->sum` |
+| **Cache** (short-lived) | Runtime instance | Cache adapter with optional TTL | Cooldown tracking, throttle state |
+| **Persistent** (durable) | Across restarts | Memory adapter, SQLite, filesystem | Session context, long-term facts, workflow checkpoints |
+| **Coordination** (cross-workflow) | Between workflows/agents | Queue adapter, agent mailbox | Downstream handoffs, inter-agent tasks |
+
+The frame is always available. Higher tiers require the corresponding adapter
+to be in the allowlist.
+
+### 7.2 Why Tiered State Matters
+
+Systems that rely on prompt history for state suffer from growing context
+windows, rising token costs, hidden state that is hard to inspect or
+reproduce, and scattered conventions across memory, cache, and database.
+
+AINL's state discipline addresses these problems by:
+
+- making every piece of state explicit and adapter-mediated,
+- separating ephemeral scratch values from durable records,
+- providing export/import bridges for persistent state (JSON/JSONL for memory,
+  SQL for SQLite),
+- mapping each sandbox profile to a specific set of available state tiers.
+
+### 7.3 Memory as the Recommended Durable State Mechanism
+
+The memory adapter provides structured records keyed by `(namespace,
+record_kind, record_id)` with JSON payloads, timestamps, and optional TTL.
+While classified as `extension_openclaw` by packaging origin, memory is the
+**recommended durable state mechanism** for any workflow that needs persistence
+beyond a single run. It is the primary persistent state tier across all
+deployment environments.
+
+See `docs/architecture/STATE_DISCIPLINE.md` for the full specification.
+
+---
+
+## 8. Adapter Model
 
 AINL's runtime delegates concrete actions to adapters.
 
-### 7.1 Adapter Philosophy
+### 8.1 Adapter Philosophy
 
 Adapters provide the implementation layer for effects while keeping the language surface stable.
 
@@ -263,11 +307,11 @@ Examples include:
 - `memory`
 - OpenClaw-specific operational extensions
 
-### 7.2 Capability-Aware Safety
+### 8.2 Capability-Aware Safety
 
 Adapters declare behavior through capability and metadata surfaces, including safety-oriented boundaries. The system makes operator-only or sensitive surfaces more explicit and easier to isolate.
 
-### 7.3 Why This Matters
+### 8.3 Why This Matters
 
 Without adapters, each new workflow often requires the model to regenerate API client code, state-handling logic, and integration boilerplate. With adapters, the workflow references a stable interface instead.
 
@@ -275,7 +319,7 @@ This reduces both generation burden and runtime ambiguity.
 
 ---
 
-## 8. Multi-Target Emission
+## 9. Multi-Target Emission
 
 AINL is not just a runtime language. It is also an emitter source.
 
@@ -292,7 +336,7 @@ Supported target classes include:
 - Scraper outputs
 - Cron / queue related projections
 
-### 8.1 Single Spec, Many Targets
+### 9.1 Single Spec, Many Targets
 
 AINL allows a system to be described once and emitted into multiple downstream representations.
 
@@ -301,7 +345,7 @@ This has two important consequences:
 1. It reduces duplicated generation effort
 2. It provides a shared canonical source for backend, frontend, and operational surfaces
 
-### 8.2 Emission Honesty
+### 9.2 Emission Honesty
 
 Benchmark and documentation claims must distinguish between:
 
@@ -312,11 +356,11 @@ This distinction is central to truthful benchmarking.
 
 ---
 
-## 9. OpenClaw and Apollo as an Operational Validation Path
+## 10. OpenClaw and Apollo as an Operational Validation Path
 
 AINL has been validated in a real operational context through Apollo's OpenClaw workflows.
 
-### 9.1 Core OpenClaw Integration
+### 10.1 Core OpenClaw Integration
 
 The implemented and exercised integrations include:
 
@@ -329,7 +373,7 @@ The implemented and exercised integrations include:
 - Notification queue dispatch
 - WebAssembly computation modules
 
-### 9.2 The Monitor Path
+### 10.2 The Monitor Path
 
 `demo/monitor_system.lang` serves as a key proof path for AINL's operational value.
 
@@ -344,7 +388,7 @@ It demonstrates:
 - Cooldown logic
 - Persistent state across runs
 
-### 9.3 Autonomous Ops Extension Pack
+### 10.3 Autonomous Ops Extension Pack
 
 AINL's role expanded further through a suite of autonomous ops workflows, including:
 
@@ -367,11 +411,11 @@ These examples show that AINL is not limited to CRUD or toy orchestration; it is
 
 ---
 
-## 10. AINL and Long-Context LLM Systems
+## 11. AINL and Long-Context LLM Systems
 
 AINL is highly relevant to current long-context trends, but the relationship should be stated precisely.
 
-### 10.1 What AINL Does Not Do
+### 11.1 What AINL Does Not Do
 
 AINL is not itself a replacement for:
 
@@ -382,7 +426,7 @@ AINL is not itself a replacement for:
 
 Those are model-architecture and inference-layer techniques.
 
-### 10.2 What AINL Does Do
+### 11.2 What AINL Does Do
 
 AINL reduces the need to solve orchestration by throwing ever more context at the model.
 
@@ -396,23 +440,23 @@ It does this by:
 
 This means AINL operates at the **workflow layer**, complementing model-layer context optimizations.
 
-### 10.3 Architectural Stack
+### 11.3 Architectural Stack
 
 AINL's contribution lives primarily in the third layer.
 
 ---
 
-## 11. Benchmark Posture and Truthful Compactness Claims
+## 12. Benchmark Posture and Truthful Compactness Claims
 
 AINL includes a benchmark framework focused on source compactness versus generated artifacts. The benchmark must be interpreted carefully.
 
-### 11.1 Active Metric
+### 12.1 Active Metric
 
 The current benchmark uses `approx_chunks`, a lexical-size proxy.
 
 It is **not** equivalent to tokenizer-accurate billing.
 
-### 11.2 Profiles
+### 12.2 Profiles
 
 The benchmark is segmented into profiles such as:
 
@@ -422,14 +466,14 @@ The benchmark is segmented into profiles such as:
 
 The primary headline profile is `canonical_strict_valid`.
 
-### 11.3 Modes
+### 12.3 Modes
 
 Two important modes exist:
 
 - **full_multitarget** — measures total downstream expansion potential
 - **minimal_emit** — closer to practical deployment comparison
 
-### 11.4 Truthful Headline
+### 12.4 Truthful Headline
 
 The strongest current truthful claim is:
 
@@ -442,15 +486,15 @@ The strongest current truthful claim is:
 
 ---
 
-## 12. Cost and Token Economics
+## 13. Cost and Token Economics
 
 AINL can save overall token expenditure in two distinct ways.
 
-### 12.1 Authoring Density
+### 13.1 Authoring Density
 
 Because the DSL is compact and structured, models can often express workflows with fewer generated tokens than they would need for equivalent boilerplate-heavy Python or TypeScript systems.
 
-### 12.2 Compile-Once / Run-Many
+### 13.2 Compile-Once / Run-Many
 
 AINL's bigger win is not just source compactness, but **execution architecture**.
 
@@ -467,7 +511,7 @@ This is especially meaningful for:
 - Recurring reports
 - Autonomous operational routines
 
-### 12.3 Practical Framing
+### 13.3 Practical Framing
 
 AINL should not be marketed as "always smaller than Python" in a universal sense. It should be framed as:
 
@@ -478,70 +522,126 @@ AINL should not be marketed as "always smaller than Python" in a universal sense
 
 ---
 
-## 13. Why AINL Is Useful to AI Agents
+## 14. Why AINL Is Useful to AI Agents
 
 AINL provides several concrete benefits to AI agents and automation systems.
 
-### 13.1 Declarative Orchestration
+### 14.1 Declarative Orchestration
 
 Graphs are explicit. Sequencing is visible. Control flow becomes analyzable rather than implicit.
 
-### 13.2 Capability-Aware Safety
+### 14.2 Capability-Aware Safety
 
 Safety tags, adapter metadata, and policy validation help separate safe surfaces from operator-only or destructive ones.
 
-### 13.3 Memory with Retention Semantics
+### 14.3 Tiered State Discipline
 
-Cross-run state can be persisted cleanly through memory/cache rather than improvised file hacks.
+Cross-run state is managed through a four-tier model (frame, cache, memory, coordination) rather than improvised file hacks or prompt-based memory accumulation. Memory is the recommended durable state mechanism for any workflow needing persistence across runs. See section 7.
 
-### 13.4 Policy Validation
+### 14.4 Resilient Execution
 
-Unapproved combinations or risky surfaces can be blocked before runtime.
+The `Retry` operation supports both fixed and exponential backoff strategies with configurable caps. This allows workflows to express resilience against transient failures (e.g., network timeouts, rate limits) without external retry wrappers or manual sleep logic.
 
-### 13.5 Oversight and Auditability
+### 14.5 Policy Validation and Capability Discovery
+
+The runner service validates workflows against declarative policies before execution, returning structured violations on failure. External orchestrators can discover runtime capabilities via the `/capabilities` endpoint. See section 15.
+
+### 14.6 Oversight and Auditability
 
 Pre/post-run reports and graph-level tracing provide operational visibility beyond shell logs or prompt histories.
 
 ---
 
-## 14. Limitations
+## 15. Runner Service and Operator Boundary
+
+AINL includes a FastAPI-based runner service (`scripts/runtime_runner_service.py`) that exposes the runtime as a framework-agnostic HTTP boundary for external orchestrators, sandbox controllers, and agent platforms.
+
+### 15.1 Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/capabilities` | GET | Returns runtime version, available adapters (with verbs, support tiers, effect defaults), and whether policy validation is supported |
+| `/run` | POST | Accepts AINL source or pre-compiled IR, compiles, validates policy (if provided), executes, and returns structured output |
+| `/enqueue` | POST | Asynchronous execution queue |
+| `/result/{id}` | GET | Retrieve async execution results |
+| `/health` | GET | Liveness check |
+| `/ready` | GET | Readiness check |
+| `/metrics` | GET | Runtime metrics |
+
+### 15.2 Policy-Gated Execution
+
+The `/run` endpoint accepts an optional `policy` object that specifies forbidden adapters, effects, and effect tiers. If the compiled IR violates the policy, the runner responds with HTTP 403 and a structured list of violations **without executing**. This allows external orchestrators to enforce adapter and effect restrictions at the runner boundary without modifying AINL's compiler or runtime semantics.
+
+### 15.3 Capability Discovery
+
+The `GET /capabilities` endpoint returns a machine-readable JSON response sourced from existing adapter metadata (`tooling/adapter_manifest.json`). External orchestrators use this to discover what a given AINL runtime instance supports before submitting workflows, enabling dynamic adapter allowlist configuration and policy construction.
+
+### 15.4 Sandbox and Operator Deployment
+
+AINL is designed to run inside sandboxed, containerized, or operator-controlled environments. The runtime's adapter allowlist, resource limits, and policy validation provide the configuration surface that external orchestrators need. AINL is the **workflow layer**, not the sandbox or security layer; containment, network policy, and process isolation are the responsibility of the hosting environment.
+
+Prescriptive sandbox profiles are documented for:
+
+- **Minimal** — core adapter only, no I/O
+- **Compute-and-store** — local computation and storage, no network
+- **Network-restricted** — local + outbound HTTP, no agent coordination
+- **Operator-controlled** — full adapter access with operator governance
+
+See `docs/operations/SANDBOX_EXECUTION_PROFILE.md`, `docs/operations/RUNTIME_CONTAINER_GUIDE.md`, and `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`.
+
+---
+
+## 16. Limitations
 
 AINL is strong, but not magical.
 
-### 14.1 Learning Curve
+### 16.1 Learning Curve
 
 AINL introduces a new syntax and mental model.
 
-### 14.2 Static Graph Bias
+### 16.2 Static Graph Bias
 
 AINL's strengths come from explicit structure. Dynamic self-rewriting graph behavior is not the primary current model.
 
-### 14.3 Benchmark Interpretation Must Stay Careful
+### 16.3 Benchmark Interpretation Must Stay Careful
 
 Lexical compactness is useful, but it is not a universal proxy for economic value or runtime quality.
 
-### 14.4 Some Integrations Are Environment-Specific
+### 16.4 Some Integrations Are Environment-Specific
 
 OpenClaw-specific adapters reflect a real deployment context and may require reimplementation elsewhere.
 
 ---
 
-## 15. Future Directions
+## 17. Future Directions
+
+### 17.1 Recently Shipped
+
+The following capabilities were listed as future work in earlier drafts and have since been implemented:
+
+- **Policy tooling** — declarative policy validation at the runner boundary (`/run` with optional `policy` parameter, HTTP 403 on violation)
+- **Runtime observability** — structured JSON logging, label-level tracing, adapter call recording and replay
+- **Capability discovery** — `GET /capabilities` endpoint for external orchestrators
+- **Tiered state discipline** — four-tier state model with documentation and sandbox profile mapping
+- **Exponential backoff** — optional `backoff_strategy` on the `Retry` operation with configurable cap
+- **Sandbox/operator deployment** — prescriptive profiles, container guide, external orchestration guide
+
+### 17.2 Remaining Future Work
 
 Promising future work includes:
 
-- Richer graph introspection and visualization
+- Richer graph visualization and interactive introspection
 - Stronger patch / semantic diff tooling
-- Broader emitter maturity
-- Tokenizer-aware benchmark lanes
-- More policy tooling
-- Additional runtime observability
+- Broader emitter maturity across additional target platforms
+- Tokenizer-aware benchmark lanes for more precise cost modeling
+- Circuit breaker patterns and retryable vs non-retryable error classification
+- MCP and A2A protocol bridges (when standards stabilize)
 - Continued small-model alignment and constrained decoding work
 - Deeper AI-agent onboarding and continuity tooling
 
 ---
 
-## 16. Competitive Landscape
+## 18. Competitive Landscape
 
 AINL sits at the intersection of several emerging directions in AI systems:
 
@@ -552,25 +652,31 @@ AINL sits at the intersection of several emerging directions in AI systems:
 
 No single existing system fully combines these concerns. Instead, the current ecosystem is fragmented across multiple layers.
 
-### 16.1 Agent Orchestration Frameworks
+### 18.1 Agent Orchestration Frameworks
 
-Frameworks such as LangGraph and related agent libraries introduce graph-based execution models for AI agents.
+Frameworks such as LangChain, LangGraph, and CrewAI introduce various models for AI agent orchestration.
 
-These systems validate the importance of:
-- explicit workflow structure
-- stateful execution
-- long-running agent processes
+**LangChain / LangGraph** validate the importance of explicit workflow structure and stateful execution. LangGraph adds graph-based execution on top of LangChain's chain abstraction.
 
 However, they typically:
 - operate as runtime frameworks rather than compiled languages
 - lack a canonical intermediate representation
-- rely partially on prompt-driven reasoning for orchestration
+- do not support compile-once / run-many execution
+- remain partially prompt-driven for orchestration decisions
 
-AINL differs by compiling workflows into a **canonical graph IR with strict validation guarantees**, rather than treating graphs as an execution convenience.
+**CrewAI** focuses on multi-agent role-based coordination, enabling flexible agent collaboration through role definitions and task delegation.
+
+However, it:
+- relies on prompt-driven orchestration and role assignment
+- does not provide deterministic graph execution
+- lacks adapter-level effect control and policy validation
+- does not separate compile-time from runtime concerns
+
+AINL differs by compiling workflows into a **canonical graph IR with strict validation guarantees**, rather than treating graphs as an execution convenience or relying on prompt-driven role assignment.
 
 ---
 
-### 16.2 Durable Workflow Systems
+### 18.2 Durable Workflow Systems
 
 Systems such as Temporal and Restate focus on **deterministic, durable execution** of workflows.
 
@@ -592,7 +698,7 @@ AINL extends this space by introducing a **language + compiler layer** designed 
 
 ---
 
-### 16.3 Multi-Agent and Prompt-Oriented Systems
+### 18.3 Multi-Agent and Prompt-Oriented Systems
 
 Frameworks such as AutoGen emphasize multi-agent interaction and coordination.
 
@@ -610,7 +716,7 @@ AINL replaces prompt loops with **explicit graph structure**, making execution p
 
 ---
 
-### 16.4 Emerging Graph-Based Agent Platforms
+### 18.4 Emerging Graph-Based Agent Platforms
 
 Recent systems, including typed agent workflow frameworks, are beginning to incorporate:
 
@@ -626,41 +732,44 @@ AINL aligns with this direction but differs in one key respect:
 
 ---
 
-### 16.5 AINL’s Position
+### 18.5 AINL’s Position
 
 AINL unifies multiple layers that are typically separate:
 
 1. Language (compact AI-native DSL)
 2. Compiler (canonical graph IR)
 3. Runtime (deterministic execution engine)
-4. Adapters (effect system)
+4. Adapters (effect system with tiered state discipline)
 5. Emitters (multi-target outputs)
+6. Operator boundary (runner service with policy validation and capability discovery)
 
 This collapses:
 
 - orchestration
 - execution
 - generation
+- operator governance
 
 into a single coherent system.
 
 ---
 
-### 16.6 Key Insight
+### 18.6 Key Insight
 
 Most existing systems split responsibilities:
 
 | Concern | Typical System |
 |--------|---------------|
-| Orchestration | LangGraph / agent frameworks |
+| Orchestration | LangChain / LangGraph / CrewAI |
 | Execution | Temporal / Restate |
 | Generation | LLM-based code tools |
+| Operator governance | Platform-specific, ad hoc |
 
-AINL combines all three into a **graph-native programming model**.
+AINL combines all four into a **graph-native programming model**.
 
 ---
 
-### 16.7 Positioning Summary
+### 18.7 Positioning Summary
 
 AINL should not be viewed as:
 
@@ -674,7 +783,7 @@ It is best understood as:
 
 ---
 
-## 17. Conclusion
+## 19. Conclusion
 
 AINL represents a distinct position in AI systems design.
 
@@ -684,30 +793,71 @@ It is not just a DSL, and not just a code emitter. It is a **graph-canonical pro
 
 AINL gives AI agents a compact way to describe workflows, a deterministic way to execute them, and a reusable canonical representation that can drive runtime behavior and downstream artifacts alike.
 
-Its value is especially clear in recurring, stateful, branching, and operational workflows, where prompt-loop orchestration becomes expensive and fragile. Through strict validation, adapters, graph introspection, and real OpenClaw-based operational deployments, AINL demonstrates that the next layer of AI-native engineering is not just bigger models — it is **better execution substrates**.
+Its value is especially clear in recurring, stateful, branching, and operational workflows, where prompt-loop orchestration becomes expensive and fragile. Through strict validation, adapters, graph introspection, tiered state discipline, policy-gated execution, capability discovery, and real OpenClaw-based operational deployments, AINL demonstrates that the next layer of AI-native engineering is not just bigger models — it is **better execution substrates**.
+
+AINL is designed to fit inside agent platforms and orchestrators — OpenClaw, NemoClaw, custom hosts — as the structured workflow execution layer. It does not replace these platforms; it sits inside them and makes agent workflows reproducible, inspectable, and controllable.
 
 ---
 
 ## Appendix A: Representative File Map
 
-Paths are relative to the repository root. All listed paths exist in the repo.
+Paths are relative to the repository root.
 
-- `compiler_v2.py` — main compiler (root)
+### Core system
+- `compiler_v2.py` — main compiler
 - `runtime/engine.py` — graph-first runtime engine
-- `ADAPTER_REGISTRY.json` — adapter registry (root)
-- `adapters/` — adapter implementations
-- `adapters/openclaw_integration.py` — OpenClaw integration adapter
+- `runtime/adapters/` — adapter implementations (memory, SQLite, filesystem, cache, HTTP, agent, etc.)
+- `scripts/runtime_runner_service.py` — FastAPI runner service (`/run`, `/capabilities`, `/health`, etc.)
+- `SEMANTICS.md` — runtime semantics
 - `docs/AINL_SPEC.md` — language specification
-- `SEMANTICS.md` — runtime semantics (root)
-- `docs/TRAINING_ALIGNMENT_RUNBOOK.md` — alignment/training runbook
-- `demo/monitor_system.lang` — monitor system demo
+
+### State and governance
+- `docs/architecture/STATE_DISCIPLINE.md` — four-tier state model
+- `docs/adapters/MEMORY_CONTRACT.md` — memory adapter contract
+- `tooling/policy_validator.py` — pre-execution policy validation
+- `tooling/adapter_manifest.json` — adapter metadata and capabilities
+- `tooling/capabilities.json` — capability definitions
+
+### Deployment and operations
+- `docs/operations/SANDBOX_EXECUTION_PROFILE.md` — sandbox adapter profiles
+- `docs/operations/RUNTIME_CONTAINER_GUIDE.md` — containerized deployment
+- `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — external orchestrator integration
+- `docs/INTEGRATION_STORY.md` — integration positioning and pain-to-solution map
+- `services/runtime_runner/Dockerfile` — runner service container
+- `tests/emits/server/Dockerfile` — emitted server container
+
+### Examples and validation
+- `examples/` — canonical `.ainl` examples (hello, CRUD, RAG, retry, webhook, monitors, golden series)
 - `examples/openclaw/` — OpenClaw example programs
 - `examples/autonomous_ops/` — autonomous ops examples
+- `demo/monitor_system.lang` — monitor system demo
+- `docs/case_studies/` — graph-native vs prompt-loop, cost analysis, long-context memory
+- `docs/PATTERNS.md` — workflow patterns (RetryWithBackoff, RateLimit, BatchProcess, CacheWarm)
+
+### Benchmarks and tooling
+- `BENCHMARK.md` — size benchmarks
 - `tooling/artifact_profiles.json` — artifact/strict profiles
 - `tooling/benchmark_manifest.json` — benchmark manifest
+- `tooling/support_matrix.json` — support levels
 
 ---
 
 ## Appendix B: Suggested Short Positioning Statement
 
 > AINL is a graph-canonical, AI-native programming system for deterministic workflows, multi-target generation, and operational agents — designed to reduce orchestration complexity without depending on ever-growing prompt loops.
+
+# KEYWORDS
+- canonical graph IR
+- graph-canonical programming system
+- strict-mode validation for AI-generated code
+- multi-target code generation for AI workflows
+- effect-typed workflow language
+- adapter-based AI orchestration
+- LangChain alternative
+- LangGraph alternative
+- CrewAI alternative
+- Temporal for AI agents
+- deterministic alternative to prompt loops
+- sandboxed agent deployment
+- policy-gated workflow execution
+- tiered state management for AI agents
