@@ -34,6 +34,12 @@ def _adapter_privilege_tier(adapter_name: str) -> Optional[str]:
     return None
 
 
+def _adapter_is_destructive(adapter_name: str) -> bool:
+    """Check if the adapter is marked as destructive in metadata."""
+    info = (ADAPTER_MANIFEST.get("adapters") or {}).get(adapter_name) or {}
+    return bool(info.get("destructive"))
+
+
 def validate_ir_against_policy(ir: Dict[str, Any], policy: Dict[str, Any]) -> Dict[str, Any]:
     """
     Validate IR against a simple policy.
@@ -53,6 +59,7 @@ def validate_ir_against_policy(ir: Dict[str, Any], policy: Dict[str, Any]) -> Di
     forbidden_effects = set(policy.get("forbidden_effects") or [])
     forbidden_tiers = set(policy.get("forbidden_effect_tiers") or [])
     forbidden_priv_tiers = set(policy.get("forbidden_privilege_tiers") or [])
+    forbid_destructive = bool(policy.get("forbidden_destructive"))
 
     errors: List[Dict[str, Any]] = []
 
@@ -96,6 +103,14 @@ def validate_ir_against_policy(ir: Dict[str, Any], policy: Dict[str, Any]) -> Di
                             "data": {"label_id": str(lid), "node_id": nid, "adapter": adapter_name, "privilege_tier": priv},
                         }
                     )
+            if adapter_name and forbid_destructive and _adapter_is_destructive(adapter_name):
+                errors.append(
+                    {
+                        "code": "POLICY_DESTRUCTIVE_FORBIDDEN",
+                        "message": f"Destructive adapter {adapter_name!r} is forbidden by policy",
+                        "data": {"label_id": str(lid), "node_id": nid, "adapter": adapter_name},
+                    }
+                )
 
     if errors:
         return {"ok": False, "errors": errors}

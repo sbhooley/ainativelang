@@ -15,7 +15,7 @@ def _load_manifest():
 
 def test_adapter_manifest_basic_shape():
     m = _load_manifest()
-    assert m.get("schema_version") == "1.0"
+    assert m.get("schema_version") in ("1.0", "1.1")
     adapters = m.get("adapters")
     assert isinstance(adapters, dict) and adapters
     for name, cfg in adapters.items():

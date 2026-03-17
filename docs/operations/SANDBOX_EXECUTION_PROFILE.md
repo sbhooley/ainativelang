@@ -72,6 +72,12 @@ does not introduce a new policy language; it simply packages adapter
 allowlists, privilege tiers, and runtime limit suggestions under a few
 human-readable profile names.
 
+Operators can load a named profile as the server-level **capability grant**
+by setting `AINL_SECURITY_PROFILE` (runner) or `AINL_MCP_PROFILE` (MCP
+server) at startup. The grant constrains what the execution surface is
+allowed to do; callers can tighten restrictions per-request but never widen
+beyond the grant. See `docs/operations/CAPABILITY_GRANT_MODEL.md`.
+
 ### 3.1 Minimal sandbox profile
 
 Use when: the sandbox should only allow pure computation and deterministic
@@ -399,6 +405,8 @@ envelopes, see `docs/advanced/AGENT_COORDINATION_CONTRACT.md`.
 
 ## 10. Relationship to other docs
 
+- **Capability grant model:** `docs/operations/CAPABILITY_GRANT_MODEL.md`
+- **Structured audit logging:** `docs/operations/AUDIT_LOGGING.md`
 - **External orchestration guide:** `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
 - **Runtime container guide:** `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - **Trust model and safe use:** `docs/advanced/SAFE_USE_AND_THREAT_MODEL.md`

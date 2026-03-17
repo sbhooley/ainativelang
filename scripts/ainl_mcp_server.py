@@ -13,6 +13,16 @@ Security posture:
   - Read-only tools (validate, compile, capabilities, security-report) have
     no side effects.
 
+MCP exposure scoping:
+  - ``AINL_MCP_TOOLS``: comma-separated list of tools to expose (inclusion).
+  - ``AINL_MCP_TOOLS_EXCLUDE``: comma-separated list of tools to hide.
+  - ``AINL_MCP_RESOURCES``: comma-separated list of resource URIs to expose.
+  - ``AINL_MCP_RESOURCES_EXCLUDE``: comma-separated list of resource URIs to hide.
+  - ``AINL_MCP_EXPOSURE_PROFILE``: named exposure profile from
+    ``tooling/mcp_exposure_profiles.json``.
+  - Inclusion lists take precedence over exclusion lists; profile is applied
+    first, then env-var overrides narrow further.
+
 Requires Python >=3.10 and the ``mcp`` extra:
     pip install -e ".[mcp]"
 
@@ -23,9 +33,10 @@ Run:
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -39,6 +50,14 @@ from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
 from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
 from tooling.security_report import analyze_ir
+from tooling.capability_grant import (
+    empty_grant,
+    merge_grants,
+    grant_to_policy,
+    grant_to_limits,
+    grant_to_allowed_adapters,
+    load_profile_as_grant,
+)
 
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
@@ -52,6 +71,115 @@ _DEFAULT_LIMITS: Dict[str, Any] = {
     "max_adapter_calls": 50,
     "max_time_ms": 5000,
 }
+
+ALL_TOOL_NAMES: List[str] = [
+    "ainl_validate",
+    "ainl_compile",
+    "ainl_capabilities",
+    "ainl_security_report",
+    "ainl_run",
+]
+
+ALL_RESOURCE_URIS: List[str] = [
+    "ainl://adapter-manifest",
+    "ainl://security-profiles",
+]
+
+
+# ---------------------------------------------------------------------------
+# Exposure scoping
+# ---------------------------------------------------------------------------
+
+def _load_exposure_profiles() -> Dict[str, Any]:
+    path = _TOOLING_DIR / "mcp_exposure_profiles.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _csv_set(env_key: str) -> Optional[Set[str]]:
+    """Parse a comma-separated env var into a set, or None if unset/empty."""
+    raw = os.environ.get(env_key, "").strip()
+    if not raw:
+        return None
+    return {s.strip() for s in raw.split(",") if s.strip()}
+
+
+def _resolve_exposure() -> tuple[Set[str], Set[str]]:
+    """Return (allowed_tools, allowed_resources) after applying profile + env.
+
+    Resolution order:
+    1. Start with everything allowed.
+    2. If AINL_MCP_EXPOSURE_PROFILE is set, restrict to profile's sets.
+    3. If AINL_MCP_TOOLS / AINL_MCP_RESOURCES inclusion env vars are set,
+       intersect with them (narrowing further).
+    4. If AINL_MCP_TOOLS_EXCLUDE / AINL_MCP_RESOURCES_EXCLUDE are set,
+       subtract from the remaining set.
+    Inclusion always takes precedence: if both include and exclude are set,
+    the result is include minus exclude.
+    """
+    tools: Set[str] = set(ALL_TOOL_NAMES)
+    resources: Set[str] = set(ALL_RESOURCE_URIS)
+
+    profile_name = os.environ.get("AINL_MCP_EXPOSURE_PROFILE", "").strip()
+    if profile_name:
+        profiles = _load_exposure_profiles()
+        profile = (profiles.get("profiles") or {}).get(profile_name)
+        if isinstance(profile, dict):
+            p_tools = profile.get("tools")
+            if isinstance(p_tools, list):
+                tools &= set(p_tools)
+            p_resources = profile.get("resources")
+            if isinstance(p_resources, list):
+                resources &= set(p_resources)
+
+    inc_tools = _csv_set("AINL_MCP_TOOLS")
+    if inc_tools is not None:
+        tools &= inc_tools
+    exc_tools = _csv_set("AINL_MCP_TOOLS_EXCLUDE")
+    if exc_tools is not None:
+        tools -= exc_tools
+
+    inc_res = _csv_set("AINL_MCP_RESOURCES")
+    if inc_res is not None:
+        resources &= inc_res
+    exc_res = _csv_set("AINL_MCP_RESOURCES_EXCLUDE")
+    if exc_res is not None:
+        resources -= exc_res
+
+    return tools, resources
+
+
+_ALLOWED_TOOLS: Set[str] = set()
+_ALLOWED_RESOURCES: Set[str] = set()
+
+def _init_exposure() -> None:
+    global _ALLOWED_TOOLS, _ALLOWED_RESOURCES
+    _ALLOWED_TOOLS, _ALLOWED_RESOURCES = _resolve_exposure()
+
+_init_exposure()
+
+
+def _load_mcp_server_grant() -> Dict[str, Any]:
+    """Build the MCP server-level capability grant."""
+    profile_name = os.environ.get("AINL_MCP_PROFILE")
+    if profile_name:
+        try:
+            return load_profile_as_grant(profile_name)
+        except ValueError:
+            pass
+    return {
+        "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),
+        "forbidden_adapters": [],
+        "forbidden_effects": [],
+        "forbidden_effect_tiers": [],
+        "forbidden_privilege_tiers": list(_DEFAULT_POLICY.get("forbidden_privilege_tiers") or []),
+        "limits": dict(_DEFAULT_LIMITS),
+        "adapter_constraints": {},
+    }
+
+_MCP_SERVER_GRANT: Dict[str, Any] = _load_mcp_server_grant()
 
 _mcp_server: Any = None
 
@@ -90,9 +218,12 @@ def _load_capabilities() -> Dict[str, Any]:
             "effect_default": info.get("effect_default"),
             "recommended_lane": info.get("recommended_lane"),
             "privilege_tier": info.get("privilege_tier"),
+            "destructive": info.get("destructive"),
+            "network_facing": info.get("network_facing"),
+            "sandbox_safe": info.get("sandbox_safe"),
         }
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "runtime_version": RUNTIME_VERSION,
         "policy_support": True,
         "adapters": adapters,
@@ -100,26 +231,26 @@ def _load_capabilities() -> Dict[str, Any]:
 
 
 def _merge_policy(caller_policy: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Restrictively merge caller policy on top of server defaults."""
-    merged: Dict[str, Any] = {}
-    for key in ("forbidden_adapters", "forbidden_effects",
-                "forbidden_effect_tiers", "forbidden_privilege_tiers"):
-        base = set(_DEFAULT_POLICY.get(key) or [])
-        extra = set((caller_policy or {}).get(key) or [])
-        combined = sorted(base | extra)
-        if combined:
-            merged[key] = combined
-    return merged
+    """Restrictively merge caller policy on top of server defaults via grants."""
+    caller_grant = empty_grant()
+    if isinstance(caller_policy, dict):
+        for key in ("forbidden_adapters", "forbidden_effects",
+                     "forbidden_effect_tiers", "forbidden_privilege_tiers"):
+            vals = caller_policy.get(key)
+            if vals:
+                caller_grant[key] = list(vals)
+    effective = merge_grants(_MCP_SERVER_GRANT, caller_grant)
+    return grant_to_policy(effective)
 
 
 def _merge_limits(caller_limits: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Merge caller limits with server defaults — take the more restrictive."""
-    merged = dict(_DEFAULT_LIMITS)
-    for key, default_val in _DEFAULT_LIMITS.items():
-        caller_val = (caller_limits or {}).get(key)
-        if caller_val is not None:
-            merged[key] = min(int(caller_val), int(default_val))
-    return merged
+    """Merge caller limits with server defaults via grants — more restrictive wins."""
+    caller_grant = empty_grant()
+    if isinstance(caller_limits, dict):
+        caller_grant["limits"] = {k: int(v) for k, v in caller_limits.items()
+                                   if isinstance(v, (int, float))}
+    effective = merge_grants(_MCP_SERVER_GRANT, caller_grant)
+    return grant_to_limits(effective)
 
 
 class _EchoAdapter(RuntimeAdapter):
@@ -128,16 +259,16 @@ class _EchoAdapter(RuntimeAdapter):
 
 
 def _register_tool(fn: Any) -> Any:
-    """Register a function as an MCP tool when the SDK is available."""
-    if _mcp_server is not None:
+    """Register a function as an MCP tool if it is in the allowed set."""
+    if _mcp_server is not None and fn.__name__ in _ALLOWED_TOOLS:
         _mcp_server.tool()(fn)
     return fn
 
 
 def _register_resource(uri: str):
-    """Register a function as an MCP resource when the SDK is available."""
+    """Register a function as an MCP resource if it is in the allowed set."""
     def decorator(fn: Any) -> Any:
-        if _mcp_server is not None:
+        if _mcp_server is not None and uri in _ALLOWED_RESOURCES:
             _mcp_server.resource(uri)(fn)
         return fn
     return decorator

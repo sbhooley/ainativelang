@@ -112,9 +112,11 @@ Then configure your MCP-compatible host (Gemini CLI, Claude Code, Codex, etc.)
 to use the `ainl-mcp` stdio transport. The host can call `ainl_validate`,
 `ainl_compile`, `ainl_capabilities`, `ainl_security_report`, and `ainl_run`.
 
-MCP v1 runs with safe defaults (core-only adapters, conservative limits). See
-section 9 of `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` for the full
-quickstart and example payloads.
+MCP v1 runs with safe defaults (core-only adapters, conservative limits).
+Operators can scope which tools/resources are exposed via named exposure
+profiles (`AINL_MCP_EXPOSURE_PROFILE`) or env-var inclusion/exclusion lists.
+See section 9 of `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` for the
+full quickstart, exposure scoping, and gateway deployment guidance.
 
 > **Core first, advanced later.** The paths above use the core compiler and
 > runtime only. Advanced/operator-only surfaces (agent coordination, memory
@@ -419,17 +421,22 @@ AINL source is a compact surface language for producing the canonical graph. Tha
 
 Current security and operator capabilities:
 
-- **Adapter capability gating** — explicit allowlists via `AdapterRegistry`; only registered adapters can be called.
-- **Policy-gated execution** — the `/run` endpoint optionally validates compiled IR against a declarative policy before execution (forbidden adapters, effects, privilege tiers). Violations return HTTP 403 with structured errors.
-- **Capability discovery** — `GET /capabilities` exposes available adapters, verbs, effect defaults, and privilege tiers so orchestrators can make informed decisions before submitting workflows.
-- **Named security profiles** — `tooling/security_profiles.json` packages recommended adapter allowlists, privilege-tier restrictions, runtime limits, and orchestrator expectations for common deployment scenarios (`local_minimal`, `sandbox_compute_and_store`, `sandbox_network_restricted`, `operator_full`). These are guidance artifacts, not enforced semantics.
-- **Privilege-tier metadata** — each adapter carries a `privilege_tier` (`pure`, `local_state`, `network`, `operator_sensitive`) in `tooling/adapter_manifest.json`, used by the policy validator and security report tool.
-- **Security introspection** — `tooling/security_report.py` generates a per-label, per-graph privilege map showing which adapters, verbs, and privilege tiers a workflow uses.
+- **Capability grant model** — each execution surface (runner, MCP server) loads a server-level grant at startup from a named security profile (`AINL_SECURITY_PROFILE` / `AINL_MCP_PROFILE` env vars). Callers can tighten restrictions per-request but never widen beyond what the server allows. See `docs/operations/CAPABILITY_GRANT_MODEL.md`.
+- **Adapter capability gating** — explicit allowlists via `AdapterRegistry`; only adapters in the effective grant's allowlist can be called.
+- **Policy-gated execution** — the `/run` endpoint validates compiled IR against the effective policy (derived from the grant) before execution. Forbidden adapters, effects, privilege tiers, and destructive adapters trigger HTTP 403 with structured errors.
+- **Capability discovery** — `GET /capabilities` exposes available adapters, verbs, effect defaults, privilege tiers, and adapter metadata (`destructive`, `network_facing`, `sandbox_safe`) so orchestrators can make informed decisions before submitting workflows.
+- **Named security profiles** — `tooling/security_profiles.json` packages recommended adapter allowlists, privilege-tier restrictions, runtime limits, and orchestrator expectations for common deployment scenarios (`local_minimal`, `sandbox_compute_and_store`, `sandbox_network_restricted`, `operator_full`). Profiles are loaded as capability grants at startup.
+- **Mandatory default limits** — runner and MCP execution surfaces apply conservative resource ceilings (`max_steps`, `max_depth`, `max_adapter_calls`, etc.) by default. Callers can tighten limits but not widen them.
+- **Privilege-tier metadata** — each adapter carries a `privilege_tier` (`pure`, `local_state`, `network`, `operator_sensitive`) plus `destructive`, `network_facing`, and `sandbox_safe` boolean classification fields in `tooling/adapter_manifest.json`.
+- **Structured audit logging** — the runner service emits structured JSON log events (`run_start`, `adapter_call`, `run_complete`, `run_failed`, `policy_rejected`) with UTC timestamps, trace IDs, duration, result hashes (no raw payloads), and redacted arguments. See `docs/operations/AUDIT_LOGGING.md`.
+- **Security introspection** — `tooling/security_report.py` generates a per-label, per-graph privilege map showing which adapters, verbs, privilege tiers, and adapter metadata flags a workflow uses.
 
 AINL does **not** provide container isolation, process sandboxing, network policy enforcement, authentication/encryption, or multi-tenant isolation. These remain the responsibility of the hosting environment.
 
 See:
 - `docs/INTEGRATION_STORY.md` — how AINL fits inside agent stacks, pain-to-solution map, integration surface
+- `docs/operations/CAPABILITY_GRANT_MODEL.md` — host handshake, restrictive-only merge, env-var profile loading
+- `docs/operations/AUDIT_LOGGING.md` — structured runtime event logging
 - `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — capability discovery, policy-gated execution, integration checklist
 - `docs/operations/SANDBOX_EXECUTION_PROFILE.md` — adapter profiles, limit profiles, environment guidance, named security profiles
 - `docs/operations/RUNTIME_CONTAINER_GUIDE.md` — containerized deployment patterns

@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "description": "Named MCP exposure profiles control which tools and resources the AINL MCP server registers at startup. They scope what MCP hosts can discover and call. They do NOT replace security profiles (runtime adapter restrictions) or capability grants (execution authorization).",
+  "profiles": {
+    "validate_only": {
+      "description": "Read-only validation and compilation. No execution, no security-report, no resources.",
+      "tools": ["ainl_validate", "ainl_compile"],
+      "resources": []
+    },
+    "inspect_only": {
+      "description": "Read-only inspection: validation, compilation, capabilities, and security reports. No execution.",
+      "tools": ["ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report"],
+      "resources": ["ainl://adapter-manifest", "ainl://security-profiles"]
+    },
+    "safe_workflow": {
+      "description": "Full read-only tooling plus safe-default execution. All resources exposed.",
+      "tools": ["ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run"],
+      "resources": ["ainl://adapter-manifest", "ainl://security-profiles"]
+    },
+    "full": {
+      "description": "All tools and resources. Equivalent to no exposure restriction.",
+      "tools": ["ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run"],
+      "resources": ["ainl://adapter-manifest", "ainl://security-profiles"]
+    }
+  }
+}

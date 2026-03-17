@@ -44,6 +44,16 @@ def _privilege_tier_for_adapter(adapter: str) -> str:
     return "unknown"
 
 
+def _adapter_metadata(adapter: str) -> Dict[str, Any]:
+    """Return extended metadata fields for an adapter."""
+    info = (ADAPTER_MANIFEST.get("adapters") or {}).get(adapter) or {}
+    return {
+        "destructive": bool(info.get("destructive")),
+        "network_facing": bool(info.get("network_facing")),
+        "sandbox_safe": bool(info.get("sandbox_safe")),
+    }
+
+
 def analyze_ir(ir: Dict[str, Any]) -> Dict[str, Any]:
     """
     Compute a privilege map for the given IR.
@@ -72,7 +82,8 @@ def analyze_ir(ir: Dict[str, Any]) -> Dict[str, Any]:
             tier = _privilege_tier_for_adapter(adapter)
             seen_tiers.add(tier)
 
-            # Per-node entry.
+            meta = _adapter_metadata(adapter)
+
             label_nodes_report.append(
                 {
                     "node_id": nid,
@@ -81,6 +92,9 @@ def analyze_ir(ir: Dict[str, Any]) -> Dict[str, Any]:
                     "privilege_tier": tier,
                     "effect": node.get("effect"),
                     "effect_tier": node.get("effect_tier"),
+                    "destructive": meta["destructive"],
+                    "network_facing": meta["network_facing"],
+                    "sandbox_safe": meta["sandbox_safe"],
                 }
             )
 

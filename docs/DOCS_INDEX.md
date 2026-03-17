@@ -46,6 +46,8 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Runtime/compiler execution contract: `docs/RUNTIME_COMPILER_CONTRACT.md`
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
+- Capability grant model: `docs/operations/CAPABILITY_GRANT_MODEL.md`
+- Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
 - Integration story (AINL in agent stacks): `docs/INTEGRATION_STORY.md`
@@ -94,9 +96,12 @@ entry point for new users or unsupervised agents.
 - Safe use and threat model: `docs/advanced/SAFE_USE_AND_THREAT_MODEL.md`
 - Adapter inventory and conventions (including extension/OpenClaw adapters): `docs/reference/ADAPTER_REGISTRY.md`, `docs/adapters/OPENCLAW_ADAPTERS.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
+- Capability grant model (host handshake): `docs/operations/CAPABILITY_GRANT_MODEL.md`
+- Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
 - MCP server (workflow-level integration for MCP-compatible hosts): `scripts/ainl_mcp_server.py`
+- MCP exposure profiles (tool/resource scoping): `tooling/mcp_exposure_profiles.json`
 - Autonomous ops monitors index: `docs/operations/AUTONOMOUS_OPS_MONITORS.md`
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`

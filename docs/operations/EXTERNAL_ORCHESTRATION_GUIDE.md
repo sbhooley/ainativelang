@@ -449,6 +449,123 @@ surface with safe defaults.
 
 `scripts/ainl_mcp_server.py`
 
+### MCP exposure scoping
+
+Operators can control which tools and resources the MCP server registers
+at startup. This affects what MCP hosts can discover and call.
+
+**Environment variables:**
+
+| Variable | Effect |
+|----------|--------|
+| `AINL_MCP_EXPOSURE_PROFILE` | Named profile from `tooling/mcp_exposure_profiles.json` |
+| `AINL_MCP_TOOLS` | Comma-separated inclusion list of tool names |
+| `AINL_MCP_TOOLS_EXCLUDE` | Comma-separated exclusion list of tool names |
+| `AINL_MCP_RESOURCES` | Comma-separated inclusion list of resource URIs |
+| `AINL_MCP_RESOURCES_EXCLUDE` | Comma-separated exclusion list of resource URIs |
+
+Resolution order: profile first, then env-var inclusion narrows further,
+then exclusion subtracts from the result. If nothing is set, all tools and
+resources are exposed.
+
+**Named exposure profiles:**
+
+| Profile | Tools | Resources |
+|---------|-------|-----------|
+| `validate_only` | `ainl_validate`, `ainl_compile` | none |
+| `inspect_only` | validate + `ainl_capabilities` + `ainl_security_report` | all |
+| `safe_workflow` | all 5 tools | all |
+| `full` | all 5 tools | all |
+
+Example:
+
+```bash
+AINL_MCP_EXPOSURE_PROFILE=validate_only ainl-mcp
+```
+
+**Context and governance benefits of scoped exposure:**
+
+MCP hosts typically inject tool descriptions into the model's context
+window so the model can decide which tools to call. Exposing fewer tools
+reduces the tool-description overhead in the host's context, which can
+improve model focus and reduce unnecessary tool-selection reasoning.
+Narrower exposure also simplifies governance: operators and gateways have
+fewer tools to audit, restrict, and monitor.
+
+For example, a `validate_only` deployment exposes 2 tools instead of 5,
+eliminating execution-related tool descriptions entirely. This is useful
+when the host only needs AINL for syntax checking and IR inspection, not
+workflow execution.
+
+**Exposure scoping vs execution authorization:**
+
+| Layer | Controls | File / mechanism |
+|-------|----------|------------------|
+| **MCP exposure profile** | Which tools/resources the host can discover | `tooling/mcp_exposure_profiles.json`, env vars |
+| **Security profile / capability grant** | Which adapters, privilege tiers, limits are allowed at runtime | `tooling/security_profiles.json`, `AINL_MCP_PROFILE` |
+| **Policy validation** | Which IR patterns are rejected before execution | `forbidden_adapters`, `forbidden_privilege_tiers`, etc. |
+
+Exposure scoping is **additive to** security. Hiding `ainl_run` from the
+host surface prevents discovery; the capability grant and policy still
+enforce restrictions even when `ainl_run` is exposed.
+
+### Deploying behind a gateway or proxy
+
+AINL's MCP server is a **tool provider**, not a full MCP gateway. In
+enterprise or multi-service deployments, a gateway/proxy/manager typically
+sits in front of one or more MCP tool servers to provide:
+
+- centralized authentication and authorization
+- cross-server tool aggregation and routing
+- DLP/PII governance
+- audit aggregation across multiple tool providers
+- per-user or per-team tool visibility
+
+AINL provides what a gateway expects from a well-behaved tool provider:
+
+| Concern | AINL provides | Gateway provides |
+|---------|--------------|-----------------|
+| Workflow compilation/execution | Yes | No |
+| Tool/resource scoping | Yes (exposure profiles) | Yes (cross-server) |
+| Capability grants and limits | Yes (restrictive-only) | Passes through |
+| Structured audit events | Yes (JSON log events) | Aggregates across servers |
+| Authentication / SSO / OAuth | **No** | Yes |
+| DLP / PII scanning | **No** | Yes |
+| Multi-tenant user management | **No** | Yes |
+| Cross-server tool routing | **No** | Yes |
+
+**Example deployment:**
+
+```
+┌──────────────────────────┐
+│  MCP Gateway / Proxy     │ ← auth, governance, routing
+│  (enterprise-managed)    │
+├──────────────────────────┤
+│         │                │
+│  ┌──────▼──────┐  ┌─────▼─────┐
+│  │ AINL MCP    │  │ Other MCP │
+│  │ (tool       │  │ servers   │
+│  │  provider)  │  │           │
+│  └─────────────┘  └───────────┘
+```
+
+In this model:
+
+1. Gateway authenticates the caller and enforces per-user/team policies.
+2. Gateway routes MCP tool calls to the appropriate backend server.
+3. AINL MCP server sees a pre-authorized request, applies its own
+   exposure scoping, security profile, capability grant, and limits.
+4. AINL emits structured audit log events; the gateway aggregates them.
+
+To prepare AINL for gateway deployment:
+
+```bash
+# Restrict MCP surface to read-only inspection
+AINL_MCP_EXPOSURE_PROFILE=inspect_only \
+  AINL_MCP_PROFILE=local_minimal \
+  ainl-mcp
+```
+
 ### Relationship to the runner service and architecture
 
 - The MCP server is a **peer** to the HTTP runner service
@@ -466,12 +583,56 @@ surface with safe defaults.
   - expose advanced coordination tools
   - expose memory mutation tools
   - provide HTTP/SSE transport
-  - load startup config/profile files
-  - turn AINL into an agent host or orchestration platform
+  - act as an MCP gateway, auth plane, or control plane
 
 ---
 
-## 10. Relationship to other docs
+## 10. Capability grant model
+
+The runner service and MCP server use a **capability grant** to constrain
+execution.  Grants are **restrictive-only**: merging a server grant with a
+caller request always produces a result that is at least as restricted as
+either input.
+
+### Server grant from environment
+
+Set `AINL_SECURITY_PROFILE` (runner) or `AINL_MCP_PROFILE` (MCP) to load
+a named profile from `tooling/security_profiles.json` as the server grant:
+
+```bash
+AINL_SECURITY_PROFILE=sandbox_compute_and_store uvicorn scripts.runtime_runner_service:app
+```
+
+Available profiles: `local_minimal`, `sandbox_compute_and_store`,
+`sandbox_network_restricted`, `operator_full`.
+
+### Caller restrictions
+
+Callers can pass `policy`, `limits`, and `allowed_adapters` in `/run`
+requests. These are merged restrictively on top of the server grant —
+callers can tighten but never widen beyond the server baseline.
+
+### Structured audit logging
+
+Every `/run` request emits structured JSON events:
+
+- `run_start` — timestamp, trace ID, effective limits, policy presence
+- `adapter_call` — per-call timestamp, status, duration, result hash (no raw payloads)
+- `run_complete` / `run_failed` — final outcome
+
+See [Audit Logging](AUDIT_LOGGING.md) for the full event schema.
+
+### Adapter metadata
+
+Adapters expose `destructive`, `network_facing`, and `sandbox_safe`
+booleans via `/capabilities` and the adapter manifest. Policy rules
+can use `forbidden_destructive: true` to reject all destructive adapters.
+
+See [Capability Grant Model](CAPABILITY_GRANT_MODEL.md) for full details.
+
+---
+
+## 11. Relationship to other docs
 
 - **Sandbox adapter and limit profiles:**
   `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
@@ -489,5 +650,9 @@ surface with safe defaults.
   `tooling/adapter_manifest.json`
 - **Capabilities schema (machine-readable):**
   `tooling/capabilities.json`
+- **Capability grant model:**
+  `docs/operations/CAPABILITY_GRANT_MODEL.md`
+- **Audit logging:**
+  `docs/operations/AUDIT_LOGGING.md`
 - **Runner service source:**
   `scripts/runtime_runner_service.py`

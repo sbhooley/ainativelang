@@ -277,9 +277,15 @@ For operators deploying AINL inside sandboxed environments:
   environment configuration): `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - **Named security profiles** (`local_minimal`, `sandbox_compute_and_store`,
   `sandbox_network_restricted`, `operator_full`) are packaged in
-  `tooling/security_profiles.json` as advisory metadata to help select
-  appropriate adapter allowlists and privilege-tier restrictions. These are
-  guidance artifacts, not enforced semantics.
+  `tooling/security_profiles.json`. When loaded as a **capability grant**
+  (via `AINL_SECURITY_PROFILE` or `AINL_MCP_PROFILE` env vars), the profile
+  becomes the server-level restriction envelope that callers cannot widen.
+  See `docs/operations/CAPABILITY_GRANT_MODEL.md`.
+- **Structured audit logging** — the runner service emits structured JSON
+  events (`run_start`, `adapter_call`, `run_complete`, `run_failed`,
+  `policy_rejected`) with UTC timestamps, trace IDs, and result hashes.
+  No raw payloads or secrets are logged; arguments are redacted. See
+  `docs/operations/AUDIT_LOGGING.md`.
 - **Runtime container guide** (Dockerfiles, probe configuration, integration
   patterns): `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - **MCP server for MCP-compatible hosts** (`ainl-mcp`, stdio-only) exposes the

@@ -110,8 +110,25 @@ This release includes a structured security and operator deployment story:
   limits for four common deployment scenarios: `local_minimal`,
   `sandbox_compute_and_store`, `sandbox_network_restricted`, `operator_full`.
 - **Security/privilege report** — `tooling/security_report.py` generates a
-  per-label, per-graph privilege map (adapters, verbs, tiers) in both
+  per-label, per-graph privilege map (adapters, verbs, tiers, plus
+  `destructive`/`network_facing`/`sandbox_safe` metadata) in both
   human-readable and JSON formats.
+- **Capability grant model** — restrictive-only host handshake mechanism
+  (`tooling/capability_grant.py`). Each execution surface (runner, MCP server)
+  loads a server-level grant from a named security profile at startup via
+  `AINL_SECURITY_PROFILE` / `AINL_MCP_PROFILE`. Callers can tighten
+  restrictions per-request but never widen beyond the server grant.
+  See `docs/operations/CAPABILITY_GRANT_MODEL.md`.
+- **Mandatory default limits** — runner and MCP surfaces enforce conservative
+  ceilings (`max_steps`, `max_depth`, `max_adapter_calls`, etc.) by default;
+  callers can only make limits stricter.
+- **Structured audit logging** — the runner emits structured JSON log events
+  (`run_start`, `adapter_call`, `run_complete`, `run_failed`,
+  `policy_rejected`) with UTC timestamps, trace IDs, result hashes (no raw
+  payloads), and redacted arguments. See `docs/operations/AUDIT_LOGGING.md`.
+- **Stronger adapter metadata** — `tooling/adapter_manifest.json` (schema 1.1)
+  now includes `destructive`, `network_facing`, `sandbox_safe` boolean fields
+  per adapter; policy validator supports `forbidden_destructive`.
 - **Sandbox and orchestration docs** —
   `docs/operations/SANDBOX_EXECUTION_PROFILE.md`,
   `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`,
@@ -127,8 +144,10 @@ This release includes a structured security and operator deployment story:
   hosts such as Gemini CLI, Claude Code, Codex-style agent SDKs, and other
   MCP hosts. It is vendor-neutral, runs with safe-default restrictions
   (core-only adapters, conservative limits, hardcoded `local_minimal`-style
-  policy), and does not add HTTP transport, raw adapter execution, advanced
-  coordination, or memory mutation semantics in this release.
+  policy), supports startup-configurable **MCP exposure profiles** and
+  env-var-based tool/resource scoping, and does not add HTTP transport, raw
+  adapter execution, advanced coordination, memory mutation semantics, or
+  gateway/control-plane behavior in this release.
 
 AINL does **not** claim to be a sandbox, security platform, or hosted
 orchestration layer. Containment, network policy, process isolation,
@@ -146,8 +165,10 @@ This release represents a stable, green, release-candidate baseline:
   and minimal example flow.
 - **Runner service** uses modern FastAPI lifespan handlers; no deprecation
   warnings remain in the core profile.
-- **Security/operator surfaces** (privilege tiers, policy validator, named
-  security profiles, security report) are coherent and cross-linked.
+- **Security/operator surfaces** (capability grant model, privilege tiers,
+  policy validator, named security profiles, mandatory default limits,
+  structured audit logging, stronger adapter metadata, security report) are
+  coherent and cross-linked.
 - **Docs IA** is reorganized by user intent with section READMEs, compatibility
   stubs, and a root navigation hub (`docs/README.md`).
 

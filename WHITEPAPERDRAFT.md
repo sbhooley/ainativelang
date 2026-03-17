@@ -597,7 +597,64 @@ A security/privilege report tool (`tooling/security_report.py`) generates per-la
 
 See `docs/operations/SANDBOX_EXECUTION_PROFILE.md`, `docs/operations/RUNTIME_CONTAINER_GUIDE.md`, `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`, and `docs/advanced/SAFE_USE_AND_THREAT_MODEL.md`.
 
-### 15.5 MCP Server and MCP-Compatible Hosts
+### 15.5 Capability Grant Model
+
+Each execution surface (runner service, MCP server) applies a **capability grant** — a restrictive-only envelope that constrains which adapters, privilege tiers, and resource limits are permitted for a given run.
+
+The grant is loaded at startup from a named security profile via an environment variable (`AINL_SECURITY_PROFILE` for the runner, `AINL_MCP_PROFILE` for the MCP server). When a caller submits a request, the caller's restrictions are merged with the server grant using restrictive-only rules:
+
+- **Allowlists**: intersection (narrows the permitted adapter set)
+- **Forbidden sets**: union (widens the blocklist)
+- **Limits**: per-key minimum (more restrictive wins)
+
+This ensures callers can add restrictions but never widen beyond the server baseline. The effective grant is then decomposed into policy rules (for IR validation), an adapter allowlist (for runtime registration), and resource limits (for the execution engine).
+
+The grant model operates entirely at the **program-level boundary** — it constrains what a run is allowed to do, not what individual nodes inside the graph can do. This avoids per-node capability complexity while giving operators a machine-enforceable restriction surface.
+
+See `docs/operations/CAPABILITY_GRANT_MODEL.md` and `tooling/capability_grant.py`.
+
+### 15.6 Mandatory Default Limits
+
+The runner service and MCP server enforce conservative resource ceilings by default: `max_steps`, `max_depth`, `max_adapter_calls`, `max_time_ms`, `max_frame_bytes`, and `max_loop_iters`. Callers can tighten these per-request but cannot exceed the server defaults. This prevents runaway execution even when callers omit limits entirely.
+
+### 15.7 Structured Audit Logging
+
+The runner service emits structured JSON log events for every execution request and adapter call:
+
+- `run_start` — UTC timestamp, trace ID, effective limits, policy presence
+- `adapter_call` — per-call timestamp, adapter, verb, status, duration, SHA-256 result hash
+- `run_complete` / `run_failed` — final outcome with trace correlation
+- `policy_rejected` — pre-execution policy violations with replay artifact ID
+
+No raw results or secrets are logged. Arguments are redacted (authorization, password, and similar tokens are replaced). Error messages are truncated. This supports compliance and debugging while maintaining operational safety.
+
+See `docs/operations/AUDIT_LOGGING.md`.
+
+### 15.8 Stronger Adapter Metadata
+
+Each adapter in `tooling/adapter_manifest.json` now carries additional classification fields beyond the privilege tier:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `destructive` | bool | Adapter can modify or delete external state |
+| `network_facing` | bool | Adapter communicates over the network |
+| `sandbox_safe` | bool | Adapter is safe for minimal sandbox profiles |
+
+These fields are exposed via `/capabilities` and the MCP adapter-manifest resource. The policy validator supports `forbidden_destructive: true` to reject all destructive adapters in a single rule. Orchestrators use these fields for automated capability analysis and profile construction.
+
+### 15.9 Security Architecture Layering
+
+AINL's security model is organized into three layers with explicit responsibility boundaries:
+
+| Layer | Provides |
+|-------|----------|
+| **AINL (workflow)** | Deterministic graph execution, adapter capability gating, policy validation hooks, structured audit events, privilege-tier metadata |
+| **Runtime/host** (runner, MCP server) | Server-level capability grants, named security profiles, adapter registration, secret management, profile selection |
+| **OS/container** (orchestrator) | Process isolation, filesystem mounts, network policy, CPU/memory limits, authentication, multi-tenant boundaries |
+
+AINL stops at the program-level boundary: it constrains what a workflow run is allowed to do, but does not provide container isolation, network policy enforcement, authentication, encryption, or multi-tenant separation. These remain the explicit responsibility of the hosting environment.
+
+### 15.10 MCP Server and MCP-Compatible Hosts
 
 AINL now includes a thin, stdio-only MCP (Model Context Protocol) server that
 exposes workflow-level tools and resources to MCP-compatible agent hosts such
@@ -610,6 +667,9 @@ The MCP server:
 - exposes tools: `ainl_validate`, `ainl_compile`, `ainl_capabilities`,
   `ainl_security_report`, `ainl_run`
 - exposes resources: `ainl://adapter-manifest`, `ainl://security-profiles`
+- supports startup-configurable **MCP exposure profiles** and env-var-based
+  tool/resource scoping so operators can present a narrow toolbox (for example
+  `validate_only` or `inspect_only`) behind a gateway or MCP manager
 - runs with safe-default restrictions:
   - core-only adapter allowlist
   - conservative runtime limits
@@ -618,9 +678,9 @@ The MCP server:
     to add further restrictions
 
 This MCP surface is **workflow-level and vendor-neutral**. It does not turn
-AINL into an agent host, orchestration platform, or sandbox; it is an
-integration boundary that allows existing MCP-compatible tools to call into
-AINL’s structured workflow layer.
+AINL into an agent host, orchestration platform, sandbox, or MCP gateway; it
+is an integration boundary that allows existing MCP-compatible tools and
+gateways to call into AINL’s structured workflow layer.
 
 ---
 
@@ -660,7 +720,11 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Sandbox/operator deployment** — prescriptive profiles, container guide, external orchestration guide
 - **Adapter privilege-tier metadata** — each adapter in `tooling/adapter_manifest.json` carries a `privilege_tier` (`pure`, `local_state`, `network`, `operator_sensitive`)
 - **Named security profiles** — `tooling/security_profiles.json` packages adapter allowlists, privilege-tier restrictions, and runtime limits for four deployment scenarios
-- **Security/privilege introspection** — `tooling/security_report.py` generates per-label, per-graph privilege maps for pre-deployment review
+- **Security/privilege introspection** — `tooling/security_report.py` generates per-label, per-graph privilege maps for pre-deployment review, including `destructive`/`network_facing`/`sandbox_safe` metadata
+- **Capability grant model** — restrictive-only host handshake (`tooling/capability_grant.py`); execution surfaces load server grants from named security profiles and merge caller restrictions so callers can tighten but never widen
+- **Mandatory default limits** — runner and MCP surfaces enforce conservative resource ceilings by default; callers can only tighten
+- **Structured audit logging** — runner emits JSON events (`run_start`, `adapter_call`, `run_complete`, `run_failed`, `policy_rejected`) with UTC timestamps, trace IDs, and SHA-256 result hashes; no raw payloads or secrets logged
+- **Stronger adapter metadata** — `tooling/adapter_manifest.json` schema 1.1 adds `destructive`, `network_facing`, `sandbox_safe` boolean fields; policy validator supports `forbidden_destructive`
 - **MCP integration surface (v1)** — a thin, stdio-only MCP server (`ainl-mcp`)
   that exposes workflow-level tools and resources (validation, compilation,
   capabilities, security reports, safe-default `ainl_run`) to MCP-compatible
@@ -856,14 +920,17 @@ Paths are relative to the repository root.
 ### State and governance
 - `docs/architecture/STATE_DISCIPLINE.md` — four-tier state model
 - `docs/adapters/MEMORY_CONTRACT.md` — memory adapter contract
-- `tooling/policy_validator.py` — pre-execution policy validation (supports `forbidden_privilege_tiers`)
-- `tooling/adapter_manifest.json` — adapter metadata, capabilities, and privilege tiers
+- `tooling/policy_validator.py` — pre-execution policy validation (supports `forbidden_privilege_tiers`, `forbidden_destructive`)
+- `tooling/capability_grant.py` — capability grant model (restrictive-only merge, profile loading)
+- `tooling/adapter_manifest.json` — adapter metadata, capabilities, privilege tiers, and `destructive`/`network_facing`/`sandbox_safe` classification
 - `tooling/capabilities.json` — capability definitions
 - `tooling/security_profiles.json` — named security profiles for deployment scenarios
 - `tooling/security_report.py` — per-workflow privilege/security map generator
 
 ### Deployment and operations
 - `docs/operations/SANDBOX_EXECUTION_PROFILE.md` — sandbox adapter profiles
+- `docs/operations/CAPABILITY_GRANT_MODEL.md` — capability grant model and operator walkthrough
+- `docs/operations/AUDIT_LOGGING.md` — structured audit logging event schema
 - `docs/operations/RUNTIME_CONTAINER_GUIDE.md` — containerized deployment
 - `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — external orchestrator integration
 - `docs/INTEGRATION_STORY.md` — integration positioning and pain-to-solution map
@@ -905,3 +972,7 @@ Paths are relative to the repository root.
 - sandboxed agent deployment
 - policy-gated workflow execution
 - tiered state management for AI agents
+- capability grant model for agent workflows
+- structured audit logging for AI agents
+- adapter privilege tier metadata
+- restrictive-only security model

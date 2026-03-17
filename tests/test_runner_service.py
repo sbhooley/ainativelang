@@ -7,8 +7,19 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import scripts.runtime_runner_service as _runner_mod
 from scripts.runtime_runner_service import app
 
+_runner_mod._SERVER_GRANT = {
+    "allowed_adapters": ["core", "ext", "http", "sqlite", "fs", "tools",
+                          "cache", "queue", "txn", "auth", "wasm"],
+    "forbidden_adapters": [],
+    "forbidden_effects": [],
+    "forbidden_effect_tiers": [],
+    "forbidden_privilege_tiers": [],
+    "limits": {},
+    "adapter_constraints": {},
+}
 
 client = TestClient(app)
 

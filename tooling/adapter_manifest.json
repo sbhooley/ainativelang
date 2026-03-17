@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "adapters": {
     "core": {
       "support_tier": "core",
@@ -28,6 +28,9 @@
       ],
       "effect_default": "pure",
       "privilege_tier": "pure",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
       "notes": "Built-in deterministic helper operations."
     },
     "db": {
@@ -37,6 +40,9 @@
       "verbs": ["F", "G", "P", "C", "U", "D"],
       "effect_default": "io",
       "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
       "notes": "Database CRUD style adapter."
     },
     "api": {
@@ -46,6 +52,9 @@
       "verbs": ["G", "P", "POST"],
       "effect_default": "io",
       "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "HTTP/API adapter from legacy step forms."
     },
     "email": {
@@ -55,6 +64,9 @@
       "verbs": ["G"],
       "effect_default": "io",
       "privilege_tier": "network",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "Email provider adapter used by monitoring workflows."
     },
     "calendar": {
@@ -64,6 +76,9 @@
       "verbs": ["G"],
       "effect_default": "io",
       "privilege_tier": "network",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "Calendar provider adapter used by monitoring workflows."
     },
     "social": {
@@ -73,6 +88,9 @@
       "verbs": ["G"],
       "effect_default": "io",
       "privilege_tier": "network",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "Social provider adapter used by monitoring workflows."
     },
     "ext": {
@@ -82,6 +100,9 @@
       "verbs": ["G", "P", "NEXT", "ECHO", "OP"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
       "notes": "External extension adapter namespace used in runtime tests."
     },
     "wasm": {
@@ -91,6 +112,9 @@
       "verbs": ["CALL"],
       "effect_default": "pure",
       "privilege_tier": "pure",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
       "notes": "Sandboxed compute adapter namespace."
     },
     "cache": {
@@ -100,6 +124,9 @@
       "verbs": ["Get", "Set"],
       "effect_default": "io",
       "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": true,
       "notes": "Cache namespace used by CacheGet/CacheSet and runtime adapter."
     },
     "queue": {
@@ -109,6 +136,9 @@
       "verbs": ["Put"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
       "notes": "Queue write namespace.",
       "result_envelope": {
         "fields": {
@@ -127,6 +157,9 @@
       "verbs": ["Begin", "Commit", "Rollback"],
       "effect_default": "io",
       "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
       "notes": "Transaction namespace."
     },
     "auth": {
@@ -136,6 +169,9 @@
       "verbs": ["Validate"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": false,
       "notes": "Authentication namespace."
     },
     "http": {
@@ -145,6 +181,9 @@
       "verbs": ["Get", "Post", "Put", "Patch", "Delete", "Head", "Options"],
       "effect_default": "io",
       "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "Runtime HTTP adapter namespace.",
       "result_envelope": {
         "fields": {
@@ -165,6 +204,9 @@
       "verbs": ["Execute", "Query"],
       "effect_default": "io",
       "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": true,
       "notes": "Runtime SQLite adapter namespace."
     },
     "fs": {
@@ -174,6 +216,9 @@
       "verbs": ["Read", "Write", "List", "Delete"],
       "effect_default": "io",
       "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": true,
       "notes": "Runtime filesystem adapter namespace."
     },
     "tools": {
@@ -183,6 +228,9 @@
       "verbs": ["Call"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
       "notes": "Runtime tool bridge namespace."
     },
     "svc": {
@@ -192,6 +240,9 @@
       "verbs": ["caddy", "cloudflared", "maddy", "crm"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "OpenClaw service health adapter used by the monitor demo.",
       "result_envelope": {
         "fields": {
@@ -210,6 +261,9 @@
       "verbs": ["file_exists", "docker_image_exists", "http_status", "newest_backup_mtime", "metrics"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "OpenClaw monitor extras adapter for file, Docker, HTTP, backup mtime checks, and metrics summaries."
     },
     "agent": {
@@ -219,6 +273,9 @@
       "verbs": ["send_task", "read_result"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
       "notes": "Extension/OpenClaw agent coordination adapter for appending AgentTaskRequest envelopes to sandboxed JSONL files under AINL_AGENT_ROOT."
     },
     "tiktok": {
@@ -228,6 +285,9 @@
       "verbs": ["F", "recent", "videos"],
       "effect_default": "io",
       "privilege_tier": "network",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
       "notes": "OpenClaw TikTok monitoring adapter backed by the CRM SQLite database."
     },
     "memory": {
@@ -237,9 +297,11 @@
       "verbs": ["put", "get", "append", "list", "delete", "prune"],
       "effect_default": "io",
       "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": true,
       "recommended_for": "stateful_workflows",
       "notes": "Recommended durable state adapter for any workflow needing persistence across runs. Keyed by (namespace, record_kind, record_id). Extension classification reflects packaging origin, not importance."
     }
   }
 }
-

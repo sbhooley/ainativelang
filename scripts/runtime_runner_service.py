@@ -13,6 +13,7 @@ Contract boundary:
 import hashlib
 import json
 import logging
+import os
 import queue
 import re
 import threading
@@ -33,6 +34,14 @@ from runtime.adapters.tools import ToolBridgeAdapter
 from runtime.adapters.wasm import WasmAdapter
 from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
+from tooling.capability_grant import (
+    empty_grant,
+    merge_grants,
+    grant_to_policy,
+    grant_to_limits,
+    grant_to_allowed_adapters,
+    load_profile_as_grant,
+)
 
 logger = logging.getLogger("ainl.runner")
 if not logger.handlers:
@@ -40,6 +49,35 @@ if not logger.handlers:
     handler.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+
+# --- Server-level defaults (safety floor) --------------------------------
+_SERVER_DEFAULT_LIMITS: Dict[str, int] = {
+    "max_steps": 2000,
+    "max_depth": 20,
+    "max_adapter_calls": 200,
+    "max_time_ms": 30000,
+}
+_SERVER_DEFAULT_ALLOWED: List[str] = ["core"]
+
+def _load_server_grant() -> Dict[str, Any]:
+    """Build the server-level capability grant from env/defaults."""
+    profile_name = os.environ.get("AINL_SECURITY_PROFILE")
+    if profile_name:
+        try:
+            return load_profile_as_grant(profile_name)
+        except ValueError:
+            logger.warning("unknown AINL_SECURITY_PROFILE %r; using defaults", profile_name)
+    return {
+        "allowed_adapters": list(_SERVER_DEFAULT_ALLOWED),
+        "forbidden_adapters": [],
+        "forbidden_effects": [],
+        "forbidden_effect_tiers": [],
+        "forbidden_privilege_tiers": [],
+        "limits": dict(_SERVER_DEFAULT_LIMITS),
+        "adapter_constraints": {},
+    }
+
+_SERVER_GRANT: Dict[str, Any] = _load_server_grant()
 
 _COMPILE_CACHE: Dict[str, Dict[str, Any]] = {}
 _JOBS: Dict[str, Dict[str, Any]] = {}
@@ -109,28 +147,53 @@ def _redact_value(v: Any) -> Any:
     return v
 
 
+def _result_hash(result: Any) -> Optional[str]:
+    """SHA-256 of JSON-serialised result, or None if not serialisable."""
+    try:
+        return hashlib.sha256(
+            json.dumps(result, sort_keys=True, ensure_ascii=False, default=str).encode()
+        ).hexdigest()
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def _instrument_registry(reg: AdapterRegistry, trace_id: str, replay_artifact_id: str) -> Dict[str, List[float]]:
     per_adapter: Dict[str, List[float]] = {}
     original_call = reg.call
 
     def wrapped_call(adapter_name: str, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
+        import datetime
+        ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
         t0 = time.perf_counter()
+        status = "ok"
+        error_summary: Optional[str] = None
+        result = None
         try:
-            return original_call(adapter_name, target, args, context)
+            result = original_call(adapter_name, target, args, context)
+            return result
+        except Exception as exc:
+            status = "error"
+            raw = str(exc)[:200]
+            error_summary = _redact_value(raw) if isinstance(raw, str) else raw
+            raise
         finally:
             dt = round((time.perf_counter() - t0) * 1000, 3)
             per_adapter.setdefault(adapter_name, []).append(dt)
-            _json_log(
-                {
-                    "event": "adapter_call",
-                    "trace_id": trace_id,
-                    "replay_artifact_id": replay_artifact_id,
-                    "adapter": adapter_name,
-                    "verb": target,
-                    "duration_ms": dt,
-                    "args": _redact_value(list(args or [])),
-                }
-            )
+            log_entry: Dict[str, Any] = {
+                "event": "adapter_call",
+                "ts": ts,
+                "trace_id": trace_id,
+                "replay_artifact_id": replay_artifact_id,
+                "adapter": adapter_name,
+                "verb": target,
+                "duration_ms": dt,
+                "status": status,
+                "args": _redact_value(list(args or [])),
+                "result_hash": _result_hash(result) if status == "ok" else None,
+            }
+            if error_summary is not None:
+                log_entry["error_summary"] = error_summary
+            _json_log(log_entry)
 
     reg.call = wrapped_call  # type: ignore[assignment]
     return per_adapter
@@ -152,7 +215,7 @@ def _get_ir_from_code(code: str, strict: bool = True) -> Dict[str, Any]:
 def _build_registry(req: Dict[str, Any]) -> AdapterRegistry:
     replay_log = req.get("replay_log")
     record_calls = bool(req.get("record_calls"))
-    allowed = req.get("allowed_adapters") or ["core", "ext", "http", "sqlite", "fs", "tools", "cache", "queue", "txn", "auth", "wasm"]
+    allowed = req.get("allowed_adapters") or list(_SERVER_DEFAULT_ALLOWED)
     if replay_log is not None:
         if not isinstance(replay_log, list):
             raise ValueError("replay_log must be a list")
@@ -220,7 +283,27 @@ def _build_registry(req: Dict[str, Any]) -> AdapterRegistry:
     return reg
 
 
+def _caller_grant_from_request(req: Dict[str, Any]) -> Dict[str, Any]:
+    """Build a caller-level grant from request fields."""
+    grant = empty_grant()
+    if req.get("allowed_adapters") is not None:
+        grant["allowed_adapters"] = list(req["allowed_adapters"])
+    caller_policy = req.get("policy")
+    if isinstance(caller_policy, dict):
+        for key in ("forbidden_adapters", "forbidden_effects",
+                     "forbidden_effect_tiers", "forbidden_privilege_tiers"):
+            vals = caller_policy.get(key)
+            if vals:
+                grant[key] = list(vals)
+    caller_limits = req.get("limits")
+    if isinstance(caller_limits, dict):
+        grant["limits"] = {k: int(v) for k, v in caller_limits.items()
+                           if isinstance(v, (int, float))}
+    return grant
+
+
 def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
+    import datetime
     t0 = time.perf_counter()
     strict = bool(req.get("strict", True))
     ir = req.get("ir")
@@ -230,13 +313,30 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
     if ir is None:
         ir = _get_ir_from_code(str(code), strict=strict)
 
-    policy = req.get("policy")
-    if policy is not None:
-        if not isinstance(policy, dict):
-            raise ValueError("'policy' must be a JSON object")
-        policy_result = validate_ir_against_policy(ir, policy)
+    # Merge server grant with caller request (restrictive-only).
+    effective = merge_grants(_SERVER_GRANT, _caller_grant_from_request(req))
+    effective_policy = grant_to_policy(effective)
+    replay_artifact_id = str(req.get("replay_artifact_id") or "")
+
+    _json_log({
+        "event": "run_start",
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "trace_id": trace_id,
+        "replay_artifact_id": replay_artifact_id,
+        "label": str(req.get("label") or ""),
+        "policy_present": bool(effective_policy),
+        "limits_summary": grant_to_limits(effective),
+    })
+
+    if effective_policy:
+        policy_result = validate_ir_against_policy(ir, effective_policy)
         if not policy_result["ok"]:
             raise PolicyViolationError(policy_result["errors"])
+
+    # Override request fields with effective grant values.
+    req = dict(req)
+    req["allowed_adapters"] = grant_to_allowed_adapters(effective)
+    req["limits"] = grant_to_limits(effective)
 
     reg = _build_registry(req)
     replay_artifact_id = str(req.get("replay_artifact_id") or "")
@@ -248,7 +348,7 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
         step_fallback=bool(req.get("step_fallback", True)),
         execution_mode=str(req.get("execution_mode") or "graph-preferred"),
         unknown_op_policy=req.get("unknown_op_policy"),
-        limits=req.get("limits") or {},
+        limits=req["limits"],
     )
     label = str(req.get("label") or eng.default_entry_label())
     frame = req.get("frame") or {}
@@ -440,10 +540,13 @@ def _load_capabilities() -> Dict[str, Any]:
             "effect_default": info.get("effect_default"),
             "recommended_lane": info.get("recommended_lane"),
             "privilege_tier": info.get("privilege_tier"),
+            "destructive": info.get("destructive"),
+            "network_facing": info.get("network_facing"),
+            "sandbox_safe": info.get("sandbox_safe"),
         }
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "runtime_version": RUNTIME_VERSION,
         "policy_support": True,
         "adapters": adapters,
@@ -471,6 +574,7 @@ def run_sync(payload: Dict[str, Any]):
             {
                 "event": "policy_rejected",
                 "trace_id": trace_id,
+                "replay_artifact_id": str(payload.get("replay_artifact_id") or ""),
                 "ok": False,
                 "violations": len(e.errors),
             }

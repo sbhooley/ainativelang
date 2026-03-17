@@ -165,9 +165,12 @@ For the full state model, see `docs/architecture/STATE_DISCIPLINE.md`.
   hosts such as Gemini CLI, Claude Code, Codex-style agent SDKs, and other MCP
   hosts. This MCP surface is vendor-neutral, workflow-focused, and runs with
   safe-default restrictions (core-only adapters, conservative limits,
-  `local_minimal`-style policy). It does *not* turn AINL into an agent
-  platform or control plane; it is an integration surface that sits alongside
-  or underneath systems that do own sessions and policy.
+  `local_minimal`-style policy). Operators can further scope which tools and
+  resources are exposed using MCP exposure profiles and env vars, especially
+  when placing AINL behind an MCP gateway/manager. It does *not* turn AINL
+  into an agent platform, gateway, or control plane; it is an integration
+  surface that sits alongside or underneath systems that do own sessions and
+  policy.
 
 ---
 

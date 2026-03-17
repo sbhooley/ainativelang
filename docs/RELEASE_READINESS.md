@@ -20,6 +20,11 @@ Maintainer release execution steps are documented in `docs/RELEASING.md`.
 - CLI golden fixture execution
 - Conformance + compatibility coverage
 - Deployable runner service (sync + async + metrics + health)
+- Capability grant model with restrictive-only merge and profile-based startup
+- Mandatory default limits on all execution surfaces
+- Structured audit logging (run events, adapter calls, policy rejections)
+- Stronger adapter metadata (`destructive`, `network_facing`, `sandbox_safe`)
+- MCP exposure profiles and startup-configurable MCP tool/resource scoping
 
 ## Public Stability Boundaries
 
