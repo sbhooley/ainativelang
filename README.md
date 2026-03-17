@@ -381,6 +381,22 @@ The core, safe-default entry path for AINL focuses on:
 - graph/IR tooling (`docs/architecture/GRAPH_INTROSPECTION.md`),
 - server/OpenAPI emission and basic workflows.
 
+### Sandboxed and operator-controlled deployments
+
+AINL is architecturally suited to run inside **sandboxed, containerized, or
+operator-controlled** execution environments. The runtime's adapter allowlist,
+resource limits, and policy validation tooling provide the configuration surface
+that external orchestrators and sandbox controllers need to restrict and govern
+AINL execution. AINL is the **workflow layer**, not the sandbox or security
+layer; containment, network policy, and process isolation are the responsibility
+of the hosting environment.
+
+See:
+- `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — capability discovery, policy-gated execution, integration checklist
+- `docs/operations/SANDBOX_EXECUTION_PROFILE.md` — adapter profiles, limit profiles, environment guidance
+- `docs/operations/RUNTIME_CONTAINER_GUIDE.md` — containerized deployment patterns
+- `docs/advanced/SAFE_USE_AND_THREAT_MODEL.md` — trust model and safe-use guidance
+
 ### Advanced / operator-only / experimental surface
 
 AINL also includes **advanced, extension/OpenClaw-oriented** features that are
@@ -451,6 +467,9 @@ For full attribution context, see:
 - Example support levels: `docs/EXAMPLE_SUPPORT_MATRIX.md`
 - Graph/IR introspection: `docs/architecture/GRAPH_INTROSPECTION.md`
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
+- Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
+- Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
+- External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
 - Grammar reference: `docs/language/grammar.md`
 - Conformance and strict policy: `docs/CONFORMANCE.md`
 - Runtime/compiler ownership: `docs/RUNTIME_COMPILER_CONTRACT.md`
@@ -545,7 +564,7 @@ The emitted server also includes **openapi.json** for API docs, codegen, and gat
 - **Golden fixtures**: `ainl golden` validates `examples/*.ainl` against `*.expected.json`.
 - **Replay tooling**: `ainl run ... --record-adapters calls.json` and `ainl run ... --replay-adapters calls.json` for deterministic adapter replay.
 - **Reference adapters**: `http`, `sqlite`, `fs` (sandboxed), and `tools` bridge with contract tests.
-- **Runner service**: `ainl-runner-service` (FastAPI) with `/run`, `/enqueue`, `/result/{id}`, `/health`, `/ready`, and `/metrics`.
+- **Runner service**: `ainl-runner-service` (FastAPI) with `/run`, `/enqueue`, `/result/{id}`, `/capabilities`, `/health`, `/ready`, and `/metrics`.
 - **Tool API schema**: `tooling/ainl_tool_api.schema.json` (structured compile/validate/emit loop contract).
 - **Formal prefix grammar (compiler-owned)**: `compiler_grammar.py` is the source of truth for prefix lexical/syntactic/scope admissibility.
 - **Grammar ownership contract**:
@@ -571,7 +590,7 @@ The emitted server also includes **openapi.json** for API docs, codegen, and gat
 - **Examples**: `python3 scripts/validate_ainl.py examples/blog.lang --emit ir`
 - **Artifact compile profiles**: `tooling/artifact_profiles.json` is the source of truth for strict-valid vs non-strict-only vs legacy-compat examples/corpus/fixtures.
 - **Strict example check**: `python3 scripts/validate_ainl.py examples/hello.ainl --strict`
-- **Compile-once / run-many proof pack**: see `docs/COMPILE_ONCE_RUN_MANY.md` for a minimal end-to-end recipe (compile → inspect IR → run with adapters → replay from recorded calls).
+- **Compile-once / run-many proof pack**: see `docs/architecture/COMPILE_ONCE_RUN_MANY.md` for a minimal end-to-end recipe (compile → inspect IR → run with adapters → replay from recorded calls).
 - **Corpus layout checks**: `pytest tests/test_corpus_layout.py -v`
 - **Corpus eval modes**: `python scripts/evaluate_corpus.py --mode dual` (strict + runtime views)
 - **Corpus validation**: `python scripts/validate_corpus.py --include-negatives`

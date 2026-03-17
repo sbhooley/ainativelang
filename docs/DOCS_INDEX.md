@@ -36,7 +36,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Canonical public language lane: `docs/AINL_CANONICAL_CORE.md`
 - Core language and module structure: `docs/language/AINL_CORE_AND_MODULES.md`
 - Extension lanes and OpenClaw-specific surfaces: `docs/language/AINL_EXTENSIONS.md`
-- Canonical profile snapshot (v0.9): `docs/AINL_V0_9_PROFILE.md`
+- Canonical profile snapshot (v0.9): `docs/reference/AINL_V0_9_PROFILE.md`
 - Runtime behavior specification (complement to `SEMANTICS.md`): `docs/ainl_runtime_spec.md`
 - Target/runtime support roadmap: `docs/runtime/TARGETS_ROADMAP.md`
 - Example support classification: `docs/EXAMPLE_SUPPORT_MATRIX.md`
@@ -44,6 +44,8 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Runtime semantics contract: `SEMANTICS.md`
 - Runtime/compiler execution contract: `docs/RUNTIME_COMPILER_CONTRACT.md`
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
+- Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
+- Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - Safe optimization policy (language vs compiler optimization guardrails): `docs/runtime/SAFE_OPTIMIZATION_POLICY.md`
 - Machine-readable support levels: `tooling/support_matrix.json`
 - Runtime compatibility shim (`ExecutionEngine` facade): `runtime/compat.py`, `runtime.py`
@@ -60,7 +62,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Reproducible size benchmark report: `BENCHMARK.md`
 - Benchmark generator script: `scripts/benchmark_size.py`
 - Machine-readable benchmark output: `tooling/benchmark_size.json`
-- Compile-once / run-many proof pack: `docs/COMPILE_ONCE_RUN_MANY.md`
+- Compile-once / run-many proof pack: `docs/architecture/COMPILE_ONCE_RUN_MANY.md`
   - Includes `scripts/summarize_runs.py` for aggregating `RuntimeEngine.run(..., trace=True)` JSON payloads into small health summaries.
 - Launch copy pack: `docs/launch/SHORT_POST.md`, `docs/launch/TECHNICAL_POST.md`
 - Maintainer publish checklist snapshot: `docs/launch/PUBLISH_CHECKLIST.md`
@@ -85,6 +87,8 @@ entry point for new users or unsupervised agents.
 - Agent coordination contract (multi-agent envelopes/spec): `docs/advanced/AGENT_COORDINATION_CONTRACT.md`
 - Safe use and threat model: `docs/advanced/SAFE_USE_AND_THREAT_MODEL.md`
 - Adapter inventory and conventions (including extension/OpenClaw adapters): `docs/reference/ADAPTER_REGISTRY.md`, `docs/adapters/OPENCLAW_ADAPTERS.md`
+- Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
+- Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - Autonomous ops monitors index: `docs/operations/AUTONOMOUS_OPS_MONITORS.md`
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`

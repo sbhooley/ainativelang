@@ -277,7 +277,7 @@
   any language, compiler, or runtime semantics.
 - Added `tests/test_summarize_runs.py` to lock in the summary schema and basic
   aggregation behavior for single/multiple runs and list-of-payloads JSON input.
-- Extended `docs/COMPILE_ONCE_RUN_MANY.md`, `README.md`, and `docs/DOCS_INDEX.md`
+- Extended `docs/architecture/COMPILE_ONCE_RUN_MANY.md`, `README.md`, and `docs/DOCS_INDEX.md`
   with small notes on how to use the new run-summary helper.
 
 ## 1.0.9-autonomous-ops-and-http-envelopes (2026-03-09)
@@ -307,7 +307,7 @@
   introspection and inspect helper surfaces.
 
 ### Compile-Once / Run-Many Proof Pack
-- Added `docs/COMPILE_ONCE_RUN_MANY.md` with a minimal, reproducible recipe to:
+- Added `docs/architecture/COMPILE_ONCE_RUN_MANY.md` with a minimal, reproducible recipe to:
   - compile a program once and inspect IR/graph + checksum,
   - run with live adapters while recording calls,
   - replay deterministically from recorded adapter traces.
@@ -499,7 +499,7 @@
 - Expanded schema/profile cross-linking for small and large agents:
   - `docs/reference/IR_SCHEMA.md`
   - `docs/reference/GRAPH_SCHEMA.md`
-  - `docs/AINL_V0_9_PROFILE.md`
+  - `docs/reference/AINL_V0_9_PROFILE.md`
   - `docs/PATTERNS.md`
   - `docs/reference/TOOL_API.md`
   - `docs/INSTALL.md`
