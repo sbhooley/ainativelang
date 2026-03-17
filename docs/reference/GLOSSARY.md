@@ -68,7 +68,7 @@ A structured, schema-validated unit of persisted memory (with fields such as id,
 A named set of behavioral and surface-area expectations (e.g., `AINL_V0_9_PROFILE`) that a runtime, compiler, or adapter must meet to be considered compatible.
 
 ## Language Lanes and Extensions
-The division between canonical AINL and additional extension lanes (including OpenClaw-focused extensions) described in `docs/AINL_CANONICAL_CORE.md` and `docs/AINL_EXTENSIONS.md`.
+The division between canonical AINL and additional extension lanes (including OpenClaw-focused extensions) described in `docs/AINL_CANONICAL_CORE.md` and `docs/language/AINL_EXTENSIONS.md`.
 
 ## Runtime Specification
 The formal description of how compiled IR and language constructs must behave at runtime, complementing the human-readable semantics; see `docs/ainl_runtime_spec.md` and `SEMANTICS.md`.

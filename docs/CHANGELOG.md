@@ -503,8 +503,8 @@
   - `docs/PATTERNS.md`
   - `docs/reference/TOOL_API.md`
   - `docs/INSTALL.md`
-  - `docs/AINL_CORE_AND_MODULES.md`
-  - `docs/AINL_EXTENSIONS.md`
+  - `docs/language/AINL_CORE_AND_MODULES.md`
+  - `docs/language/AINL_EXTENSIONS.md`
 - Added docs automation and governance guardrails:
   - `scripts/check_docs_contracts.py` (stale-phrase, link-style, required-link, semantics-doc-coupling checks)
   - `ainl-check-docs` CLI entrypoint

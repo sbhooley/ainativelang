@@ -6,7 +6,7 @@ the human founder began in **2024**. After partial loss of early artifacts, AINL
 workstreams were rebuilt, retested, and formalized in overlapping phases through
 **2025-2026**.
 
-**Normative:** `AINL_SPEC.md` (Version 1.0). **Non-normative expansion:** `AINL_CORE_AND_MODULES.md`. **Implementation status:** compiler emits canonical graph (nodes/edges/entry/exits) and legacy.steps; runtime **executes the graph by default** (graph-preferred mode); legacy step-list is fallback when no graph or when steps-only mode.
+**Normative:** `AINL_SPEC.md` (Version 1.0). **Non-normative expansion:** `docs/language/AINL_CORE_AND_MODULES.md`. **Implementation status:** compiler emits canonical graph (nodes/edges/entry/exits) and legacy.steps; runtime **executes the graph by default** (graph-preferred mode); legacy step-list is fallback when no graph or when steps-only mode.
 
 ---
 

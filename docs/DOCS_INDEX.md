@@ -34,8 +34,8 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Licensing/repo layout plan: `docs/LICENSING_AND_REPO_LAYOUT_PLAN.md`
 - Language specification: `docs/AINL_SPEC.md`
 - Canonical public language lane: `docs/AINL_CANONICAL_CORE.md`
-- Core language and module structure: `docs/AINL_CORE_AND_MODULES.md`
-- Extension lanes and OpenClaw-specific surfaces: `docs/AINL_EXTENSIONS.md`
+- Core language and module structure: `docs/language/AINL_CORE_AND_MODULES.md`
+- Extension lanes and OpenClaw-specific surfaces: `docs/language/AINL_EXTENSIONS.md`
 - Canonical profile snapshot (v0.9): `docs/AINL_V0_9_PROFILE.md`
 - Runtime behavior specification (complement to `SEMANTICS.md`): `docs/ainl_runtime_spec.md`
 - Target/runtime support roadmap: `docs/TARGETS_ROADMAP.md`

@@ -21,7 +21,7 @@ Paid offerings are grouped into three buckets: **Managed**, **Enterprise**, **Ex
 
 | Repo surface / feature / area | Current repo grounding | Category | Paid bucket | Why | Replication risk | Buyer / user | Notes |
 |------------------------------|-------------------------|----------|-------------|-----|-------------------|--------------|--------|
-| AINL language spec, grammar | `docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/AINL_CORE_AND_MODULES.md`, `docs/AINL_V0_9_PROFILE.md` | **Never paywall** | — | Language legitimacy; ecosystem compatibility | N/A | Everyone | Must stay open for trust and adoption |
+| AINL language spec, grammar | `docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/language/AINL_CORE_AND_MODULES.md`, `docs/AINL_V0_9_PROFILE.md` | **Never paywall** | — | Language legitimacy; ecosystem compatibility | N/A | Everyone | Must stay open for trust and adoption |
 | Parser, compiler, canonical IR | `compiler_v2.py`, `compiler_grammar.py`, `grammar_constraint.py`, `grammar_priors.py` | **Open** | — | Single auditable compile path; adoption | N/A | Developers, agents | Core of “compile once, run many” |
 | Reference runtime engine | `runtime/engine.py`, `runtime/compat.py`, `runtime/values.py`, `SEMANTICS.md`, `docs/RUNTIME_COMPILER_CONTRACT.md` | **Open** | — | Conformance and portability | N/A | Everyone | Reference semantics must stay open |
 | Core runtime adapters | `runtime/adapters/` (http, sqlite, fs, tools, wasm, base, replay) | **Open** | — | Baseline usefulness without paid pieces | N/A | Developers, agents | Needed for local/dev use |

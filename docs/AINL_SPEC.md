@@ -22,7 +22,7 @@ workstreams were rebuilt, retested, and formalized in overlapping phases through
 - **Declarations** are structural metadata (UI, routes, config, bindings). They never affect execution. Ops: U, T, Rt, Lay, Fm, Tbl, Ev, A, Q, Sc, Cr, P, C, Pol, Txn. In IR they are stored under **`core.decl`**; emitters consume them. Runtimes that do not implement a declaration simply preserve it in IR.
 - **Modules** are domain metadata (`ops`, `fe`, `arch`, `test`, etc.). Namespaced ops are distinct from core (e.g. **Retry** vs **fe.FetchRetry**). Runtimes may ignore module ops they don’t implement; all ops must be preserved in IR for emitters. **Normalization:** For backward compatibility, unprefixed ops that are known module ops may be accepted at parse time but **must be normalized to canonical `module.op` form in emitted IR** (e.g. `Env` → `ops.Env`), so IR does not diverge across implementations.
 - **Canonical IR:** Label meaning is defined by **nodes/edges**. A step-list is an **optional, non-canonical** serialization (`legacy.steps`) and must round-trip to the same graph. Core (executable) nodes have **effect: pure | io** (R = io; Set/Filt/Sort/If = pure; Call computed from callee subgraph).
-- **Full grammar and validation:** [AINL_CORE_AND_MODULES.md](AINL_CORE_AND_MODULES.md) — namespaced grammar, canonical IR, effect typing, validation ruleset, optional bytecode (AINL-BC).
+- **Full grammar and validation:** [language/AINL_CORE_AND_MODULES.md](language/AINL_CORE_AND_MODULES.md) — namespaced grammar, canonical IR, effect typing, validation ruleset, optional bytecode (AINL-BC).
 
 ---
 

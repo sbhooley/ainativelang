@@ -1,15 +1,21 @@
-# Moved
+# AI Native Lang (AINL) Extensions — Programmers, Ops, Admins, Users, Designers, Architects
 
-This compatibility stub preserves old links for `docs/AINL_EXTENSIONS.md`.
+**Superseded for structure by [AINL_CORE_AND_MODULES.md](AINL_CORE_AND_MODULES.md).** That doc enforces Core (executable only) vs Modules (metadata), no op overloading, graph-first IR, and Set/Filt/Sort instead of overloading V. The list below is the *raw/historical extension set*; canonical, thesis-aligned behavior is documented in:
 
-This document now lives at [`language/AINL_EXTENSIONS.md`](language/AINL_EXTENSIONS.md).
+- `AINL_SPEC.md`
+- `RUNTIME_COMPILER_CONTRACT.md`
+- `CONFORMANCE.md`
 
-Use [`docs/README.md`](README.md) as the primary navigation hub and [`language/README.md`](language/README.md) for the language section.
+All new ops and IR keys for control flow, variables, composition, types, config, observability, deploy, secrets, scaling, admin, RBAC, audit, feature flags, i18n/a11y/theme/offline/help, design tokens/components/copy, multi-service, relations/indexes, API rules, NFRs, docs, versioning, testing.
+
+---
+
+## 1. Programmers / developers
 
 ### Control flow & branching
 | Op | Slots | IR | Purpose |
 |----|-------|-----|--------|
-| **If** | cond ->Lthen [->Lelse] | label step | Branch: if cond (e.g. var empty) run Lthen else Lelse. cond = var | var=value | var? |
+| **If** | cond ->Lthen [->Lelse] | label step | Branch: if cond (e.g. var empty) run Lthen else Lelse. cond = var \| var=value \| var? |
 | **Err** | [@node_id] ->Lhandler | label step | On error, run Lhandler. Graph: Err @node_id ->Lhandler; step-list bare = immediately preceding node |
 | **Retry** | [@node_id] count [backoff_ms] | label step | Retry node up to count times. Graph: Retry @node_id …; step-list bare = immediately preceding node |
 | **Call** | Lid [->out] | label step | Call label; result in ctx[out]. If ->out omitted, callee must have exactly one J |
@@ -31,7 +37,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub and [`language/R
 ### Types in the language
 - **D** extension: field can be `name:T?` (optional) or `name:T!` (required). Stored in types[name].fields as { f: "T" } and types[name].required = [f] or optional = [f].
 - **E** extension: optional return type and description. `E /users G ->L1 ->users A[User]` or `E /users G ->L1 "List users"`. Stored in eps[path].return_type, eps[path].description.
-- **Desc** | path "text" or TypeName "text" | top-level | Description for endpoint or type; IR desc.endpoints[path], desc.types[name].
+- **Desc** \| path "text" or TypeName "text" \| top-level \| Description for endpoint or type; IR desc.endpoints[path], desc.types[name].
 
 ### Testing & debugging
 | Op | Slots | IR | Purpose |
@@ -194,7 +200,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub and [`language/R
 - **audit**: { event, retention_days }
 - **admin**: { ui, entities: [...] }
 - **fe**: i18n, a11y, theme, offline, help, wizard, tokens, breakpoints, spacing, components, copy, retry
-- **types[].relations**: [ { type, kind: hasMany|belongsTo, target, fk? } ]
+- **types[].relations**: [ { type, kind: hasMany\|belongsTo, target, fk? } ]
 - **types[].indexes**: [ [ fields ] ]
 - **services.boundaries**: { name: path_prefix }
 - **services.contracts**: [ { path, method, response_type? } ]
@@ -202,5 +208,5 @@ Use [`docs/README.md`](README.md) as the primary navigation hub and [`language/R
 - **desc**: { endpoints: {}, types: {} }
 - **runbooks**: { name: [ steps ] }
 - **ver**: string
-- **compat**: break | add
+- **compat**: break \| add
 - **tests**: [ { label, mocks: [...] } ]

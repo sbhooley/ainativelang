@@ -142,7 +142,7 @@
 
 - **Rag (module):** rag.Src name type path | rag.Chunk name source strategy size [overlap] | rag.Embed name model [dim] | rag.Store name type | rag.Idx name source chunk embed store | rag.Ret name idx top_k [filter] | rag.Aug name tpl chunks_var query_var out | rag.Gen name model prompt_var [out] | rag.Pipe name ret aug gen. Build RAG piece-by-piece or one pipeline. Surface forms RagSrc, RagChunk, … allowed.
 
-See [AINL_CORE_AND_MODULES.md](../AINL_CORE_AND_MODULES.md) for namespaced grammar and IR.
+See [AINL_CORE_AND_MODULES.md](AINL_CORE_AND_MODULES.md) for namespaced grammar and IR.
 
 ---
 

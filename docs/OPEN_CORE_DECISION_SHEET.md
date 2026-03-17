@@ -30,7 +30,7 @@
 
 | Surface / feature / area | Repo grounding | Decision | Paid bucket | Why | Replication risk | Notes / conditions |
 |--------------------------|-----------------|----------|-------------|-----|------------------|--------------------|
-| AINL spec, grammar | `docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/AINL_CORE_AND_MODULES.md`, `docs/AINL_V0_9_PROFILE.md` | **Commit open** | — | Language legitimacy | — | Non-negotiable |
+| AINL spec, grammar | `docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/language/AINL_CORE_AND_MODULES.md`, `docs/AINL_V0_9_PROFILE.md` | **Commit open** | — | Language legitimacy | — | Non-negotiable |
 | Parser, compiler, canonical IR | `compiler_v2.py`, `compiler_grammar.py`, `grammar_constraint.py`, `grammar_priors.py` | **Commit open** | — | Single auditable compile path | — | Core of compile-once-run-many |
 | Reference runtime | `runtime/engine.py`, `runtime/compat.py`, `runtime/values.py`, `SEMANTICS.md`, `docs/RUNTIME_COMPILER_CONTRACT.md` | **Commit open** | — | Conformance and portability | — | Reference semantics |
 | Core runtime adapters | `runtime/adapters/` (http, sqlite, fs, tools, wasm, base, replay) | **Commit open** | — | Baseline usefulness | — | Required for local use |
@@ -80,7 +80,7 @@
 
 We commit the following as **open** now. These surfaces will remain free and open for trust, adoption, and language legitimacy.
 
-- **Spec and grammar:** AINL language spec, grammar references, core and profile docs (`docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/AINL_CORE_AND_MODULES.md`, `docs/AINL_V0_9_PROFILE.md`).
+- **Spec and grammar:** AINL language spec, grammar references, core and profile docs (`docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/language/AINL_CORE_AND_MODULES.md`, `docs/AINL_V0_9_PROFILE.md`).
 - **Compiler:** Parser, compiler, canonical IR generation (`compiler_v2.py`, `compiler_grammar.py`, `grammar_constraint.py`, `grammar_priors.py`).
 - **Runtime:** Reference runtime engine and execution semantics (`runtime/engine.py`, `runtime/compat.py`, `runtime/values.py`, `SEMANTICS.md`, `docs/RUNTIME_COMPILER_CONTRACT.md`).
 - **Schemas:** IR schema, graph schema (`docs/reference/IR_SCHEMA.md`, `docs/reference/GRAPH_SCHEMA.md`).
