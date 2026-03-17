@@ -612,7 +612,7 @@
 - Added publication-layer docs:
   - `docs/architecture/ARCHITECTURE_OVERVIEW.md`
   - `docs/CONTRIBUTING_AI_AGENTS.md`
-  - `docs/GLOSSARY.md`
+  - `docs/reference/GLOSSARY.md`
   - `docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md`
 - Added OpenClaw integration guide: `docs/OPENCLAW_ADAPTERS.md`
 - Added consultant report template and index:

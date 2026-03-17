@@ -6,7 +6,7 @@ Use this section to answer: what is AINL, what kind of system is it, and where s
 
 - [`../AUDIENCE_GUIDE.md`](../AUDIENCE_GUIDE.md) — choose the right entry path by audience
 - [`../architecture/ARCHITECTURE_OVERVIEW.md`](../architecture/ARCHITECTURE_OVERVIEW.md) — publication-ready system overview
-- [`../GLOSSARY.md`](../GLOSSARY.md) — shared terminology
+- [`../reference/GLOSSARY.md`](../reference/GLOSSARY.md) — shared terminology
 
 ## Related sections
 

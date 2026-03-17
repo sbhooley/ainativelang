@@ -62,7 +62,7 @@ workstreams were rebuilt, retested, and formalized in overlapping phases through
   - `docs/DOCS_INDEX.md`
   - `docs/AI_AGENT_CONTINUITY.md`
   - `docs/CONTRIBUTING_AI_AGENTS.md`
-  - `docs/GLOSSARY.md`
+  - `docs/reference/GLOSSARY.md`
 - Minimum handoff payload:
   - files changed
   - behavior deltas

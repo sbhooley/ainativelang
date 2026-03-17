@@ -11,6 +11,7 @@ All schema-level docs should live together here to avoid splitting closely relat
 - [`IR_SCHEMA.md`](IR_SCHEMA.md) — canonical IR schema
 - [`GRAPH_SCHEMA.md`](GRAPH_SCHEMA.md) — graph schema
 - [`TOOL_API.md`](TOOL_API.md) — structured tool API contract
+- [`GLOSSARY.md`](GLOSSARY.md) — shared terminology
 
 ## Related sections
 

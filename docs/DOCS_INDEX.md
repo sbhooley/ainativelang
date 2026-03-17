@@ -73,7 +73,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
   - `docs/issues/04-strict-adapter-contract-expansion-policy.md`
   - `docs/issues/05-post-release-docs-onboarding-tightening.md`
 - Architecture overview: `docs/architecture/ARCHITECTURE_OVERVIEW.md`
-- Glossary: `docs/GLOSSARY.md`
+- Glossary: `docs/reference/GLOSSARY.md`
 
 ### Advanced / operator-only / experimental docs
 
