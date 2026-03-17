@@ -55,3 +55,9 @@ See also AI_CONSULTANT_REPORT_APOLLO.md for a full AI AGENT/BOT written report o
 
 — see `AI_CONSULTANT_REPORT_APOLLO.md` (root)
 — see `CONSULTANT_REPORTS.md` (root)
+
+## Related
+
+- Graph-native vs prompt-loop agents: `docs/case_studies/graph_agents_vs_prompt_agents.md`
+- Integration story (AINL in agent stacks): `docs/INTEGRATION_STORY.md`
+- State discipline (tiered state model): `docs/architecture/STATE_DISCIPLINE.md`

@@ -216,7 +216,8 @@
       "recommended_lane": "noncanonical",
       "verbs": ["put", "get", "append", "list", "delete", "prune"],
       "effect_default": "io",
-      "notes": "Extension-level memory adapter for explicit execution-facing records keyed by (namespace, record_kind, record_id)."
+      "recommended_for": "stateful_workflows",
+      "notes": "Recommended durable state adapter for any workflow needing persistence across runs. Keyed by (namespace, record_kind, record_id). Extension classification reflects packaging origin, not importance."
     }
   }
 }

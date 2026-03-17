@@ -290,11 +290,14 @@ Several systems validate parts of this direction:
 
 | System | Focus | Difference vs AINL |
 |--------|------|-------------------|
-| LangGraph | Graph-based agent orchestration | No canonical IR or compiler layer |
+| LangChain / LangGraph | Chain/graph-based agent orchestration | No canonical IR, no compiler, no compile-once/run-many; LangGraph adds graphs but remains prompt-driven |
+| CrewAI | Multi-agent role-based orchestration | Role/prompt-driven, no deterministic graph execution or adapter-level effect control |
 | Temporal | Durable workflow execution | Not AI-native, no DSL or emitters |
 | Restate | Durable agents & services | Runtime-focused, no language layer |
 | Microsoft Agent Framework | Typed graph workflows | Framework, not a compiled language |
 | AutoGen | Multi-agent coordination | Prompt/event-driven, not deterministic graphs |
+
+For a detailed comparison of graph-native vs prompt-loop architectures with production evidence, see `docs/case_studies/graph_agents_vs_prompt_agents.md`.
 
 AINL uniquely combines:
 
@@ -392,6 +395,7 @@ layer; containment, network policy, and process isolation are the responsibility
 of the hosting environment.
 
 See:
+- `docs/INTEGRATION_STORY.md` — how AINL fits inside agent stacks, pain-to-solution map, integration surface
 - `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — capability discovery, policy-gated execution, integration checklist
 - `docs/operations/SANDBOX_EXECUTION_PROFILE.md` — adapter profiles, limit profiles, environment guidance
 - `docs/operations/RUNTIME_CONTAINER_GUIDE.md` — containerized deployment patterns
@@ -466,10 +470,14 @@ For full attribution context, see:
 - Canonical core: `docs/AINL_CANONICAL_CORE.md`
 - Example support levels: `docs/EXAMPLE_SUPPORT_MATRIX.md`
 - Graph/IR introspection: `docs/architecture/GRAPH_INTROSPECTION.md`
+- State discipline (tiered state model): `docs/architecture/STATE_DISCIPLINE.md`
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
+- Integration story (AINL in agent stacks): `docs/INTEGRATION_STORY.md`
+- OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md`
+- Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage
 - Grammar reference: `docs/language/grammar.md`
 - Conformance and strict policy: `docs/CONFORMANCE.md`
 - Runtime/compiler ownership: `docs/RUNTIME_COMPILER_CONTRACT.md`

@@ -238,3 +238,44 @@ to check whether envelopes still conform to the upstream coordination schema.
 This validator is **optional** and **extension-only**; it is provided to help
 keep empowered usage on upstream rails, not to enforce policy or change core
 AINL behavior.
+
+---
+
+## 7. Sandboxed and containerized deployments
+
+AINL is designed to function as a **workflow execution layer** inside sandboxed,
+containerized, or operator-controlled environments. In this model:
+
+- The **hosting environment** (container orchestrator, sandbox controller, or
+  managed agent platform) provides:
+  - process isolation, filesystem restrictions, and network policy,
+  - resource limits (CPU, memory, wall-clock timeout),
+  - policy enforcement and approval workflows.
+
+- The **AINL runtime** provides:
+  - adapter capability gating via an explicit allowlist,
+  - runtime resource limits (`max_steps`, `max_depth`, `max_time_ms`, etc.),
+  - adapter-level path containment and host restriction,
+  - a policy validation tool (`tooling/policy_validator.py`) that can serve
+    as a pre-execution gate on compiled IR,
+  - optional policy-gated execution at the `/run` endpoint (HTTP 403 on
+    violations),
+  - capability discovery via `GET /capabilities` (adapters, verbs, tiers,
+    runtime version).
+
+AINL does **not** claim to be a sandbox or security layer. The adapter
+allowlist and runtime limits are **defense-in-depth mechanisms**, not a
+substitute for container-level or OS-level isolation.
+
+For operators deploying AINL inside sandboxed environments:
+
+- **External orchestration guide** (capability discovery, policy-gated
+  execution, integration checklist):
+  `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
+- **Sandbox execution profiles** (adapter allowlists, runtime limits,
+  environment configuration): `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
+- **Runtime container guide** (Dockerfiles, probe configuration, integration
+  patterns): `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
+
+These guides are **framework-agnostic** and apply to any container
+orchestrator or agent host.

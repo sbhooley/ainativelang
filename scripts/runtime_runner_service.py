@@ -4,7 +4,8 @@ from __future__ import annotations
 """Runtime runner service for execution-oriented endpoints.
 
 Contract boundary:
-- This service exposes runtime execution APIs (`/run`, `/enqueue`, `/result`, `/health`, `/ready`, `/metrics`).
+- This service exposes runtime execution APIs (`/run`, `/enqueue`, `/result`,
+  `/health`, `/ready`, `/metrics`, `/capabilities`).
 - It intentionally does not expose emitted product/business REST routes (for example `/api/products`, `/api/checkout`).
 - UI/frontends expecting business routes should run against emitted app servers, not this runner.
 """
@@ -17,6 +18,7 @@ import re
 import threading
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -28,7 +30,8 @@ from runtime.adapters.replay import RecordingAdapterRegistry, ReplayAdapterRegis
 from runtime.adapters.sqlite import SimpleSqliteAdapter
 from runtime.adapters.tools import ToolBridgeAdapter
 from runtime.adapters.wasm import WasmAdapter
-from runtime.engine import AinlRuntimeError, RuntimeEngine
+from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
+from tooling.policy_validator import validate_ir_against_policy
 
 logger = logging.getLogger("ainl.runner")
 if not logger.handlers:
@@ -56,6 +59,14 @@ _METRICS: Dict[str, Any] = {
     "adapter_durations_ms": {},
 }
 _SENSITIVE_TOKENS = ("authorization", "token", "secret", "password", "api_key", "apikey", "x-api-key")
+
+
+class PolicyViolationError(Exception):
+    """Raised when IR violates a submitted policy before execution."""
+
+    def __init__(self, errors: List[Dict[str, Any]]):
+        self.errors = errors
+        super().__init__(f"Policy violation: {len(errors)} error(s)")
 
 
 class _EchoAdapter(RuntimeAdapter):
@@ -219,6 +230,15 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
         raise ValueError("request must include either 'code' or 'ir'")
     if ir is None:
         ir = _get_ir_from_code(str(code), strict=strict)
+
+    policy = req.get("policy")
+    if policy is not None:
+        if not isinstance(policy, dict):
+            raise ValueError("'policy' must be a JSON object")
+        policy_result = validate_ir_against_policy(ir, policy)
+        if not policy_result["ok"]:
+            raise PolicyViolationError(policy_result["errors"])
+
     reg = _build_registry(req)
     replay_artifact_id = str(req.get("replay_artifact_id") or "")
     per_adapter_durations = _instrument_registry(reg, trace_id=trace_id, replay_artifact_id=replay_artifact_id)
@@ -291,6 +311,8 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
 def _run_guarded(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
     try:
         return _run_once(req, trace_id=trace_id)
+    except PolicyViolationError:
+        raise
     except AinlRuntimeError as e:
         with _LOCK:
             _METRICS["runs_total"] += 1
@@ -398,10 +420,66 @@ def metrics():
         }
 
 
+def _load_capabilities() -> Dict[str, Any]:
+    tooling_dir = Path(__file__).resolve().parent.parent / "tooling"
+    manifest_path = tooling_dir / "adapter_manifest.json"
+    try:
+        with open(manifest_path, "r") as f:
+            manifest = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        manifest = {}
+
+    adapters = {}
+    for name, info in (manifest.get("adapters") or {}).items():
+        adapters[name] = {
+            "support_tier": info.get("support_tier"),
+            "verbs": info.get("verbs", []),
+            "effect_default": info.get("effect_default"),
+            "recommended_lane": info.get("recommended_lane"),
+        }
+
+    return {
+        "schema_version": "1.0",
+        "runtime_version": RUNTIME_VERSION,
+        "policy_support": True,
+        "adapters": adapters,
+    }
+
+
+_CAPABILITIES_CACHE: Optional[Dict[str, Any]] = None
+
+
+@app.get("/capabilities")
+def capabilities():
+    global _CAPABILITIES_CACHE
+    if _CAPABILITIES_CACHE is None:
+        _CAPABILITIES_CACHE = _load_capabilities()
+    return _CAPABILITIES_CACHE
+
+
 @app.post("/run")
 def run_sync(payload: Dict[str, Any]):
     trace_id = str(uuid.uuid4())
-    return _run_guarded(payload, trace_id=trace_id)
+    try:
+        return _run_guarded(payload, trace_id=trace_id)
+    except PolicyViolationError as e:
+        _json_log(
+            {
+                "event": "policy_rejected",
+                "trace_id": trace_id,
+                "ok": False,
+                "violations": len(e.errors),
+            }
+        )
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "ok": False,
+                "trace_id": trace_id,
+                "error": "policy_violation",
+                "policy_errors": e.errors,
+            },
+        )
 
 
 @app.post("/enqueue")

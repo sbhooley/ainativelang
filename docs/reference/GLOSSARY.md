@@ -75,3 +75,18 @@ The formal description of how compiled IR and language constructs must behave at
 
 ## Targets Roadmap
 The forward-looking map of officially supported runtimes, adapters, and deployment targets, documented in `docs/runtime/TARGETS_ROADMAP.md`.
+
+## State Discipline
+The AINL approach to managing workflow state through explicit, tiered adapters (frame, cache, memory/SQLite/FS, coordination) rather than hiding state in prompt history. Described in `docs/architecture/STATE_DISCIPLINE.md`.
+
+## State Tier
+One of four levels of state durability in AINL: Tier 1 (frame, ephemeral), Tier 2 (cache, short-lived), Tier 3 (memory/SQLite/FS, persistent), Tier 4 (queue/agent, cross-workflow coordination).
+
+## Policy Validator
+A pre-execution gate (`tooling/policy_validator.py`) that checks compiled IR against a declarative policy (forbidden adapters, effects, effect tiers) and returns structured violations. Can be invoked directly or via the optional `policy` parameter on the runner service `/run` endpoint.
+
+## Capability Discovery
+The `GET /capabilities` endpoint on the runner service, which returns available adapters, their verbs, support tiers, default effects, and the runtime version. Used by external orchestrators to inspect what an AINL runtime instance supports before submitting workflows.
+
+## Runner Service
+The FastAPI-based execution service (`scripts/runtime_runner_service.py`) exposing `/run`, `/enqueue`, `/result/{id}`, `/capabilities`, `/health`, `/ready`, and `/metrics` endpoints for runtime-facing workflow execution.

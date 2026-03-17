@@ -33,7 +33,7 @@ If strict-mode behavior changes, also update:
 
 - `AINL_SPEC.md` strict guarantees
 - `language/grammar.md` quick-reference rules
-- profile docs (`AINL_V0_9_PROFILE.md`) when affected
+- profile docs (`reference/AINL_V0_9_PROFILE.md`) when affected
 
 ## Deep-Linking Standard
 

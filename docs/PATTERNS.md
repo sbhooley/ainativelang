@@ -8,7 +8,7 @@ Each pattern is:
 - **Shown** as a small AINL label snippet.
 - **Explained** briefly in plain English.
 
-All patterns are compatible with the v0.9 profile in `AINL_V0_9_PROFILE.md`.
+All patterns are compatible with the v0.9 profile in `reference/AINL_V0_9_PROFILE.md`.
 For canonical runtime behavior and strict literal policy, also see:
 
 - `RUNTIME_COMPILER_CONTRACT.md`

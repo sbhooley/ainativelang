@@ -17,7 +17,7 @@ All new ops and IR keys for control flow, variables, composition, types, config,
 |----|-------|-----|--------|
 | **If** | cond ->Lthen [->Lelse] | label step | Branch: if cond (e.g. var empty) run Lthen else Lelse. cond = var \| var=value \| var? |
 | **Err** | [@node_id] ->Lhandler | label step | On error, run Lhandler. Graph: Err @node_id ->Lhandler; step-list bare = immediately preceding node |
-| **Retry** | [@node_id] count [backoff_ms] | label step | Retry node up to count times. Graph: Retry @node_id …; step-list bare = immediately preceding node |
+| **Retry** | [@node_id] count [backoff_ms] [strategy] | label step | Retry node up to count times. strategy: `fixed` (default) or `exponential` (doubles each attempt, capped at 30s). Graph: Retry @node_id …; step-list bare = immediately preceding node |
 | **Call** | Lid [->out] | label step | Call label; result in ctx[out]. If ->out omitted, callee must have exactly one J |
 
 ### Variables & expressions

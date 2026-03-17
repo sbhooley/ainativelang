@@ -4,6 +4,15 @@ Status: **design + v1 adapter implementation**. This document describes the v1
 memory contract as an extension-level adapter. It does **not** change compiler
 or core runtime semantics.
 
+> **Positioning note.** Memory is classified as `extension_openclaw` in the
+> adapter support tier, but it is the **recommended durable state mechanism**
+> for any workflow that needs persistence beyond a single run. The extension
+> classification reflects packaging origin, not importance. Any stateful
+> workflow — OpenClaw, NemoClaw, or custom-host — that needs to remember
+> facts, session context, or workflow checkpoints across runs should use the
+> memory adapter. See `docs/architecture/STATE_DISCIPLINE.md` for where
+> memory fits in the tiered state model.
+
 Memory in AINL v1 is:
 
 - **adapter-level** — implemented as a `memory` adapter,

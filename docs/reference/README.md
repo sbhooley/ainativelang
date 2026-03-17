@@ -13,6 +13,7 @@ All schema-level docs should live together here to avoid splitting closely relat
 - [`TOOL_API.md`](TOOL_API.md) — structured tool API contract
 - [`CAPABILITY_REGISTRY.md`](CAPABILITY_REGISTRY.md) — capability metadata and Tool API v2 projection
 - [`GLOSSARY.md`](GLOSSARY.md) — shared terminology
+ - [`AINL_V0_9_PROFILE.md`](AINL_V0_9_PROFILE.md) — v0.9 small-model profile (beginner subset of the spec)
 
 ## Related sections
 

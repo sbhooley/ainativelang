@@ -11,6 +11,8 @@ This is the canonical home for narrative, applied, and production-oriented AINL 
 
 ## Related sections
 
+- Integration story (AINL in agent stacks): [`../INTEGRATION_STORY.md`](../INTEGRATION_STORY.md)
+- Competitive landscape: [`../../README.md`](../../README.md) (Competitive Landscape section)
 - Why this approach exists: [`../fundamentals/README.md`](../fundamentals/README.md)
 - Operational proof: [`../operations/README.md`](../operations/README.md)
 - Root docs navigation: [`../README.md`](../README.md)

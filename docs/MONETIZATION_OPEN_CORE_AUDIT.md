@@ -47,7 +47,7 @@ Major layers/subsystems inspected and short description of each:
 
 Concrete list with reasons:
 
-- **AINL language spec and grammar references** (`docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/language/AINL_CORE_AND_MODULES.md`, `docs/AINL_V0_9_PROFILE.md`)
+- **AINL language spec and grammar references** (`docs/AINL_SPEC.md`, `docs/language/grammar.md`, `docs/language/AINL_CORE_AND_MODULES.md`, `docs/reference/AINL_V0_9_PROFILE.md`)
   **Why:** Language legitimacy and ecosystem compatibility. Paywalling the spec would fragment the language and kill trust and adoption.
 
 - **Parser, compiler, and canonical IR generation** (`compiler_v2.py`, `compiler_grammar.py`, core of `grammar_constraint.py` / `grammar_priors.py` for open grammar surface)  

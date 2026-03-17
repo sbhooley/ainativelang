@@ -41,11 +41,17 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Target/runtime support roadmap: `docs/runtime/TARGETS_ROADMAP.md`
 - Example support classification: `docs/EXAMPLE_SUPPORT_MATRIX.md`
 - Graph/IR introspection guide: `docs/architecture/GRAPH_INTROSPECTION.md`
+- State discipline (tiered state model): `docs/architecture/STATE_DISCIPLINE.md`
 - Runtime semantics contract: `SEMANTICS.md`
 - Runtime/compiler execution contract: `docs/RUNTIME_COMPILER_CONTRACT.md`
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
+- External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
+- Integration story (AINL in agent stacks): `docs/INTEGRATION_STORY.md`
+- Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage, long-context memory
+- OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md`
+- Workflow patterns: `docs/PATTERNS.md`
 - Safe optimization policy (language vs compiler optimization guardrails): `docs/runtime/SAFE_OPTIMIZATION_POLICY.md`
 - Machine-readable support levels: `tooling/support_matrix.json`
 - Runtime compatibility shim (`ExecutionEngine` facade): `runtime/compat.py`, `runtime.py`
@@ -89,6 +95,7 @@ entry point for new users or unsupervised agents.
 - Adapter inventory and conventions (including extension/OpenClaw adapters): `docs/reference/ADAPTER_REGISTRY.md`, `docs/adapters/OPENCLAW_ADAPTERS.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
+- External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
 - Autonomous ops monitors index: `docs/operations/AUTONOMOUS_OPS_MONITORS.md`
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`

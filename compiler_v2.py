@@ -1997,18 +1997,23 @@ class AICodeCompiler:
                         if at_node is not None:
                             count = slots[i + 2] if i + 2 < len(slots) else "3"
                             backoff = slots[i + 3] if i + 3 < len(slots) else "0"
-                            leg["steps"].append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff, "at_node_id": at_node})
-                            i += 4 if i + 3 < len(slots) else (3 if i + 2 < len(slots) else 2)
+                            strategy = slots[i + 4] if i + 4 < len(slots) and slots[i + 4] in ("fixed", "exponential") else None
+                            step_d: Dict[str, Any] = {"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff, "at_node_id": at_node}
+                            if strategy:
+                                step_d["backoff_strategy"] = strategy
+                            leg["steps"].append(step_d)
+                            consumed = 2 + (1 if i + 2 < len(slots) else 0) + (1 if i + 3 < len(slots) else 0) + (1 if strategy else 0)
+                            i += consumed
                         else:
                             count = slots[i + 1] if i + 1 < len(slots) else "3"
                             backoff = slots[i + 2] if i + 2 < len(slots) else "0"
-                            leg["steps"].append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff})
-                            if i + 2 < len(slots):
-                                i += 3
-                            elif i + 1 < len(slots):
-                                i += 2
-                            else:
-                                i += 1
+                            strategy = slots[i + 3] if i + 3 < len(slots) and slots[i + 3] in ("fixed", "exponential") else None
+                            step_d = {"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff}
+                            if strategy:
+                                step_d["backoff_strategy"] = strategy
+                            leg["steps"].append(step_d)
+                            consumed = 1 + (1 if i + 1 < len(slots) else 0) + (1 if i + 2 < len(slots) else 0) + (1 if strategy else 0)
+                            i += consumed
                     elif slots[i] == "Call" and i + 1 < len(slots):
                         lid = slots[i + 1].lstrip("L").split(":")[-1]
                         out_var = None
@@ -2295,13 +2300,21 @@ class AICodeCompiler:
                     if at_node is not None:
                         count = slots[1] if len(slots) > 1 else "3"
                         backoff = slots[2] if len(slots) > 2 else "0"
+                        strategy = slots[3] if len(slots) > 3 and slots[3] in ("fixed", "exponential") else None
                         self._ensure_label(self.current_label)
-                        self._label_steps(self.current_label).append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff, "at_node_id": at_node})
+                        step_d: Dict[str, Any] = {"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff, "at_node_id": at_node}
+                        if strategy:
+                            step_d["backoff_strategy"] = strategy
+                        self._label_steps(self.current_label).append(step_d)
                     else:
                         count = slots[0] if slots else "3"
                         backoff = slots[1] if len(slots) > 1 else "0"
+                        strategy = slots[2] if len(slots) > 2 and slots[2] in ("fixed", "exponential") else None
                         self._ensure_label(self.current_label)
-                        self._label_steps(self.current_label).append({"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff})
+                        step_d = {"op": "Retry", "lineno": lineno, "count": count, "backoff_ms": backoff}
+                        if strategy:
+                            step_d["backoff_strategy"] = strategy
+                        self._label_steps(self.current_label).append(step_d)
             elif op == "Call":
                 if slots and self.current_label:
                     lid = slots[0]

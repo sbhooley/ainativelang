@@ -722,10 +722,23 @@ class RuntimeEngine:
                 routes[source_idx] = handler
         return routes
 
-    def _build_step_retry_routes(self, steps: List[Dict[str, Any]]) -> Dict[int, Dict[str, int]]:
+    @staticmethod
+    def _compute_retry_delay_ms(cfg: Dict[str, Any], attempt: int) -> float:
+        """Return delay in ms for the given attempt number (1-based)."""
+        base = cfg.get("backoff_ms", 0)
+        if base <= 0:
+            return 0.0
+        strategy = cfg.get("backoff_strategy", "fixed")
+        if strategy == "exponential":
+            delay = base * (2 ** (attempt - 1))
+            cap = cfg.get("max_backoff_ms", 30000)
+            return min(delay, cap)
+        return float(base)
+
+    def _build_step_retry_routes(self, steps: List[Dict[str, Any]]) -> Dict[int, Dict[str, Any]]:
         """Build failing-step-index -> retry config from Retry steps."""
         node_to_index = self._node_index_map_for_steps(steps)
-        routes: Dict[int, Dict[str, int]] = {}
+        routes: Dict[int, Dict[str, Any]] = {}
         for idx, step in enumerate(steps):
             if step.get("op") != "Retry":
                 continue
@@ -746,7 +759,10 @@ class RuntimeEngine:
                 backoff_ms = int(step.get("backoff_ms", 0))
             except Exception:
                 backoff_ms = 0
-            routes[source_idx] = {"count": max(1, count), "backoff_ms": max(0, backoff_ms)}
+            strategy = str(step.get("backoff_strategy", "fixed"))
+            if strategy not in ("fixed", "exponential"):
+                strategy = "fixed"
+            routes[source_idx] = {"count": max(1, count), "backoff_ms": max(0, backoff_ms), "backoff_strategy": strategy}
         return routes
 
     def _retry_policy_from_graph(
@@ -755,7 +771,7 @@ class RuntimeEngine:
         edge_by_from_port_kind: Dict[tuple, Dict[str, Any]],
         node_by_id: Dict[str, Dict[str, Any]],
         frame: Dict[str, Any],
-    ) -> Optional[Dict[str, int]]:
+    ) -> Optional[Dict[str, Any]]:
         if not cur:
             return None
         retry_edge = edge_by_from_port_kind.get((cur, "retry", "node"))
@@ -773,7 +789,10 @@ class RuntimeEngine:
             backoff_ms = int(self._resolve(rstep.get("backoff_ms", 0), frame))
         except Exception:
             backoff_ms = 0
-        return {"count": max(1, count), "backoff_ms": max(0, backoff_ms)}
+        strategy = str(rstep.get("backoff_strategy", "fixed"))
+        if strategy not in ("fixed", "exponential"):
+            strategy = "fixed"
+        return {"count": max(1, count), "backoff_ms": max(0, backoff_ms), "backoff_strategy": strategy}
 
     def _run_label(self, label_id: str, frame: Dict[str, Any], stack: List[str], force_steps: bool = False) -> Any:
         if not stack:
@@ -929,7 +948,7 @@ class RuntimeEngine:
                 retry_cfg = retry_routes.get(i)
                 if retry_cfg:
                     last_err: Optional[Exception] = e
-                    for _ in range(retry_cfg["count"]):
+                    for _ra in range(1, retry_cfg["count"] + 1):
                         try:
                             shared_retry = _retry_current_step()
                             if shared_retry and shared_retry.get("action") == "return":
@@ -938,8 +957,9 @@ class RuntimeEngine:
                             break
                         except Exception as re:
                             last_err = re
-                            if retry_cfg["backoff_ms"] > 0:
-                                time.sleep(retry_cfg["backoff_ms"] / 1000.0)
+                            delay = self._compute_retry_delay_ms(retry_cfg, _ra)
+                            if delay > 0:
+                                time.sleep(delay / 1000.0)
                     if last_err is None:
                         self._emit_trace(lid, op, i, t0, frame, frame.get(s.get("out", "res")))
                         i += 1
@@ -963,7 +983,7 @@ class RuntimeEngine:
                 retry_cfg = retry_routes.get(i)
                 if retry_cfg:
                     last_err: Optional[Exception] = e
-                    for _ in range(retry_cfg["count"]):
+                    for _ra in range(1, retry_cfg["count"] + 1):
                         try:
                             shared_retry = _retry_current_step()
                             if shared_retry and shared_retry.get("action") == "return":
@@ -972,8 +992,9 @@ class RuntimeEngine:
                             break
                         except Exception as re:
                             last_err = re
-                            if retry_cfg["backoff_ms"] > 0:
-                                time.sleep(retry_cfg["backoff_ms"] / 1000.0)
+                            delay = self._compute_retry_delay_ms(retry_cfg, _ra)
+                            if delay > 0:
+                                time.sleep(delay / 1000.0)
                     if last_err is None:
                         self._emit_trace(lid, op, i, t0, frame, frame.get(s.get("out", "res")))
                         i += 1
@@ -997,7 +1018,7 @@ class RuntimeEngine:
                 retry_cfg = retry_routes.get(i)
                 if retry_cfg:
                     last_err: Optional[Exception] = e
-                    for _ in range(retry_cfg["count"]):
+                    for _ra in range(1, retry_cfg["count"] + 1):
                         try:
                             shared_retry = _retry_current_step()
                             if shared_retry and shared_retry.get("action") == "return":
@@ -1006,8 +1027,9 @@ class RuntimeEngine:
                             break
                         except Exception as re:
                             last_err = re
-                            if retry_cfg["backoff_ms"] > 0:
-                                time.sleep(retry_cfg["backoff_ms"] / 1000.0)
+                            delay = self._compute_retry_delay_ms(retry_cfg, _ra)
+                            if delay > 0:
+                                time.sleep(delay / 1000.0)
                     if last_err is None:
                         self._emit_trace(lid, op, i, t0, frame, frame.get(s.get("out", "res")))
                         i += 1
@@ -1286,8 +1308,9 @@ class RuntimeEngine:
                     attempt = retry_attempts.get(cur, 0) + 1
                     if attempt <= retry_policy["count"]:
                         retry_attempts[cur] = attempt
-                        if retry_policy["backoff_ms"] > 0:
-                            time.sleep(retry_policy["backoff_ms"] / 1000.0)
+                        delay = self._compute_retry_delay_ms(retry_policy, attempt)
+                        if delay > 0:
+                            time.sleep(delay / 1000.0)
                         if self.trace_enabled:
                             self.trace_events.append(
                                 {
@@ -1321,8 +1344,9 @@ class RuntimeEngine:
                     attempt = retry_attempts.get(cur, 0) + 1
                     if attempt <= retry_policy["count"]:
                         retry_attempts[cur] = attempt
-                        if retry_policy["backoff_ms"] > 0:
-                            time.sleep(retry_policy["backoff_ms"] / 1000.0)
+                        delay = self._compute_retry_delay_ms(retry_policy, attempt)
+                        if delay > 0:
+                            time.sleep(delay / 1000.0)
                         if self.trace_enabled:
                             self.trace_events.append(
                                 {
@@ -1342,8 +1366,9 @@ class RuntimeEngine:
                     attempt = retry_attempts.get(cur, 0) + 1
                     if attempt <= retry_policy["count"]:
                         retry_attempts[cur] = attempt
-                        if retry_policy["backoff_ms"] > 0:
-                            time.sleep(retry_policy["backoff_ms"] / 1000.0)
+                        delay = self._compute_retry_delay_ms(retry_policy, attempt)
+                        if delay > 0:
+                            time.sleep(delay / 1000.0)
                         if self.trace_enabled:
                             self.trace_events.append(
                                 {

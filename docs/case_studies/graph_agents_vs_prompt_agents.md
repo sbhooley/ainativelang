@@ -378,8 +378,18 @@ Apollo demonstrates that this architecture is not theoretical — it is already 
 > Prompt loops are a **clever hack**.
 > Graph-native systems are **real infrastructure**.
 
+# Related
+
+- Integration story (AINL in agent stacks): `docs/INTEGRATION_STORY.md`
+- State discipline (tiered state model): `docs/architecture/STATE_DISCIPLINE.md`
+- Competitive landscape: `README.md` (Competitive Landscape section)
+- Runtime cost advantage: `docs/case_studies/HOW_AINL_SAVES_MONEY.md`
+- OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md`
+
 # KEYWORDS
 - LangGraph alternative
+- LangChain alternative
+- CrewAI alternative
 - Temporal for AI agents
 - deterministic alternative to prompt loops
 - graph-native agent framework

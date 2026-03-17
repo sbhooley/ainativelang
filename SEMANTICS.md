@@ -67,13 +67,19 @@ Related tests:
 
 - `Retry` retries only the immediately previous `R` step/node
 - Retry attempts: `max(1, count)`
-- Backoff: `backoff_ms` per failed attempt
+- Backoff delay between failed attempts: `backoff_ms`
+- Backoff strategy (optional, default `"fixed"`):
+  - `"fixed"` — same delay every attempt
+  - `"exponential"` — delay doubles each attempt (`backoff_ms * 2^(attempt-1)`),
+    capped at `max_backoff_ms` (default 30000)
 - Retries on any raised exception from the retried `R`
 - In graph mode, retry path is driven by `port="retry"` edge to `Retry` node
+- Syntax: `Retry [@node] count backoff_ms [strategy]`
 
 Related tests:
 - `tests/test_runtime_graph_only.py::test_graph_only_retry_port_recovers`
 - `tests/test_runtime_graph_only_negative.py::test_graph_only_retry_exhaustion_raises`
+- `tests/test_retry_backoff.py` — fixed/exponential backoff, cap, compiler parsing
 
 ## 6) `Loop` / `While` Return Behavior
 
