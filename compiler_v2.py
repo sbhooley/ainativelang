@@ -1957,7 +1957,7 @@ class AICodeCompiler:
                             step["__literal_fields"] = {"ref": True}
                         leg["steps"].append(step)
                         i += 3
-                    elif slots[i] == "Filt" and i + 6 <= len(slots):
+                    elif slots[i] in ("Filt", "Filter") and i + 6 <= len(slots):
                         step = {"op": "Filt", "lineno": lineno, "name": slots[i + 1], "ref": slots[i + 2], "field": slots[i + 3], "cmp": slots[i + 4], "value": slots[i + 5]}
                         lit_fields = {}
                         if i + 2 < len(slot_kinds) and slot_kinds[i + 2] == "string":
@@ -2039,8 +2039,26 @@ class AICodeCompiler:
                         while j < len(slots) and slots[j] not in step_ops:
                             args.append(slots[j])
                             j += 1
+                        # Strip S-expression parentheses: the tokenizer does not treat
+                        # '(' and ')' as delimiters, so "X dst (core.add 3 4)" arrives
+                        # as fn="(core.add", args may end with "4)" or a standalone ")".
+                        fn = fn.lstrip("(")
+                        if args and isinstance(args[-1], str):
+                            stripped = args[-1].rstrip(")")
+                            if stripped:
+                                args[-1] = stripped
+                            else:
+                                args.pop()
                         leg["steps"].append({"op": "X", "lineno": lineno, "dst": dst, "fn": fn, "args": args})
                         i = j
+                    elif slots[i] == "ForEach" and i + 4 < len(slots):
+                        # ForEach is an alias for Loop
+                        ref = slots[i + 1]
+                        item = slots[i + 2]
+                        body = self._parse_arrow_lbl(slots[i + 3]) or slots[i + 3].lstrip("L").split(":")[-1]
+                        after = self._parse_arrow_lbl(slots[i + 4]) or slots[i + 4].lstrip("L").split(":")[-1]
+                        leg["steps"].append({"op": "Loop", "lineno": lineno, "ref": ref, "item": item, "body": body, "after": after})
+                        i += 5
                     elif slots[i] == "Loop" and i + 4 < len(slots):
                         ref = slots[i + 1]
                         item = slots[i + 2]
@@ -2362,7 +2380,18 @@ class AICodeCompiler:
             elif op == "X":
                 if len(slots) >= 2 and self.current_label:
                     self._ensure_label(self.current_label)
-                    self._label_steps(self.current_label).append({"op": "X", "lineno": lineno, "dst": slots[0], "fn": slots[1], "args": slots[2:]})
+                    # Strip S-expression parentheses: "X dst (core.add 3 4)" tokenizes as
+                    # fn="(core.add", last-arg may be "4)" or a standalone ")".
+                    # '(' and ')' are not token delimiters so they attach to adjacent tokens.
+                    x_fn = slots[1].lstrip("(")
+                    x_args = list(slots[2:])
+                    if x_args and isinstance(x_args[-1], str):
+                        stripped = x_args[-1].rstrip(")")
+                        if stripped:
+                            x_args[-1] = stripped
+                        else:
+                            x_args.pop()
+                    self._label_steps(self.current_label).append({"op": "X", "lineno": lineno, "dst": slots[0], "fn": x_fn, "args": x_args})
             elif op == "Loop":
                 if len(slots) >= 4 and self.current_label:
                     body = self._parse_arrow_lbl(slots[2]) or slots[2].lstrip("L").split(":")[-1]

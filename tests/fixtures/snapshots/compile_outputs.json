@@ -132,7 +132,7 @@
     {
       "path": "examples/openclaw/daily_digest.lang",
       "strict": false,
-      "graph_semantic_checksum": "sha256:b169f398e0508b6b9b097f41f855e374a4127199e0b41dd8491b22b26bb65256",
+      "graph_semantic_checksum": "sha256:9a22ca1af4dcc94edd8a5369c19c1843be079552a15a2ab3bb3b0ebdded8026a",
       "labels": [
         "0",
         "1",
