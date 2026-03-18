@@ -67,6 +67,7 @@ The `payload` field is always a JSON object in v1.
 - `long_term` — durable multi-session facts/preferences.
 - `daily_log` — timestamped notes and logs, roughly per day.
 - `workflow` — per-workflow or per-pipeline state and checkpoints.
+- `ops` — operational metrics, monitor state, and infrastructure health records for autonomous ops monitors.
 
 ### 2.2 Recommended record kinds (v1)
 

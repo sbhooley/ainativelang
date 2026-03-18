@@ -94,11 +94,17 @@ Current compatibility behavior is preserved for:
 MVP general-compute extensions:
 
 - `X dst fn ...args` (compact compute op)
-  - `add|sub|mul|div|get|put|len|push|obj|arr|eq|ne|lt|lte|gt|gte|and|or|not`
-- `Loop ref item ->Lbody ->Lafter`
-- `While cond ->Lbody ->Lafter`
+  - Supported `fn` names: `add|sub|mul|div|idiv|get|put|len|push|obj|arr|eq|ne|lt|lte|gt|gte|and|or|not|concat|join|ite|if`
+  - All of the above are also accepted with a `core.` prefix (e.g. `core.add`, `core.idiv`, `core.ite`).
+  - `ite`/`if`: `X dst ite cond then_val else_val` — inline conditional; returns `then_val` if `cond` is truthy, else `else_val`.
+  - `idiv`: integer division (truncates toward zero).
+  - S-expression paren form accepted: `X dst (fn arg…)` — the compiler strips the outer parens before emitting IR, so both forms produce identical IR.
+- `Loop ref item ->Lbody ->Lafter` — alias `ForEach`
+- `While cond ->Lbody ->Lafter [limit=N]`
 
-All new ops remain space-delimited compact forms and are deterministic.
+**`J` semantics:** `J var` resolves `var` from the execution frame and returns the resolved value as the label result. If `var` is not in the frame, it is treated as a string literal. The runtime applies `_resolve(var, frame)` — do not rely on `var` being returned as a raw token string.
+
+All ops remain space-delimited compact forms and are deterministic.
 
 Canonical runtime implementation is `runtime/engine.py` (`RuntimeEngine`).
 Compatibility API surface is `runtime/compat.py` (`ExecutionEngine`), re-exported

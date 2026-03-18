@@ -211,7 +211,7 @@ That file now describes the full adapter surface, including:
 - `core`, `db`, `api`, `email`, `calendar`, `social`, `ext`,
 - `wasm`, `cache`, `queue`, `txn`, `auth`,
 - `http`, `sqlite`, `fs`, `tools`,
-- `svc`, `extras`, `agent`, `tiktok`, `memory`.
+- `svc`, `extras`, `agent`, `tiktok`, `web`, `memory`.
 
 Each adapter entry carries:
 
@@ -410,7 +410,7 @@ of the agreed shared protocol.
 The following adapters are fully specified in `tooling/adapter_manifest.json`
 and `ADAPTER_REGISTRY.json` but do not require long-form slot schemas here:
 
-- **`core`** (tier: `core`, lane: `canonical`): arithmetic, string, JSON, and time helpers (`ADD`, `SUB`, `MUL`, `DIV`, `MIN`, `MAX`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `PARSE`, `STRINGIFY`, `NOW`, `ISO`, `SLEEP`, `ECHO`).
+- **`core`** (tier: `core`, lane: `canonical`): arithmetic, string, JSON, and time helpers (`ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MIN`, `MAX`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `PARSE`, `STRINGIFY`, `NOW`, `ISO`, `SLEEP`, `ECHO`). `IDIV` performs integer division (truncates toward zero). In X expressions, these are also available as lowercase `core.*` aliases (e.g. `core.add`, `core.idiv`).
 - **`api`** (tier: `compatibility`, lane: `noncanonical`): legacy HTTP/API surface used by older step‑list forms (`G`, `P`, `POST`).
 - **`sqlite`** (tier: `core`, lane: `canonical`): direct SQLite access (`Execute`, `Query`) with allow‑list and timeout controls.
 - **`fs`** (tier: `core`, lane: `canonical`): sandboxed filesystem operations (`Read`, `Write`, `List`, `Delete`) with size and extension guards.
@@ -419,8 +419,9 @@ and `ADAPTER_REGISTRY.json` but do not require long-form slot schemas here:
 - **`auth`** (tier: `core`, lane: `canonical`): authentication namespace (`Validate`) wired into service middleware.
 - **`email`**, **`calendar`**, **`social`** (tier: `extension_openclaw`, lane: `canonical`): OpenClaw monitoring adapters for unread email, upcoming calendar events, and social/web mentions.
 - **`ext`** (tier: `compatibility`, lane: `noncanonical`): test‑only external extension namespace used in runtime tests.
-- **`tiktok`** (tier: `extension_openclaw`, lane: `noncanonical`): TikTok/CRM reporting surface (`F`, `recent`, `videos`) for OpenClaw monitors.
-- **`memory`** (tier: `extension_openclaw`, lane: `noncanonical`): explicit memory adapter (`put`, `get`, `append`, `list`, `delete`, `prune`) as specified in `docs/adapters/MEMORY_CONTRACT.md`.
+- **`tiktok`** (tier: `extension_openclaw`, lane: `noncanonical`): TikTok/CRM reporting surface (`F`, `recent`, `videos`) for OpenClaw monitors. `recent` verb retrieves recent posts/metrics with a configurable limit.
+- **`web`** (tier: `extension_openclaw`, lane: `noncanonical`): web search surface (`search`) backed by OpenRouter/Perplexity. Usage: `R web.search "query string" ->results`. Requires `OPENROUTER_API_KEY` env var; returns a list of result objects with `title`, `url`, `snippet`.
+- **`memory`** (tier: `extension_openclaw`, lane: `noncanonical`): explicit memory adapter (`put`, `get`, `append`, `list`, `delete`, `prune`) as specified in `docs/adapters/MEMORY_CONTRACT.md`. Supported namespaces include `ops` (in addition to `session`, `long_term`, `daily_log`, `workflow`).
 
 For exact argument lists, effect metadata, and envelopes, treat
 `tooling/adapter_manifest.json` as the source of truth and

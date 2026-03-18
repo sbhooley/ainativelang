@@ -1,5 +1,57 @@
 # Changelog
 
+## 1.1.1 — Runtime correctness fixes and adapter extensions (2026-03-09)
+
+### Bug fixes
+
+- **Compiler: X-step S-expression paren stripping** — `X dst (core.add 3 4)`
+  and similar paren-form X expressions now parse correctly. The tokenizer does
+  not treat `(` and `)` as delimiters, so the leading `(` was attaching to the
+  function name and the entire `core.*` engine branch was unreachable dead code.
+  Fixed in both X-step parser paths in `compiler_v2.py`. Snapshot updated for
+  `examples/openclaw/daily_digest.lang` which uses `(core.div ...)` and
+  `(core.gt ...)`.
+
+- **Runtime: `J` variable resolution** — `J var` was returning the raw token
+  string `"var"` instead of resolving `var` from the execution frame. Fixed
+  with a one-line `_resolve()` call in `runtime/engine.py`. This was a silent
+  correctness bug since the original release; every program using `J` for its
+  return value was affected. Snapshots updated.
+
+### New adapter verbs (OpenClaw extension level)
+
+- **`web.search`** — new `WebAdapter` in `adapters/openclaw_integration.py`
+  backed by OpenRouter/Perplexity. Returns search results for use in
+  intelligence digest and monitoring workflows. Requires `OPENROUTER_API_KEY`.
+
+- **`tiktok.recent`** — new verb on the `TikTokAdapter` for retrieving recent
+  posts/metrics with a configurable limit.
+
+- **`core.idiv`** — integer division builtin added to `CoreBuiltinAdapter`
+  in `runtime/adapters/builtins.py`. Available as both `R core.idiv` and
+  `X dst (core.idiv a b)` in X expressions.
+
+- **`memory` `ops` namespace** — `ops` added to the valid namespace whitelist
+  in the memory adapter for operational metrics and monitor state storage.
+
+### Dependency
+
+- `requests>=2.28.0` declared under `[project.optional-dependencies] openclaw`
+  in `pyproject.toml`. The `WebAdapter` uses it; previously relied on silently
+  as a transitive dep.
+
+### Documentation
+
+- `docs/AINL_SPEC.md`: `X`, `Loop`, `While`, `ForEach` added to grammar and
+  slot rules tables; `J` description clarified to say "resolve from frame".
+- `docs/ainl_runtime_spec.md`: X fn list updated (`idiv`, `concat`, `join`,
+  `ite`/`if`, `core.*` prefix form, paren syntax); `J` semantics note added.
+- `docs/reference/ADAPTER_REGISTRY.md`: `web` adapter added; `tiktok.recent`
+  and `core.idiv`/`IDIV` documented; `memory` `ops` namespace noted.
+- `docs/adapters/MEMORY_CONTRACT.md`: `ops` namespace added to v1 whitelist.
+
+---
+
 ## 1.1.0 — First Public Release Candidate (2026-03-09)
 
 ### Baseline

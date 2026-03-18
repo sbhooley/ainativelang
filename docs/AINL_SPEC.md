@@ -71,7 +71,7 @@ The invariant (canonical IR = nodes/edges) is now operational, not aspirational.
 - **Comment**: `#` to end of line (ignored).
 - **Statement**: **OP** **slots**.
 - **OP (core):** Either (a) a short core token (`S`, `D`, `E`, `R`, `J`, `U`, `T`, `Q`, `Sc`, `Cr`, `P`, `C`, `Rt`, `Lay`, `Fm`, `Tbl`, `Ev`, plus `A` and structural/declaration ops), or (b) a reserved identifier for core control/dataflow: `If`, `Err`, `Retry`, `Call`, `Set`, `Filt`, `Sort`, `Inc`. Labels use `L` + id + `:`.
-- **Label block parsing:** `L`&lt;number&gt;`:` begins a label block. Within a label block, each subsequent non-empty non-comment line **must** begin with a label-step op token (`R|J|If|Err|Retry|Call|Set|Filt|Sort|CacheGet|CacheSet|QueuePut|Tx|Enf`). Any other op within a label block is invalid. The block continues until the next `L`&lt;number&gt;`:` or EOF. Inline form is allowed: after the colon on the same line, a sequence of label-step statements may appear. This makes compiler behavior deterministic.
+- **Label block parsing:** `L`&lt;number&gt;`:` begins a label block. Within a label block, each subsequent non-empty non-comment line **must** begin with a label-step op token (`R|J|If|Err|Retry|Call|Set|X|Loop|ForEach|While|Filt|Sort|CacheGet|CacheSet|QueuePut|Tx|Enf`). Any other op within a label block is invalid. The block continues until the next `L`&lt;number&gt;`:` or EOF. Inline form is allowed: after the colon on the same line, a sequence of label-step statements may appear. This makes compiler behavior deterministic.
 - **OP (module):** Module-prefixed ops use an identifier form: `module "." MODULE_OP` where `module` and `MODULE_OP` are identifiers (`[A-Za-z][A-Za-z0-9_]*`); dot only in the prefix (e.g. `ops.Env`, `fe.Tok`, `rag.Src`). This preserves dense short core ops while allowing descriptive module ops.
 - **Statement grammar:** `statement := core_stmt | module_stmt`; `core_stmt := CORE_OP slots`; `module_stmt := module "." MODULE_OP slots`.
 - **slots**: Zero or more **slot** tokens. Slots are separated by whitespace **except inside double-quoted strings**, which form a single token and may contain spaces. A **slot** is thus: a path, identifier, literal (including a quoted string), or composite like `f:T`, `->x` (arrow_var), `->L1` (arrow_lbl), `A[User]`.
@@ -88,7 +88,7 @@ core_stmt     := S_s | D_s | E_s | L_s | Inc_s
               | U_s | T_s | Q_s | Sc_s | Cr_s | P_s | C_s | A_s
               | Rt_s | Lay_s | Fm_s | Tbl_s | Ev_s
 
-label_step    := R_s | J_s | If_s | Err_s | Retry_s | Call_s | Set_s | Filt_s | Sort_s | CacheGet_s | CacheSet_s | QueuePut_s | Tx_s | Enf_s
+label_step    := R_s | J_s | If_s | Err_s | Retry_s | Call_s | Set_s | X_s | Filt_s | Sort_s | Loop_s | While_s | ForEach_s | CacheGet_s | CacheSet_s | QueuePut_s | Tx_s | Enf_s
 L_s           := "L" number ":" (label_step)*
 at_node_id    := "@n" number
 
@@ -152,9 +152,12 @@ id            := [A-Za-z_][A-Za-z0-9_]*
 | **S** | name, mode | path | path = service base path (e.g. `/api`) |
 | **D** | type_name | field:type … | type_name = entity; field:type = key:shorthand |
 | **E** | path, method | ->label_id, ->return_var | **Strict:** Endpoint label must have exactly one exit `J`. If `E` includes `->return_var`, it must match that `J` var. If omitted, infer from that `J`. |
-| **L** | (op = L number :) | inline executable steps | Label id is numeric (L1, L2). Only R J If Err Retry Call Set Filt Sort in block or inline |
+| **L** | (op = L number :) | inline executable steps | Label id is numeric (L1, L2). Executable ops within a label block: `R J If Err Retry Call Set X Loop While ForEach Filt Sort CacheGet CacheSet QueuePut Tx Enf`. |
 | **R** | adapter.verb target [args...] -><out> | | Canonical: adapter.verb (e.g. db.F, api.G, rag.Ret); target = entity or path. **Strict:** Exactly one trailing `arrow_var` (single token, e.g. `->out`) and it must be last; R slot arity validated by adapter.verb definition (fixed-arity or k=v list). Parsers accept arbitrary slots; validators enforce the pattern. |
-| **J** | var | | return context[var] |
+| **J** | var | | resolve `var` from the execution frame and return it as the label result. `var` may be a frame variable name or a quoted string literal. |
+| **X** | dst fn [args…] | | compact inline compute: evaluate `fn(args…)` and store the result in frame variable `dst`. `fn` is one of `add sub mul div idiv len get put push obj arr eq ne lt lte gt gte and or not concat join ite if` or a `core.*`-prefixed alias (e.g. `core.add`). S-expression paren form `X dst (fn arg…)` is also accepted; the compiler strips parens before emitting IR. |
+| **Loop** | ref item ->Lbody ->Lafter | | iterate over list `ref`, binding each element to `item`; jump to `Lbody` per iteration, then `Lafter` when done. Alias: `ForEach`. |
+| **While** | cond ->Lbody ->Lafter | limit= | loop while `cond` is truthy; enforce optional `limit=N` iteration cap. |
 | **U** | ui_name | props… | props = component or data binding names |
 | **T** | var or var:type | | attach state to current U |
 | **Q** | name | max_size, retry | |
@@ -233,6 +236,9 @@ This table mirrors the compiler registry and is intended as a machine-readable h
 | Contract | top | 3 |
 | R | any | 0 |
 | J | any | 0 |
+| X | label | 2 |
+| Loop | label | 4 |
+| While | label | 3 |
 | If | label | 2 |
 | Err | label | 1 |
 | Retry | label | 0 |
