@@ -328,8 +328,11 @@ class WebAdapter(RuntimeAdapter):
             raise AdapterError(f'web search request failed: {e}')
 
         data = resp.json()
-        content = data['choices'][0]['message']['content']
-        # Strip markdown code fences if present
+        message = data['choices'][0]['message']
+        content = message.get('content', '')
+        annotations = message.get('annotations', [])
+
+        # Try to extract JSON array from content first
         content = content.strip()
         if content.startswith('```json'):
             content = content[7:]
@@ -338,6 +341,7 @@ class WebAdapter(RuntimeAdapter):
         content = content.strip()
 
         # Parse JSON array
+        results = None
         try:
             results = json.loads(content)
         except json.JSONDecodeError as e:
@@ -347,10 +351,23 @@ class WebAdapter(RuntimeAdapter):
             if start != -1 and end > start:
                 try:
                     results = json.loads(content[start:end])
-                except Exception as e2:
-                    raise AdapterError(f'web search JSON parse error: {e}, fallback: {e2}')
-            else:
-                raise AdapterError(f'web search JSON parse error: {e}')
+                except Exception:
+                    results = None
+
+        # Fallback: Use annotations (OpenRouter Perplexity Sonar returns citations in annotations)
+        if (results is None or (isinstance(results, list) and len(results) == 0)) and annotations:
+            results = []
+            for ann in annotations:
+                if isinstance(ann, dict) and ann.get('type') == 'url_citation':
+                    uc = ann.get('url_citation', {})
+                    results.append({
+                        'id': uc.get('url', ''),
+                        'title': uc.get('title', ''),
+                        'text': uc.get('title', ''),  # use title as snippet if no text
+                    })
+
+        if results is None:
+            raise AdapterError('web search: could not extract results from response')
 
         # Allow { "results": [...] }
         if isinstance(results, dict) and 'results' in results:

@@ -1,0 +1,9 @@
+# Test split availability
+S core cron "*/5 * * * *"
+
+L0:
+  R core now ->ts
+  X txt "a\nb\nc"
+  X lines split txt "\n"
+  X count len lines
+  Ret "Lines: " + count

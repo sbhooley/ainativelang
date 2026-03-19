@@ -1,0 +1,67 @@
+# Token-Aware Startup Context Injection (compact)
+# Runs often via cron; writes .openclaw/bootstrap/session_context.md for boot-md hook
+
+S core cron "*/5 * * * *"
+
+L0:
+  # Get token budget state (workflow.token_cost_state)
+  R memory get "workflow" "token_cost_state" ->tcs
+  X weekUsage (or tcs.last_week_usage 0)
+  X weekBudget (or tcs.weekly_budget 100000)
+  X dayUsage (or tcs.daily_usage 0)
+  X dayBudget (or tcs.daily_budget 20000)
+
+  # Compute conservative allocation: 10% of the lesser of daily/weekly remaining
+  X remWeek (core.sub weekBudget weekUsage)
+  X remDay (core.sub dayBudget dayUsage)
+  X alloc (core.mul (core.min remWeek remDay) 0.1)
+  X tokenCap (core.min alloc 2000)   # upper bound 2000 tokens
+  X minCap 200
+  If (core.lt tokenCap minCap) ->L_skip ->L_exit
+
+  # Read MEMORY.md (distilled memory entries)
+  R fs.read "MEMORY.md" ->content
+  X lines (core.split content "\n")
+  X n (core.len lines)
+  X i (core.sub n 1)
+  Set contextLines []
+  Set totalTokens 0
+
+L_collect:
+  X line lines[i]
+  X lineLen (core.len line)
+  X lineTokens (core.idiv (core.add lineLen 3) 4)  # ceil(len/4)
+  X newTotal (core.add totalTokens lineTokens)
+  If (core.gt newTotal tokenCap) ->L_done
+  Append contextLines line
+  Set totalTokens newTotal
+L_next:
+  X i (core.sub i 1)
+  If (core.gte i 0) ->L_collect ->L_done
+
+L_done:
+  # Reverse collected lines to chronological order (oldest first)
+  Set reversedLines []
+  Set k (sub (len contextLines) 1)
+L_rev_loop:
+  If (core.lt k 0) ->L_have_rev
+  X ln contextLines[k]
+  Append reversedLines ln
+  X k (core.sub k 1)
+  J L_rev_loop
+L_have_rev:
+  X context (core.join reversedLines "\n")
+  # Ensure bootstrap dir exists (dummy create via write)
+  R fs.mkdir ".openclaw/bootstrap" ->_  # safe if exists
+  R fs.write ".openclaw/bootstrap/session_context.md" context ->_
+  # Record usage in memory
+  R memory put "workflow" "session_context.tokens" totalTokens ->_
+  R memory put "workflow" "session_context.cap" tokenCap ->_
+  R memory put "workflow" "session_context.timestamp" (core.now) ->_
+  Ret "Injected " + totalTokens + " tokens"
+
+L_skip:
+  Ret "Budget too low (" + tokenCap + "), skipping"
+
+L_exit:
+  # end

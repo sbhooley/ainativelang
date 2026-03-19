@@ -1,0 +1,58 @@
+# Enhanced Session Continuity & Memory Injection
+# Runs every 30 minutes to:
+# 1. Detect active/starting sessions
+# 2. Inject relevant past memories into session context
+# 3. Summarize completed sessions and store in memory
+S core cron "*/30 * * * *"
+
+L0:
+  R core now ->ts
+  # Check recent memory entries (last 7 days) for potential context
+  R memory list "memory" ".*" ->all_mem_keys
+  X count len all_mem_keys
+  
+  # Filter to recent keys (within 7 days) - simple filter by date prefix
+  Filter all_mem_keys where _ starts_with substr(ts,0,10) minus 7 days ->recent_keys
+  
+  # Fetch recent conversation snippets to analyze for relevance to current session topics
+  # For now, we'll fetch the most recent N entries and check if they contain actionable context
+  X recent_count min count 20
+  X fetch_n min recent_count 10
+  X indices range 0 fetch_n
+  
+  # Build list of recent memory contents
+  Set mem_snippets []
+  Filter indices as idx ->L_fetch_loop
+  
+L_fetch_loop:
+  X key recent_keys[idx]
+  R memory get "memory" key ->entry
+  # Extract just the text content (skip metadata if any)
+  X snippet entry.content if entry.content else str(entry)
+  X mem_snippets append snippet
+  Ret idx+1 ->L_fetch_loop (if idx+1 < fetch_n)
+  
+  # After fetch, we have recent snippets. If there's an active session, we could analyze
+  # but AINL lacks complex reasoning. We'll store these in a cache for quick lookup.
+  R cache set "session" "recent_context" mem_snippets ->_
+  
+  # Also check for sessions that need summarization (sessions without summary)
+  # This would normally be flagged by the session lifecycle hooks
+  R cache get "session" "needs_summary" ->pending_summary
+  If pending_summary ->L_summarize ->L_done
+  
+L_summarize:
+  # pending_summary contains session_id and perhaps last few messages
+  # We'll generate a brief summary and append to today's memory file
+  R core now ->now
+  X today_str substr(now,0,10)
+  R core concat "memory/" today_str ".md" ->today_file
+  
+  # Build summary text
+  R core concat "Session Summary (" pending_summary.session_id "): " pending_summary.brief ->summary_line
+  R file append today_file summary_line ->_
+  R cache delete "session" "needs_summary" ->_
+  
+L_done:
+  QueuePut notify "Session continuity updated: " recent_count " recent memories cached"
+  Ret null

@@ -1,0 +1,117 @@
+# Memory Consolidation (Pure AINL)
+S core cron "30 3 * * *"
+
+L0:
+  R core now ->ts
+  R core iso ->iso
+  R core split iso "T" ->iso_parts
+  X today_str iso_parts[0]
+
+  # Get memory files
+  R fs list "memory/*.md" ->files
+  X total len files
+  X recent_n 10
+  R core sub total recent_n ->start_idx
+  R core max start_idx 0 ->start_idx_max
+
+  Set recent_files []
+  X i start_idx_max
+  J L_collect_files
+
+L_collect_files:
+  X f files[i]
+  X recent_files append f
+  X i add i 1
+  X cond lt i total
+  If cond ->L_collect_files ->L_check_mem
+
+L_check_mem:
+  R fs list "." ->dir_entries
+  Set mem_exists false
+  Filter dir_entries as e ->L_check_name
+
+L_check_name:
+  R core eq e "MEMORY.md" ->is_mem
+  If is_mem ->L_set_exists ->L_next_name
+L_set_exists:
+  Set mem_exists true
+L_next_name:
+  Ret next
+
+L_after_check:
+  Set old_mem ""
+  If mem_exists ->L_load ->L_prepare
+
+L_load:
+  R fs read "MEMORY.md" ->old_mem
+  Ret old_mem
+
+L_prepare:
+  X header concat "\n## Memory Consolidation — " today_str "\n"
+  Set new_content header
+  Set count 0
+
+  Filter recent_files as f ->L_process_file
+
+L_process_file:
+  R fs read f ->content
+  R core split content "\n" ->lines
+  Filter lines as line ->L_filter_line
+
+L_filter_line:
+  X len_line len line
+  R core lower line ->line_lower
+
+  # Keyword detection via split
+  R core split line_lower "decision" ->pd
+  X len_pd len pd
+  X kw1 ne len_pd 1
+  R core split line_lower "preference" ->pp
+  X len_pp len pp
+  X kw2 ne len_pp 1
+  R core split line_lower "todo" ->pt
+  X len_pt len pt
+  X kw3 ne len_pt 1
+  R core split line_lower "important" ->pi
+  X len_pi len pi
+  X kw4 ne len_pi 1
+  R core split line_lower "lesson" ->pl
+  X len_pl len pl
+  X kw5 ne len_pl 1
+  R core split line_lower "setting" ->ps
+  X len_ps len ps
+  X kw6 ne len_ps 1
+  R core split line_lower "requires" ->pr
+  X len_pr len pr
+  X kw7 ne len_pr 1
+
+  # Combine conditions
+  R core or (gt len_line 60) kw1 ->t1
+  R core or t1 kw2 ->t2
+  R core or t2 kw3 ->t3
+  R core or t3 kw4 ->t4
+  R core or t4 kw5 ->t5
+  R core or t5 kw6 ->t6
+  R core or t6 kw7 ->keep
+
+  If keep ->L_append_line ->L_next_line
+
+L_append_line:
+  X new_content concat new_content line "\n"
+  X count add count 1
+
+L_next_line:
+  Ret next
+
+L_after_all:
+  X any_new gt count 0
+  If any_new ->L_write ->L_done
+
+L_write:
+  R core concat old_mem new_content ->final
+  R fs write "MEMORY.md" final ->_
+  R queue Put "notify" {"message": "Memory Consolidation added " + count + " items."} ->_
+  Ret "Consolidated " + count + " items"
+
+L_done:
+  Ret "No new items"

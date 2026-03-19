@@ -62,6 +62,45 @@ def eq(frame, a, b):
 def ne(frame, a, b):
     return a != b
 
+# --- String operations ---
+def split(frame, s, sep):
+    """Split string by separator (string). Returns list."""
+    if not isinstance(s, str):
+        s = str(s)
+    if not isinstance(sep, str):
+        sep = str(sep)
+    return s.split(sep)
+
+def contains(frame, s, substr):
+    """Return True if substr in s."""
+    return substr in s
+
+def starts_with(frame, s, prefix):
+    return s.startswith(prefix)
+
+def ends_with(frame, s, suffix):
+    return s.endswith(suffix)
+
+def substr(frame, s, start, length=None):
+    """Return substring. If length omitted, to end."""
+    if not isinstance(s, str):
+        s = str(s)
+    if length is None:
+        return s[start:]
+    return s[start:start+length]
+
+def replace(frame, s, old, new):
+    return s.replace(old, new)
+
+def to_lower(frame, s):
+    return s.lower()
+
+def to_upper(frame, s):
+    return s.upper()
+
+def trim(frame, s):
+    return s.strip()
+
 # Map of verbs to functions
 VERBS = {
     'now': core_now,
@@ -82,6 +121,16 @@ VERBS = {
     'gte': gte,
     'eq': eq,
     'ne': ne,
+    # string
+    'split': split,
+    'contains': contains,
+    'starts_with': starts_with,
+    'ends_with': ends_with,
+    'substr': substr,
+    'replace': replace,
+    'to_lower': to_lower,
+    'to_upper': to_upper,
+    'trim': trim,
 }
 
 def core_registry():
