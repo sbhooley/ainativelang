@@ -123,6 +123,23 @@ L_flag_auditor:
   X stale_monitors add stale_monitors 1
   R core concat stale_names "cron_cost_auditor," ->stale_names
 
+  # Check session_budget_enforcer (runs hourly, stale after 90 min = 5400s)
+L_check_enforcer:
+  R cache get "monitor_heartbeat" "session_budget_enforcer" ->hb_enforcer
+  If hb_enforcer ->L_has_enforcer_hb ->L_enforcer_init
+L_enforcer_init:
+  Set hb_enforcer 0
+  J L_has_enforcer_hb
+L_has_enforcer_hb:
+  X age_enforcer sub ts hb_enforcer
+  X stale_enforcer gt age_enforcer 5400
+  X has_enforcer gt hb_enforcer 0
+  X enforcer_stale and stale_enforcer has_enforcer
+  If enforcer_stale ->L_flag_enforcer ->L_eval
+L_flag_enforcer:
+  X stale_monitors add stale_monitors 1
+  R core concat stale_names "session_budget_enforcer," ->stale_names
+
 L_eval:
   X has_stale gt stale_monitors 0
   If has_stale ->L_alert ->L_ok

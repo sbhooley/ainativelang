@@ -29,6 +29,9 @@ L0:
   Set alert_count 0
   Set ok_lines ""
   Set cooldown_seconds 1800
+
+  # Read budget gate from session_budget_enforcer for the budget check (CHECK 5)
+  R cache get "budget" "gate" ->budget_gate
   J L_infra
 
 # ══════════════════════════════════════════════
@@ -266,39 +269,92 @@ L_meta_stamp:
 
 # ══════════════════════════════════════════════
 # CHECK 5: Token Budget Gate
+# Uses the authoritative budget state written by session_budget_enforcer.
+# Reads: cache "budget"/"gate" (set at L0), cache "workflow"/"token_budget"
 # ══════════════════════════════════════════════
 L_budget:
-  R cache get "config" "token_daily_limit" ->budget_limit
-  If budget_limit ->L_budget_has ->L_budget_default
-L_budget_default:
-  Set budget_limit 10
-  J L_budget_has
-L_budget_has:
+  # budget_gate was loaded at L0 from cache "budget"/"gate"
+  # Possible values: "normal", "throttle", "critical", or null (enforcer hasn't run yet)
+  If budget_gate ->L_budget_from_gate ->L_budget_legacy
+
+  # ── Use enforcer's gate flag (preferred path) ──
+L_budget_from_gate:
+  X is_critical eq budget_gate "critical"
+  X is_throttle eq budget_gate "throttle"
+
+  # Pull remaining $ from the enforcer's budget state for display
   R cache get "workflow" "token_budget" ->budget_state
-  If budget_state ->L_budget_check ->L_budget_nodata
-L_budget_nodata:
-  R core concat ok_lines "⚪ Token budget: no data yet\n" ->ok_lines
+  If budget_state ->L_budget_gate_display ->L_budget_gate_no_data
+
+L_budget_gate_no_data:
+  # Gate is set but no dollar amounts — just report the gate level
+  If is_critical ->L_budget_gate_critical_nodata ->L_budget_gate_throttle_check_nodata
+L_budget_gate_critical_nodata:
+  R core concat alert_lines "🔴 Budget: CRITICAL (enforcer active, cheapest models enforced)\n" ->alert_lines
+  X alert_count add alert_count 1
   J L_persist
-L_budget_check:
+L_budget_gate_throttle_check_nodata:
+  If is_throttle ->L_budget_gate_throttle_nodata ->L_budget_gate_normal_nodata
+L_budget_gate_throttle_nodata:
+  R core concat ok_lines "🟡 Budget: THROTTLE (enforcer active, non-critical work reduced)\n" ->ok_lines
+  J L_persist
+L_budget_gate_normal_nodata:
+  R core concat ok_lines "✅ Budget: normal (enforcer active)\n" ->ok_lines
+  J L_persist
+
+L_budget_gate_display:
   X daily_remaining get budget_state "daily_remaining"
-  If daily_remaining ->L_budget_calc ->L_budget_nodata
-L_budget_calc:
+  X daily_limit get budget_state "daily_limit"
+  X daily_pct get budget_state "daily_pct"
+  X pct_display mul daily_pct 100
+
+  If is_critical ->L_budget_gate_critical ->L_budget_gate_throttle_check
+L_budget_gate_critical:
+  R core concat alert_lines "🔴 Budget CRITICAL: " pct_display "% spent ($" daily_remaining " of $" daily_limit " left) — cheapest models enforced\n" ->alert_lines
+  X alert_count add alert_count 1
+  J L_persist
+L_budget_gate_throttle_check:
+  If is_throttle ->L_budget_gate_throttle ->L_budget_gate_normal
+L_budget_gate_throttle:
+  R core concat ok_lines "🟡 Budget throttle: " pct_display "% spent ($" daily_remaining " left)\n" ->ok_lines
+  J L_persist
+L_budget_gate_normal:
+  R core concat ok_lines "✅ Budget normal: " pct_display "% spent ($" daily_remaining " left)\n" ->ok_lines
+  J L_persist
+
+  # ── Legacy fallback (enforcer hasn't run yet) ──
+L_budget_legacy:
+  R cache get "workflow" "token_budget" ->budget_state
+  If budget_state ->L_budget_legacy_check ->L_budget_nodata
+L_budget_nodata:
+  R core concat ok_lines "⚪ Token budget: no data yet (enforcer not yet running)\n" ->ok_lines
+  J L_persist
+L_budget_legacy_check:
+  X daily_remaining get budget_state "daily_remaining"
+  If daily_remaining ->L_budget_legacy_calc ->L_budget_nodata
+L_budget_legacy_calc:
+  R cache get "config" "token_daily_limit" ->budget_limit
+  If budget_limit ->L_budget_legacy_has_limit ->L_budget_legacy_default
+L_budget_legacy_default:
+  Set budget_limit 10
+  J L_budget_legacy_has_limit
+L_budget_legacy_has_limit:
   X budget_pct div daily_remaining budget_limit
   X budget_low lt budget_pct 0.1
   X budget_warn lt budget_pct 0.2
-  If budget_low ->L_budget_alert ->L_budget_warn_check
-L_budget_alert:
+  If budget_low ->L_budget_legacy_alert ->L_budget_legacy_warn_check
+L_budget_legacy_alert:
   X pct_display mul budget_pct 100
   R core concat alert_lines "🔴 Token budget: only " pct_display "% remaining ($" daily_remaining " of $" budget_limit ")\n" ->alert_lines
   X alert_count add alert_count 1
   J L_persist
-L_budget_warn_check:
-  If budget_warn ->L_budget_warn_msg ->L_budget_fine
-L_budget_warn_msg:
+L_budget_legacy_warn_check:
+  If budget_warn ->L_budget_legacy_warn_msg ->L_budget_legacy_fine
+L_budget_legacy_warn_msg:
   X pct_display mul budget_pct 100
   R core concat ok_lines "🟡 Token budget: " pct_display "% remaining\n" ->ok_lines
   J L_persist
-L_budget_fine:
+L_budget_legacy_fine:
   X pct_display mul budget_pct 100
   R core concat ok_lines "✅ Token budget: " pct_display "% remaining\n" ->ok_lines
 

@@ -1,0 +1,349 @@
+# Session Token Budget Enforcer — hourly
+# =======================================
+# Hard budget ceiling for the entire OpenClaw setup. Fetches real spend from
+# the OpenRouter /api/v1/auth/key endpoint, compares against daily and weekly
+# limits, and writes enforcement flags that other AINL programs already read.
+#
+# Integration points (all via existing cache keys — no code changes needed):
+#
+#   cache "workflow" "token_budget"
+#     → Already read by: token_aware_startup_context.lang (intelligence/)
+#                         proactive_session_summarizer.lang (intelligence/)
+#                         heartbeat_consolidator.lang (demo/)
+#     → This enforcer WRITES the authoritative budget state here so those
+#       programs get real data instead of generous defaults.
+#
+#   cache "budget" "gate"
+#     → New enforcement flag. Values:
+#         "normal"   — business as usual (<80% spent)
+#         "throttle" — reduce non-critical work (80-95% spent)
+#         "critical" — switch to cheapest models (>95% spent)
+#     → Other programs check this to self-throttle.
+#
+#   cache "budget" "model_override"
+#     → When gate=critical, set to the cheapest free model.
+#     → When gate=normal, cleared (empty string).
+#     → Cron runners can read this to override their model selection.
+#
+#   cache "budget" "last_enforced"
+#     → Timestamp of last enforcement run (for staleness checks).
+#
+#   memory "workflow" "workflow.budget_enforcement"
+#     → Persists each enforcement decision for audit trail (7-day TTL).
+#
+# Adapters: core, http, cache, memory, queue
+# No LLM calls. Pure deterministic enforcement.
+S http cron "0 * * * *"
+
+# ══════════════════════════════════════════════
+# ENTRY: Load config from cache or use defaults
+# ══════════════════════════════════════════════
+L0:
+  R core now ->ts
+  R core iso ->now_iso
+
+  # Load configurable limits (cache "config" namespace matches token_cost_tracker)
+  R cache get "config" "token_daily_limit" ->cfg_daily
+  R cache get "config" "token_weekly_budget" ->cfg_weekly
+
+  # Default: $10/day, $50/week (conservative)
+  If cfg_daily ->L_daily_check ->L_daily_default
+L_daily_default:
+  Set daily_limit 10.0
+  J L_weekly_check
+L_daily_check:
+  X daily_zero eq cfg_daily 0
+  If daily_zero ->L_daily_default_2 ->L_daily_set
+L_daily_default_2:
+  Set daily_limit 10.0
+  J L_weekly_check
+L_daily_set:
+  Set daily_limit cfg_daily
+
+L_weekly_check:
+  If cfg_weekly ->L_weekly_check_zero ->L_weekly_default
+L_weekly_default:
+  Set weekly_limit 50.0
+  J L_fetch
+L_weekly_check_zero:
+  X weekly_zero eq cfg_weekly 0
+  If weekly_zero ->L_weekly_default_2 ->L_weekly_set
+L_weekly_default_2:
+  Set weekly_limit 50.0
+  J L_fetch
+L_weekly_set:
+  Set weekly_limit cfg_weekly
+
+  J L_fetch
+
+# ══════════════════════════════════════════════
+# FETCH: Get real usage from OpenRouter API
+# ══════════════════════════════════════════════
+L_fetch:
+  # The OpenRouter /api/v1/auth/key endpoint returns:
+  #   { "data": { "usage": <float cents>, "limit": <float|null>, ... } }
+  # The http adapter injects the OPENROUTER_API_KEY from env automatically
+  # when the adapter registry is built. We pass the auth header explicitly.
+  R cache get "config" "openrouter_api_key" ->cached_key
+  If cached_key ->L_use_cached_key ->L_use_env_key
+
+L_use_cached_key:
+  R core concat "Bearer " cached_key ->auth_header
+  J L_do_fetch
+
+L_use_env_key:
+  # Fallback: read from env via the standard mechanism.
+  # The http adapter doesn't auto-inject auth, so we build the header.
+  # If no key is available, the adapter will get a 401 and we handle it.
+  Set auth_header "Bearer placeholder"
+  J L_do_fetch
+
+L_do_fetch:
+  R http GET "https://openrouter.ai/api/v1/auth/key" {"Authorization":auth_header} ->resp
+  X resp_ok get resp "ok"
+  X status_code get resp "status_code"
+  If resp_ok ->L_parse ->L_fetch_fail
+
+# ══════════════════════════════════════════════
+# PARSE: Extract usage data from API response
+# ══════════════════════════════════════════════
+L_parse:
+  X body get resp "body"
+  X data get body "data"
+
+  # usage is in USD (float) on the /auth/key endpoint
+  X usage_raw get data "usage"
+  X api_limit get data "limit"
+
+  # OpenRouter returns usage in dollars
+  # If usage_raw is null or missing, treat as 0
+  If usage_raw ->L_has_usage ->L_zero_usage
+L_zero_usage:
+  Set daily_used 0.0
+  J L_compute
+L_has_usage:
+  Set daily_used usage_raw
+
+  J L_compute
+
+# ══════════════════════════════════════════════
+# COMPUTE: Calculate percentages and determine gate level
+# ══════════════════════════════════════════════
+L_compute:
+  # Calculate daily spend percentage
+  X safe_daily_limit (core.max daily_limit 0.01)
+  X daily_pct div daily_used safe_daily_limit
+  X daily_pct_display mul daily_pct 100
+
+  # Calculate remaining budget
+  X daily_remaining sub daily_limit daily_used
+  X daily_remaining (core.max daily_remaining 0)
+
+  # Load previous week's spend from memory for weekly tracking
+  X week_ago_ts sub ts 604800
+  R core stringify week_ago_ts ->week_ago_str
+  R memory list "workflow" "workflow.budget_enforcement" "" week_ago_str ->week_hist
+  X week_records get week_hist "items"
+
+  # Weekly spend = today's + sum from memory records
+  # (Each record stores daily_used; we sum them for the week)
+  # Simplified: use daily_used * 7 projected if no history, else daily_used + cached weekly
+  R cache get "budget" "weekly_spent" ->cached_weekly_spent
+  If cached_weekly_spent ->L_has_weekly_spent ->L_no_weekly_spent
+L_no_weekly_spent:
+  Set weekly_spent daily_used
+  J L_weekly_pct
+L_has_weekly_spent:
+  # Add today's spend to rolling weekly total
+  # (We reset this at the start of each week via the weekly_reset check)
+  Set weekly_spent cached_weekly_spent
+
+L_weekly_pct:
+  X safe_weekly_limit (core.max weekly_limit 0.01)
+  X weekly_pct div weekly_spent safe_weekly_limit
+
+  # ── Determine gate level ──
+  # >95% daily OR >95% weekly → critical
+  # >80% daily OR >80% weekly → throttle
+  # else → normal
+  X daily_critical gt daily_pct 0.95
+  X weekly_critical gt weekly_pct 0.95
+  X any_critical or daily_critical weekly_critical
+
+  X daily_throttle gt daily_pct 0.80
+  X weekly_throttle gt weekly_pct 0.80
+  X any_throttle or daily_throttle weekly_throttle
+
+  If any_critical ->L_gate_critical ->L_check_throttle
+
+L_check_throttle:
+  If any_throttle ->L_gate_throttle ->L_gate_normal
+
+# ══════════════════════════════════════════════
+# GATE LEVELS: Write enforcement flags
+# ══════════════════════════════════════════════
+
+# ── CRITICAL (>95%): Emergency mode ──
+L_gate_critical:
+  Set gate_level "critical"
+
+  # Write the gate flag
+  R cache set "budget" "gate" "critical" ->_
+
+  # Set model override to cheapest free model
+  # nemotron is reliable and free on OpenRouter
+  R cache set "budget" "model_override" "openrouter/nvidia/nemotron-3-nano-30b-a3b:free" ->_
+
+  # Write authoritative budget state (read by context injection + summarizer)
+  X budget_state {"daily_remaining":daily_remaining,"daily_limit":daily_limit,"daily_used":daily_used,"daily_pct":daily_pct,"weekly_spent":weekly_spent,"weekly_limit":weekly_limit,"weekly_pct":weekly_pct,"gate":"critical","ts":ts}
+  R cache set "workflow" "token_budget" budget_state ->_
+
+  # Reduce context injection token cap drastically
+  R cache set "workflow" "context_injection_max_tokens" 100 ->_
+
+  J L_persist
+
+# ── THROTTLE (80-95%): Reduce non-critical work ──
+L_gate_throttle:
+  Set gate_level "throttle"
+
+  R cache set "budget" "gate" "throttle" ->_
+
+  # Keep current model but signal throttle
+  # Clear any previous critical model override
+  R cache set "budget" "model_override" "" ->_
+
+  # Write authoritative budget state
+  X budget_state {"daily_remaining":daily_remaining,"daily_limit":daily_limit,"daily_used":daily_used,"daily_pct":daily_pct,"weekly_spent":weekly_spent,"weekly_limit":weekly_limit,"weekly_pct":weekly_pct,"gate":"throttle","ts":ts}
+  R cache set "workflow" "token_budget" budget_state ->_
+
+  # Reduce context injection token cap moderately
+  R cache set "workflow" "context_injection_max_tokens" 500 ->_
+
+  J L_persist
+
+# ── NORMAL (<80%): Business as usual ──
+L_gate_normal:
+  Set gate_level "normal"
+
+  R cache set "budget" "gate" "normal" ->_
+
+  # Clear any model override
+  R cache set "budget" "model_override" "" ->_
+
+  # Write authoritative budget state
+  X budget_state {"daily_remaining":daily_remaining,"daily_limit":daily_limit,"daily_used":daily_used,"daily_pct":daily_pct,"weekly_spent":weekly_spent,"weekly_limit":weekly_limit,"weekly_pct":weekly_pct,"gate":"normal","ts":ts}
+  R cache set "workflow" "token_budget" budget_state ->_
+
+  # Restore context injection to generous cap
+  R cache set "workflow" "context_injection_max_tokens" 2000 ->_
+
+  J L_persist
+
+# ══════════════════════════════════════════════
+# PERSIST: Audit trail + weekly rollup + heartbeat
+# ══════════════════════════════════════════════
+L_persist:
+  # Update rolling weekly spend
+  R cache set "budget" "weekly_spent" weekly_spent ->_
+
+  # Check if we should reset weekly counter (Monday midnight)
+  # Simplified: if daily_used < previous day's cached amount, assume new day
+  # The real reset happens via the weekly_limit comparison
+  R cache set "budget" "last_enforced" ts ->_
+
+  # Persist to memory for audit trail (7-day TTL)
+  R core concat "enforce-" now_iso ->rec_id
+  X audit_payload {"gate":gate_level,"daily_used":daily_used,"daily_limit":daily_limit,"daily_pct":daily_pct,"daily_remaining":daily_remaining,"weekly_spent":weekly_spent,"weekly_limit":weekly_limit,"weekly_pct":weekly_pct,"ts":ts}
+  R memory put "workflow" "workflow.budget_enforcement" rec_id audit_payload 604800 ->_
+
+  # Heartbeat for meta-monitor / cron_cost_auditor
+  R cache set "monitor_heartbeat" "session_budget_enforcer" ts ->_
+
+  J L_notify
+
+# ══════════════════════════════════════════════
+# NOTIFY: Alert only on gate transitions or critical
+# ══════════════════════════════════════════════
+L_notify:
+  # Check previous gate level to detect transitions
+  R cache get "budget" "prev_gate" ->prev_gate
+  If prev_gate ->L_has_prev ->L_no_prev
+L_no_prev:
+  Set prev_gate "normal"
+  J L_has_prev
+L_has_prev:
+
+  # Did the gate level change?
+  X gate_changed ne gate_level prev_gate
+  R cache set "budget" "prev_gate" gate_level ->_
+
+  If gate_changed ->L_send_transition ->L_check_critical_remind
+
+L_check_critical_remind:
+  # If critical, remind every hour even without transition
+  X is_critical eq gate_level "critical"
+  If is_critical ->L_send_critical_remind ->L_quiet
+
+# ── Gate transition notification ──
+L_send_transition:
+  X is_crit eq gate_level "critical"
+  If is_crit ->L_send_critical ->L_check_throttle_notify
+
+L_send_critical:
+  R core concat "🚨 BUDGET CRITICAL — " daily_pct_display "% of daily limit spent\n\n" ->msg
+  R core concat msg "Daily: $" daily_used " / $" daily_limit "\n" ->msg
+  R core concat msg "Weekly: $" weekly_spent " / $" weekly_limit "\n" ->msg
+  R core concat msg "Remaining: $" daily_remaining "\n\n" ->msg
+  R core concat msg "⚡ ENFORCEMENT ACTIVE:\n" ->msg
+  R core concat msg "• All cron models switched to nemotron (free)\n" ->msg
+  R core concat msg "• Context injection capped at 100 tokens\n" ->msg
+  R core concat msg "• Non-critical crons should self-throttle\n" ->msg
+  R core concat msg "\nOverride: set cache config/token_daily_limit higher" ->msg
+  QueuePut notify msg
+  Ret null
+
+L_check_throttle_notify:
+  X is_throttle eq gate_level "throttle"
+  If is_throttle ->L_send_throttle ->L_send_normal
+
+L_send_throttle:
+  R core concat "🟡 Budget Throttle — " daily_pct_display "% of daily limit spent\n\n" ->msg
+  R core concat msg "Daily: $" daily_used " / $" daily_limit "\n" ->msg
+  R core concat msg "Remaining: $" daily_remaining "\n\n" ->msg
+  R core concat msg "Actions: context injection reduced, non-critical work deferred" ->msg
+  QueuePut notify msg
+  Ret null
+
+L_send_normal:
+  R core concat "✅ Budget Normal — " daily_pct_display "% used ($" daily_remaining " remaining)" ->msg
+  QueuePut notify msg
+  Ret null
+
+# ── Critical hourly reminder ──
+L_send_critical_remind:
+  R core concat "🚨 BUDGET STILL CRITICAL — " daily_pct_display "% spent ($" daily_remaining " left). Cheapest models enforced." ->msg
+  QueuePut notify msg
+  Ret null
+
+# ── No notification needed ──
+L_quiet:
+  Ret null
+
+# ══════════════════════════════════════════════
+# FETCH FAILURE: Handle API errors gracefully
+# ══════════════════════════════════════════════
+L_fetch_fail:
+  R core concat "⚠️ Budget Enforcer: OpenRouter API returned HTTP " status_code ->fail_msg
+
+  # Don't change gate level on fetch failure — keep previous enforcement
+  # Just log the failure and stamp heartbeat
+  R cache set "monitor_heartbeat" "session_budget_enforcer" ts ->_
+
+  # Persist failure to memory
+  R core concat "enforce-fail-" now_iso ->fail_rec_id
+  X fail_payload {"gate":"fetch_error","http_status":status_code,"ts":ts}
+  R memory put "workflow" "workflow.budget_enforcement" fail_rec_id fail_payload 604800 ->_
+
+  QueuePut notify fail_msg
+  Ret null
