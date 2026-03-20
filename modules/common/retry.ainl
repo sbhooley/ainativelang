@@ -1,0 +1,9 @@
+# Subgraph module: ENTRY + EXIT_OK / EXIT_FAIL (v1 include contract).
+# Parent programs: `include modules/common/retry.ainl as retry` then `Call retry/ENTRY ->out`.
+LENTRY:
+  R core.ADD 1 1 ->x
+  J x
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"
