@@ -67,8 +67,9 @@ contract drift is caught locally before CI.
 ### `ainl-validate` strict diagnostics
 
 - **`--strict`** (and **`--strict-reachability`**) collects **structured compiler diagnostics** (lineno, kind, spans, suggestions). On failure, a human report is printed to **stderr** (numbered issues, source snippet, underlines). Install **`pip install -e ".[dev]"`** for optional **rich**-formatted output; otherwise plain text with optional ANSI colors when stderr is a TTY.
-- **`--json-diagnostics`** — on strict failure, print **only** machine-readable JSON (diagnostics list) to **stdout**; use for scripts and CI parsers.
-- **`--no-color`** — force plain diagnostic output on stderr.
+- **`--diagnostics-format`** — `auto` (default), `plain`, `json`, or `rich`. On structured failure: `json` → stdout JSON only; `plain` → text on stderr; `rich` → styled output when **rich** is installed (otherwise plain). `auto` picks rich when rich+TTY and not `--no-color`.
+- **`--json-diagnostics`** — legacy alias for `--diagnostics-format=json`.
+- **`--no-color`** — force plain diagnostic output (disables rich styling).
 
 Legacy behavior is unchanged: **`compile()` without `context`** still returns IR with string `errors` in non-strict mode; strict + `CompilerContext` raises `CompilationDiagnosticError` for the structured tooling path.
 - `ainl-validator-web` - run FastAPI validator UI

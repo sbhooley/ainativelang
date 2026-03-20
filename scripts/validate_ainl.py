@@ -179,6 +179,67 @@ def _print_diagnostics_pretty(
         console.print()
 
 
+def _rich_available() -> bool:
+    try:
+        import rich.console  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def resolve_structured_diagnostics_mode(
+    *,
+    json_diagnostics_flag: bool,
+    diagnostics_format: str,
+    no_color: bool,
+    stderr_isatty: bool,
+) -> str:
+    """Return ``json``, ``rich``, or ``plain`` for structured compile failure output.
+
+    * ``--json-diagnostics`` forces ``json`` (legacy alias).
+    * ``auto`` → ``rich`` if the rich package is installed, stderr is a TTY, and
+      ``--no-color`` was not set; otherwise ``plain``.
+    * ``rich`` falls back to ``plain`` when rich is missing or ``--no-color`` is set.
+    """
+    if json_diagnostics_flag:
+        return "json"
+    fmt = (diagnostics_format or "auto").strip().lower()
+    if fmt == "json":
+        return "json"
+    if fmt == "plain":
+        return "plain"
+    if fmt == "rich":
+        if no_color or not _rich_available():
+            return "plain"
+        return "rich"
+    if fmt == "auto":
+        if _rich_available() and stderr_isatty and not no_color:
+            return "rich"
+        return "plain"
+    return "plain"
+
+
+def emit_structured_diagnostics_failure(
+    diags: List[Diagnostic],
+    src: str,
+    *,
+    mode: str,
+) -> None:
+    """Print structured failure: ``json`` to stdout; ``rich``/``plain`` to stderr."""
+    if mode == "json":
+        print(json.dumps([d.to_dict() for d in diags], indent=2))
+        return
+    if mode == "rich":
+        _print_diagnostics_pretty(diags, src, file=sys.stderr, use_color=True)
+        return
+    print(
+        _format_structured_diagnostics_human(diags, src, use_color=False),
+        file=sys.stderr,
+        end="",
+    )
+
+
 def compile_and_validate(
     code: str,
     *,
@@ -234,12 +295,21 @@ def main() -> None:
     ap.add_argument(
         "--json-diagnostics",
         action="store_true",
-        help="Emit machine-readable diagnostics JSON to stdout on strict failure (no human view)",
+        help="Legacy alias for --diagnostics-format=json (stdout JSON only on failure)",
+    )
+    ap.add_argument(
+        "--diagnostics-format",
+        choices=["auto", "plain", "json", "rich"],
+        default="auto",
+        help=(
+            "On structured failure: auto (rich if rich+TTY and not --no-color), plain (text), "
+            "json (stdout only), rich (requires rich package; use plain if missing or --no-color)"
+        ),
     )
     ap.add_argument(
         "--no-color",
         action="store_true",
-        help="Disable colors for structured diagnostic output (stderr)",
+        help="Disable colors; forces plain diagnostic output instead of rich styling",
     )
     args = ap.parse_args()
 
@@ -262,11 +332,13 @@ def main() -> None:
         if result.get("structured"):
             diags: List[Diagnostic] = result.get("diagnostics") or []
             src = str(result.get("source") or code)
-            if args.json_diagnostics:
-                print(json.dumps([d.to_dict() for d in diags], indent=2))
-                sys.exit(1)
-            use_color = not args.no_color
-            _print_diagnostics_pretty(diags, src, file=sys.stderr, use_color=use_color)
+            mode = resolve_structured_diagnostics_mode(
+                json_diagnostics_flag=bool(args.json_diagnostics),
+                diagnostics_format=str(args.diagnostics_format),
+                no_color=bool(args.no_color),
+                stderr_isatty=sys.stderr.isatty(),
+            )
+            emit_structured_diagnostics_failure(diags, src, mode=mode)
         elif "errors" in result:
             for err in result["errors"]:
                 print(err, file=sys.stderr)

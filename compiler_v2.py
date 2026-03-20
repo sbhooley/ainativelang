@@ -3210,14 +3210,27 @@ class AICodeCompiler:
         self._augment_errors_with_suggestions()
 
         if context is not None:
-            # Phase 2: preserve native diagnostics appended during validation; then merge
-            # string-derived rows for any unconverted legacy _errors paths.
+            # Phase 2–3: merge native diagnostics (rich spans/suggestions) with string-derived
+            # rows from legacy _errors, then dedupe so natives win for the same issue.
             native_snapshot = list(context.diagnostics)
             context.replace_from_error_strings(self._errors)
-            # TODO Phase 3: consider prepending natives or deduplicating by (lineno, message, kind)
-            # to prefer richer rows and reduce noise in long error lists.
-            context.diagnostics.extend(native_snapshot)
-            # Optional future: deduplicate by (lineno, message) if native and parsed collide.
+            # Phase 3: natives first → prefer rows with span/suggested_fix/label_id; drop
+            # duplicate string-merge rows. Key is (kind, body) with "Line N:" stripped from
+            # message so native + error_strings_to_diagnostics match; lineno is omitted
+            # because legacy parsing defaults to line 1 when the error string has no prefix.
+            seen_keys: Set[Tuple[str, str]] = set()
+            deduped: List[Diagnostic] = []
+            for d in native_snapshot + context.diagnostics:
+                raw_msg = str(d.message or "")
+                lm = re.match(r"^Line\s+\d+:\s*", raw_msg, re.IGNORECASE)
+                body = raw_msg[lm.end() :].strip() if lm else raw_msg.strip()
+                key = (str(d.kind), body)
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                deduped.append(d)
+            context.diagnostics.clear()
+            context.diagnostics.extend(deduped)
             self._enrich_structured_diagnostics(context)
 
         if context is not None and context.should_raise_after_compile(

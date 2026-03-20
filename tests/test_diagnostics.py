@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 
 import pytest
 
@@ -64,11 +65,9 @@ def test_phase2_native_diag_arity_min_slots_and_legacy_string() -> None:
         c.compile(code, emit_graph=True, context=ctx)
 
     diags = exc_info.value.diagnostics
-    assert len(diags) >= 1
-    # Prefer native row (has real span) over string-derived duplicate after merge.
     arity_diags = [d for d in diags if "requires at least 2 slots" in d.message]
-    assert arity_diags, "Arity diagnostic not found"
-    d = next((x for x in arity_diags if x.span == (0, 1)), arity_diags[0])
+    assert len(arity_diags) == 1, "Phase 3 dedup: single arity row (native + legacy string)"
+    d = arity_diags[0]
     assert d.kind == "strict_validation_failure"
     assert "satisfy the contract" in (d.suggested_fix or "")
     assert d.lineno == 1
@@ -91,8 +90,8 @@ def test_phase2_native_diag_unknown_module_and_legacy_string() -> None:
     diags = exc_info.value.diagnostics
     original_msg = "Line 1: unknown module 'unknown' in 'unknown.F'"
     mod_diags = [d for d in diags if original_msg in d.message or d.message == original_msg]
-    assert mod_diags, "Unknown-module diagnostic not found"
-    d = next((x for x in mod_diags if x.span is not None), mod_diags[0])
+    assert len(mod_diags) == 1, "Phase 3 dedup: single unknown-module row"
+    d = mod_diags[0]
     assert d.kind == "strict_validation_failure"
     assert d.lineno == 1
     assert d.col_offset == 1
@@ -171,6 +170,89 @@ def test_validate_ainl_diagnostic_plain_formatter() -> None:
     assert "related: line" in out
 
 
+def test_phase3_resolve_structured_diagnostics_mode() -> None:
+    from scripts.validate_ainl import resolve_structured_diagnostics_mode
+
+    assert (
+        resolve_structured_diagnostics_mode(
+            json_diagnostics_flag=True,
+            diagnostics_format="plain",
+            no_color=False,
+            stderr_isatty=True,
+        )
+        == "json"
+    )
+    assert (
+        resolve_structured_diagnostics_mode(
+            json_diagnostics_flag=False,
+            diagnostics_format="plain",
+            no_color=False,
+            stderr_isatty=True,
+        )
+        == "plain"
+    )
+    assert (
+        resolve_structured_diagnostics_mode(
+            json_diagnostics_flag=False,
+            diagnostics_format="json",
+            no_color=False,
+            stderr_isatty=False,
+        )
+        == "json"
+    )
+    assert (
+        resolve_structured_diagnostics_mode(
+            json_diagnostics_flag=False,
+            diagnostics_format="auto",
+            no_color=False,
+            stderr_isatty=False,
+        )
+        == "plain"
+    )
+    assert (
+        resolve_structured_diagnostics_mode(
+            json_diagnostics_flag=False,
+            diagnostics_format="rich",
+            no_color=True,
+            stderr_isatty=True,
+        )
+        == "plain"
+    )
+
+
+def test_phase3_emit_structured_failure_plain_and_json() -> None:
+    from io import StringIO
+
+    from scripts.validate_ainl import emit_structured_diagnostics_failure
+
+    d = Diagnostic(
+        lineno=1,
+        col_offset=1,
+        kind="strict_validation_failure",
+        message="boom",
+        suggested_fix="fix",
+    )
+    buf_err = StringIO()
+    old_err = sys.stderr
+    try:
+        sys.stderr = buf_err
+        emit_structured_diagnostics_failure([d], "x\n", mode="plain")
+    finally:
+        sys.stderr = old_err
+    assert "boom" in buf_err.getvalue()
+
+    old_out = sys.stdout
+    buf_out = StringIO()
+    try:
+        sys.stdout = buf_out
+        emit_structured_diagnostics_failure([d], "x\n", mode="json")
+    finally:
+        sys.stdout = old_out
+    payload = json.loads(buf_out.getvalue())
+    assert len(payload) == 1
+    assert payload[0]["message"] == "boom"
+
+
 def test_validate_ainl_diagnostic_print_smoke() -> None:
     from io import StringIO
 
@@ -232,9 +314,8 @@ def test_phase2_undeclared_endpoint_reference_span_and_legacy() -> None:
     with pytest.raises(CompilationDiagnosticError) as ei:
         c.compile(code, emit_graph=True, context=ctx)
     u = [d for d in ei.value.diagnostics if d.kind == "undeclared_reference" and "Endpoint" in d.message]
-    assert u, "endpoint undeclared_reference expected"
-    # Native rows (label_id + span) are appended after string-derived merge duplicates.
-    native = next(x for x in u if x.label_id == "41")
+    assert len(u) == 1, "Phase 3 dedup: single endpoint undeclared row"
+    native = u[0]
     assert native.label_id == "41"
     assert native.span is not None
     assert native.suggested_fix
@@ -257,9 +338,14 @@ def test_phase2_undeclared_targeted_control_flow_v1_col_and_legacy() -> None:
     c = AICodeCompiler(strict_mode=True)
     with pytest.raises(CompilationDiagnosticError) as ei:
         c.compile(code, emit_graph=True, context=ctx)
-    u = [d for d in ei.value.diagnostics if d.kind == "undeclared_reference" and "Targeted label" in d.message]
-    assert u, "targeted undeclared_reference expected"
-    d = next(x for x in u if x.label_id == "42")
+    u = [
+        d
+        for d in ei.value.diagnostics
+        if d.kind == "undeclared_reference" and "Targeted label '42'" in d.message
+    ]
+    assert len(u) == 1, "Phase 3 dedup: single targeted undeclared row for L42"
+    d = u[0]
+    assert d.label_id == "42"
     assert d.col_offset == 1
     assert d.span is None
     assert d.suggested_fix and "Did you mean" in d.suggested_fix

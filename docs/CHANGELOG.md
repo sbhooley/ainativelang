@@ -1,5 +1,18 @@
 # Changelog
 
+## Compiler — diagnostics merge dedup + `--diagnostics-format` (2026-03-09)
+
+### Behavior
+
+- **`compiler_v2`**: After merging native and string-derived diagnostics, **deduplicate** by `(kind, message body)` with `Line N:` stripped; **native rows first** so spans, `label_id`, and suggestions win over parsed duplicates.
+- **`ainl-validate`**: **`--diagnostics-format=auto|plain|json|rich`** (default `auto`). **`--json-diagnostics`** remains an alias for `json`. **`--no-color`** forces plain output instead of rich.
+
+### Documentation
+
+- `README.md`, `docs/INSTALL.md`.
+
+---
+
 ## Compiler — structured diagnostics + `ainl-validate` CLI (2026-03-09)
 
 ### Features
