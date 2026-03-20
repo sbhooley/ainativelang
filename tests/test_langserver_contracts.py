@@ -86,7 +86,7 @@ def test_contract_compiler_diagnostics_prefers_structured_then_compat_fallback()
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_structured(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_structured(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "diagnostics": [{"severity": "warning", "message": "structured warn", "lineno": 2}],
             "errors": ["Line 1: legacy err should not surface"],
@@ -105,7 +105,7 @@ def test_contract_compiler_diagnostics_prefers_structured_then_compat_fallback()
     assert diags[0].severity == 2
     assert diags[0].range.start.line == 1
 
-    def fake_legacy(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_legacy(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {"errors": ["Line 2: legacy error"], "warnings": ["Line 1: legacy warning"], "labels": {}}
 
     try:
@@ -123,7 +123,7 @@ def test_contract_compiler_diagnostics_conservative_document_anchor_and_exceptio
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_no_location(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_no_location(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {"diagnostics": [{"severity": "error", "message": "no location"}], "labels": {}}
 
     try:
@@ -136,7 +136,7 @@ def test_contract_compiler_diagnostics_conservative_document_anchor_and_exceptio
     assert diags and diags[0].range.start.line == anchor.start.line == 0
     assert diags[0].range.end.line == anchor.end.line == 0
 
-    def fake_exc(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_exc(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         raise RuntimeError("unstructured compiler failure")
 
     try:
@@ -153,7 +153,7 @@ def test_contract_compiler_diagnostics_structured_item_without_message_no_crash(
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {"diagnostics": [{"severity": "error", "lineno": 1}], "labels": {}}
 
     try:

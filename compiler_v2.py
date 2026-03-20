@@ -9,6 +9,13 @@ import re
 import difflib
 from typing import Dict, Any, List, Optional, Tuple, Set, Sequence
 
+from compiler_diagnostics import (
+    CompilationDiagnosticError,
+    CompilerContext,
+    Diagnostic,
+    make_diagnostic,
+)
+
 from tooling.graph_normalize import (
     DEFAULT_PORTS,
     VALID_PORTS as GRAPH_VALID_PORTS,
@@ -653,6 +660,7 @@ class AICodeCompiler:
         self.strict_mode = strict_mode
         self.strict_reachability = strict_reachability
         self._errors: List[str] = []
+        self._label_decl_lines: Dict[str, int] = {}
         self.services: Dict[str, Dict] = {}
         self.labels: Dict[str, Dict[str, Any]] = {}  # id -> { steps: [...], slots?: [...] }
         self.types: Dict[str, Dict[str, Any]] = {}
@@ -737,11 +745,195 @@ class AICodeCompiler:
         except Exception:
             return None
 
+    def _strict_op_token_char_span(
+        self,
+        line_node: Dict[str, Any],
+        lineno: int,
+        source_lines: Sequence[str],
+    ) -> Tuple[Optional[Tuple[int, int]], int]:
+        """Absolute (start, end) char span of the line op token and 1-based col_offset.
+
+        Used for Phase 2 structured diagnostics; returns (None, 1) if token span is missing.
+        """
+        op_value = line_node.get("op_value")
+        op_col_start_0 = 0
+        op_col_end_0 = 1
+        found = False
+        for tok in line_node.get("tokens", []):
+            sp = tok.get("span") or {}
+            if sp.get("line") == lineno and tok.get("value") == op_value:
+                op_col_start_0 = int(sp.get("col_start", 0))
+                op_col_end_0 = int(sp.get("col_end", op_col_start_0 + 1))
+                found = True
+                break
+        if not found or lineno < 1:
+            return None, 1
+        line_start = sum(len(source_lines[i]) + 1 for i in range(lineno - 1))
+        return (line_start + op_col_start_0, line_start + op_col_end_0), op_col_start_0 + 1
+
+    def _strict_nth_slot_content_char_span(
+        self,
+        line_node: Dict[str, Any],
+        slot_index: int,
+        lineno: int,
+        source_lines: Sequence[str],
+    ) -> Tuple[Optional[Tuple[int, int]], int]:
+        """Absolute span for argument slot slot_index (0 = first slot after op). Fallback: op token."""
+        content = [t for t in line_node.get("tokens", []) if t.get("kind") in ("bare", "string")]
+        tok_idx = 1 + int(slot_index)
+        if len(content) <= tok_idx:
+            return self._strict_op_token_char_span(line_node, lineno, source_lines)
+        tok = content[tok_idx]
+        sp = tok.get("span") or {}
+        if int(sp.get("line") or 0) != lineno:
+            return self._strict_op_token_char_span(line_node, lineno, source_lines)
+        c0 = int(sp.get("col_start", 0))
+        c1 = int(sp.get("col_end", c0 + 1))
+        line_start = sum(len(source_lines[i]) + 1 for i in range(lineno - 1))
+        return (line_start + c0, line_start + c1), c0 + 1
+
+    def _strict_closest_label_id(self, missing: str) -> Optional[str]:
+        """Best-effort label id suggestion using declared labels (strict / IR).
+
+        Uses difflib (cutoff 0.6) first; for all-digit ids, falls back to the nearest
+        declared numeric label within a small distance (adjacent ids like 41 vs 40
+        score ~0.5 in difflib and would otherwise miss at 0.6).
+        """
+        ms = str(missing)
+        candidates = sorted(str(k) for k in self.labels.keys() if str(k) != "_anon")
+        if not candidates:
+            return None
+        matches = difflib.get_close_matches(ms, candidates, n=1, cutoff=0.6)
+        if matches:
+            return matches[0]
+        if ms.isdigit():
+            numeric: List[Tuple[int, str]] = []
+            for c in candidates:
+                if str(c).isdigit():
+                    numeric.append((abs(int(ms) - int(c)), str(c)))
+            if numeric:
+                dist, c = min(numeric, key=lambda t: t[0])
+                if dist <= max(2, len(ms)):
+                    return c
+        return None  # No close match — callers omit "Did you mean" from suggested_fix.
+
+    def _strict_label_decl_line_char_span(
+        self,
+        label_id: Optional[str],
+        cst_lines: Sequence[Dict[str, Any]],
+        source_lines: Sequence[str],
+    ) -> Optional[Tuple[int, int]]:
+        """Char span of the declaration op token for L<label_id>: (first match in CST)."""
+        if not label_id:
+            return None
+        want = str(label_id)
+        for ln in cst_lines:
+            if not isinstance(ln, dict):
+                continue
+            opv = str(ln.get("op_value") or "")
+            if opv.startswith("L") and opv.endswith(":") and opv[1:-1] == want:
+                lo = int(ln.get("lineno") or 1)
+                span, _ = self._strict_op_token_char_span(ln, lo, source_lines)
+                return span
+        return None
+
+    def _strict_endpoint_line_node(
+        self,
+        path: str,
+        method: str,
+        cst_lines: Sequence[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        """Lossless CST row for E path method ... matching this endpoint."""
+        want_m = self._dsl_method(method)
+        for ln in cst_lines:
+            if not isinstance(ln, dict):
+                continue
+            if str(ln.get("op_value") or "").strip() != "E":
+                continue
+            sv = list(ln.get("slot_values") or [])
+            if len(sv) < 3:
+                continue
+            if sv[0] != path:
+                continue
+            if self._dsl_method(sv[1]) != want_m:
+                continue
+            return ln
+        return None
+
+    def _strict_first_step_ref_lineno(self, target_id: str) -> Optional[int]:
+        """Earliest source lineno of a control-flow step that references normalized label target_id."""
+        tid = str(target_id)
+        best: Optional[int] = None
+        for _lid, body in self.labels.items():
+            steps = body.get("legacy", {}).get("steps", [])
+            for s in steps:
+                if not isinstance(s, dict):
+                    continue
+                ln = s.get("lineno")
+                if not isinstance(ln, int):
+                    continue
+                opn = s.get("op")
+                hit = False
+                if opn == "If":
+                    for key in ("then", "else"):
+                        if self._norm_lid(s.get(key)) == tid:
+                            hit = True
+                            break
+                elif opn == "Err":
+                    hit = self._norm_lid(s.get("handler")) == tid
+                elif opn == "Call":
+                    hit = self._norm_lid(s.get("label")) == tid
+                elif opn in ("Loop", "While"):
+                    for key in ("body", "after"):
+                        if self._norm_lid(s.get(key)) == tid:
+                            hit = True
+                            break
+                if hit:
+                    best = ln if best is None else min(best, ln)
+        return best
+
+    def _strict_next_free_numeric_label_id(self) -> str:
+        """Next unused numeric label id string for suggestions (digits only in pool)."""
+        nums: List[int] = []
+        for lid in set(list(self.labels.keys()) + list(self._label_decl_lines.keys())):
+            s = str(lid).strip()
+            if s.isdigit():
+                nums.append(int(s))
+        return str(max(nums) + 1) if nums else "1"
+
     def _diag_label_node_from_message(self, message: str) -> Tuple[Optional[str], Optional[str]]:
         m = self._DIAG_LABEL_NODE_RE.search(message or "")
         if not m:
             return None, None
         return str(m.group(1)), str(m.group(2))
+
+    def _enrich_structured_diagnostics(self, context: CompilerContext) -> None:
+        """Attach IR-backed line numbers to structured diagnostics when label+node are known."""
+        if not context.diagnostics:
+            return
+        enriched: List[Diagnostic] = []
+        for d in list(context.diagnostics):
+            ln = d.lineno
+            if d.label_id and d.node_id:
+                ir_ln = self._diag_lineno_from_label_node(d.label_id, d.node_id, self.labels)
+                if ir_ln is not None:
+                    ln = ir_ln
+            enriched.append(
+                make_diagnostic(
+                    lineno=ln,
+                    col_offset=d.col_offset,
+                    kind=d.kind,
+                    message=d.message,
+                    span=d.span,
+                    label_id=d.label_id,
+                    node_id=d.node_id,
+                    contract_violation_reason=d.contract_violation_reason,
+                    suggested_fix=d.suggested_fix,
+                    related_span=d.related_span,
+                )
+            )
+        context.diagnostics.clear()
+        context.extend(enriched)
 
     def _diag_lineno_from_label_node(self, label_id: Optional[str], node_id: Optional[str], labels: Dict[str, Any]) -> Optional[int]:
         if not label_id or not node_id:
@@ -1749,8 +1941,16 @@ class AICodeCompiler:
             "minimal_emit": minimal_emit or ["python_api"],
         }
 
-    def compile(self, code: str, emit_graph: bool = True) -> Dict[str, Any]:
+    def compile(
+        self,
+        code: str,
+        emit_graph: bool = True,
+        *,
+        context: Optional[CompilerContext] = None,
+    ) -> Dict[str, Any]:
         source_text = code
+        if context is not None:
+            context.reset_for_compile(source_text)
         lines = code.split("\n")
         source_lines = list(lines)
         cst_lines: List[Dict[str, Any]] = []
@@ -1758,6 +1958,7 @@ class AICodeCompiler:
         # Reset compiler state for deterministic multi-compile usage (eval/benchmark loops).
         self.services = {}
         self.labels = {}
+        self._label_decl_lines = {}
         self.types = {}
         self.crons = []
         self.current_ui = None
@@ -1812,12 +2013,62 @@ class AICodeCompiler:
             if "." in op:
                 mod, mop = op.split(".", 1)
                 if self.strict_mode and mod not in KNOWN_MODULES:
+                    # Phase 2: structured diagnostic + legacy string
+                    msg = f"Line {lineno}: unknown module {mod!r} in {op!r}"
+                    span_u, col_u = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                    if context is not None:
+                        # Phase 2: native structured diagnostic + legacy string (unknown module).
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=lineno,
+                                col_offset=col_u,
+                                kind="strict_validation_failure",
+                                message=msg,
+                                span=span_u,
+                                label_id=None,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    f"Unknown module prefix {mod!r} (allowed: {sorted(KNOWN_MODULES)!r})."
+                                ),
+                                suggested_fix=(
+                                    f"Use one of the supported module prefixes: "
+                                    f"{', '.join(sorted(KNOWN_MODULES))}."
+                                ),
+                                related_span=None,
+                            )
+                        )
                     self._errors.append(f"Line {lineno}: unknown module {mod!r} in {op!r}")
             spec = self._op_spec(op)
             min_slots = int(spec.get("min_slots", 0))
             if min_slots and len(slots) < min_slots:
                 self.meta.append(self._meta_record(lineno, line_node, reason="arity"))
                 if self.strict_mode:
+                    # Phase 2: structured diagnostic + legacy string
+                    msg = f"Line {lineno}: op {op!r} requires at least {min_slots} slots, got {len(slots)}"
+                    span_a, col_a = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                    if context is not None:
+                        # Phase 2: native structured diagnostic + legacy string (arity / min_slots).
+                        need = min_slots - len(slots)
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=lineno,
+                                col_offset=col_a,
+                                kind="strict_validation_failure",
+                                message=msg,
+                                span=span_a,
+                                label_id=None,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    f"Operation '{op}' requires at least {min_slots} argument slot(s), "
+                                    f"but only {len(slots)} provided."
+                                ),
+                                suggested_fix=(
+                                    f"Add {need} more slot(s) after '{op}' to satisfy the contract "
+                                    f"(e.g. {op} {' '.join(['arg'] * min_slots)})."
+                                ),
+                                related_span=None,
+                            )
+                        )
                     self._errors.append(
                         f"Line {lineno}: op {op!r} requires at least {min_slots} slots, got {len(slots)}"
                     )
@@ -1903,6 +2154,44 @@ class AICodeCompiler:
 
             elif op.startswith("L") and op.endswith(":"):
                 label = op[1:-1]
+                if self.strict_mode:
+                    # Phase 2: structured diagnostic + new strict-only legacy error for duplicates.
+                    # Human approved: reject second Lxx: in strict (non-strict still merges bodies);
+                    # track first decl lineno in _label_decl_lines; keep populating self.labels for IR.
+                    if label in self._label_decl_lines:
+                        first_lineno = self._label_decl_lines[label]
+                        msg = (
+                            f"Line {lineno}: duplicate label declaration L{label}: "
+                            f"(previously declared on line {first_lineno})"
+                        )
+                        span_d, col_d = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                        related = self._strict_label_decl_line_char_span(label, cst_lines, source_lines)
+                        next_free = self._strict_next_free_numeric_label_id()
+                        if context is not None:
+                            # Phase 2: native structured diagnostic + legacy string (duplicate label).
+                            context.diagnostics.append(
+                                Diagnostic(
+                                    lineno=lineno,
+                                    col_offset=col_d,
+                                    kind="duplicate_label",
+                                    message=msg,
+                                    span=span_d,
+                                    label_id=label,
+                                    node_id=None,
+                                    contract_violation_reason=(
+                                        f"Label {label!r} was already declared; strict mode rejects "
+                                        f"ambiguous duplicate declarations."
+                                    ),
+                                    suggested_fix=(
+                                        f"Rename this block to L{next_free}: or merge steps into the existing "
+                                        f"L{label}: (declared on line {first_lineno})."
+                                    ),
+                                    related_span=related,
+                                )
+                            )
+                        self._errors.append(msg)
+                    else:
+                        self._label_decl_lines[label] = lineno
                 self.current_label = label
                 self._ensure_label(label)
                 self.labels[label]["slots"] = slots
@@ -2689,7 +2978,44 @@ class AICodeCompiler:
                     targeted_labels.add(label_id)
                     endpoint_labels.add(label_id)
                 if label_id not in self.labels:
-                    self._errors.append(f"Endpoint {path} {method}: label {label_id!r} does not exist")
+                    msg = f"Endpoint {path} {method}: label {label_id!r} does not exist"
+                    self._errors.append(msg)
+                    if context is not None:
+                        ep_row = self._strict_endpoint_line_node(path, method, cst_lines)
+                        e_lineno = int(ep_row.get("lineno") or 1) if ep_row else 1
+                        if ep_row:
+                            span_e, col_e = self._strict_nth_slot_content_char_span(
+                                ep_row, 2, e_lineno, source_lines
+                            )
+                        else:
+                            span_e, col_e = None, 1
+                        closest = self._strict_closest_label_id(label_id)
+                        related = (
+                            self._strict_label_decl_line_char_span(closest, cst_lines, source_lines)
+                            if closest
+                            else None
+                        )
+                        fix = (
+                            "Declare the missing L"
+                            f"{label_id}: block, or change the endpoint target to an existing label."
+                        )
+                        if closest:
+                            fix += f" Did you mean L{closest}?"
+                        # Phase 2: native structured diagnostic + legacy string (undeclared endpoint label).
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=e_lineno,
+                                col_offset=col_e,
+                                kind="undeclared_reference",
+                                message=msg,
+                                span=span_e,
+                                label_id=label_id,
+                                node_id=None,
+                                contract_violation_reason="Endpoint handler label is not defined in this program.",
+                                suggested_fix=fix,
+                                related_span=related,
+                            )
+                        )
                 else:
                     leg = self.labels[label_id].get("legacy", {})
                     steps = leg.get("steps", [])
@@ -2737,7 +3063,40 @@ class AICodeCompiler:
             for tl in sorted(targeted_labels):
                 body = self.labels.get(tl)
                 if not body:
-                    self._errors.append(f"Targeted label {tl!r} does not exist")
+                    msg = f"Targeted label {tl!r} does not exist"
+                    self._errors.append(msg)
+                    if context is not None:
+                        ref_ln = self._strict_first_step_ref_lineno(tl)
+                        u_lineno = ref_ln if ref_ln is not None else 1
+                        closest = self._strict_closest_label_id(tl)
+                        related = (
+                            self._strict_label_decl_line_char_span(closest, cst_lines, source_lines)
+                            if closest
+                            else None
+                        )
+                        fix = (
+                            "Declare the missing L"
+                            f"{tl}: block, or change the control-flow target to an existing label."
+                        )
+                        if closest:
+                            fix += f" Did you mean L{closest}?"
+                        # Phase 2: native structured diagnostic + legacy string (undeclared targeted label).
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=u_lineno,
+                                col_offset=1,
+                                kind="undeclared_reference",
+                                message=msg,
+                                span=None,
+                                label_id=tl,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    "A control-flow step references a label that is not defined."
+                                ),
+                                suggested_fix=fix,
+                                related_span=related,
+                            )
+                        )
                     continue
                 steps = body.get("legacy", {}).get("steps", [])
                 if not steps:
@@ -2850,6 +3209,23 @@ class AICodeCompiler:
         # Add fuzzy suggestions to errors before returning IR
         self._augment_errors_with_suggestions()
 
+        if context is not None:
+            # Phase 2: preserve native diagnostics appended during validation; then merge
+            # string-derived rows for any unconverted legacy _errors paths.
+            native_snapshot = list(context.diagnostics)
+            context.replace_from_error_strings(self._errors)
+            # TODO Phase 3: consider prepending natives or deduplicating by (lineno, message, kind)
+            # to prefer richer rows and reduce noise in long error lists.
+            context.diagnostics.extend(native_snapshot)
+            # Optional future: deduplicate by (lineno, message) if native and parsed collide.
+            self._enrich_structured_diagnostics(context)
+
+        if context is not None and context.should_raise_after_compile(
+            strict_mode=self.strict_mode,
+            legacy_errors=self._errors,
+        ):
+            raise CompilationDiagnosticError(list(context.diagnostics), source_text)
+
         ir: Dict[str, Any] = {
             "ir_version": self.ver or "1.0.0",
             "graph_schema_version": "1.0",
@@ -2886,6 +3262,8 @@ class AICodeCompiler:
                 "ops": parsed_ops,
             },
         }
+        if context is not None:
+            ir["structured_diagnostics"] = [d.to_dict() for d in context.diagnostics]
         ir["required_emit_targets"] = self._compute_required_emit_targets(ir["emit_capabilities"])
         # Attach semantic hashes and graph checksum without changing semantics.
         ir = attach_label_and_node_hashes(ir)

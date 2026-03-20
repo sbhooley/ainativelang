@@ -240,6 +240,7 @@ To keep the conformance doc durable and testable:
 | Command | Purpose |
 |---------|--------|
 | `python -m ainl compile --strict spec.lang` | Run all validations (E/J, Call ->out, module–op, core-only, graph). **Implemented** via `AICodeCompiler(strict_mode=True)`; compile returns `errors` list CLI entrypoint `ainl` may differ. |
+| `ainl-validate --strict spec.ainl` | Same strict checks via the validator CLI; **structured diagnostics** on stderr by default (optional **rich** via dev extras); **`--json-diagnostics`** for JSON-only stdout on failure. |
 | `python -m ainl test conformance/` | Execute conformance tests that validate behavior against this doc (e.g. from `docs/CONFORMANCE.md` or a `conformance/` test suite). **Not yet implemented**; entrypoint specified here. |
 
 Current entrypoint: compile via `compiler_v2.py` (e.g. `python compiler_v2.py` or `python scripts/run_tests_and_emit.py`); canonical runtime via `runtime.engine.RuntimeEngine` (compatibility wrapper `runtime.compat.ExecutionEngine` retained for historical imports).

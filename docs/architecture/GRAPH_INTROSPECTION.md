@@ -40,6 +40,8 @@ ainl-validate --strict examples/status_branching.ainl
 
 This runs strict graph validation (unique entry, exits, reachability, effect typing, etc.) and still emits the same IR shape on success.
 
+On **strict failure**, the validator prints **structured diagnostics** to **stderr** (numbered list, source context, span underlines, suggestions). Use **`--json-diagnostics`** for JSON-only stdout for automation. Optional **rich** output requires `pip install -e ".[dev]"` (see `docs/INSTALL.md`).
+
 - **Non-JSON debug view (for quick eyeballing):**
 
 ```bash

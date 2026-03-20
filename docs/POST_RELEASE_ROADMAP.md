@@ -26,6 +26,8 @@ The operator-grade sequencing and breakage-control plan lives in `docs/NO_BREAK_
 
 ## 3) Compiler-Structured Diagnostics Expansion
 
+**Status:** In progress — core strict sites done (arity, unknown module, duplicate label, undeclared endpoint/targeted); CLI human view (`ainl-validate` + `rich` when installed); merge-order dedup still TODO (Phase 3).
+
 - Increase structured diagnostic coverage emitted by compiler outputs (`span`, `lineno`, `label_id`, `node_id`, etc.).
 - Keep language server diagnostic heuristics strictly as backward-compat fallback.
 - Add tests that prevent diagnostic location regressions and fake precision.

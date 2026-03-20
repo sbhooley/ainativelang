@@ -25,6 +25,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
+from compiler_diagnostics import (
+    CompilationDiagnosticError,
+    CompilerContext,
+    Diagnostic as StructuredDiagnostic,
+)
 from compiler_grammar import formal_next_token_classes, parse_prefix_state
 from compiler_v2 import (
     AICodeCompiler,
@@ -95,6 +100,7 @@ except Exception:
         message: str
         severity: int
         source: str = "ainl-compiler"
+        code: Optional[str] = None
 
     @dataclass
     class CompletionItem:  # type: ignore[override]
@@ -535,6 +541,60 @@ def _document_anchor_range(source_lines: Sequence[str]) -> Range:
     return _line_range(source_lines, None)
 
 
+def _char_offset_to_position(source: str, offset: int) -> Position:
+    """Map 0-based character offset in ``source`` to LSP 0-based line/character."""
+    offset = max(0, min(offset, len(source)))
+    line = 0
+    col = 0
+    for i, ch in enumerate(source):
+        if i == offset:
+            return Position(line=line, character=col)
+        if ch == "\n":
+            line += 1
+            col = 0
+        else:
+            col += 1
+    return Position(line=line, character=col)
+
+
+def _lsp_range_from_structured(d: StructuredDiagnostic, source: str) -> Range:
+    if d.span and len(d.span) == 2:
+        a, b = int(d.span[0]), int(d.span[1])
+        return Range(
+            start=_char_offset_to_position(source, a),
+            end=_char_offset_to_position(source, max(a, b)),
+        )
+    lines = source.split("\n")
+    # Prefer compiler-style location resolution when lineno is the parser default (1)
+    # and the legacy error string omitted "Line N:" (matches heuristic fallbacks).
+    loc: Dict[str, Any] = {"message": d.message}
+    if d.lineno > 1:
+        loc["lineno"] = d.lineno
+    line_idx, prov = resolve_diagnostic_location(loc, {"labels": {}}, lines)
+    return _diagnostic_range_for_location(lines, line_idx, prov)
+
+
+def _lsp_diagnostic_from_structured(d: StructuredDiagnostic, source: str) -> Diagnostic:
+    rg = _lsp_range_from_structured(d, source)
+    msg = f"{d.kind}: {d.message}"
+    code = d.contract_violation_reason or d.kind
+    try:
+        return Diagnostic(
+            range=rg,
+            message=msg,
+            severity=DiagnosticSeverity.Error,
+            source="AINL Compiler",
+            code=code,
+        )
+    except TypeError:
+        return Diagnostic(
+            range=rg,
+            message=msg,
+            severity=DiagnosticSeverity.Error,
+            source="AINL Compiler",
+        )
+
+
 def _diagnostic_range_for_location(
     source_lines: Sequence[str], line_idx: int, provenance: str
 ) -> Range:
@@ -550,8 +610,11 @@ def _diagnostic_range_for_location(
 
 def compiler_diagnostics(source: str, strict_mode: bool = True) -> List[Diagnostic]:
     comp = AICodeCompiler(strict_mode=strict_mode)
+    ctx = CompilerContext()
     try:
-        ir = comp.compile(source, emit_graph=True)
+        ir = comp.compile(source, emit_graph=True, context=ctx)
+    except CompilationDiagnosticError as e:
+        return [_lsp_diagnostic_from_structured(d, source) for d in e.diagnostics]
     except Exception as exc:
         lines = source.split("\n")
         msg = {"message": str(exc)}
@@ -566,6 +629,32 @@ def compiler_diagnostics(source: str, strict_mode: bool = True) -> List[Diagnost
         ]
     lines = source.split("\n")
     out: List[Diagnostic] = []
+
+    structured = list(ir.get("structured_diagnostics") or [])
+    if structured:
+        for row in structured:
+            if isinstance(row, dict):
+                out.append(
+                    _lsp_diagnostic_from_structured(
+                        StructuredDiagnostic.from_dict(row), source
+                    )
+                )
+        for item in list(ir.get("diagnostics", []) or []):
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("severity", "error")).lower() != "warning":
+                continue
+            msg = str(item.get("message", ""))
+            line_idx, provenance = resolve_diagnostic_location(item, ir, lines)
+            out.append(
+                Diagnostic(
+                    range=_diagnostic_range_for_location(lines, line_idx, provenance),
+                    message=msg,
+                    severity=DiagnosticSeverity.Warning,
+                    source="ainl-compiler",
+                )
+            )
+        return out
 
     diagnostics = list(ir.get("diagnostics", []) or [])
     if diagnostics:

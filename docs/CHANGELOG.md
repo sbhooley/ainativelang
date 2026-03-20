@@ -1,5 +1,20 @@
 # Changelog
 
+## Compiler — structured diagnostics + `ainl-validate` CLI (2026-03-09)
+
+### Features
+
+- **`compiler_diagnostics.py`** — `Diagnostic`, `CompilerContext`, `CompilationDiagnosticError`; native diagnostics merged with legacy `errors` strings.
+- **Strict-mode native diagnostics** in `compiler_v2.py` for: arity (`min_slots`), unknown module prefix, **duplicate `Lxx:`** (strict-only legacy error; non-strict still merges bodies), **undeclared endpoint label**, **undeclared targeted label** (control-flow refs). Spans, `suggested_fix`, `related_span`, and label close-match hints where applicable.
+- **`ainl-validate` / `scripts/validate_ainl.py`** — `--strict` wires structured diagnostics by default; stderr shows a numbered report (3-line source context, carets for spans). **`--json-diagnostics`** prints diagnostics JSON only to stdout on failure. **`rich`** (optional dev extra) enables styled output; plain ANSI or no-color when rich is missing or `--no-color` / non-TTY.
+- **Tests:** `tests/test_diagnostics.py` (structured round-trip, phase-2 sites, formatter smoke).
+
+### Documentation
+
+- `README.md`, `docs/INSTALL.md`, `docs/architecture/GRAPH_INTROSPECTION.md`, `docs/CONFORMANCE.md`, `docs/POST_RELEASE_ROADMAP.md`, `pyproject.toml` (`rich` in `[project.optional-dependencies] dev`).
+
+---
+
 ## Documentation — agent reports & intelligence hub (2026-03-19)
 
 ### Documentation

@@ -338,7 +338,7 @@ def test_diagnostics_no_crash_on_unexpected_compiler_formats() -> None:
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "diagnostics": [
                 {"severity": "error", "message": "dict style error", "span": {"line": 2}},
@@ -391,7 +391,7 @@ def test_compile_exception_uses_provenance_based_document_anchor_when_unresolved
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         raise RuntimeError("unstructured compiler failure")
 
     try:
@@ -414,7 +414,7 @@ def test_compiler_diagnostics_prefers_structured_over_legacy_errors_warnings() -
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "diagnostics": [
                 {"severity": "error", "message": "structured failure", "lineno": 2},
@@ -442,7 +442,7 @@ def test_compiler_diagnostics_structured_warning_severity_mapping() -> None:
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "diagnostics": [{"severity": "warning", "message": "structured warning", "lineno": 1}],
             "errors": [],
@@ -466,7 +466,7 @@ def test_compiler_diagnostics_structured_item_without_message_is_safe() -> None:
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "diagnostics": [{"severity": "error", "lineno": 1}],
             "errors": [],
@@ -491,7 +491,7 @@ def test_compiler_diagnostics_legacy_errors_warnings_fallback_still_works() -> N
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "errors": ["Line 2: legacy error"],
             "warnings": ["Line 1: legacy warning"],
@@ -514,7 +514,7 @@ def test_diagnostics_op_prefix_mapping_module_op_line() -> None:
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "diagnostics": [{"severity": "error", "message": "ops.Env: malformed declaration"}],
             "errors": [],
@@ -538,7 +538,7 @@ def test_diagnostics_document_level_fallback_when_unresolved() -> None:
 
     orig_compile = ls.AICodeCompiler.compile
 
-    def fake_compile(self, source: str, emit_graph: bool = True):  # type: ignore[no-untyped-def]
+    def fake_compile(self, source: str, emit_graph: bool = True, **_kwargs):  # type: ignore[no-untyped-def]
         return {
             "diagnostics": [{"severity": "error", "message": "unstructured failure with no location info"}],
             "errors": [],
