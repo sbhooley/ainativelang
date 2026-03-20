@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.1 (March 20, 2026)
+
+- **feat(visualizer)**: add image export for `ainl visualize` via Playwright (`--png`, `--svg`, `--width`, `--height`, and extension auto-detect for `.png`/`.jpg`/`.jpeg`/`.svg`)
+- **test(visualizer)**: add `tests/test_visualizer.py` smoke coverage for PNG/SVG generation
+- **docs(examples)**: add `examples/timeout_demo.ainl` and expand README/docs guidance for starter timeout module and visualizer image export usage
+- **fix(readme)**: remove duplicate badge block and switch release badge to latest tag endpoint
+
 ## v1.2.0 (March 20, 2026)
 
 - **feat**: subgraph includes & modules (compile-time composition, alias prefixing, ENTRY/EXIT contract)

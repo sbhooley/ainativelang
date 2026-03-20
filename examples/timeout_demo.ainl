@@ -1,0 +1,8 @@
+# timeout_demo.ainl
+# Minimal include-based timeout demo using the strict-safe timeout starter module.
+
+include "modules/common/timeout.ainl" as timeout
+
+L1:
+  Call timeout/ENTRY ->out
+  J out

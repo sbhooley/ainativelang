@@ -31,6 +31,9 @@ ainl-validate examples/hello.ainl --strict --emit ir
 # Mermaid diagram (paste into https://mermaid.live)
 ainl visualize examples/hello.ainl --output - > hello.mmd
 
+# Direct image export (requires Playwright runtime)
+ainl visualize examples/hello.ainl --png hello.png
+
 # Run a tiny workflow
 ainl run examples/hello.ainl --json
 ```

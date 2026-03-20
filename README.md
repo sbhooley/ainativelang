@@ -143,6 +143,19 @@ Shared modules live in a **`modules/`** directory next to your files (with CWD /
 | `modules/common/retry.ainl` | Minimal **ENTRY → EXIT_OK / EXIT_FAIL** pattern with sample `core.ADD` work—copy and extend with your own retry / backoff steps in the parent or module. |
 | `modules/common/timeout.ainl` | **Timeout / cancellation shape** (`ENTRY` → `Call WORK`, plus `LTIMEOUT` for the failure branch). The strict build uses `core.SLEEP` / `core.ECHO` stand-ins until real timer adapters are allowlisted—swap the `R` lines when your runtime supports them. |
 
+### Starter Modules (in `modules/common/`)
+
+- `retry.ainl` — exponential backoff + max retries
+- `timeout.ainl` — timeout wrapper with placeholder delay (swap to real timer later)
+
+```ainl
+include "modules/common/timeout.ainl" as timeout
+
+L1:
+  Call timeout/ENTRY ->out
+  J out
+```
+
 More patterns coming soon (approval gate, circuit breaker, RAG retrieval, etc.). **Contract (strict):** included subgraphs expose **`LENTRY:`** (merged as `alias/ENTRY`) and at least one **`LEXIT_*:`** exit label; call them with **`Call alias/ENTRY ->out`** from the parent. **Agents** benefit from smaller, verified building blocks and stable qualified names (`retry/n1`, …) in the graph IR. Full behavior, path resolution, and tests: `tests/test_includes.py`, `docs/architecture/GRAPH_INTROSPECTION.md`.
 
 **See your includes in a diagram:** `ainl visualize main.ainl -o graph.mmd` — each alias becomes a Mermaid subgraph cluster; synthetic `Call →` edges into `alias/ENTRY` are annotated in the output.

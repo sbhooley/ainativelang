@@ -6,6 +6,8 @@ Follow-up open-core release after the first public baseline. See **`docs/CHANGEL
 
 - **Compile-time `include`:** merge shared `.ainl` modules under **`alias/LABEL`**; strict ENTRY/EXIT contracts; starter modules under `modules/common/`.
 - **Mermaid graph CLI:** **`ainl visualize`** / **`ainl-visualize`** — paste output into [mermaid.live](https://mermaid.live); clusters match include aliases.
+- **Image export for visualizer:** `ainl visualize ... --png out.png` / `--svg out.svg` (with `--width`/`--height`; extension auto-detect via `-o file.png|.jpg|.jpeg|.svg`), powered by Playwright.
+- **Timeout include demo:** `examples/timeout_demo.ainl` shows strict-safe include usage with `modules/common/timeout.ainl`.
 - **Diagnostics:** structured **`Diagnostic`** output, **`--diagnostics-format`**, optional **rich** CLI; shared with validate and visualize failure paths.
 - **Conformance matrix:** `make conformance` now runs the full parallelized snapshot suite (tokenizer round-trip, IR canonicalization, strict validation, runtime parity, emitter stability), with CI execution on push/PR and generated status artifacts under `tests/snapshots/conformance/`.
 - **Docs:** **`docs/WHAT_IS_AINL.md`**, README quick-start, **`WHITEPAPERDRAFT.md`** 1.2.0, **`docs/POST_RELEASE_ROADMAP.md`** (shipped vs next), **`SEMANTICS.md`** / **`RUNTIME_COMPILER_CONTRACT.md`** notes on includes.

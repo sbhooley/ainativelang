@@ -91,7 +91,7 @@ Legacy behavior is unchanged: **`compile()` without `context`** still returns IR
 - `ainl-compat-report` - IR compatibility report
 - `ainl-tool-api` - structured tool API CLI
 - `ainl-ollama-eval` - local Ollama eval harness
-- `ainl-visualize` / `ainl visualize` — compile `.ainl` to **Mermaid** (subgraph clusters for `include` aliases; paste into [mermaid.live](https://mermaid.live)). See root `README.md` (**Visualize your workflow**) and `docs/architecture/GRAPH_INTROSPECTION.md` §7.
+- `ainl-visualize` / `ainl visualize` — compile `.ainl` to **Mermaid** (subgraph clusters for `include` aliases; paste into [mermaid.live](https://mermaid.live)) and export images with `--png/--svg` (`--width`/`--height` supported). For image export, install Playwright browser runtime once: `playwright install chromium`. See root `README.md` (**Visualize your workflow**) and `docs/architecture/GRAPH_INTROSPECTION.md` §7.
 
 ## Runtime adapter CLI examples
 
