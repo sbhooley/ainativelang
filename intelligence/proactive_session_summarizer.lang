@@ -10,6 +10,7 @@
 #
 # Patterns: Loop + If + obj/put/push for HTTP body + R http POST for LLM.
 S core cron "0 4 * * *"
+include "modules/common/generic_memory.ainl" as genmem
 
 # ── Entry: budget gate ──
 L0:
@@ -162,8 +163,15 @@ L16:
   R fs write "MEMORY.md" newMem ->_
   X mem_id (core.concat "summary-" dayDate)
   X mem_payload {"date":dayDate,"summary_len":summaryLen,"created_at":nowIso,"model":llmModel}
-  X mem_meta {"source":"intelligence.proactive_session_summarizer","confidence":0.8,"tags":["intelligence","summary","memory"],"valid_at":nowIso}
-  R memory put "workflow" "workflow.session_summary" mem_id mem_payload 1209600 mem_meta ->_
+  X memory_namespace "workflow"
+  X memory_kind "workflow.session_summary"
+  X memory_record_id mem_id
+  X memory_payload mem_payload
+  X memory_ttl 1209600
+  X memory_source "intelligence.proactive_session_summarizer"
+  X memory_tags ["intelligence","summary","memory"]
+  X memory_valid_at nowIso
+  Call genmem/WRITE ->_
   X markKey (core.concat "summarized." dayDate)
   R cache set "workflow" markKey "done" ->_
   X summariesCreated (add summariesCreated 1)

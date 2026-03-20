@@ -31,6 +31,7 @@ This document provides a quick reference for all AINL autonomous operations moni
 - Shared memory logic is now factored into include modules under `modules/common/`:
   - `token_cost_memory.ainl` for `workflow` monitor records
   - `ops_memory.ainl` for `ops` monitor records
+  - `generic_memory.ainl` for namespace-aware records (`session`, `long_term`, `intel`, etc.)
   This keeps metadata/filter envelopes consistent across monitor programs and reduces drift.
 - Runner scripts are located in `scripts/run_*.py` and are added to OpenClaw cron with `openclaw cron add`.
 - **For agents implementing or changing monitors:** Follow `docs/BOT_ONBOARDING.md` and `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` before coding.

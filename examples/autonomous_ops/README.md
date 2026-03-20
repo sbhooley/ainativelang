@@ -31,7 +31,7 @@ Cooldown state is stored in the cache (default `/tmp/monitor_state.json`). Queue
 - **Snapshot → Queue:** Linear status collection followed by a single `queue.Put`.
 - **Cooldown windows:** Use `cache.Get/Set` with timestamps and TTL checks.
 - **Consecutive failure detection:** Increment a cached counter on failure; reset on success.
-- **Shared memory includes:** Reuse `modules/common/token_cost_memory.ainl` (`workflow`) and `modules/common/ops_memory.ainl` (`ops`) for deterministic metadata/filter handling instead of duplicating inline memory envelopes.
+- **Shared memory includes:** Reuse `modules/common/token_cost_memory.ainl` (`workflow`), `modules/common/ops_memory.ainl` (`ops`), and `modules/common/generic_memory.ainl` (namespace-aware) for deterministic metadata/filter handling instead of duplicating inline memory envelopes.
 - **Adapter composition:** Combine `svc`, `extras`, `tiktok`, `db`, `http`, `core` in one program.
 
 These are not canonical core AINL; they rely on OpenClaw‑specific extensions. For canonical examples, see `examples/status_branching.ainl` and `examples/retry_error_resilience.ainl`.

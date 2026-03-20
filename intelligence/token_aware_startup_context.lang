@@ -7,6 +7,7 @@
 # Pure compute — no LLM calls. Runs every 5 minutes.
 # Proven patterns: Loop + If branching + push array + J return.
 S core cron "*/5 * * * *"
+include "modules/common/generic_memory.ainl" as genmem
 
 # ── Entry: load budget state and gate on remaining tokens ──
 L0:
@@ -111,8 +112,15 @@ L11:
   R cache set "workflow" "context_injection_last" nowTs ->_
   X mem_id (core.concat "ctx-" (core.stringify nowTs))
   X mem_payload {"tokens":usedTokens,"lines":count,"generated_at":nowTs}
-  X mem_meta {"source":"intelligence.token_aware_startup_context","confidence":1.0,"tags":["intelligence","context_injection","workflow"],"valid_at":nowTs}
-  R memory put "workflow" "workflow.context_injection_snapshot" mem_id mem_payload 604800 mem_meta ->_
+  X memory_namespace "workflow"
+  X memory_kind "workflow.context_injection_snapshot"
+  X memory_record_id mem_id
+  X memory_payload mem_payload
+  X memory_ttl 604800
+  X memory_source "intelligence.token_aware_startup_context"
+  X memory_tags ["intelligence","context_injection","workflow"]
+  X memory_valid_at nowTs
+  Call genmem/WRITE ->_
   J count
 
 # ── Skip: budget too low or no results ──

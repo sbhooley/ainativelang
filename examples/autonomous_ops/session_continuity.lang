@@ -1,5 +1,6 @@
 S http cron
 Cr L_tick "0 */2 * * *"  # every 2 hours
+include "modules/common/generic_memory.ainl" as genmem
 
 # Optional external config
 R memory F "config" "session_continuity" ->cfg
@@ -8,7 +9,13 @@ X window_days (ite cfg (or (cfg.window_days) 1) 1)  # how many days back to look
 # Fetch recent session context records (last N days approx)
 X now_iso (core.iso)
 X window_ago (core.sub now_iso 0 window_days)
-R memory.list "session" "session.context" "" window_ago ->sessions
+X memory_namespace "session"
+X memory_kind "session.context"
+X memory_updated_after window_ago
+X memory_list_limit 1000
+X memory_tags []
+X memory_source ""
+Call genmem/LIST ->sessions
 
 X session_items sessions.items
 X session_count (len session_items)
@@ -54,12 +61,20 @@ ForEach session_items (lambda r (
 
 ForEach prefs_to_store (lambda p (
   X pref_id (core.join ["pref-", p.key, "-", hash (p.value)])
-  R memory.put "long_term" "long_term.user_preference" pref_id {
+  X memory_namespace "long_term"
+  X memory_kind "long_term.user_preference"
+  X memory_record_id pref_id
+  X memory_payload {
     "key": p.key,
     "value": p.value,
     "from_session": p.from_session,
     "updated_at": now_iso
-  } 604800 ->_  # 7d TTL
+  }
+  X memory_ttl 604800
+  X memory_source "examples.autonomous_ops.session_continuity"
+  X memory_tags ["session","continuity","preference"]
+  X memory_valid_at now_iso
+  Call genmem/WRITE ->_  # 7d TTL
 ))
 
 X pref_count (len prefs_to_store)

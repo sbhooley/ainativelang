@@ -4,6 +4,7 @@
 # and ensures continuity data is available for new sessions.
 # Runs every 30 minutes. Pure compute — no LLM calls.
 S core cron "*/30 * * * *"
+include "modules/common/generic_memory.ainl" as genmem
 
 # ── Entry: timestamp and check for bootstrap context ──
 L0:
@@ -56,8 +57,15 @@ L5:
   R cache set "session" "continuity_last_ok" ts ->_
   X rec_id (core.concat "continuity-" isoTs)
   X rec_payload {"status":"ok","line_count":lineCount,"token_count":tokenCount,"ts":ts}
-  X rec_meta {"source":"intelligence.session_continuity_enhanced","confidence":1.0,"tags":["intelligence","continuity","session"],"valid_at":isoTs}
-  R memory put "workflow" "workflow.session_continuity" rec_id rec_payload 604800 rec_meta ->_
+  X memory_namespace "workflow"
+  X memory_kind "workflow.session_continuity"
+  X memory_record_id rec_id
+  X memory_payload rec_payload
+  X memory_ttl 604800
+  X memory_source "intelligence.session_continuity_enhanced"
+  X memory_tags ["intelligence","continuity","session"]
+  X memory_valid_at isoTs
+  Call genmem/WRITE ->_
   J lineCount
 
 # ── Report without stats ──

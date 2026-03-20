@@ -1,10 +1,19 @@
 # Store baseline intelligence assessment (one-shot seed for memory)
+include "modules/common/generic_memory.ainl" as genmem
 L0:
   Set text "Based on current credible reporting, here's the revised outlook:\n\nWar status – Confirmed: U.S. and Israel began strikes on Iran on Feb 28, 2026; Khamenei killed; Iran retaliating with missiles/drones; Strait of Hormuz effectively blockaded; Kharg Island struck; no ceasefire. China/Russia providing intelligence; NATO not directly involved; Saudi–Pakistan pact active.\n\nOil & economy – Strait disruption is historic but not a total closure yet. Oil price forecasts average $55–64/barrel for 2026, with spike scenarios up to $91 if closure persists. Goldman projects U.S. growth 2.6% in 2026; Fed expected to cut rates 50 bps; inflation around 2.7%. So major recession is not the current base case.\n\nImmigration – ICE expansion is real and severe: 25% more officers, 40% more arrests, record family separations (600+ children this year), detention at 73,000. This trend will continue; wartime enforcement increases.\n\nSurveillance – Palantir–Anthropic controversy: DoD wants unrestricted AI use; Anthropic resists domestic surveillance. No Palantir–OpenAI partnership, but Palantir's AIP integrates multiple LLMs (including GPT) for defense. Expect broader government AI deployment, but specific mass-surveillance integration remains debated.\n\nOverall – The war is real and disruptive, but the worst economic collapse predictions aren't supported by current forecasts. The domestic impact will be more about immigration enforcement and possibly expanded surveillance tools rather than hyperinflation or immediate depression. The Strait remains the key variable; if it fully closes for months, all forecasts worsen."
 L1:
   X payload (obj "text" text)
 L2:
-  R memory put "intel" "baseline" "2026-03-16-v1" payload 604800 ->_
+  X memory_namespace "intel"
+  X memory_kind "baseline"
+  X memory_record_id "2026-03-16-v1"
+  X memory_payload payload
+  X memory_ttl 604800
+  X memory_source "intelligence.store_baseline"
+  X memory_tags ["intelligence","baseline"]
+  X memory_valid_at "2026-03-16T00:00:00Z"
+  Call genmem/WRITE ->_
 L3:
   R core concat "baseline_stored" ->msg
   J msg
