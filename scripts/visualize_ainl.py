@@ -601,7 +601,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         out_guess = str(args.output or "")
         lower = out_guess.lower()
-        if lower.endswith(".png"):
+        if lower.endswith((".png", ".jpg", ".jpeg")):
             export_fmt = "png"
             export_out = out_guess
         elif lower.endswith(".svg"):
