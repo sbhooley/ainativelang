@@ -687,6 +687,26 @@ ainl visualize examples/hello.ainl --output diagram.md
 ainl-visualize examples/hello.ainl -o diagram.md
 ```
 
+#### Export as image (PNG/SVG)
+
+```bash
+# PNG export
+ainl visualize examples/hello.ainl --png diagram.png
+
+# SVG export
+ainl visualize examples/hello.ainl --svg diagram.svg
+
+# Optional render size
+ainl visualize examples/hello.ainl --png diagram.png --width 1600 --height 1000
+```
+
+Image export uses Playwright. Install dev deps and Chromium once:
+
+```bash
+pip install -e ".[dev]"
+playwright install chromium
+```
+
 | Flag | Purpose |
 |------|---------|
 | `--output` / `-o` | Write Mermaid to a file, or `-` for stdout (default). |

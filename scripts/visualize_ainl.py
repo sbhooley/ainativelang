@@ -8,6 +8,7 @@ there is no separate ``ir["graph"]`` key today.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -321,6 +322,150 @@ def _sanitize_subgraph_id(name: str) -> str:
     return s.strip("_") or "g"
 
 
+def render_mermaid_to_image(
+    mermaid_text: str,
+    *,
+    format: str = "png",
+    width: int = 1200,
+    height: int = 800,
+) -> bytes:
+    """
+    Render Mermaid text to PNG or SVG bytes via Playwright.
+
+    Raises RuntimeError with actionable install hints when Playwright/browser
+    runtime is unavailable.
+    """
+    if format not in {"png", "svg"}:
+        raise ValueError(f"unsupported render format: {format}")
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as e:
+        raise RuntimeError(
+            "Playwright is required for --png/--svg export. "
+            "Install with: pip install -e '.[dev]' && playwright install chromium"
+        ) from e
+
+    # Normalize quoted path-like node IDs (e.g. "main/1/n1") to Mermaid-safe IDs
+    # for browser rendering only. CLI text output remains unchanged.
+    mermaid_for_render = _normalize_mermaid_ids_for_render(mermaid_text)
+
+    def _run_render(source_text: str) -> bytes:
+        mermaid_json = json.dumps(source_text)
+        html = f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body {{
+      margin: 0;
+      padding: 0;
+      background: white;
+      width: {width}px;
+      height: {height}px;
+      overflow: hidden;
+    }}
+    #root {{
+      width: {width}px;
+      min-height: {height}px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 16px;
+      box-sizing: border-box;
+      background: white;
+    }}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    (async function () {{
+      try {{
+        const source = {mermaid_json};
+        mermaid.initialize({{ startOnLoad: false, securityLevel: "loose" }});
+        const rendered = await mermaid.render("ainl_graph", source);
+        const svg = rendered && rendered.svg ? rendered.svg : rendered;
+        const root = document.getElementById("root");
+        root.innerHTML = svg;
+        window.__AINL_RENDER_DONE__ = true;
+      }} catch (e) {{
+        window.__AINL_RENDER_ERR__ = String(e);
+      }}
+    }})();
+  </script>
+</body>
+</html>"""
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page(viewport={"width": width, "height": height})
+            page.set_content(html, wait_until="load")
+            page.wait_for_function(
+                "window.__AINL_RENDER_DONE__ === true || window.__AINL_RENDER_ERR__",
+                timeout=20000,
+            )
+            err = page.evaluate("window.__AINL_RENDER_ERR__ || null")
+            if err:
+                browser.close()
+                raise RuntimeError(f"mermaid render failed in browser: {err}")
+
+            if format == "svg":
+                svg_html = page.locator("#root svg").first.evaluate("el => el.outerHTML")
+                data = svg_html.encode("utf-8")
+            else:
+                # Screenshot the rendered SVG node only (stable white background).
+                data = page.locator("#root svg").first.screenshot(type="png")
+
+            browser.close()
+            return data
+
+    try:
+        return _run_render(mermaid_for_render)
+    except RuntimeError as e:
+        if "Parse error" not in str(e):
+            raise
+        # Fallback for stricter Mermaid parsers: preserve topology/shapes but
+        # simplify node labels to parser-safe tokens.
+        simplified = _simplify_mermaid_labels_for_render(mermaid_for_render)
+        return _run_render(simplified)
+
+
+def _normalize_mermaid_ids_for_render(mermaid_text: str) -> str:
+    """
+    Convert quoted path-like IDs to Mermaid-safe alphanumeric IDs for rendering.
+
+    The visualizer intentionally emits quoted IDs (for readability/stability in
+    text mode), but Mermaid browser parsing can reject slash-heavy quoted IDs.
+    """
+    pattern = re.compile(r'"([A-Za-z0-9_./-]+)"')
+    id_map: Dict[str, str] = {}
+    counter = 0
+
+    def repl(m: re.Match[str]) -> str:
+        nonlocal counter
+        raw = m.group(1)
+        if "/" not in raw:
+            return m.group(0)
+        safe = id_map.get(raw)
+        if safe is None:
+            counter += 1
+            safe = f"n{counter}"
+            id_map[raw] = safe
+        return safe
+
+    return pattern.sub(repl, mermaid_text)
+
+
+def _simplify_mermaid_labels_for_render(mermaid_text: str) -> str:
+    out = mermaid_text
+    out = re.sub(r"\[[^\]\n]*\]", "[node]", out)
+    out = re.sub(r"\(\([^\)\n]*\)\)", "((jump))", out)
+    out = re.sub(r"\{[^\}\n]*\}", "{if}", out)
+    return out
+
+
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Visualize an AINL file as a Mermaid or DOT control-flow diagram.",
@@ -338,6 +483,28 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default="-",
         metavar="FILE",
         help='Write diagram here, or "-" for stdout (default: -)',
+    )
+    p.add_argument(
+        "--png",
+        metavar="FILE",
+        help="Render Mermaid to PNG and write to FILE (or '-' for stdout).",
+    )
+    p.add_argument(
+        "--svg",
+        metavar="FILE",
+        help="Render Mermaid to SVG and write to FILE (or '-' for stdout).",
+    )
+    p.add_argument(
+        "--width",
+        type=int,
+        default=1200,
+        help="Render width in pixels for --png/--svg (default: 1200).",
+    )
+    p.add_argument(
+        "--height",
+        type=int,
+        default=800,
+        help="Render height in pixels for --png/--svg (default: 800).",
     )
     p.add_argument(
         "--no-clusters",
@@ -369,6 +536,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not path.is_file():
         print(f"error: not a file: {path}", file=sys.stderr)
         return 1
+    if args.width <= 0 or args.height <= 0:
+        print("error: --width and --height must be positive integers", file=sys.stderr)
+        return 2
 
     code = path.read_text(encoding="utf-8")
     ctx = CompilerContext()
@@ -418,6 +588,49 @@ def main(argv: Optional[List[str]] = None) -> int:
         with_clusters=not args.no_clusters,
         labels_only=bool(args.labels_only),
     )
+
+    # --- image export mode ---
+    export_fmt: Optional[str] = None
+    export_out: Optional[str] = None
+    if args.png:
+        export_fmt = "png"
+        export_out = args.png
+    elif args.svg:
+        export_fmt = "svg"
+        export_out = args.svg
+    else:
+        out_guess = str(args.output or "")
+        lower = out_guess.lower()
+        if lower.endswith(".png"):
+            export_fmt = "png"
+            export_out = out_guess
+        elif lower.endswith(".svg"):
+            export_fmt = "svg"
+            export_out = out_guess
+
+    if export_fmt is not None:
+        try:
+            data = render_mermaid_to_image(
+                text,
+                format=export_fmt,
+                width=args.width,
+                height=args.height,
+            )
+        except RuntimeError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        except Exception as e:
+            print(f"error: failed to render Mermaid as {export_fmt}: {e}", file=sys.stderr)
+            return 2
+
+        out_bin = export_out if export_out is not None else args.output
+        if out_bin in ("-", ""):
+            sys.stdout.buffer.write(data)
+        else:
+            Path(out_bin).write_bytes(data)
+        return 0
+
+    # --- existing text output mode ---
     out = args.output
     if out in ("-", ""):
         sys.stdout.write(text)
