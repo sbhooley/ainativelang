@@ -1,8 +1,13 @@
 # Changelog
 
-## Release 1.2.0 (2026-03-20)
+## v1.2.0 (March 20, 2026)
 
-### Packaging
+- **feat**: subgraph includes & modules (compile-time composition, alias prefixing, ENTRY/EXIT contract)
+- **feat**: graph visualizer CLI (`ainl visualize` → Mermaid with clusters, synthetic call edges)
+- **fix**: preserve `__literal_fields` through include merge + lowering
+- **docs**: updated README, WHAT_IS_AINL.md, whitepaper draft with new features
+
+### Packaging (v1.2.0)
 
 - **`pyproject.toml` / `ainl-lang`:** version **1.2.0**.
 - **`RUNTIME_VERSION`** (`runtime/engine.py`, mirrored `tests/emits/server/runtime/engine.py`): **1.2.0** (runner/MCP payloads, `/capabilities`, `ainl run --json`).
