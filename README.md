@@ -616,29 +616,50 @@ See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Pyt
 
 Compile a `.ainl` file to **Mermaid** for GitHub, [mermaid.live](https://mermaid.live), Obsidian, or any Mermaid-capable viewer. **Include aliases** become subgraph clusters automatically; synthetic `Call →` edges show how the main flow enters an included module.
 
+**Your first diagram** (from repo root):
+
 ```bash
+python3 -m cli.main visualize examples/hello.ainl --output - > hello.mmd
 # After pip install -e .
+ainl visualize examples/hello.ainl --output - > hello.mmd
+```
+
+1. Open [mermaid.live](https://mermaid.live).
+2. Click the left editor pane and paste the **entire** contents of `hello.mmd`.
+
+**What you should see** for `examples/hello.ainl`: a top-down graph (`graph TD` + `direction TB`), one **`main`** cluster (`c_main`), rectangular **R** nodes and circular **J** nodes, and edges between them. **Pink fill** (`classDef labelstyle`) applies to nodes in labels whose id ends with `ENTRY` or `EXIT_*` (this hello program only uses `L1`, so you will not see that styling here—try an `include` module to get `retry/ENTRY`, `retry/EXIT_OK`, etc.).
+
+**Includes** (e.g. a file with `include modules/common/retry.ainl as retry` and a `Call` into `retry/ENTRY`): run `visualize` on that file. You should see a separate **`retry`** cluster, nodes such as `"retry/ENTRY/n1"`, cross-cluster edges **after** the subgraphs, and a `%% Synthetic edges: Call → …` comment before the synthetic `|call|` edge into the included entry.
+
+**Save / share** on mermaid.live: **Export → PNG or SVG**, **Share** (link for X/Reddit), or **Edit → copy** the Mermaid block for README or posts.
+
+```bash
+# Write to a file, or stdout
 ainl visualize examples/hello.ainl --output diagram.md
-# or the standalone entry point
 ainl-visualize examples/hello.ainl -o diagram.md
 ```
 
-**Example render** (paste into [mermaid.live](https://mermaid.live); node ids with `/` are quoted). Includes produce a **retry** cluster; **synthetic** `Call` edges (annotated in tool output) link the caller into the included entry label:
+Use `--no-clusters` for a flat graph, `--labels-only` for dense programs, and `-o -` for stdout.
+
+#### Example output (paste into https://mermaid.live)
+
+Illustrative **include** layout (ids with `/` are **quoted** so Mermaid parses them). The tool emits the same structure with fully qualified node ids such as `"retry/ENTRY/n1"` instead of shorthand labels:
 
 ```mermaid
 graph TD
     direction TB
+
     subgraph c_retry ["retry"]
         "retry/ENTRY"[ENTRY] --> "retry/n1"[EXPONENTIAL 5 200]
         "retry/n1" --> "retry/EXIT_OK"[EXIT_OK]
+        "retry/n1" --> "retry/EXIT_FAIL"[EXIT_FAIL]
     end
-    L1[Your logic] -->|"call"| "retry/ENTRY"
+
     %% Synthetic edges: Call → included label entry (not explicit in IR)
+    L1[Your Main Logic] -->|"call"| "retry/ENTRY"
 ```
 
-Real CLI output uses fully qualified ids (e.g. `"main/1/n1"`, `"retry/ENTRY/n1"`) and matches this structure; single-label programs show one `main` subgraph.
-
-Use `--no-clusters` for a flat graph, `--labels-only` for dense programs, and `-o -` for stdout.
+Real output uses fully qualified IDs like `"retry/ENTRY/n1"` and clusters automatically by include **alias** prefix (`retry/…` → subgraph `retry`).
 
 - **Validator CLI**: `python3 scripts/validate_ainl.py [file.lang] [--emit server|react|openapi|prisma|sql]`; stdin supported.
 - **Strict diagnostics**: `--strict` uses structured compiler diagnostics; stderr shows a numbered report (3-line source context, carets when spans exist, suggestions). **`--diagnostics-format=auto|plain|json|rich`** controls output (`auto` uses rich when the package is installed, stderr is a TTY, and `--no-color` is off). **`--json-diagnostics`** is a legacy alias for `json`. Install optional `pip install -e ".[dev]"` for **rich**. **`--no-color`** forces plain text instead of rich styling.

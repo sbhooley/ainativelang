@@ -146,7 +146,7 @@ The following helpers are available for more advanced workflows (all already exi
 
 These are intended for **tooling/agent use**, not for changing runtime semantics.
 
-### 5. Record/replay and deterministic runs
+### 6. Record/replay and deterministic runs
 
 For runtime-level introspection without live side-effects, use the **record/replay** flags described in `../INSTALL.md`:
 
@@ -171,7 +171,27 @@ This, combined with graph inspection, lets agents:
 - observe **actual** executed paths via record/replay and logs
 - compare the two to detect unexpected behavior.
 
-### 6. DOT graph export (for visualizers)
+### 7. Mermaid diagram (CLI visualizer)
+
+For a **flowchart** you can paste into [mermaid.live](https://mermaid.live), GitHub, or Obsidian, use the graph visualizer (strict compile, read-only):
+
+```bash
+ainl visualize examples/hello.ainl --output - > hello.mmd
+# or
+ainl-visualize examples/status_branching.ainl -o diagram.md
+# or from repo root without install:
+python3 -m cli.main visualize examples/hello.ainl --output - > hello.mmd
+python3 scripts/visualize_ainl.py examples/hello.ainl -o -
+```
+
+Behavior (see root `README.md` → **Visualize your workflow** for the full walkthrough):
+
+- Reads `.ainl` / `.lang`, compiles with `emit_graph=True` and **strict** diagnostics on failure (same structured stderr path as `ainl-validate` when **rich** is installed).
+- Emits **Mermaid** `graph TD` from canonical **`ir["labels"]`** (nodes, edges, entry); `include … as alias` labels are grouped into **subgraph** clusters by alias prefix.
+- Draws **synthetic** `Call → callee entry` edges (with a `%%` comment in the output) when the IR does not list them explicitly, so included modules stay visible.
+- Flags: `--no-clusters`, `--labels-only`, `--format dot` (DOT not implemented yet; use `render_graph.py` below for Graphviz DOT).
+
+### 8. DOT graph export (for visualizers)
 
 For a quick **graph visualization**, you can export the compiled IR as a DOT file and use Graphviz or similar tools:
 

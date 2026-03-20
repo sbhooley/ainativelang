@@ -78,6 +78,8 @@ Use **`tooling.graph_api`** for deterministic answers:
 - `io_nodes(label)`, `nodes_using_adapter(label, adapter_prefix)`
 - `error_paths(label, from_node=None)`, `exit_nodes(label)`
 
+**Human-readable diagrams:** `ainl visualize` / `ainl-visualize` / `scripts/visualize_ainl.py` render **Mermaid** from the same `labels` graph (strict compile). See `docs/architecture/GRAPH_INTROSPECTION.md` §7 and the root `README.md` (*Visualize your workflow*).
+
 ## Rewrites and diff
 
 - **Rewrites:** Clone IR -> apply change -> run validation -> return `{ ok: True, ir }` or `{ ok: False, error }`. Helpers: `insert_node_after`, `rewire_edge`, `wrap_r_with_retry`, `attach_err_handler`.

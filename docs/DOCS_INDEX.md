@@ -43,7 +43,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Runtime behavior specification (complement to `SEMANTICS.md`): `docs/ainl_runtime_spec.md`
 - Target/runtime support roadmap: `docs/runtime/TARGETS_ROADMAP.md`
 - Example support classification: `docs/EXAMPLE_SUPPORT_MATRIX.md`
-- Graph/IR introspection guide: `docs/architecture/GRAPH_INTROSPECTION.md`
+- Graph/IR introspection guide: `docs/architecture/GRAPH_INTROSPECTION.md` (includes **Mermaid** CLI: `ainl visualize` / `ainl-visualize`, `scripts/visualize_ainl.py`; and DOT via `scripts/render_graph.py`)
 - State discipline (tiered state model): `docs/architecture/STATE_DISCIPLINE.md`
 - Runtime semantics contract: `SEMANTICS.md`
 - Runtime/compiler execution contract: `docs/RUNTIME_COMPILER_CONTRACT.md`

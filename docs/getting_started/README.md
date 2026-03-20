@@ -28,6 +28,9 @@ and runtime; they differ in how you connect.
 # Validate an example
 ainl-validate examples/hello.ainl --strict --emit ir
 
+# Mermaid diagram (paste into https://mermaid.live)
+ainl visualize examples/hello.ainl --output - > hello.mmd
+
 # Run a tiny workflow
 ainl run examples/hello.ainl --json
 ```

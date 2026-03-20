@@ -5,6 +5,8 @@ Use this section to understand example support levels, recommended examples, and
 ## Key docs
 
 - [`../EXAMPLE_SUPPORT_MATRIX.md`](../EXAMPLE_SUPPORT_MATRIX.md) — support classification for examples
+- **`examples/bad_include.ainl`** — intentionally broken include (strict / `ainl visualize` error demos); not in strict-valid profiles
+- Visualize any example: `ainl visualize path/to/example.ainl --output diagram.md` (see root `README.md`, `docs/architecture/GRAPH_INTROSPECTION.md` §7)
 
 ## Related sections
 

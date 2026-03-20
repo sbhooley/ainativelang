@@ -1,5 +1,21 @@
 # Changelog
 
+## Tooling — graph visualizer CLI (Mermaid) (2026-03-20)
+
+### Features
+
+- **`scripts/visualize_ainl.py`** — strict compile → **Mermaid** `graph TD` from `ir["labels"]`; subgraph clusters by `include` alias; synthetic `Call →` entry edges with `%%` comment; `--no-clusters`, `--labels-only`; structured diagnostics on failure (reuse `validate_ainl` formatters).
+- **`ainl-visualize`** console script and **`ainl visualize`** subcommand (`cli/main.py`, `pyproject.toml`).
+- **`examples/bad_include.ainl`** — fixture for visualize/strict error demos.
+
+### Documentation
+
+- Root `README.md` (Visualize your workflow, mermaid.live walkthrough), `.gitignore` (`hello.mmd`).
+- `docs/architecture/GRAPH_INTROSPECTION.md` §7 (Mermaid), §8 (DOT; former §6), fixed duplicate §5 → §6 record/replay.
+- `docs/INSTALL.md`, `docs/DOCS_INDEX.md`, `docs/README.md`, `docs/architecture/README.md`, `docs/reference/GRAPH_SCHEMA.md`.
+
+---
+
 ## Compiler — diagnostics merge dedup + `--diagnostics-format` (2026-03-09)
 
 ### Behavior

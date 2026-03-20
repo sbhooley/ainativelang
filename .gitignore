@@ -25,6 +25,7 @@ venv/
 
 # Temp / scratch files
 tmp_*
+hello.mmd
 
 # OS artifacts
 .DS_Store

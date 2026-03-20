@@ -31,6 +31,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 
 ## Notes
 
+- **Graph diagrams (Mermaid):** root `README.md` → *Visualize your workflow*; details in [`architecture/GRAPH_INTROSPECTION.md`](architecture/GRAPH_INTROSPECTION.md) §7 (`ainl visualize`, `ainl-visualize`).
 - `DOCS_INDEX.md` remains in place as the detailed reference map.
 - Existing paths will be migrated gradually to avoid breaking relative links and old deep links.
 - `case_studies/` is the canonical case-study folder name going forward.
