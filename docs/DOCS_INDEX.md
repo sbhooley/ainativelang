@@ -112,6 +112,7 @@ entry point for new users or unsupervised agents.
 - Autonomous ops monitors index: `docs/operations/AUTONOMOUS_OPS_MONITORS.md`
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`
+  - v1.1 additive RFC (deterministic metadata/filtering only): `docs/adapters/MEMORY_CONTRACT_V1_1_RFC.md`
   - Memory v1 bridge and CLI tools (JSON/JSONL): `tooling/memory_bridge.py`, `scripts/export_memory_records.py`, `scripts/import_memory_records.py`
   - One-way markdown daily-log export (human-facing): `tooling/memory_markdown_bridge.py`, `scripts/export_memory_daily_log_markdown.py`
   - Curated markdown import (long-term facts/preferences): `tooling/memory_markdown_import.py`, `scripts/import_memory_markdown.py`
