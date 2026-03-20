@@ -2,7 +2,7 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `scripts/runtime_runner_service.py`
 **Reference ecosystem:** OpenClaw/NemoClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters, sandboxed operator deployments
@@ -206,11 +206,11 @@ This distinction is important for truthful documentation and benchmarking.
 
 ### 5.4 Compile-time composition (includes)
 
-AINL programs can **`include`** other `.ainl` sources before compilation completes. The compiler **merges** included labels under an **alias prefix** (`alias/LABEL`, e.g. `retry/ENTRY`, `retry/EXIT_OK`). Shared modules declare **`LENTRY:`** and **`LEXIT_*:`** labels; parents invoke them with **`Call alias/ENTRY ->out`**. This is **compile-time** composition only—no runtime plugin loader—so agents and humans can reuse **verified** subgraphs, shrink duplicated control flow, and reason over **qualified** names in the canonical IR. Semantics and tests: `tests/test_includes.py`; introspection: `docs/architecture/GRAPH_INTROSPECTION.md`.
+AINL programs can **`include`** other `.ainl` sources before compilation completes. The compiler **merges** included labels under an **alias prefix** (`alias/LABEL`, e.g. `retry/ENTRY`, `retry/EXIT_OK`). Shared modules declare **`LENTRY:`** and **`LEXIT_*:`** labels; parents invoke them with **`Call alias/ENTRY ->out`**. This is **compile-time** composition only—no runtime plugin loader—so agents and humans can reuse **verified** subgraphs, shrink duplicated control flow, and reason over **qualified** names in the canonical IR. Starter modules ship under `modules/common/` with strict-safe patterns, and a minimal include demo is provided in `examples/timeout_demo.ainl`. Semantics and tests: `tests/test_includes.py`; introspection: `docs/architecture/GRAPH_INTROSPECTION.md`.
 
 ### 5.5 Graph visualization CLI and diagnostic surfacing
 
-The reference implementation ships **CLI** tools that compile in **strict** mode and surface **native structured diagnostics** (`Diagnostic` rows with lineno, optional character spans, kinds, and suggested fixes) alongside legacy string errors. Validators and the **Mermaid graph visualizer** (`ainl visualize` / `ainl-visualize`, `scripts/visualize_ainl.py`) reuse this path; output can be **rich**-styled (optional dependency), plain text, or **JSON** for automation. The visualizer renders **`ir["labels"]`** as **Mermaid** flowcharts with **subgraph clusters** per include alias and explicit **synthetic edges** for **`Call`** into callee entry labels where helpful for human understanding. See root `README.md` and `docs/architecture/GRAPH_INTROSPECTION.md` §7.
+The reference implementation ships **CLI** tools that compile in **strict** mode and surface **native structured diagnostics** (`Diagnostic` rows with lineno, optional character spans, kinds, and suggested fixes) alongside legacy string errors. Validators and the **Mermaid graph visualizer** (`ainl visualize` / `ainl-visualize`, `scripts/visualize_ainl.py`) reuse this path; output can be **rich**-styled (optional dependency), plain text, or **JSON** for automation. The visualizer renders **`ir["labels"]`** as **Mermaid** flowcharts with **subgraph clusters** per include alias and explicit **synthetic edges** for **`Call`** into callee entry labels where helpful for human understanding. As of `v1.2.1`, the same CLI supports direct image export (`--png`, `--svg`, with `--width`/`--height` and extension auto-detect for `.png`/`.jpg`/`.jpeg`/`.svg`) via Playwright-backed rendering.
 
 ---
 
@@ -742,6 +742,9 @@ The following capabilities were listed as future work in earlier drafts and have
   capabilities, security reports, safe-default `ainl_run`) to MCP-compatible
   hosts. It is workflow-focused, safe-default restricted, and reuses existing
   compiler/runtime semantics rather than widening the language.
+- **Conformance matrix runner** — `make conformance` executes the full parallelized snapshot suite (tokenizer round-trip, IR canonicalization, strict validation, runtime parity, emitter stability) with CI execution on push/PR and generated status artifacts (`summary.md`, SVG badge).
+- **Visualizer image export** — `ainl visualize` supports direct PNG/SVG rendering for shareable architecture snapshots (`--png`, `--svg`, width/height controls, and extension auto-detect from `-o`).
+- **Starter include demo artifact** — `examples/timeout_demo.ainl` provides a strict-safe timeout include example for docs and social/demo usage.
 
 ### 17.2 Remaining Future Work
 
