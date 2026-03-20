@@ -596,6 +596,7 @@ See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Pyt
 | `grammar_constraint.py` | Thin compatibility layer that composes formal grammar + priors + pruning APIs |
 | `docs/RUNTIME_COMPILER_CONTRACT.md` | Runtime/compiler/decoder ownership + conformance contract |
 | `scripts/validate_ainl.py` | CLI validator: compile .lang, print IR or emit artifact |
+| `scripts/visualize_ainl.py` | Graph visualizer: compile to Mermaid (clusters for `include` aliases); see **Visualize your workflow** below |
 | `scripts/validator_app.py` | Web validator (FastAPI): POST .lang → validate, GET / for paste UI |
 | `scripts/generate_synthetic_dataset.py` | Generate 10k+ valid .lang programs into `data/synthetic/` |
 | `tests/test_conformance.py` | Conformance tests (IR shape + emit outputs); run with `pytest tests/test_conformance.py` |
@@ -611,10 +612,38 @@ See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Pyt
 
 ## Tooling Reference
 
+### Visualize your workflow
+
+Compile a `.ainl` file to **Mermaid** for GitHub, [mermaid.live](https://mermaid.live), Obsidian, or any Mermaid-capable viewer. **Include aliases** become subgraph clusters automatically; synthetic `Call →` edges show how the main flow enters an included module.
+
+```bash
+# After pip install -e .
+ainl visualize examples/hello.ainl --output diagram.md
+# or the standalone entry point
+ainl-visualize examples/hello.ainl -o diagram.md
+```
+
+**Example render** (paste into [mermaid.live](https://mermaid.live); node ids with `/` are quoted). Includes produce a **retry** cluster; **synthetic** `Call` edges (annotated in tool output) link the caller into the included entry label:
+
+```mermaid
+graph TD
+    direction TB
+    subgraph c_retry ["retry"]
+        "retry/ENTRY"[ENTRY] --> "retry/n1"[EXPONENTIAL 5 200]
+        "retry/n1" --> "retry/EXIT_OK"[EXIT_OK]
+    end
+    L1[Your logic] -->|"call"| "retry/ENTRY"
+    %% Synthetic edges: Call → included label entry (not explicit in IR)
+```
+
+Real CLI output uses fully qualified ids (e.g. `"main/1/n1"`, `"retry/ENTRY/n1"`) and matches this structure; single-label programs show one `main` subgraph.
+
+Use `--no-clusters` for a flat graph, `--labels-only` for dense programs, and `-o -` for stdout.
+
 - **Validator CLI**: `python3 scripts/validate_ainl.py [file.lang] [--emit server|react|openapi|prisma|sql]`; stdin supported.
 - **Strict diagnostics**: `--strict` uses structured compiler diagnostics; stderr shows a numbered report (3-line source context, carets when spans exist, suggestions). **`--diagnostics-format=auto|plain|json|rich`** controls output (`auto` uses rich when the package is installed, stderr is a TTY, and `--no-color` is off). **`--json-diagnostics`** is a legacy alias for `json`. Install optional `pip install -e ".[dev]"` for **rich**. **`--no-color`** forces plain text instead of rich styling.
 - **Validator web**: `uvicorn scripts.validator_app:app --port 8766` then open http://127.0.0.1:8766/ to paste and validate.
-- **Installed CLIs**: `ainl-validate`, `ainl-validator-web`, `ainl-generate-dataset`, `ainl-compat-report`, `ainl-tool-api`, `ainl-ollama-eval`, `ainl-ollama-benchmark`, `ainl-validate-examples`, `ainl-check-viability`, `ainl-playbook-retrieve`, `ainl-test-runtime`, `ainl`.
+- **Installed CLIs**: `ainl-validate`, `ainl-validator-web`, `ainl-generate-dataset`, `ainl-compat-report`, `ainl-tool-api`, `ainl-ollama-eval`, `ainl-ollama-benchmark`, `ainl-validate-examples`, `ainl-check-viability`, `ainl-playbook-retrieve`, `ainl-test-runtime`, `ainl-visualize`, `ainl`.
 - **Runtime modes**: `ainl run ... --execution-mode graph-preferred|steps-only|graph-only --unknown-op-policy skip|error`.
 - **Strict literal policy**: in strict mode, bare identifier-like tokens in read positions are treated as variable refs; quote string literals explicitly (see `docs/RUNTIME_COMPILER_CONTRACT.md` and `docs/language/grammar.md`).
 - **Golden fixtures**: `ainl golden` validates `examples/*.ainl` against `*.expected.json`.

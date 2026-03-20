@@ -1,0 +1,3 @@
+# Intentionally broken: missing include target for strict / visualize error demos.
+include modules/this_file_does_not_exist.ainl as m
+L1: J "x"

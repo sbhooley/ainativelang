@@ -434,6 +434,23 @@ def main() -> None:
     gld.add_argument("--max-steps", type=int, default=None)
     gld.set_defaults(func=cmd_golden)
 
+    def cmd_visualize(args: argparse.Namespace) -> int:
+        from scripts.visualize_ainl import main as visualize_main
+
+        return visualize_main(list(args.visualize_argv))
+
+    vis = sub.add_parser(
+        "visualize",
+        help="Compile .ainl to a Mermaid/DOT-style diagram (pass-through to ainl-visualize)",
+    )
+    vis.add_argument(
+        "visualize_argv",
+        nargs=argparse.REMAINDER,
+        default=[],
+        help="Arguments for ainl-visualize (path, --output, --no-clusters, …)",
+    )
+    vis.set_defaults(func=cmd_visualize)
+
     args = ap.parse_args()
     raise SystemExit(args.func(args))
 
