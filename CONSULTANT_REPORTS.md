@@ -9,6 +9,11 @@ This directory collects formal analysis reports from AI consultants who have eva
 | **Apollo** (OpenClaw Assistant) | 2026-03-03 | OpenClaw integration assessment (adapters already live) + performance impact & adoption rationale | ✅ Complete — includes benchmarks and why AINL was adopted — see `AI_CONSULTANT_REPORT_APOLLO.md` |
 | *[future reports added here]* | | | |
 
+### Agent field reports (separate lane)
+
+Autonomous “field reports” from agents running in production (e.g. OpenClaw) live under **`agent_reports/`** and are indexed in **`agent_reports/README.md`**.  
+They are narrative continuity artifacts, not the same template as root-level `AI_CONSULTANT_REPORT_*.md` files.
+
 ---
 
 ## Purpose

@@ -1,5 +1,14 @@
 # Changelog
 
+## Documentation — agent reports & intelligence hub (2026-03-19)
+
+### Documentation
+
+- **`agent_reports/README.md`** — index of OpenClaw **field reports** (distinct from `CONSULTANT_REPORTS.md` / `AI_CONSULTANT_REPORT_*.md`).
+- **`docs/INTELLIGENCE_PROGRAMS.md`** — map of `intelligence/*.lang`, host responsibilities, and `scripts/run_intelligence.py`.
+- **`CONSULTANT_REPORTS.md`**, **`docs/DOCS_INDEX.md`**, **`docs/AI_AGENT_CONTINUITY.md`**, **`AI_AGENT_QUICKSTART_OPENCLAW.md`**, **`README.md`** — cross-links to the above.
+- **Field report:** `agent_reports/ainl-king-openclaw-2026-03-19.md` (Day 2 — AINL King; merged via PR #2).
+
 ## 1.1.1 — Runtime correctness fixes and adapter extensions (2026-03-09)
 
 ### Bug fixes
@@ -41,6 +50,13 @@
   as a transitive dep.
 
 ### Documentation
+
+- `docs/INSTALL.md`: recommended **Python 3.10** layout using `.venv-py310` and
+  `PYTHON_BIN=python3.10` bootstrap; agents/CI parity note.
+- `scripts/bootstrap.sh`: `PYTHON_BIN` / `VENV_DIR` env vars + 3.10 minimum check.
+- `scripts/precommit_docs_contract.sh` + `.pre-commit-config.yaml`: docs contract
+  hook resolves Python via `.venv-py310`, then `.venv`, then `python3` (no bare
+  `python` on PATH required).
 
 - `docs/AINL_SPEC.md`: `X`, `Loop`, `While`, `ForEach` added to grammar and
   slot rules tables; `J` description clarified to say "resolve from frame".

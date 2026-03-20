@@ -162,5 +162,12 @@ To add/edit a job, use the OpenClaw operator UI or edit the cron store. The payl
 
 ---
 
-Last updated: 2026‑03‑18
+## See also
+
+- **`docs/INTELLIGENCE_PROGRAMS.md`** — full map of `intelligence/*.lang` (digest, consolidation, summarizer, bootstrap context, continuity).
+- **`agent_reports/README.md`** — indexed OpenClaw agent field reports.
+
+---
+
+Last updated: 2026‑03‑19
 Maintained by: Steven / Apollo

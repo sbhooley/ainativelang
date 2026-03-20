@@ -35,7 +35,9 @@ Read in order:
 4. `docs/AINL_SPEC.md` (sections 0-3 only) — core syntax and execution model
 5. `examples/openclaw/daily_digest.lang` — a monitor workflow example
 6. `AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw integration strategy
-7. `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` — required before coding (steps + output structure)
+7. `agent_reports/README.md` — indexed **field reports** from agents running AINL in production (continuity narratives)
+8. `docs/INTELLIGENCE_PROGRAMS.md` — `intelligence/*.lang` monitors + `scripts/run_intelligence.py` runner
+9. `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` — required before coding (steps + output structure)
 
 **Key concepts to internalize:**
 - Canonical IR = nodes/edges (graph-first)

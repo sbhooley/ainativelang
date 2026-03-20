@@ -25,6 +25,8 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Public initiator references: <https://x.com/sbhooley>, <https://stevenhooley.com>, <https://linkedin.com/in/sbhooley>
 - Project timeline + release milestones (2024 foundations; 2025-2026 formalization): `docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md`, `docs/CHANGELOG.md`
 - **Consultant reports index**: `CONSULTANT_REPORTS.md` (see also `AI_CONSULTANT_REPORT_APOLLO.md`)
+- **Agent field reports (OpenClaw / ops narratives)**: `agent_reports/README.md` (e.g. `ainl-king-openclaw-2026-03-19.md`)
+- **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
 - Contributor entrypoint: `CONTRIBUTING.md`
 - Audience quickstart: `docs/AUDIENCE_GUIDE.md`
 - Install and environment setup: `docs/INSTALL.md`

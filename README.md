@@ -519,7 +519,7 @@ The emitted server includes **structured logging** (request_id, method, path, st
 
 ### Requirements
 
-See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Python 3.10+, pip and virtual environment support, Docker for container-based deployment flows.
+See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Python 3.10+, pip and virtual environment support, Docker for container-based deployment flows. **Match CI:** use a 3.10 venv at `.venv-py310` (`PYTHON_BIN=python3.10 VENV_DIR=.venv-py310 bash scripts/bootstrap.sh`) and run tools as `./.venv-py310/bin/python`.
 
 ---
 
@@ -546,6 +546,9 @@ See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Pyt
 | `tests/test_conformance.py` | Conformance tests (IR shape + emit outputs); run with `pytest tests/test_conformance.py` |
 | `tests/test_*.lang` | Example specs |
 | `examples/` | Example programs with explicit strict/non-strict classes (see `tooling/artifact_profiles.json`) |
+| `intelligence/` | OpenClaw-oriented monitors (digest, memory consolidation, token-aware bootstrap); see `docs/INTELLIGENCE_PROGRAMS.md` |
+| `agent_reports/` | Agent field reports from production OpenClaw runs; index in `agent_reports/README.md` |
+| `scripts/run_intelligence.py` | Dev runner for selected `intelligence/*.lang` programs |
 | `tests/emits/server/` | Emitted server (logging, rate limit, health/ready), static, ir.json, openapi.json, Dockerfile, docker-compose.yml, k8s.yaml |
 | `.github/workflows/ci.yml` | CI: pytest conformance, emit pipeline, example validation |
 
