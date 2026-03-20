@@ -20,9 +20,20 @@
 
 It is designed for teams building AI workflows that need multiple steps, state and memory, tool use, repeatable execution, validation and control, and lower dependence on long prompt loops.
 
-New to AINL?
-Start at https://ainativelang.com for the product overview, guided onboarding, and high-level “why AINL” story.
-Stay in this repo if you want the technical source of truth, installation, CLI/runner/MCP usage, and implementation details.
+> [!TIP]
+> **New to AINL?**
+> Visit **[ainativelang.com](https://ainativelang.com)** for the high-level product story, integrations, use cases, and commercial/enterprise paths.
+>
+> This GitHub repo is the **technical source of truth** for AINL:
+> - compiler, runtime, and canonical graph IR
+> - CLI, HTTP runner, and MCP server
+> - docs, examples, conformance, and implementation details
+>
+> **Start here**
+> - **Understand AINL first:** [ainativelang.com](https://ainativelang.com)
+> - **Run it now (CLI / runner / MCP):** [Choose Your Path](#choose-your-path)
+> - **Read the docs hub:** [`docs/README.md`](docs/README.md)
+> - **Using Claude Code / Cowork / Dispatch-style tools?** See the MCP/integration guidance in [`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md) and [`docs/INTEGRATION_STORY.md`](docs/INTEGRATION_STORY.md)
 
 > TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
 
