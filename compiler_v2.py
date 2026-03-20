@@ -4,9 +4,11 @@ Syntax: 1-char OP + slots (space-delimited; quoted strings preserved). Parses to
 Spec: docs/AINL_SPEC.md. Canonical IR: labels[id].nodes/edges + legacy.steps.
 Lossless: source stored exactly; tokenizer emits Token(kind, raw, value, span); meta keeps raw_line + token spans.
 """
+import copy
 import json
 import re
 import difflib
+from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, Set, Sequence
 
 from compiler_diagnostics import (
@@ -109,6 +111,7 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
     "Pol": {"scope": "top", "min_slots": 1},
     "Txn": {"scope": "top", "min_slots": 1},
     "Inc": {"scope": "top", "min_slots": 1},
+    "include": {"scope": "top", "min_slots": 1},
     # Governance/metadata declarations
     "Role": {"scope": "top", "min_slots": 1},
     "Allow": {"scope": "top", "min_slots": 2},
@@ -901,6 +904,414 @@ class AICodeCompiler:
                 nums.append(int(s))
         return str(max(nums) + 1) if nums else "1"
 
+    def _resolve_include_path(
+        self, raw_path: str, parent_source_path: Optional[str]
+    ) -> Tuple[Optional[Path], Optional[str]]:
+        """Resolve include path: parent-relative, then cwd, then cwd/modules/."""
+        raw = (raw_path or "").strip()
+        if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+            raw = raw[1:-1]
+        raw = raw.strip()
+        if not raw:
+            return None, "empty include path"
+        candidates: List[Path] = []
+        try:
+            if parent_source_path:
+                p = Path(parent_source_path)
+                base = p.parent if p.is_file() else p
+                candidates.append((base / raw).resolve())
+            candidates.append((Path.cwd() / raw).resolve())
+            candidates.append((Path.cwd() / "modules" / raw).resolve())
+        except (OSError, ValueError) as e:
+            return None, str(e)
+        seen: Set[str] = set()
+        for c in candidates:
+            key = str(c)
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                if c.is_file():
+                    return c, None
+            except OSError:
+                continue
+        return None, f"include path not found: {raw_path!r}"
+
+    def _scan_include_prelude(
+        self, lines: List[str]
+    ) -> Tuple[List[Tuple[int, Dict[str, Any]]], Set[int]]:
+        """Collect leading `include` lines; stop at first other non-empty, non-comment line."""
+        collected: List[Tuple[int, Dict[str, Any]]] = []
+        prelude_linenos: Set[int] = set()
+        for lineno, line in enumerate(lines, 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            try:
+                tokens = self.tokenize_line_lossless(line, lineno)
+            except ValueError:
+                break
+            ln = self.parse_line_lossless(tokens, line, lineno)
+            if str(ln.get("op_value") or "").lower() != "include":
+                break
+            collected.append((lineno, ln))
+            prelude_linenos.add(lineno)
+        return collected, prelude_linenos
+
+    @staticmethod
+    def _parse_include_directive(slot_values: List[str]) -> Optional[Tuple[str, str]]:
+        """Return (path, alias) or None. Alias defaults to path stem."""
+        if not slot_values:
+            return None
+        path_tok = slot_values[0]
+        if len(slot_values) >= 3 and str(slot_values[1]).lower() == "as":
+            alias = str(slot_values[2]).strip()
+            if not alias:
+                return None
+        elif len(slot_values) == 1:
+            alias = Path(path_tok).stem
+        else:
+            return None
+        return path_tok, alias
+
+    @staticmethod
+    def _subgraph_source_has_top_level_e_or_s(sub_code: str) -> bool:
+        """True if any non-comment line starts with top-level E or S (forbidden in strict includes)."""
+        for line in sub_code.split("\n"):
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            toks = s.split(None, 1)
+            if not toks:
+                continue
+            if toks[0] in ("E", "S"):
+                return True
+        return False
+
+    def _subgraph_contract_errors(self, labels: Dict[str, Any]) -> List[str]:
+        """Strict include contract: exactly one ENTRY label, ≥1 EXIT_* label."""
+        errs: List[str] = []
+        keys = [str(k) for k in labels.keys() if str(k) != "_anon"]
+        entry_keys = [k for k in keys if k == "ENTRY" or self._norm_lid(k) == "ENTRY"]
+        if len(entry_keys) != 1:
+            errs.append(
+                f"included subgraph must have exactly one ENTRY label (found {len(entry_keys)})"
+            )
+        exit_keys = [k for k in keys if str(k).startswith("EXIT_")]
+        if not exit_keys:
+            errs.append("included subgraph must declare at least one EXIT_* label")
+        return errs
+
+    def _map_subgraph_label_ref(
+        self, val: Any, labels: Dict[str, Any], idmap: Dict[str, str]
+    ) -> Any:
+        if val is None:
+            return None
+        nv = self._norm_lid(val)
+        if nv is None:
+            return val
+        for lk in labels.keys():
+            sk = str(lk)
+            if self._norm_lid(sk) == nv:
+                return idmap[sk]
+        return val
+
+    def _prefix_subgraph_labels(self, labels: Dict[str, Any], alias: str) -> Dict[str, Any]:
+        """Deep-copy labels and prefix label keys, node ids, edges, legacy label refs."""
+
+        def _pfx_nid(tok: Any) -> Any:
+            if tok is None or not isinstance(tok, str) or not tok:
+                return tok
+            if tok.startswith(f"{alias}/"):
+                return tok
+            return f"{alias}/{tok}"
+
+        idmap: Dict[str, str] = {}
+        for lk in labels.keys():
+            sk = str(lk)
+            idmap[sk] = f"{alias}/{sk}"
+        out: Dict[str, Any] = {}
+        for lk, body in labels.items():
+            sk = str(lk)
+            new_lid = idmap[sk]
+            body_copy = copy.deepcopy(body) if isinstance(body, dict) else body
+            if not isinstance(body_copy, dict):
+                out[new_lid] = body_copy
+                continue
+            nodes = body_copy.get("nodes")
+            if isinstance(nodes, list):
+                for n in nodes:
+                    if isinstance(n, dict) and n.get("id") is not None:
+                        oid = str(n["id"])
+                        n["id"] = _pfx_nid(oid)
+            edges = body_copy.get("edges")
+            if isinstance(edges, list):
+                for e in edges:
+                    if not isinstance(e, dict):
+                        continue
+                    fk = e.get("from")
+                    if isinstance(fk, str) and fk:
+                        e["from"] = _pfx_nid(fk)
+                    tk = e.get("to")
+                    if e.get("to_kind") == "node" and isinstance(tk, str) and tk:
+                        e["to"] = _pfx_nid(tk)
+                    elif e.get("to_kind") == "label" and tk is not None:
+                        mapped = self._map_subgraph_label_ref(tk, labels, idmap)
+                        e["to"] = mapped
+            ent = body_copy.get("entry")
+            if isinstance(ent, str) and ent:
+                body_copy["entry"] = _pfx_nid(ent)
+            ex = body_copy.get("exits")
+            if isinstance(ex, list):
+                body_copy["exits"] = [_pfx_nid(x) if isinstance(x, str) else x for x in ex]
+            leg = body_copy.get("legacy")
+            if isinstance(leg, dict):
+                steps = leg.get("steps")
+                if isinstance(steps, list):
+                    for s in steps:
+                        if not isinstance(s, dict):
+                            continue
+                        opn = s.get("op")
+                        if opn == "If":
+                            if "then" in s:
+                                s["then"] = self._map_subgraph_label_ref(s.get("then"), labels, idmap)
+                            if "else" in s:
+                                s["else"] = self._map_subgraph_label_ref(s.get("else"), labels, idmap)
+                        elif opn == "Err" and "handler" in s:
+                            s["handler"] = self._map_subgraph_label_ref(s.get("handler"), labels, idmap)
+                        elif opn == "Call" and "label" in s:
+                            s["label"] = self._map_subgraph_label_ref(s.get("label"), labels, idmap)
+                        elif opn in ("Loop", "While"):
+                            if "body" in s:
+                                s["body"] = self._map_subgraph_label_ref(s.get("body"), labels, idmap)
+                            if "after" in s:
+                                s["after"] = self._map_subgraph_label_ref(s.get("after"), labels, idmap)
+            out[new_lid] = body_copy
+        return out
+
+    def _include_path_diagnostic(
+        self,
+        kind: str,
+        lineno: int,
+        line_node: Dict[str, Any],
+        message: str,
+        suggested_fix: str,
+        source_lines: Sequence[str],
+    ) -> Diagnostic:
+        span_u, col_u = self._strict_nth_slot_content_char_span(
+            line_node, 0, lineno, source_lines
+        )
+        return Diagnostic(
+            lineno=lineno,
+            col_offset=col_u,
+            kind=kind,
+            message=message,
+            span=span_u,
+            suggested_fix=suggested_fix,
+        )
+
+    def _emit_include_diagnostic(
+        self,
+        *,
+        lineno: int,
+        line_node: Dict[str, Any],
+        message: str,
+        suggested_fix: str,
+        source_lines: Sequence[str],
+        context: Optional[CompilerContext],
+    ) -> None:
+        """Structured include issue: strict → kind include_failure + legacy error; else include_warning."""
+        kind = "include_failure" if self.strict_mode else "include_warning"
+        d = self._include_path_diagnostic(
+            kind, lineno, line_node, message, suggested_fix, source_lines
+        )
+        if context is not None:
+            context.add(d)
+        prefix = f"Line {lineno}: "
+        if self.strict_mode:
+            self._errors.append(prefix + message)
+        else:
+            self._warnings.append(prefix + message)
+
+    def _resolved_include_key(self, p: Path) -> str:
+        try:
+            return str(p.resolve())
+        except OSError:
+            return str(p)
+
+    def _compile_self_path_key(self, source_path: Optional[str]) -> Optional[str]:
+        if not source_path:
+            return None
+        try:
+            return str(Path(source_path).resolve())
+        except OSError:
+            return None
+
+    @staticmethod
+    def _qualify_include_error_label_refs(
+        message: str, alias: str, sub_labels: Dict[str, Any]
+    ) -> str:
+        """Rewrite `Label 'ENTRY'` → `Label 'alias/ENTRY'` in subgraph compile errors (include UX)."""
+        if not message or not alias:
+            return message
+        keys = sorted(
+            (str(k) for k in sub_labels.keys() if k is not None and str(k) != "_anon"),
+            key=len,
+            reverse=True,
+        )
+        out = str(message)
+        for sk in keys:
+            out = out.replace(f"Label '{sk}'", f"Label '{alias}/{sk}'")
+        return out
+
+    def _process_include_prelude(
+        self,
+        prelude: List[Tuple[int, Dict[str, Any]]],
+        source_lines: List[str],
+        context: Optional[CompilerContext],
+        parent_source_path: Optional[str],
+        include_ancestors: Set[str],
+        emit_graph: bool,
+    ) -> None:
+        """Load and merge subgraphs from leading `include` lines (v1 modules)."""
+        self_key = self._compile_self_path_key(parent_source_path)
+        ancestor_stack = set(include_ancestors)
+        for lineno, line_node in prelude:
+            slots = line_node.get("slot_values") or []
+            parsed = self._parse_include_directive(list(slots))
+            if parsed is None:
+                self._emit_include_diagnostic(
+                    lineno=lineno,
+                    line_node=line_node,
+                    message="invalid `include` directive (expected `include <path> [as <alias>]`)",
+                    suggested_fix='Use: include \"modules/common/retry.ainl\" as retry',
+                    source_lines=source_lines,
+                    context=context,
+                )
+                continue
+            raw_path, alias = parsed
+            resolved_path, err_msg = self._resolve_include_path(raw_path, parent_source_path)
+            if resolved_path is None or err_msg:
+                self._emit_include_diagnostic(
+                    lineno=lineno,
+                    line_node=line_node,
+                    message=err_msg or "could not resolve include path",
+                    suggested_fix="Check the path exists next to the source file or under ./modules/.",
+                    source_lines=source_lines,
+                    context=context,
+                )
+                continue
+            inc_key = self._resolved_include_key(resolved_path)
+            if inc_key in ancestor_stack or (self_key is not None and inc_key == self_key):
+                self._emit_include_diagnostic(
+                    lineno=lineno,
+                    line_node=line_node,
+                    message=f"include cycle detected involving {resolved_path.name!r}",
+                    suggested_fix="Remove the circular include chain or merge shared code into one file.",
+                    source_lines=source_lines,
+                    context=context,
+                )
+                continue
+            try:
+                sub_code = resolved_path.read_text(encoding="utf-8")
+            except OSError as e:
+                self._emit_include_diagnostic(
+                    lineno=lineno,
+                    line_node=line_node,
+                    message=f"could not read included file: {e}",
+                    suggested_fix="Fix file permissions or path.",
+                    source_lines=source_lines,
+                    context=context,
+                )
+                continue
+
+            next_ancestors = set(ancestor_stack)
+            if self_key:
+                next_ancestors.add(self_key)
+
+            # Compile included unit without raising: parent must still run include-contract
+            # checks (ENTRY/EXIT_*, no top-level E/S) even when the subgraph has unrelated
+            # strict errors, so diagnostics stay actionable.
+            sub_compiler = AICodeCompiler(strict_mode=self.strict_mode)
+            sub_ir = sub_compiler.compile(
+                sub_code,
+                emit_graph=emit_graph,
+                context=None,
+                source_path=str(resolved_path),
+                include_ancestors=next_ancestors,
+            )
+
+            # --- Phase: include merge (literal hints + lowering) ---
+            # - Merge from sub_compiler.labels (pre-IR-export, __literal_fields intact on steps).
+            # - Prefix keys to `alias/LABEL` and copy bodies into self.labels.
+            # - The parent compiler then runs _steps_to_graph_all() on the combined program.
+            # - Do NOT merge from sub_ir["labels"]: that is a deepcopy built for output and has
+            #   __literal_fields stripped, so a second lowering would treat J "ok" as a variable.
+            sub_labels = sub_compiler.labels or {}
+            prefixed = self._prefix_subgraph_labels(sub_labels, alias)
+            existing = set(self.labels.keys())
+            conflict_keys = sorted(str(k) for k in prefixed if k in existing)
+
+            strict_msgs: List[str] = []
+            if self._subgraph_source_has_top_level_e_or_s(sub_code):
+                strict_msgs.append(
+                    "included subgraph must not declare top-level E or S (endpoint/service) ops"
+                )
+            strict_msgs.extend(self._subgraph_contract_errors(sub_labels))
+            if conflict_keys:
+                strict_msgs.append(
+                    "included labels conflict with existing labels: "
+                    + ", ".join(conflict_keys[:8])
+                    + ("..." if len(conflict_keys) > 8 else "")
+                )
+
+            compile_errs = [
+                self._qualify_include_error_label_refs(str(e), alias, sub_labels)
+                for e in (sub_ir.get("errors") or [])
+                if e
+            ]
+
+            if self.strict_mode and strict_msgs:
+                self._emit_include_diagnostic(
+                    lineno=lineno,
+                    line_node=line_node,
+                    message="; ".join(strict_msgs),
+                    suggested_fix="Rename the alias (`as other_name`), remove E/S from the include, "
+                    "or fix ENTRY/EXIT_* labels in the included file.",
+                    source_lines=source_lines,
+                    context=context,
+                )
+                continue
+
+            if self.strict_mode and compile_errs:
+                detail = compile_errs[0]
+                if len(compile_errs) > 1:
+                    detail = detail + "; " + "; ".join(compile_errs[1:3])
+                    if len(compile_errs) > 3:
+                        detail += "; ..."
+                self._emit_include_diagnostic(
+                    lineno=lineno,
+                    line_node=line_node,
+                    message=f"included file {resolved_path.name!r} failed strict compilation: {detail}",
+                    suggested_fix="Fix diagnostics in the included file or relax strict checks there.",
+                    source_lines=source_lines,
+                    context=context,
+                )
+                continue
+
+            if strict_msgs:
+                self._emit_include_diagnostic(
+                    lineno=lineno,
+                    line_node=line_node,
+                    message="; ".join(strict_msgs),
+                    suggested_fix="Rename the alias (`as other_name`), remove E/S from the include, "
+                    "or fix ENTRY/EXIT_* labels in the included file.",
+                    source_lines=source_lines,
+                    context=context,
+                )
+
+            for lk, body in prefixed.items():
+                self.labels[str(lk)] = body
+
     def _diag_label_node_from_message(self, message: str) -> Tuple[Optional[str], Optional[str]]:
         m = self._DIAG_LABEL_NODE_RE.search(message or "")
         if not m:
@@ -1472,7 +1883,7 @@ class AICodeCompiler:
         elif op == "J":
             var = s.get("var", "data")
             if var:
-                reads.append(str(var))
+                _add_read_if_var(var, "var")
         elif op == "Set":
             ref = s.get("ref")
             name = s.get("name")
@@ -1827,10 +2238,18 @@ class AICodeCompiler:
                             entry_defined.add(ep["return_var"])
                 violations = dataflow_defined_before_use(nodes, edges, entry, entry_defined)
                 for nid, var in violations:
-                    self._errors.append(
+                    msg = (
                         f"Label {lid!r}: node {nid!r} reads {var!r} which may be undefined on this path"
                         f" (if this is a string literal in strict mode, quote it explicitly)"
                     )
+                    # Include-aware hint: merged subgraph labels use `alias/NAME` keys.
+                    if "/" in str(lid):
+                        inc_alias = str(lid).split("/", 1)[0]
+                        msg += (
+                            f" (Label `{lid}` looks like an included subgraph merged as `{inc_alias}`; "
+                            f"check jumps and variables in that module, or quote string literals.)"
+                        )
+                    self._errors.append(msg)
 
             # Call effect inclusion: callee effects must be subset of caller effects.
             if self.strict_mode:
@@ -1947,12 +2366,16 @@ class AICodeCompiler:
         emit_graph: bool = True,
         *,
         context: Optional[CompilerContext] = None,
+        source_path: Optional[str] = None,
+        include_ancestors: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
         source_text = code
-        if context is not None:
-            context.reset_for_compile(source_text)
         lines = code.split("\n")
         source_lines = list(lines)
+        if context is not None:
+            context.reset_for_compile(source_text, source_path=source_path)
+        path_for_includes = context.source_path if context is not None else source_path
+        prelude_includes, prelude_linenos = self._scan_include_prelude(lines)
         cst_lines: List[Dict[str, Any]] = []
         parsed_ops = 0
         # Reset compiler state for deterministic multi-compile usage (eval/benchmark loops).
@@ -1993,6 +2416,14 @@ class AICodeCompiler:
         self._errors = []
         self._warnings = []
         self.meta = []
+        self._process_include_prelude(
+            prelude_includes,
+            source_lines,
+            context,
+            path_for_includes,
+            set(include_ancestors or ()),
+            emit_graph,
+        )
         for lineno, line in enumerate(lines, 1):
             try:
                 tokens = self.tokenize_line_lossless(line, lineno)
@@ -2004,6 +2435,10 @@ class AICodeCompiler:
             op_value = line_node["op_value"]
             slots = line_node["slot_values"]
             slot_kinds = line_node.get("slot_kinds", [])
+            if lineno in prelude_linenos:
+                op0 = MODULE_ALIASES.get(op_value, op_value)
+                line_node["op_canonical"] = op0
+                continue
             if not op_value and not slots:
                 continue
             parsed_ops += 1
@@ -2444,10 +2879,13 @@ class AICodeCompiler:
 
             elif op == "J":
                 var = slots[0] if slots else "data"
+                step_j = {"op": "J", "lineno": lineno, "var": var}
+                if slots and slot_kinds and slot_kinds[0] == "string":
+                    step_j["__literal_fields"] = {"var": True}
                 if self.current_label:
-                    self._label_steps(self.current_label).append({"op": "J", "lineno": lineno, "var": var})
+                    self._label_steps(self.current_label).append(step_j)
                 else:
-                    self._label_steps("_anon").append({"op": "J", "lineno": lineno, "var": var})
+                    self._label_steps("_anon").append(step_j)
 
             elif op == "U":
                 name = slots[0] if slots else "Anon"
@@ -3199,12 +3637,10 @@ class AICodeCompiler:
             self._warnings.append(f"api deprecations declared: {len(self.api_opts.get('deprecate', []))}")
         self._append_canonical_lint_warnings(cst_lines)
 
-        # Internal compile-time hints should not leak into emitted IR.
-        for _lid, _body in self.labels.items():
-            _steps = ((_body.get("legacy") or {}).get("steps") or [])
-            for _s in _steps:
-                if isinstance(_s, dict):
-                    _s.pop("__literal_fields", None)
+        # Internal compile-time hints (__literal_fields on legacy steps) must stay on self.labels
+        # until the final IR is built: included subgraphs are merged into the parent compiler
+        # and _steps_to_graph_all() re-lowers steps → nodes; without hints, J "ok" becomes a read
+        # of ok. Strip only on the deepcopy attached to the returned IR.
 
         # Add fuzzy suggestions to errors before returning IR
         self._augment_errors_with_suggestions()
@@ -3239,6 +3675,13 @@ class AICodeCompiler:
         ):
             raise CompilationDiagnosticError(list(context.diagnostics), source_text)
 
+        labels_for_ir = copy.deepcopy(self.labels)
+        for _lid, _body in labels_for_ir.items():
+            _steps = ((_body.get("legacy") or {}).get("steps") or [])
+            for _s in _steps:
+                if isinstance(_s, dict):
+                    _s.pop("__literal_fields", None)
+
         ir: Dict[str, Any] = {
             "ir_version": self.ver or "1.0.0",
             "graph_schema_version": "1.0",
@@ -3246,7 +3689,7 @@ class AICodeCompiler:
             "cst": {"lines": cst_lines},
             "services": self.services,
             "types": self.types,
-            "labels": self.labels,
+            "labels": labels_for_ir,
             "crons": self.crons,
             "config": self.config,
             "observability": self.observability,

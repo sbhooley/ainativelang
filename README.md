@@ -74,6 +74,20 @@ python scripts/runtime_runner_service.py
 
 ---
 
+## Includes & modules
+
+Reuse subgraphs with top-level `include` (v1 modules). Paths resolve next to the current source file or under `./modules/`.
+
+```ainl
+include modules/common/retry.ainl as retry
+
+L1: Call retry/ENTRY ->out J out
+```
+
+In **strict** mode, an included file must define exactly one `LENTRY:` (merged as `alias/ENTRY`) and at least one `LEXIT_*:` exit label. Included units must not declare top-level `E` / `S` (endpoints/services live in the main program). Use quoted jumps for string payloads (e.g. `J "ok"`) so strict dataflow treats them as literals. See `modules/common/retry.ainl` and `tests/test_includes.py`.
+
+---
+
 ## Choose Your Path
 
 AINL can be used through three integration surfaces. All three run the same
