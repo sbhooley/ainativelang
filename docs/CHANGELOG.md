@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.2 (March 20, 2026)
+
+- **feat(memory)**: implement Memory Contract v1.1 additive runtime support in `runtime/adapters/memory.py`:
+  - optional deterministic metadata envelope fields (`source`, `confidence`, `tags`, `valid_at`)
+  - deterministic `memory.list` bounded filters (`tags_any`, `tags_all`, created/updated windows, `source`, `valid_at` windows, `limit`, `offset`)
+  - namespace retention hooks (`default_ttl_by_namespace`, `prune_strategy_by_namespace`)
+  - portable operational counters in adapter responses (`stats.operations`, `stats.reads`, `stats.writes`, `stats.pruned`)
+- **feat(capabilities)**: add capability-advertised memory profile in `tooling/capabilities.json` (`memory_profile: "v1.1-deterministic-metadata"`) with schema support in `tooling/capabilities.schema.json`
+- **test(memory)**: extend `tests/test_memory_adapter.py` for metadata round-trip, deterministic list filters/pagination, retention hooks, and operational counters
+- **docs(memory)**: align `docs/adapters/MEMORY_CONTRACT.md` and `docs/reference/CAPABILITY_REGISTRY.md` with shipped v1.1 additive behavior
+
 ## v1.2.1 (March 20, 2026)
 
 - **feat(visualizer)**: add image export for `ainl visualize` via Playwright (`--png`, `--svg`, `--width`, `--height`, and extension auto-detect for `.png`/`.jpg`/`.jpeg`/`.svg`)
