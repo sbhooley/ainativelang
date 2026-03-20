@@ -750,7 +750,7 @@ The following capabilities were listed as future work in earlier drafts and have
 
 Promising future work includes:
 
-- Richer graph visualization and interactive introspection
+- Interactive graph UX beyond static Mermaid/DOT exports (graph diffing, live drill-down, and runtime-overlay views)
 - Stronger patch / semantic diff tooling
 - Broader emitter maturity across additional target platforms
 - Tokenizer-aware benchmark lanes for more precise cost modeling
