@@ -20,7 +20,11 @@
 
 It is designed for teams building AI workflows that need multiple steps, state and memory, tool use, repeatable execution, validation and control, and lower dependence on long prompt loops.
 
-> AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
+New to AINL?
+Start at https://ainativelang.com for the product overview, guided onboarding, and high-level “why AINL” story.
+Stay in this repo if you want the technical source of truth, installation, CLI/runner/MCP usage, and implementation details.
+
+> TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
 
 ---
 
