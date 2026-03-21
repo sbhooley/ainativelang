@@ -28,7 +28,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 
 > [!TIP]
 > **New to AINL?**
-> --> HUMANS: TO GET STARTED >> JUST HAVE YOUR AGENT INSTALL THIS & ASK IT TO USE IT !! -- For more info visit **[ainativelang.com](https://ainativelang.com)** for the high-level product story, integrations, use cases, and commercial/enterprise paths.
+> --> HUMANS: TO GET STARTED --> JUST HAVE YOUR AGENT INSTALL THIS & ASK IT TO USE IT !! -- For more info visit **[ainativelang.com](https://ainativelang.com)** for the high-level product story, integrations, use cases, and commercial/enterprise paths.
 >
 > This GitHub repo is the **technical source of truth** for AINL:
 > - compiler, runtime, and canonical graph IR
