@@ -1,3 +1,14 @@
+## Ecosystem PRs (optional)
+
+Adding a **Clawflows-style workflow** or **Agency-Agents-style agent** under `examples/ecosystem/`? When you open the PR on GitHub, use the **template dropdown** and choose **Submit Workflow (Clawflows-style)** or **Submit Agent (Agency-Agents-style)**.
+
+Or, after pushing your branch, open a compare URL (replace `YOUR_BRANCH`):
+
+- Workflow: `https://github.com/sbhooley/ainativelang/compare/main...YOUR_BRANCH?quick_pull=1&template=workflow-submission.md`
+- Agent: `https://github.com/sbhooley/ainativelang/compare/main...YOUR_BRANCH?quick_pull=1&template=agent-submission.md`
+
+---
+
 ## What changed
 
 -

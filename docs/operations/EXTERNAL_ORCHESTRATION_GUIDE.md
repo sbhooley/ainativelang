@@ -387,6 +387,29 @@ host can then call the tools below.
 | `ainl_capabilities` | None | Discover available adapters, verbs, and privilege tiers |
 | `ainl_security_report` | None | Generate a per-label privilege/security map |
 | `ainl_run` | Adapter calls (restricted) | Compile, policy-validate, and execute a workflow |
+| `ainl_list_ecosystem` | None | List curated Clawflows / Agency-Agents preset URLs and local `examples/ecosystem` template paths |
+| `ainl_import_clawflow` | HTTPS fetch | Import a Clawflows `WORKFLOW.md` (URL or preset slug) into deterministic `.ainl` source |
+| `ainl_import_agency_agent` | HTTPS fetch | Import Agency-Agents Markdown (URL or preset slug) into deterministic `.ainl` source |
+| `ainl_import_markdown` | HTTPS fetch (if remote URL) | Generic Markdown → AINL (`type`: `workflow` or `agent`) |
+
+### Import Clawflows & Agency-Agents via MCP
+
+Use **`ainl_list_ecosystem`** to discover preset slugs (e.g. `morning-journal`,
+`check-calendar`, `mcp-builder`) and shipped template folders. Then call
+**`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, or
+**`ainl_import_markdown`** to retrieve **`ainl`** graph source and **`meta`**
+in the tool response (the server does not write files).
+
+**Example prompts for coding agents:** *“Import the morning briefing Clawflow
+using AINL—preset `morning-journal`—then validate with `ainl_validate`.”* ·
+*“List ecosystem presets and import the MCP Builder agent as `.ainl`.”*
+
+**Why:** structured graphs give **deterministic execution** and explicit cron /
+steps vs prose-only specs; on viable-subset, tokenizer-aligned scenarios that
+lines up with roughly **~1.02× viable leverage** vs unstructured prompts (see
+`BENCHMARK.md`, `docs/benchmarks.md`).
+
+**Checked-in samples:** examples under **`examples/ecosystem/`** in the repo are **kept fresh via weekly auto-sync** from upstream Clawflows and Agency-Agents (see **`.github/workflows/sync-ecosystem.yml`** and **`docs/ECOSYSTEM_OPENCLAW.md`**).
 
 ### Exposed MCP resources
 
@@ -494,8 +517,8 @@ resources are exposed.
 |---------|-------|-----------|
 | `validate_only` | `ainl_validate`, `ainl_compile` | none |
 | `inspect_only` | validate + `ainl_capabilities` + `ainl_security_report` | all |
-| `safe_workflow` | all 5 tools | all |
-| `full` | all 5 tools | all |
+| `safe_workflow` | all 9 tools (includes 4 ecosystem import tools) | all |
+| `full` | all 9 tools (includes 4 ecosystem import tools) | all |
 
 Example:
 
@@ -512,10 +535,10 @@ improve model focus and reduce unnecessary tool-selection reasoning.
 Narrower exposure also simplifies governance: operators and gateways have
 fewer tools to audit, restrict, and monitor.
 
-For example, a `validate_only` deployment exposes 2 tools instead of 5,
-eliminating execution-related tool descriptions entirely. This is useful
-when the host only needs AINL for syntax checking and IR inspection, not
-workflow execution.
+For example, a `validate_only` deployment exposes 2 tools instead of the full
+set (9 tools when nothing is excluded), eliminating execution- and import-related
+tool descriptions entirely. This is useful when the host only needs AINL for
+syntax checking and IR inspection, not workflow execution or ecosystem fetch.
 
 **Exposure scoping vs execution authorization:**
 

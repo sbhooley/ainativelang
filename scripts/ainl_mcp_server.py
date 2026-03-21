@@ -12,6 +12,9 @@ Security posture:
     ``policy`` parameter but can never widen beyond the server defaults.
   - Read-only tools (validate, compile, capabilities, security-report) have
     no side effects.
+  - Ecosystem import tools (``ainl_import_*``, ``ainl_list_ecosystem``) perform
+    **HTTPS fetches** to GitHub/raw URLs when resolving presets or URLs; they
+    return generated ``.ainl`` text and metadata but do not write the filesystem.
 
 MCP exposure scoping:
   - ``AINL_MCP_TOOLS``: comma-separated list of tools to expose (inclusion).
@@ -58,6 +61,12 @@ from tooling.capability_grant import (
     grant_to_allowed_adapters,
     load_profile_as_grant,
 )
+from tooling.mcp_ecosystem_import import (
+    import_agency_agent_mcp,
+    import_clawflow_mcp,
+    import_markdown_mcp,
+    list_ecosystem_templates,
+)
 
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
@@ -78,6 +87,10 @@ ALL_TOOL_NAMES: List[str] = [
     "ainl_capabilities",
     "ainl_security_report",
     "ainl_run",
+    "ainl_import_clawflow",
+    "ainl_import_agency_agent",
+    "ainl_import_markdown",
+    "ainl_list_ecosystem",
 ]
 
 ALL_RESOURCE_URIS: List[str] = [
@@ -188,9 +201,12 @@ if _HAS_MCP:
         "AINL",
         instructions=(
             "AINL is a graph-canonical workflow execution layer. "
-            "Use ainl-validate to check syntax, ainl-compile to produce IR, "
-            "ainl-capabilities to discover adapters, ainl-security-report to "
-            "audit privilege tiers, and ainl-run to execute workflows."
+            "Use ainl_validate to check syntax, ainl_compile to produce IR, "
+            "ainl_capabilities to discover adapters, ainl_security_report to "
+            "audit privilege tiers, and ainl_run to execute workflows. "
+            "Use ainl_list_ecosystem for curated Clawflows/Agency-Agents presets; "
+            "ainl_import_clawflow, ainl_import_agency_agent, and ainl_import_markdown "
+            "fetch Markdown and return deterministic .ainl source (network)."
         ),
     )
 
@@ -398,6 +414,82 @@ def ainl_run(
         "runtime_version": RUNTIME_VERSION,
         "ir_version": ir.get("ir_version"),
     }
+
+
+@_register_tool
+def ainl_import_clawflow(
+    url_or_name: str,
+    openclaw_bridge: bool = True,
+    import_all_preset_samples: bool = False,
+) -> dict:
+    """Import a Clawflows-style WORKFLOW.md into a deterministic AINL graph.
+
+    Pass a raw HTTPS URL to a Markdown file, or a curated preset slug (e.g.
+    ``check-calendar``, ``morning-journal``). Set ``import_all_preset_samples``
+    to true to fetch every bundled Clawflows sample (same set as ``ainl import clawflows``).
+
+    Performs outbound HTTPS. Returns ``ainl`` source and ``meta``; does not write files.
+    """
+    return import_clawflow_mcp(
+        url_or_name,
+        openclaw_bridge=openclaw_bridge,
+        import_all_preset_samples=import_all_preset_samples,
+    )
+
+
+@_register_tool
+def ainl_import_agency_agent(
+    personality_name: str,
+    tone: Optional[str] = None,
+    openclaw_bridge: bool = True,
+    import_all_preset_samples: bool = False,
+) -> dict:
+    """Import an Agency-Agents-style Markdown agent into a deterministic AINL graph.
+
+    ``personality_name`` is a preset slug (e.g. ``mcp-builder``) or an HTTPS URL
+    to agent Markdown. Optional ``tone`` is merged like CLI ``--personality``.
+    Set ``import_all_preset_samples`` to true to fetch every bundled agent sample.
+
+    Performs outbound HTTPS. Returns ``ainl`` source and ``meta``; does not write files.
+    """
+    return import_agency_agent_mcp(
+        personality_name,
+        tone=tone,
+        openclaw_bridge=openclaw_bridge,
+        import_all_preset_samples=import_all_preset_samples,
+    )
+
+
+@_register_tool
+def ainl_import_markdown(
+    url: str,
+    type: str,
+    personality: Optional[str] = None,
+    openclaw_bridge: bool = True,
+) -> dict:
+    """Fetch Markdown from a URL or path-like URL and convert to AINL.
+
+    ``type`` must be ``workflow`` or ``agent``. Optional ``personality`` applies
+    to agent imports. Performs outbound HTTPS when ``url`` is remote.
+
+    Returns ``ainl`` source and ``meta``; does not write files.
+    """
+    return import_markdown_mcp(
+        url,
+        type,
+        personality=personality,
+        openclaw_bridge=openclaw_bridge,
+    )
+
+
+@_register_tool
+def ainl_list_ecosystem() -> dict:
+    """List curated Clawflows and Agency-Agents preset URLs and local template paths.
+
+    No network I/O. Use before ``ainl_import_clawflow`` / ``ainl_import_agency_agent``
+    to discover slugs and ``examples/ecosystem`` folders shipped with the repo.
+    """
+    return list_ecosystem_templates()
 
 
 # ---------------------------------------------------------------------------

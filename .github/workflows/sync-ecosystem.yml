@@ -1,0 +1,76 @@
+# Weekly refresh of examples/ecosystem/* from upstream Clawflows & Agency-Agents Markdown.
+# Converts via the same path as: ainl import clawflows / ainl import agency-agents
+name: Sync ecosystem (Clawflows & Agency-Agents)
+
+on:
+  schedule:
+    - cron: "0 4 * * 1" # Monday 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write # ensure-labels step (gh label create)
+
+concurrency:
+  group: sync-ecosystem
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure GitHub labels exist (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create ecosystem --color "0E8A16" --description "Ecosystem examples / imports" 2>/dev/null || true
+          gh label create automation --color "5319E7" --description "Scheduled or bot-driven changes" 2>/dev/null || true
+          gh label create workflow --color "1D76DB" --description "Clawflows-style workflow contribution" 2>/dev/null || true
+          gh label create agent --color "FBCA04" --description "Agency-Agents-style agent contribution" 2>/dev/null || true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install AINL (CLI entry point `ainl`)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Import latest Clawflows samples
+        run: |
+          ainl import clawflows \
+            --output-dir examples/ecosystem/clawflows \
+            --no-openclaw-bridge
+
+      - name: Import latest Agency-Agents samples
+        run: |
+          ainl import agency-agents \
+            --output-dir examples/ecosystem/agency-agents \
+            --no-openclaw-bridge
+
+      - name: Open PR if ecosystem conversions changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: auto-sync upstream Clawflows & Agency-Agents conversions"
+          title: "chore: sync upstream Clawflows & Agency-Agents to AINL"
+          body: |
+            Automated sync of upstream Markdown → AINL under `examples/ecosystem/`.
+
+            - **Clawflows:** `examples/ecosystem/clawflows/*/original.md`, `converted.ainl`, `README.md`
+            - **Agency-Agents:** `examples/ecosystem/agency-agents/*/…`
+
+            Workflow: [`.github/workflows/sync-ecosystem.yml`](.github/workflows/sync-ecosystem.yml)
+          branch: auto-sync-ecosystem
+          delete-branch: true
+          labels: ecosystem, automation
+          add-paths: |
+            examples/ecosystem/**/*.md
+            examples/ecosystem/**/*.ainl

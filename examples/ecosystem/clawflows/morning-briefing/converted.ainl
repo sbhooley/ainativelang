@@ -1,0 +1,75 @@
+# Imported from Markdown (workflow) — parsed Clawflows-style graph.
+# Source: local:morning-briefing/original.md
+# Workflow: morning-journal
+# Schedule → cron: 0 9 * * * (default daily)
+
+S core cron "0 9 * * *"
+
+L_cron:
+  Call L_step_1 ->_r1
+  Call L_step_2 ->_r2
+  Call L_step_3 ->_r3
+  Call L_step_4 ->_r4
+  Call L_step_5 ->_r5
+  Call L_step_6 ->_r6
+  Call L_step_7 ->_r7
+  Call L_emit_queue ->_rq
+  If (core.eq 1 1) ->L_exit ->L_exit
+
+L_step_1:
+  R core.parse "{\"step\":1,\"title\":\"Set Up\",\"workflow\":\"morning-journal\",\"source\":\"md_import\"}" ->step_payload
+  R core.now ->now
+  R core.parse "{\"source\":\"md_import\",\"workflow\":\"morning-journal\"}" ->memory_meta
+  R memory put "workflow" "morning-journal" "step_1" step_payload 3600 memory_meta ->_m1
+  J step_payload
+
+L_step_2:
+  R core.parse "{\"step\":2,\"title\":\"Review Recent Context\",\"workflow\":\"morning-journal\",\"source\":\"md_import\"}" ->step_payload
+  R core.now ->now
+  R core.parse "{\"source\":\"md_import\",\"workflow\":\"morning-journal\"}" ->memory_meta
+  R memory put "workflow" "morning-journal" "step_2" step_payload 3600 memory_meta ->_m2
+  J step_payload
+
+L_step_3:
+  R core.parse "{\"step\":3,\"title\":\"Ask Reflection Questions\",\"workflow\":\"morning-journal\",\"source\":\"md_import\"}" ->step_payload
+  R core.now ->now
+  R core.parse "{\"source\":\"md_import\",\"workflow\":\"morning-journal\"}" ->memory_meta
+  R memory put "workflow" "morning-journal" "step_3" step_payload 3600 memory_meta ->_m3
+  J step_payload
+
+L_step_4:
+  R core.parse "{\"step\":4,\"title\":\"Save the Entry\",\"workflow\":\"morning-journal\",\"source\":\"md_import\"}" ->step_payload
+  R core.now ->now
+  R core.parse "{\"source\":\"md_import\",\"workflow\":\"morning-journal\"}" ->memory_meta
+  R memory put "workflow" "morning-journal" "step_4" step_payload 3600 memory_meta ->_m4
+  J step_payload
+
+L_step_5:
+  R core.parse "{\"step\":5,\"title\":\"Pattern Detection\",\"workflow\":\"morning-journal\",\"source\":\"md_import\"}" ->step_payload
+  R core.now ->now
+  R core.parse "{\"source\":\"md_import\",\"workflow\":\"morning-journal\"}" ->memory_meta
+  R memory put "workflow" "morning-journal" "step_5" step_payload 3600 memory_meta ->_m5
+  J step_payload
+
+L_step_6:
+  R core.parse "{\"step\":6,\"title\":\"Present Patterns (When Found)\",\"workflow\":\"morning-journal\",\"source\":\"md_import\"}" ->step_payload
+  R core.now ->now
+  R core.parse "{\"source\":\"md_import\",\"workflow\":\"morning-journal\"}" ->memory_meta
+  R memory put "workflow" "morning-journal" "step_6" step_payload 3600 memory_meta ->_m6
+  J step_payload
+
+L_step_7:
+  R core.parse "{\"step\":7,\"title\":\"Deliver\",\"workflow\":\"morning-journal\",\"source\":\"md_import\"}" ->step_payload
+  R core.now ->now
+  R core.parse "{\"source\":\"md_import\",\"workflow\":\"morning-journal\"}" ->memory_meta
+  R memory put "workflow" "morning-journal" "step_7" step_payload 3600 memory_meta ->_m7
+  J step_payload
+
+L_emit_queue:
+  R core.now ->now
+  R core.parse "{\"workflow\":\"morning-journal\",\"steps\":7,\"event\":\"workflow_complete\"}" ->out_payload
+  R queue Put imported_workflow out_payload ->_q
+  J out_payload
+
+L_exit:
+  J "markdown_import_workflow_ok"

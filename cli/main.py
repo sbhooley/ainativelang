@@ -370,6 +370,190 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def cmd_import_markdown(args: argparse.Namespace) -> int:
+    """Fetch Markdown and write compiling .ainl (parsed graph when possible, else Phase-1 stub)."""
+    import sys
+
+    root = _repo_root()
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    from tooling.markdown_importer import import_markdown_to_ainl
+
+    openclaw = not bool(getattr(args, "no_openclaw_bridge", False))
+    gen_soul = bool(getattr(args, "generate_soul", False))
+    if gen_soul and args.type != "agent":
+        print("import markdown: --generate-soul applies only to --type agent", file=sys.stderr)
+        return 1
+    try:
+        ainl, meta = import_markdown_to_ainl(
+            args.url_or_path,
+            md_type=args.type,
+            personality=args.personality or "",
+            openclaw_bridge=openclaw,
+            generate_soul=gen_soul,
+        )
+    except Exception as e:
+        if args.verbose:
+            raise
+        print(f"import markdown: {e}", file=sys.stderr)
+        return 1
+
+    if args.verbose:
+        for k, v in meta.items():
+            if k == "sidecars" and v:
+                print(f"{k}: SOUL.md + IDENTITY.md", file=sys.stderr)
+                continue
+            print(f"{k}: {v}", file=sys.stderr)
+
+    if args.dry_run:
+        print(ainl, end="")
+        return 0
+
+    out = Path(args.output).expanduser()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(ainl, encoding="utf-8")
+    kind = "stub AINL" if meta.get("fallback_stub") else "parsed AINL"
+    print(f"Wrote {out} ({meta.get('markdown_chars', 0)} chars markdown → {kind})")
+    side = meta.get("sidecars")
+    if gen_soul and isinstance(side, dict):
+        for fname, text in side.items():
+            p = out.parent / fname
+            p.write_text(text, encoding="utf-8")
+            print(f"Wrote {p}")
+    return 0
+
+
+def _ecosystem_readme_blurb(*, upstream: str, slug: str, parsed: bool) -> str:
+    p = "parsed" if parsed else "stub fallback"
+    return "\n".join(
+        [
+            f"# {slug}",
+            "",
+            f"Upstream: {upstream}",
+            "",
+            "## Files",
+            "",
+            "- `original.md` — source Markdown from the ecosystem repo.",
+            f"- `converted.ainl` — deterministic AINL graph ({p}).",
+            "",
+            "## Notes",
+            "",
+            "This folder is a **deterministic AINL version** of the prose workflow/agent spec — structured graph, explicit cron/steps or gates, and predictable control flow for **100% reliability** at compile/run time (vs free-form Markdown prompts).",
+            "",
+            "Diff vs upstream: headings and lists become `S core cron`, `Call` steps, `If` gates, and optional `memory` / `queue` bridge hooks instead of narrative instructions only.",
+            "",
+        ]
+    )
+
+
+def cmd_import_clawflows(args: argparse.Namespace) -> int:
+    import sys
+
+    root = _repo_root()
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    from tooling.markdown_importer import (
+        CLAWFLOWS_SAMPLE_URLS,
+        DEFAULT_FETCH_TIMEOUT_S,
+        load_markdown_source,
+        markdown_to_ainl_from_body,
+    )
+
+    base = Path(args.output_dir).expanduser() if args.output_dir else root / "examples" / "ecosystem" / "clawflows"
+    openclaw = not bool(getattr(args, "no_openclaw_bridge", False))
+    timeout = float(getattr(args, "timeout_s", DEFAULT_FETCH_TIMEOUT_S))
+    ok = 0
+    for slug, url in CLAWFLOWS_SAMPLE_URLS:
+        try:
+            _prov, md = load_markdown_source(url, timeout_s=timeout)
+        except Exception as e:
+            if args.verbose:
+                raise
+            print(f"import clawflows: skip {slug}: {e}", file=sys.stderr)
+            continue
+        sub = base / slug
+        sub.mkdir(parents=True, exist_ok=True)
+        (sub / "original.md").write_text(md, encoding="utf-8")
+        ainl, meta = markdown_to_ainl_from_body(
+            md,
+            provenance=url,
+            md_type="workflow",
+            openclaw_bridge=openclaw,
+        )
+        (sub / "converted.ainl").write_text(ainl, encoding="utf-8")
+        (sub / "README.md").write_text(
+            _ecosystem_readme_blurb(
+                upstream=f"[nikilster/clawflows](https://github.com/nikilster/clawflows) `{slug}`",
+                slug=slug,
+                parsed=bool(meta.get("parsed")),
+            ),
+            encoding="utf-8",
+        )
+        ok += 1
+        if args.verbose:
+            print(f"{slug}: parsed={meta.get('parsed')} stub={meta.get('fallback_stub')}", file=sys.stderr)
+    print(f"import clawflows: wrote {ok} workflow(s) under {base}")
+    return 0 if ok else 1
+
+
+def cmd_import_agency_agents(args: argparse.Namespace) -> int:
+    import sys
+
+    root = _repo_root()
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    from tooling.markdown_importer import (
+        AGENCY_AGENTS_SAMPLE_URLS,
+        DEFAULT_FETCH_TIMEOUT_S,
+        load_markdown_source,
+        markdown_to_ainl_from_body,
+    )
+
+    base = Path(args.output_dir).expanduser() if args.output_dir else root / "examples" / "ecosystem" / "agency-agents"
+    openclaw = not bool(getattr(args, "no_openclaw_bridge", False))
+    timeout = float(getattr(args, "timeout_s", DEFAULT_FETCH_TIMEOUT_S))
+    ok = 0
+    for slug, url in AGENCY_AGENTS_SAMPLE_URLS:
+        try:
+            _prov, md = load_markdown_source(url, timeout_s=timeout)
+        except Exception as e:
+            if args.verbose:
+                raise
+            print(f"import agency-agents: skip {slug}: {e}", file=sys.stderr)
+            continue
+        sub = base / slug
+        sub.mkdir(parents=True, exist_ok=True)
+        (sub / "original.md").write_text(md, encoding="utf-8")
+        ainl, meta = markdown_to_ainl_from_body(
+            md,
+            provenance=url,
+            md_type="agent",
+            personality=getattr(args, "personality", "") or "",
+            openclaw_bridge=openclaw,
+        )
+        (sub / "converted.ainl").write_text(ainl, encoding="utf-8")
+        (sub / "README.md").write_text(
+            _ecosystem_readme_blurb(
+                upstream=f"[msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) `{slug}`",
+                slug=slug,
+                parsed=bool(meta.get("parsed")),
+            ),
+            encoding="utf-8",
+        )
+        ok += 1
+        if args.verbose:
+            print(f"{slug}: parsed={meta.get('parsed')} stub={meta.get('fallback_stub')}", file=sys.stderr)
+    print(f"import agency-agents: wrote {ok} agent(s) under {base}")
+    return 0 if ok else 1
+
+
 def cmd_golden(args: argparse.Namespace) -> int:
     examples_dir = Path(args.examples_dir)
     ainl_files = sorted(examples_dir.rglob("*.ainl"))
@@ -475,6 +659,11 @@ def main() -> None:
     chk.add_argument("--strict", action="store_true")
     chk.set_defaults(func=cmd_check)
 
+    cmp = sub.add_parser("compile", help="Same as check: compile/validate an .ainl file to IR JSON")
+    cmp.add_argument("file")
+    cmp.add_argument("--strict", action="store_true")
+    cmp.set_defaults(func=cmd_check)
+
     gld = sub.add_parser("golden", help="Run golden fixtures from examples")
     gld.add_argument("--examples-dir", default=str(Path(__file__).resolve().parent.parent / "examples"))
     gld.add_argument("--trace", action="store_true")
@@ -499,6 +688,89 @@ def main() -> None:
         help="Arguments for ainl-visualize (path, --output, --no-clusters, …)",
     )
     vis.set_defaults(func=cmd_visualize)
+
+    imp = sub.add_parser("import", help="Import external formats into AINL")
+    imp_sub = imp.add_subparsers(dest="import_cmd", required=True)
+
+    mdp = imp_sub.add_parser(
+        "markdown",
+        help="Convert Markdown (Clawflows WORKFLOW.md or Agency-Agents doc) to .ainl",
+    )
+    mdp.add_argument(
+        "url_or_path",
+        help="https URL, GitHub blob/raw link, or local Markdown file path",
+    )
+    mdp.add_argument(
+        "--type",
+        choices=("workflow", "agent"),
+        required=True,
+        help="workflow ≈ Clawflows WORKFLOW.md; agent ≈ Agency-Agents personality markdown",
+    )
+    mdp.add_argument(
+        "--output",
+        "-o",
+        required=True,
+        help="Output path (e.g. morning.ainl)",
+    )
+    mdp.add_argument(
+        "--personality",
+        default="",
+        help="Optional tone/instructions for agent-type imports (stored in header comment for now)",
+    )
+    mdp.add_argument(
+        "--no-openclaw-bridge",
+        action="store_true",
+        help="Use cache instead of memory/queue bridge hooks in generated graph",
+    )
+    mdp.add_argument(
+        "--generate-soul",
+        action="store_true",
+        help="With --type agent: also write SOUL.md and IDENTITY.md next to -o",
+    )
+    mdp.add_argument("--dry-run", action="store_true", help="Print .ainl to stdout; do not write file")
+    mdp.add_argument("--verbose", "-v", action="store_true")
+    mdp.set_defaults(func=cmd_import_markdown)
+
+    cfp = imp_sub.add_parser(
+        "clawflows",
+        help="Fetch 5 sample workflows from nikilster/clawflows into examples/ecosystem/clawflows/",
+    )
+    cfp.add_argument(
+        "--output-dir",
+        default="",
+        help="Destination directory (default: <repo>/examples/ecosystem/clawflows)",
+    )
+    cfp.add_argument(
+        "--no-openclaw-bridge",
+        action="store_true",
+        help="Use cache instead of memory/queue in generated graphs",
+    )
+    cfp.add_argument("--timeout-s", type=float, default=30.0, help="HTTP timeout per workflow")
+    cfp.add_argument("--verbose", "-v", action="store_true")
+    cfp.set_defaults(func=cmd_import_clawflows)
+
+    aap = imp_sub.add_parser(
+        "agency-agents",
+        help="Fetch 5 sample agents from msitarzewski/agency-agents into examples/ecosystem/agency-agents/",
+    )
+    aap.add_argument(
+        "--output-dir",
+        default="",
+        help="Destination directory (default: <repo>/examples/ecosystem/agency-agents)",
+    )
+    aap.add_argument(
+        "--personality",
+        default="",
+        help="Optional tone merged into parsed agent graph",
+    )
+    aap.add_argument(
+        "--no-openclaw-bridge",
+        action="store_true",
+        help="Use cache instead of memory/queue in generated graphs",
+    )
+    aap.add_argument("--timeout-s", type=float, default=30.0, help="HTTP timeout per agent file")
+    aap.add_argument("--verbose", "-v", action="store_true")
+    aap.set_defaults(func=cmd_import_agency_agents)
 
     args = ap.parse_args()
     raise SystemExit(args.func(args))

@@ -115,6 +115,38 @@ See **Includes & modules** below for `timeout.ainl`, strict rules, and the start
 
 ---
 
+## Ecosystem & OpenClaw integration
+
+Import **Clawflows**-style `WORKFLOW.md` or **Agency-Agents**-style personality Markdown into a **deterministic** `.ainl` graph (cron trigger, sequential `Call` steps or agent gates, optional `memory` / `queue` hooks for OpenClaw-style bridges). If structured parsing cannot extract steps or agent fields, the importer **falls back** to the Phase‑1 compiling stub.
+
+```bash
+ainl import markdown https://raw.githubusercontent.com/nikilster/clawflows/main/workflows/available/community/check-calendar/WORKFLOW.md \
+  --type workflow -o morning.ainl
+ainl compile morning.ainl
+```
+
+Agent imports support `--personality "…"` and optional **`--generate-soul`** (writes `SOUL.md` and `IDENTITY.md` next to `-o`). Use **`--no-openclaw-bridge`** to emit `cache` instead of `memory` / `queue`.
+
+Shortcuts (fetch five samples from upstream into `examples/ecosystem/` — requires network):
+
+```bash
+ainl import clawflows
+ainl import agency-agents
+```
+
+Curated templates with `original.md`, `converted.ainl`, and notes: **[`examples/ecosystem/README.md`](examples/ecosystem/README.md)**.
+
+**Weekly auto-sync:** the repo can refresh those sample trees from upstream on a schedule via GitHub Actions — see **[`.github/workflows/sync-ecosystem.yml`](.github/workflows/sync-ecosystem.yml)** (Monday 04:00 UTC, plus manual **workflow_dispatch**). PRs are opened only when `examples/ecosystem/**` conversions change. That workflow also **creates** the GitHub labels `ecosystem`, `automation`, `workflow`, and `agent` if missing (idempotent), then applies `ecosystem` + `automation` to the sync PR.
+
+### Contributing workflows & agents
+
+After you push a branch, **open a pull request** on GitHub and use the **template** dropdown to choose **Submit Workflow (Clawflows-style)** or **Submit Agent (Agency-Agents-style)** (see [`.github/PULL_REQUEST_TEMPLATE/`](.github/PULL_REQUEST_TEMPLATE/)).  
+You can also append `?quick_pull=1&template=workflow-submission.md` or `template=agent-submission.md` to your **compare** URL (`main`…`your-branch`).
+
+Templates: [`workflow-submission.md`](.github/PULL_REQUEST_TEMPLATE/workflow-submission.md) · [`agent-submission.md`](.github/PULL_REQUEST_TEMPLATE/agent-submission.md) · default [`pull_request_template.md`](.github/pull_request_template.md).
+
+---
+
 ## Includes & modules
 
 Reuse battle-tested patterns without copy-pasting whole graphs. **Compile-time** `include` merges each module’s labels under **`alias/LABEL`** keys (for example `retry/ENTRY`, `retry/EXIT_OK`, `timeout/WORK`).

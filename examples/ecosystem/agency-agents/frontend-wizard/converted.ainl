@@ -1,0 +1,26 @@
+# Imported from Markdown (agent) — parsed Agency-Agents-style graph.
+# Source: local:frontend-wizard/original.md
+# Personality / tone: pragmatic UI engineer
+
+L_entry:
+  R core.parse "{\"kind\":\"agent_entry\",\"slug\":\"frontend-developer\",\"identity\":\"Frontend Developer\\nExpert frontend developer specializing in modern web technologies, React/Vue/Angular frameworks, UI implementation, and performance optimization\",\"mission\":\"\",\"tone\":\"pragmatic UI engineer\"}" ->agent_ctx
+  If (core.eq 1 1) ->L_check_rules ->L_exit
+
+L_check_rules:
+  R core.parse "{\"kind\":\"rules_gate\",\"text\":\"(see source doc)\"}" ->rules_ctx
+  R core.parse "{\"source\":\"md_import\",\"agent\":\"frontend-developer\"}" ->memory_meta
+  R memory put "workflow" "frontend-developer" "rules_snapshot" rules_ctx 7200 memory_meta ->_mr
+  If (core.eq 1 1) ->L_check_deliverables ->L_exit
+
+L_check_deliverables:
+  R core.parse "{\"kind\":\"deliverables_gate\",\"text\":\"(unspecified)\"}" ->del_ctx
+  If (core.eq 1 1) ->L_workflows_hint ->L_exit
+
+L_workflows_hint:
+  R core.parse "{\"kind\":\"workflows_hint\",\"text\":\"(see source doc)\"}" ->wf_ctx
+  R core.now ->now
+  R queue Put agency_agent_hint wf_ctx ->_qh
+  J wf_ctx
+
+L_exit:
+  J "markdown_import_agent_ok"

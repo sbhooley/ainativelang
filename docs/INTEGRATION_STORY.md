@@ -161,7 +161,9 @@ For the full state model, see `docs/architecture/STATE_DISCIPLINE.md`.
   Model Context Protocol provider in the sense of owning multi-agent session
   state. It now ships a **thin, stdio-only MCP server** (`ainl-mcp`) that
   exposes workflow-level tools and resources (validation, compilation,
-  capabilities, security reports, safe-default `ainl_run`) to MCP-compatible
+  capabilities, security reports, safe-default `ainl_run`, and optional
+  **ecosystem import** tools that fetch Clawflows / Agency-Agents Markdown and
+  return deterministic `.ainl` source) to MCP-compatible
   hosts such as Gemini CLI, Claude Code, Codex-style agent SDKs, and other MCP
   hosts. This MCP surface is vendor-neutral, workflow-focused, and runs with
   safe-default restrictions (core-only adapters, conservative limits,
@@ -180,6 +182,35 @@ executors (webhooks, internal services, or a multi-backend gateway), see
 That document is **MCP-first** for OpenClaw/NemoClaw: prefer `ainl-mcp` when the
 host is MCP-capable; use the HTTP bridge pattern when workers are not exposed
 as MCP.
+
+### Import Clawflows & Agency-Agents via MCP
+
+The MCP server (`scripts/ainl_mcp_server.py`) registers **`ainl_list_ecosystem`**,
+**`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, and
+**`ainl_import_markdown`**. They call the same Markdown → AINL path as the CLI
+importer (`tooling/markdown_importer.py`): **HTTPS fetch** when needed, then
+return **`ainl` text** and **`meta`** in the tool result (no files written on
+the server).
+
+**Examples in `examples/ecosystem/`** in the repo are **kept fresh via weekly auto-sync** from upstream Clawflows and Agency-Agents (see **`.github/workflows/sync-ecosystem.yml`** and **`docs/ECOSYSTEM_OPENCLAW.md`**).
+
+**Example chat prompts** (Claude Code, Cursor, Gemini CLI, or any MCP host):
+
+- *“Run `ainl_list_ecosystem`, then import the **morning journal** Clawflow into AINL and validate the returned source with `ainl_validate`.”*
+- *“Hey Claude, import the **morning briefing** Clawflow using AINL—use preset slug `morning-journal` or paste the raw `WORKFLOW.md` URL, then show me the graph.”*
+- *“Import the Agency-Agents **MCP Builder** preset via `ainl_import_agency_agent` and summarize which labels the `.ainl` defines.”*
+
+**Benefits:** upstream Markdown stays human-authored; AINL adds **compile-time
+graph structure** (cron, sequential `Call` steps or agent gates, optional
+OpenClaw-style `memory` / `queue` hooks) for **deterministic execution** at the
+workflow layer. On tokenizer-aligned, viable-subset workloads, that structure
+pairs with roughly **~1.02× viable leverage** vs ad-hoc prompt-only flows—see
+[`BENCHMARK.md`](../BENCHMARK.md) and [`benchmarks.md`](benchmarks.md)
+for definitions and commands.
+
+**Governance:** these tools perform **outbound HTTPS**. They are enabled in
+`safe_workflow` and `full` exposure profiles (`tooling/mcp_exposure_profiles.json`).
+To hide them, set `AINL_MCP_TOOLS_EXCLUDE=ainl_import_clawflow,ainl_import_agency_agent,ainl_import_markdown` (or use a custom profile).
 
 ---
 
@@ -230,6 +261,16 @@ Code and similar MCP-compatible hosts, but remain vendor-neutral.
     explicit policy, and limits. Operators must review adapter exposure and
     grants before enabling this role in desktop-bound or Cowork/Dispatch-style
     environments.
+
+- **AINL Ecosystem Import Agent**
+  - **Purpose**: discover curated Clawflows / Agency-Agents presets and fetch
+    Markdown into deterministic `.ainl` source for validation or handoff to a
+    runner—without shelling out to the CLI.
+  - **Recommended MCP exposure profile**: `safe_workflow` or `full` (import
+    tools are not in `validate_only` / `inspect_only`).
+  - **Expected MCP tools**: `ainl_list_ecosystem`, `ainl_import_clawflow`,
+    `ainl_import_agency_agent`, `ainl_import_markdown`, plus `ainl_validate` /
+    `ainl_compile` as needed.
 
 - **AINL Docs / Spec Researcher Agent**
   - **Purpose**: help reason about AINL docs, spec, and runtime contracts

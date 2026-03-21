@@ -31,6 +31,7 @@ Human-written baselines (`--compare-baselines`) anchor claims against real Pytho
 
 ## Where to read results
 
+- **Ecosystem import examples:** trees under **`examples/ecosystem/`** (Clawflows- and Agency-Agents-style Markdown → AINL) are **kept fresh via weekly auto-sync** from upstream [Clawflows](https://github.com/nikilster/clawflows) and [Agency-Agents](https://github.com/msitarzewski/agency-agents) repos — see [`.github/workflows/sync-ecosystem.yml`](../.github/workflows/sync-ecosystem.yml) and **[`docs/ECOSYSTEM_OPENCLAW.md`](ECOSYSTEM_OPENCLAW.md)**.
 - **Human-readable size report (start here):** repository root **[`BENCHMARK.md`](../BENCHMARK.md)** — transparency notes at top; viable vs legacy-inclusive sections; per-artifact **Notes** column. On **ainativelang.com**, the same content is published as the [Benchmarks](/benchmark) page.
 - **Machine-readable size JSON:** `tooling/benchmark_size.json` (schema `3.5+`).
 - **Runtime JSON:** `tooling/benchmark_runtime_results.json` (generated; tracked in git as the CI baseline when committed).
