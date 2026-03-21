@@ -12,7 +12,8 @@ include "modules/common/generic_memory.ainl" as genmem
 # ── Entry: load budget state and gate on remaining tokens ──
 L0:
   R cache get "workflow" "token_budget" ->budget_state
-  X hasBudget (ne budget_state null)
+  X isNull (core.isNull budget_state)
+  X hasBudget (not isNull)
   If hasBudget ->L1 ->L2
 
 # Use cached budget
