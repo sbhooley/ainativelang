@@ -45,7 +45,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 
 ---
 
-## Get Started
+## TECHNICAL: Get Started
 
 ```bash
 # 1. Clone and create an isolated env (match CI: Python 3.10 — see docs/INSTALL.md)
