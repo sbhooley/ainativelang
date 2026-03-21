@@ -26,8 +26,9 @@ It is segmented by profile and mode; it is not a universal compactness claim acr
 
 ## Metrics
 
-- Active metric: `approx_chunks`.
-- `approx_chunks` is a lexical-size proxy, not tokenizer-accurate pricing.
+- Active metric: `tiktoken` (default **tiktoken** / **cl100k_base**).
+- `tiktoken` uses `tooling/bench_metrics.py` (shared with runtime benchmarks).
+- **Economics:** estimated LLM $/run from token budgets (see JSON `economics`).
 
 ## How To Read These Results
 
@@ -63,230 +64,63 @@ It is segmented by profile and mode; it is not a universal compactness claim acr
 
 | Profile | Full aggregate ratio | Minimal aggregate ratio |
 |---|---:|---:|
-| canonical_strict_valid | 10.98x | 1.97x |
-| public_mixed | 1.74x | 0.46x |
-| compatibility_only | 1.36x | 0.40x |
 
 Compatibility/non-strict artifacts are segmented and not used as the primary benchmark headline.
 
 ## Size Drivers (Actionable Diagnosis)
 
-### full_multitarget
-- `canonical_strict_valid` top targets: mt5=750, prisma=480, python_api=383
-- `canonical_strict_valid` top artifacts: examples/scraper/basic_scraper.ainl=283, examples/monitor_escalation.ainl=271, examples/web/basic_web_api.ainl=234
-- `public_mixed` top targets: mt5=2992, prisma=2076, react_ts=1664
-- `public_mixed` top artifacts: examples/internal_tool.lang=414, examples/ticketing.lang=401, examples/ecom.lang=391
-- `compatibility_only` top targets: mt5=2242, prisma=1596, react_ts=1294
-- `compatibility_only` top artifacts: examples/internal_tool.lang=414, examples/ticketing.lang=401, examples/ecom.lang=391
-
 ### minimal_emit
-- `canonical_strict_valid` top targets: python_api=307, cron=80, scraper=45
-- `canonical_strict_valid` top artifacts: examples/scraper/basic_scraper.ainl=85, examples/web/basic_web_api.ainl=41, examples/monitor_escalation.ainl=40
-- `public_mixed` top targets: prisma=1116, python_api=592, react_ts=480
-- `public_mixed` top artifacts: examples/internal_tool.lang=270, examples/ticketing.lang=257, examples/ecom.lang=251
-- `compatibility_only` top targets: prisma=1116, react_ts=480, python_api=285
-- `compatibility_only` top artifacts: examples/internal_tool.lang=270, examples/ticketing.lang=257, examples/ecom.lang=251
+- `canonical_strict_valid` top targets: python_api=771, cron=197, scraper=154
+- `canonical_strict_valid` top artifacts: examples/scraper/basic_scraper.ainl=253, examples/web/basic_web_api.ainl=106, examples/monitor_escalation.ainl=98
 
 ## Residual Overhead Audit (minimal_emit)
 
 ### canonical_strict_valid
-- `python_api` total=307; structure: decorator_chunks=1, function_def_chunks=2, imports_chunks=32, return_chunks=2, total_chunks=307
-- `cron` total=80; structure: function_def_chunks=4, pass_chunks=2, schedule_comment_chunks=74, total_chunks=80
-- `scraper` total=45; structure: function_def_chunks=2, imports_chunks=8, request_call_chunks=1, return_chunks=1, selector_chunks=3, total_chunks=45
-
-### public_mixed
-- `prisma` total=1116; structure: total_chunks=1116
-- `python_api` total=592; structure: decorator_chunks=20, function_def_chunks=40, imports_chunks=56, return_chunks=40, total_chunks=592
-- `react_ts` total=480; structure: total_chunks=480
-
-### compatibility_only
-- `prisma` total=1116; structure: total_chunks=1116
-- `react_ts` total=480; structure: total_chunks=480
-- `python_api` total=285; structure: decorator_chunks=19, function_def_chunks=38, imports_chunks=24, return_chunks=38, total_chunks=285
-
-## Details (full_multitarget)
-
-| Profile | Artifact count | AINL source total | Aggregate generated output total | Aggregate ratio |
-|---|---:|---:|---:|---:|
-| canonical_strict_valid | 10 | 219 | 2405 | 10.98x |
-| public_mixed | 36 | 5590 | 9720 | 1.74x |
-| compatibility_only | 26 | 5371 | 7315 | 1.36x |
-
-### canonical_strict_valid
-| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| examples/crud_api.ainl | strict-valid | 20 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 11.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/hello.ainl | strict-valid | 8 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 28.88x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/if_call_workflow.ainl | strict-valid | 34 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 6.79x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/monitor_escalation.ainl | strict-valid | 32 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 8.47x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/rag_pipeline.ainl | strict-valid | 14 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 16.50x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/retry_error_resilience.ainl | strict-valid | 20 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 11.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/scraper/basic_scraper.ainl | strict-valid | 29 | 37 | 38 | 48 | 75 | 45 | 40 | 283 | 9.76x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/status_branching.ainl | strict-valid | 20 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 11.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/web/basic_web_api.ainl | strict-valid | 17 | 37 | 41 | 48 | 75 | 33 | 0 | 234 | 13.76x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/webhook_automation.ainl | strict-valid | 25 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 9.24x | react_ts, python_api, prisma, mt5, scraper, cron |
-
-### public_mixed
-| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| examples/api_only.lang | non-strict-only | 62 | 37 | 47 | 70 | 103 | 33 | 0 | 290 | 4.68x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/backup_freshness_to_queue.lang | non-strict-only | 94 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 2.46x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/canary_sampler.lang | non-strict-only | 408 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 0.66x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/infrastructure_watchdog.lang | non-strict-only | 340 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 0.80x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/lead_quality_audit.lang | non-strict-only | 172 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 1.58x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/pipeline_readiness_snapshot.lang | non-strict-only | 102 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 2.26x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/status_snapshot_to_queue.lang | non-strict-only | 102 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 2.26x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/tiktok_sla_monitor.lang | non-strict-only | 184 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 1.47x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/token_cost_tracker.lang | non-strict-only | 235 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 1.15x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/blog.lang | non-strict-only | 135 | 109 | 50 | 76 | 115 | 33 | 0 | 383 | 2.84x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/cron/monitor_and_alert.ainl | non-strict-only | 35 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 7.74x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/crud_api.ainl | strict-valid | 20 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 11.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/ecom.lang | non-strict-only | 137 | 132 | 47 | 72 | 107 | 33 | 0 | 391 | 2.85x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/01_web_server.ainl | non-strict-only | 304 | 37 | 38 | 69 | 87 | 33 | 0 | 264 | 0.87x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/02_dashboard.ainl | non-strict-only | 335 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 0.77x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/03_scraper.ainl | non-strict-only | 381 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 0.68x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/04_alerting_monitor.ainl | non-strict-only | 373 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 0.69x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/05_file_processor.ainl | non-strict-only | 481 | 37 | 38 | 69 | 87 | 33 | 0 | 264 | 0.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/hello.ainl | strict-valid | 8 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 28.88x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/if_call_workflow.ainl | strict-valid | 34 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 6.79x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/internal_tool.lang | non-strict-only | 127 | 109 | 47 | 74 | 111 | 33 | 40 | 414 | 3.26x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/monitor_escalation.ainl | strict-valid | 32 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 8.47x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/backup_manager.lang | non-strict-only | 222 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 1.17x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/daily_digest.lang | non-strict-only | 134 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 1.93x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/daily_digest.strict.lang | non-strict-only | 254 | 37 | 38 | 76 | 99 | 33 | 0 | 283 | 1.11x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/daily_lead_summary.lang | non-strict-only | 84 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 3.08x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/infrastructure_watchdog.lang | non-strict-only | 189 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 1.37x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/lead_enrichment.lang | non-strict-only | 178 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 1.30x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/webhook_handler.lang | non-strict-only | 150 | 37 | 41 | 60 | 91 | 33 | 0 | 262 | 1.75x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/rag_pipeline.ainl | strict-valid | 14 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 16.50x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/retry_error_resilience.ainl | strict-valid | 20 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 11.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/scraper/basic_scraper.ainl | strict-valid | 29 | 37 | 38 | 48 | 75 | 45 | 40 | 283 | 9.76x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/status_branching.ainl | strict-valid | 20 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 11.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/ticketing.lang | non-strict-only | 153 | 130 | 53 | 74 | 111 | 33 | 0 | 401 | 2.62x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/web/basic_web_api.ainl | strict-valid | 17 | 37 | 41 | 48 | 75 | 33 | 0 | 234 | 13.76x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/webhook_automation.ainl | strict-valid | 25 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 9.24x | react_ts, python_api, prisma, mt5, scraper, cron |
-
-### compatibility_only
-| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| examples/api_only.lang | non-strict-only | 62 | 37 | 47 | 70 | 103 | 33 | 0 | 290 | 4.68x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/backup_freshness_to_queue.lang | non-strict-only | 94 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 2.46x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/canary_sampler.lang | non-strict-only | 408 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 0.66x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/infrastructure_watchdog.lang | non-strict-only | 340 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 0.80x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/lead_quality_audit.lang | non-strict-only | 172 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 1.58x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/pipeline_readiness_snapshot.lang | non-strict-only | 102 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 2.26x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/status_snapshot_to_queue.lang | non-strict-only | 102 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 2.26x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/tiktok_sla_monitor.lang | non-strict-only | 184 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 1.47x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/autonomous_ops/token_cost_tracker.lang | non-strict-only | 235 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 1.15x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/blog.lang | non-strict-only | 135 | 109 | 50 | 76 | 115 | 33 | 0 | 383 | 2.84x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/cron/monitor_and_alert.ainl | non-strict-only | 35 | 37 | 38 | 48 | 75 | 33 | 40 | 271 | 7.74x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/ecom.lang | non-strict-only | 137 | 132 | 47 | 72 | 107 | 33 | 0 | 391 | 2.85x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/01_web_server.ainl | non-strict-only | 304 | 37 | 38 | 69 | 87 | 33 | 0 | 264 | 0.87x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/02_dashboard.ainl | non-strict-only | 335 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 0.77x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/03_scraper.ainl | non-strict-only | 381 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 0.68x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/04_alerting_monitor.ainl | non-strict-only | 373 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 0.69x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/golden/05_file_processor.ainl | non-strict-only | 481 | 37 | 38 | 69 | 87 | 33 | 0 | 264 | 0.55x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/internal_tool.lang | non-strict-only | 127 | 109 | 47 | 74 | 111 | 33 | 40 | 414 | 3.26x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/backup_manager.lang | non-strict-only | 222 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 1.17x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/daily_digest.lang | non-strict-only | 134 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 1.93x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/daily_digest.strict.lang | non-strict-only | 254 | 37 | 38 | 76 | 99 | 33 | 0 | 283 | 1.11x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/daily_lead_summary.lang | non-strict-only | 84 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 3.08x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/infrastructure_watchdog.lang | non-strict-only | 189 | 37 | 38 | 68 | 83 | 33 | 0 | 259 | 1.37x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/lead_enrichment.lang | non-strict-only | 178 | 37 | 38 | 48 | 75 | 33 | 0 | 231 | 1.30x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/openclaw/webhook_handler.lang | non-strict-only | 150 | 37 | 41 | 60 | 91 | 33 | 0 | 262 | 1.75x | react_ts, python_api, prisma, mt5, scraper, cron |
-| examples/ticketing.lang | non-strict-only | 153 | 130 | 53 | 74 | 111 | 33 | 0 | 401 | 2.62x | react_ts, python_api, prisma, mt5, scraper, cron |
+- `python_api` total=771; structure: decorator_chunks=5, function_def_chunks=6, imports_chunks=56, return_chunks=6, total_chunks=771
+- `cron` total=197; structure: function_def_chunks=11, pass_chunks=6, schedule_comment_chunks=180, total_chunks=197
+- `scraper` total=154; structure: function_def_chunks=4, imports_chunks=11, request_call_chunks=18, return_chunks=17, selector_chunks=22, total_chunks=154
 
 ## Details (minimal_emit)
 
 | Profile | Artifact count | AINL source total | Aggregate generated output total | Aggregate ratio |
 |---|---:|---:|---:|---:|
-| canonical_strict_valid | 10 | 219 | 432 | 1.97x |
-| public_mixed | 36 | 5590 | 2593 | 0.46x |
-| compatibility_only | 26 | 5371 | 2161 | 0.40x |
+| canonical_strict_valid | 10 | 506 | 1122 | 2.22x |
 
 ### canonical_strict_valid
-| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| examples/crud_api.ainl | strict-valid | 20 | - | 38 | - | - | - | - | 38 | 1.90x | python_api |
-| examples/hello.ainl | strict-valid | 8 | - | 38 | - | - | - | - | 38 | 4.75x | python_api |
-| examples/if_call_workflow.ainl | strict-valid | 34 | - | 38 | - | - | - | - | 38 | 1.12x | python_api |
-| examples/monitor_escalation.ainl | strict-valid | 32 | - | - | - | - | - | 40 | 40 | 1.25x | cron |
-| examples/rag_pipeline.ainl | strict-valid | 14 | - | 38 | - | - | - | - | 38 | 2.71x | python_api |
-| examples/retry_error_resilience.ainl | strict-valid | 20 | - | 38 | - | - | - | - | 38 | 1.90x | python_api |
-| examples/scraper/basic_scraper.ainl | strict-valid | 29 | - | - | - | - | 45 | 40 | 85 | 2.93x | scraper, cron |
-| examples/status_branching.ainl | strict-valid | 20 | - | 38 | - | - | - | - | 38 | 1.90x | python_api |
-| examples/web/basic_web_api.ainl | strict-valid | 17 | - | 41 | - | - | - | - | 41 | 2.41x | python_api |
-| examples/webhook_automation.ainl | strict-valid | 25 | - | 38 | - | - | - | - | 38 | 1.52x | python_api |
+| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets || est $4o (USD) | est $C-Son (USD) || Compile reliability |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---||---:||---:||---|
+| examples/crud_api.ainl | strict-valid | 37 | - | 95 | - | - | - | - | 95 | 2.57x | python_api | 0.000678 | 0.000942 | 100% σ=0.019ms |
+| examples/hello.ainl | strict-valid | 18 | - | 95 | - | - | - | - | 95 | 5.28x | python_api | 0.000678 | 0.000942 | 100% σ=0.002ms |
+| examples/if_call_workflow.ainl | strict-valid | 83 | - | 95 | - | - | - | - | 95 | 1.14x | python_api | 0.000678 | 0.000942 | 100% σ=0.034ms |
+| examples/monitor_escalation.ainl | strict-valid | 72 | - | - | - | - | - | 98 | 98 | 1.36x | cron | 0.000705 | 0.000981 | 100% σ=0.005ms |
+| examples/rag_pipeline.ainl | strict-valid | 29 | - | 95 | - | - | - | - | 95 | 3.28x | python_api | 0.000678 | 0.000942 | 100% σ=0.010ms |
+| examples/retry_error_resilience.ainl | strict-valid | 54 | - | 95 | - | - | - | - | 95 | 1.76x | python_api | 0.000678 | 0.000942 | 100% σ=0.002ms |
+| examples/scraper/basic_scraper.ainl | strict-valid | 67 | - | - | - | - | 154 | 99 | 253 | 3.78x | scraper, cron | 0.001803 | 0.002505 | 100% σ=0.003ms |
+| examples/status_branching.ainl | strict-valid | 48 | - | 95 | - | - | - | - | 95 | 1.98x | python_api | 0.000678 | 0.000942 | 100% σ=0.028ms |
+| examples/web/basic_web_api.ainl | strict-valid | 32 | - | 106 | - | - | - | - | 106 | 3.31x | python_api | 0.000758 | 0.001053 | 100% σ=0.013ms |
+| examples/webhook_automation.ainl | strict-valid | 66 | - | 95 | - | - | - | - | 95 | 1.44x | python_api | 0.000678 | 0.000942 | 100% σ=0.009ms |
 
-### public_mixed
-| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| examples/api_only.lang | non-strict-only | 62 | - | 47 | 70 | - | - | - | 117 | 1.89x | python_api, prisma |
-| examples/autonomous_ops/backup_freshness_to_queue.lang | non-strict-only | 94 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/autonomous_ops/canary_sampler.lang | non-strict-only | 408 | - | - | - | - | - | 40 | 40 | 0.10x | cron |
-| examples/autonomous_ops/infrastructure_watchdog.lang | non-strict-only | 340 | - | - | - | - | - | 40 | 40 | 0.12x | cron |
-| examples/autonomous_ops/lead_quality_audit.lang | non-strict-only | 172 | - | - | - | - | - | 40 | 40 | 0.23x | cron |
-| examples/autonomous_ops/pipeline_readiness_snapshot.lang | non-strict-only | 102 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/autonomous_ops/status_snapshot_to_queue.lang | non-strict-only | 102 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/autonomous_ops/tiktok_sla_monitor.lang | non-strict-only | 184 | - | - | - | - | - | 40 | 40 | 0.22x | cron |
-| examples/autonomous_ops/token_cost_tracker.lang | non-strict-only | 235 | - | - | - | - | - | 40 | 40 | 0.17x | cron |
-| examples/blog.lang | non-strict-only | 135 | 109 | 50 | 76 | - | - | - | 235 | 1.74x | react_ts, python_api, prisma |
-| examples/cron/monitor_and_alert.ainl | non-strict-only | 35 | - | - | - | - | - | 40 | 40 | 1.14x | cron |
-| examples/crud_api.ainl | strict-valid | 20 | - | 38 | - | - | - | - | 38 | 1.90x | python_api |
-| examples/ecom.lang | non-strict-only | 137 | 132 | 47 | 72 | - | - | - | 251 | 1.83x | react_ts, python_api, prisma |
-| examples/golden/01_web_server.ainl | non-strict-only | 304 | - | - | 69 | - | - | 0 | 69 | 0.23x | prisma, cron |
-| examples/golden/02_dashboard.ainl | non-strict-only | 335 | - | - | 68 | - | - | 0 | 68 | 0.20x | prisma, cron |
-| examples/golden/03_scraper.ainl | non-strict-only | 381 | - | - | 68 | - | - | 0 | 68 | 0.18x | prisma, cron |
-| examples/golden/04_alerting_monitor.ainl | non-strict-only | 373 | - | - | 68 | - | - | 0 | 68 | 0.18x | prisma, cron |
-| examples/golden/05_file_processor.ainl | non-strict-only | 481 | - | - | 69 | - | - | 0 | 69 | 0.14x | prisma, cron |
-| examples/hello.ainl | strict-valid | 8 | - | 38 | - | - | - | - | 38 | 4.75x | python_api |
-| examples/if_call_workflow.ainl | strict-valid | 34 | - | 38 | - | - | - | - | 38 | 1.12x | python_api |
-| examples/internal_tool.lang | non-strict-only | 127 | 109 | 47 | 74 | - | - | 40 | 270 | 2.13x | react_ts, python_api, prisma, cron |
-| examples/monitor_escalation.ainl | strict-valid | 32 | - | - | - | - | - | 40 | 40 | 1.25x | cron |
-| examples/openclaw/backup_manager.lang | non-strict-only | 222 | - | - | 68 | - | - | 0 | 68 | 0.31x | prisma, cron |
-| examples/openclaw/daily_digest.lang | non-strict-only | 134 | - | - | 68 | - | - | 0 | 68 | 0.51x | prisma, cron |
-| examples/openclaw/daily_digest.strict.lang | non-strict-only | 254 | - | - | 76 | - | - | 0 | 76 | 0.30x | prisma, cron |
-| examples/openclaw/daily_lead_summary.lang | non-strict-only | 84 | - | - | 68 | - | - | 0 | 68 | 0.81x | prisma, cron |
-| examples/openclaw/infrastructure_watchdog.lang | non-strict-only | 189 | - | - | 68 | - | - | 0 | 68 | 0.36x | prisma, cron |
-| examples/openclaw/lead_enrichment.lang | non-strict-only | 178 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/openclaw/webhook_handler.lang | non-strict-only | 150 | - | 41 | 60 | - | - | - | 101 | 0.67x | python_api, prisma |
-| examples/rag_pipeline.ainl | strict-valid | 14 | - | 38 | - | - | - | - | 38 | 2.71x | python_api |
-| examples/retry_error_resilience.ainl | strict-valid | 20 | - | 38 | - | - | - | - | 38 | 1.90x | python_api |
-| examples/scraper/basic_scraper.ainl | strict-valid | 29 | - | - | - | - | 45 | 40 | 85 | 2.93x | scraper, cron |
-| examples/status_branching.ainl | strict-valid | 20 | - | 38 | - | - | - | - | 38 | 1.90x | python_api |
-| examples/ticketing.lang | non-strict-only | 153 | 130 | 53 | 74 | - | - | - | 257 | 1.68x | react_ts, python_api, prisma |
-| examples/web/basic_web_api.ainl | strict-valid | 17 | - | 41 | - | - | - | - | 41 | 2.41x | python_api |
-| examples/webhook_automation.ainl | strict-valid | 25 | - | 38 | - | - | - | - | 38 | 1.52x | python_api |
 
-### compatibility_only
-| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| examples/api_only.lang | non-strict-only | 62 | - | 47 | 70 | - | - | - | 117 | 1.89x | python_api, prisma |
-| examples/autonomous_ops/backup_freshness_to_queue.lang | non-strict-only | 94 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/autonomous_ops/canary_sampler.lang | non-strict-only | 408 | - | - | - | - | - | 40 | 40 | 0.10x | cron |
-| examples/autonomous_ops/infrastructure_watchdog.lang | non-strict-only | 340 | - | - | - | - | - | 40 | 40 | 0.12x | cron |
-| examples/autonomous_ops/lead_quality_audit.lang | non-strict-only | 172 | - | - | - | - | - | 40 | 40 | 0.23x | cron |
-| examples/autonomous_ops/pipeline_readiness_snapshot.lang | non-strict-only | 102 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/autonomous_ops/status_snapshot_to_queue.lang | non-strict-only | 102 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/autonomous_ops/tiktok_sla_monitor.lang | non-strict-only | 184 | - | - | - | - | - | 40 | 40 | 0.22x | cron |
-| examples/autonomous_ops/token_cost_tracker.lang | non-strict-only | 235 | - | - | - | - | - | 40 | 40 | 0.17x | cron |
-| examples/blog.lang | non-strict-only | 135 | 109 | 50 | 76 | - | - | - | 235 | 1.74x | react_ts, python_api, prisma |
-| examples/cron/monitor_and_alert.ainl | non-strict-only | 35 | - | - | - | - | - | 40 | 40 | 1.14x | cron |
-| examples/ecom.lang | non-strict-only | 137 | 132 | 47 | 72 | - | - | - | 251 | 1.83x | react_ts, python_api, prisma |
-| examples/golden/01_web_server.ainl | non-strict-only | 304 | - | - | 69 | - | - | 0 | 69 | 0.23x | prisma, cron |
-| examples/golden/02_dashboard.ainl | non-strict-only | 335 | - | - | 68 | - | - | 0 | 68 | 0.20x | prisma, cron |
-| examples/golden/03_scraper.ainl | non-strict-only | 381 | - | - | 68 | - | - | 0 | 68 | 0.18x | prisma, cron |
-| examples/golden/04_alerting_monitor.ainl | non-strict-only | 373 | - | - | 68 | - | - | 0 | 68 | 0.18x | prisma, cron |
-| examples/golden/05_file_processor.ainl | non-strict-only | 481 | - | - | 69 | - | - | 0 | 69 | 0.14x | prisma, cron |
-| examples/internal_tool.lang | non-strict-only | 127 | 109 | 47 | 74 | - | - | 40 | 270 | 2.13x | react_ts, python_api, prisma, cron |
-| examples/openclaw/backup_manager.lang | non-strict-only | 222 | - | - | 68 | - | - | 0 | 68 | 0.31x | prisma, cron |
-| examples/openclaw/daily_digest.lang | non-strict-only | 134 | - | - | 68 | - | - | 0 | 68 | 0.51x | prisma, cron |
-| examples/openclaw/daily_digest.strict.lang | non-strict-only | 254 | - | - | 76 | - | - | 0 | 76 | 0.30x | prisma, cron |
-| examples/openclaw/daily_lead_summary.lang | non-strict-only | 84 | - | - | 68 | - | - | 0 | 68 | 0.81x | prisma, cron |
-| examples/openclaw/infrastructure_watchdog.lang | non-strict-only | 189 | - | - | 68 | - | - | 0 | 68 | 0.36x | prisma, cron |
-| examples/openclaw/lead_enrichment.lang | non-strict-only | 178 | - | - | - | - | - | 0 | 0 | 0.00x | cron |
-| examples/openclaw/webhook_handler.lang | non-strict-only | 150 | - | 41 | 60 | - | - | - | 101 | 0.67x | python_api, prisma |
-| examples/ticketing.lang | non-strict-only | 153 | 130 | 53 | 74 | - | - | - | 257 | 1.68x | react_ts, python_api, prisma |
+## Handwritten baseline size comparison
+
+**AINL emitted** aggregates use the active benchmark metric (`tiktoken`) and, when available, **tiktoken** (**cl100k_base**) on the same emitted bundle. **Pure / Lang** columns count only `pure_async_python.py` / `langgraph_version.py` in each group.
+
+### Emit mode `minimal_emit`
+
+| Workflow | AINL reference | AINL emit (active) | AINL emit (tiktoken) | Pure lines | Lang lines | Pure tk | Lang tk | AINL tk ÷ Pure tk | AINL tk ÷ Lang tk | AINL `gpt-4o` USD | HW `gpt-4o` USD | AINL `claude-3-5-sonnet` USD | HW `claude-3-5-sonnet` USD ||
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:||
+| basic_scraper | `examples/scraper/basic_scraper.ainl` | 253 | 253 | 92 | 88 | 870 | 738 | 0.29x | 0.34x | 0.001803 | 0.011460 | 0.002505 | 0.015924 |
+| retry_timeout_wrapper | `examples/retry_error_resilience.ainl` | 95 | 95 | 71 | 77 | 700 | 754 | 0.14x | 0.13x | 0.000678 | 0.010365 | 0.000942 | 0.014403 |
+| token_budget_monitor | `openclaw/bridge/wrappers/token_budget_alert.ainl` | 0 | 0 | 159 | 163 | 1584 | 1624 | 0.00x | 0.00x | 0.000000 | 0.022860 | 0.000000 | 0.031764 |
+
+### Emit mode `full_multitarget`
+
+| Workflow | AINL reference | AINL emit (active) | AINL emit (tiktoken) | Pure lines | Lang lines | Pure tk | Lang tk | AINL tk ÷ Pure tk | AINL tk ÷ Lang tk | AINL `gpt-4o` USD | HW `gpt-4o` USD | AINL `claude-3-5-sonnet` USD | HW `claude-3-5-sonnet` USD ||
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:||
+| basic_scraper | `examples/scraper/basic_scraper.ainl` | 731 | 731 | 92 | 88 | 870 | 738 | 0.84x | 0.99x | 0.005208 | 0.011460 | 0.007236 | 0.015924 |
+| retry_timeout_wrapper | `examples/retry_error_resilience.ainl` | 563 | 563 | 71 | 77 | 700 | 754 | 0.80x | 0.75x | 0.004015 | 0.010365 | 0.005580 | 0.014403 |
+| token_budget_monitor | `openclaw/bridge/wrappers/token_budget_alert.ainl` | 563 | 563 | 159 | 163 | 1584 | 1624 | 0.36x | 0.35x | 0.004015 | 0.022860 | 0.005580 | 0.031764 |
+
 
 ## Supported vs Unsupported Claims
 
@@ -298,7 +132,7 @@ Compatibility/non-strict artifacts are segmented and not used as the primary ben
 
 ## Recommended Next Benchmark Improvements
 
-- Add optional handwritten baseline files under `benchmarks/handwritten_baselines/`.
+- Handwritten baselines live under `benchmarks/handwritten_baselines/`; use `--compare-baselines` on size/runtime scripts for tables vs mapped AINL artifacts.
 - Add CI trend snapshots for both full and minimal modes.
 - Add tokenizer-metric lane when dependency pinning is available.
 

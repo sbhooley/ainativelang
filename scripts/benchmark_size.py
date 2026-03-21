@@ -7,7 +7,9 @@ import argparse
 import json
 import logging
 import re
+import statistics
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +19,12 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from tooling.bench_metrics import (
+    cost_dict_for_tokens,
+    economics_block,
+    parse_cost_model_arg,
+    tiktoken_count,
+)
 from tooling.emission_planner import TARGET_ORDER, load_benchmark_manifest, required_emit_targets
 
 logger = logging.getLogger(__name__)
@@ -68,12 +76,11 @@ def nonempty_lines(text: str) -> int:
 
 
 def tiktoken_chunks(text: str) -> int:
+    """Delegate to ``tooling.bench_metrics`` so size/runtime share one encoder."""
     try:
-        import tiktoken  # type: ignore
+        return tiktoken_count(text)
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("tiktoken mode requested but tiktoken is not installed") from exc
-    enc = tiktoken.get_encoding("cl100k_base")
-    return len(enc.encode(text))
 
 
 def metric_counter(metric: str) -> Callable[[str], int]:
@@ -184,6 +191,7 @@ def build_handwritten_baseline_size_comparison(
     active_metric_fn: Callable[[str], int],
     active_metric_name: str,
     root: Path = ROOT,
+    cost_models: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     For each handwritten group, measure Python source lines/tokens and AINL emitted aggregates
@@ -237,7 +245,7 @@ def build_handwritten_baseline_size_comparison(
                     )
             pure_tk = src_stats.get("pure_tiktoken")
             lang_tk = src_stats.get("lang_tiktoken")
-            g["modes"][mode_name] = {
+            mode_payload: Dict[str, Any] = {
                 "ainl_aggregate_emit_active_metric": ainl_active,
                 "active_metric": active_metric_name,
                 "ainl_aggregate_emit_tiktoken": ainl_tik,
@@ -246,6 +254,14 @@ def build_handwritten_baseline_size_comparison(
                 "ratio_ainl_active_over_pure_tiktoken": _ratio_float(ainl_active, pure_tk),
                 "ratio_ainl_active_over_lang_tiktoken": _ratio_float(ainl_active, lang_tk),
             }
+            if cost_models and ainl_tik is not None:
+                mode_payload["estimated_cost_usd_ainl_emit_tiktoken"] = cost_dict_for_tokens(int(ainl_tik), cost_models)
+            if cost_models and pure_tk is not None and lang_tk is not None:
+                stack_tk = int(pure_tk) + int(lang_tk)
+                mode_payload["estimated_cost_usd_handwritten_sources_tiktoken"] = cost_dict_for_tokens(
+                    stack_tk, cost_models
+                )
+            g["modes"][mode_name] = mode_payload
         groups.append(g)
 
     return {
@@ -359,6 +375,33 @@ def _target_structure_breakdown(
     return {"total_chunks": count_fn(rendered)}
 
 
+def _compile_reliability_probe(source_text: str, compiler: Any, n_runs: int) -> Dict[str, Any]:
+    """Repeat compile *n_runs* times for stability (same artifact, cold-ish compiler path)."""
+    times_ms: List[float] = []
+    failures: List[Dict[str, Any]] = []
+    for i in range(n_runs):
+        try:
+            t0 = time.perf_counter()
+            ir = compiler.compile(source_text, emit_graph=True)
+            elapsed = (time.perf_counter() - t0) * 1000.0
+            if ir.get("errors"):
+                failures.append({"run": i, "error": "compile returned IR errors"})
+            else:
+                times_ms.append(elapsed)
+        except Exception as exc:
+            failures.append({"run": i, "error": str(exc)})
+    successes = len(times_ms)
+    std = float(statistics.pstdev(times_ms)) if len(times_ms) > 1 else 0.0
+    return {
+        "runs_requested": n_runs,
+        "compile_successes": successes,
+        "compile_failures": len(failures),
+        "success_rate": float(successes) / float(n_runs) if n_runs else 0.0,
+        "compile_time_ms_stddev": std,
+        "failure_samples": failures[:8],
+    }
+
+
 def run_profile_benchmark(
     source_paths: Sequence[str],
     *,
@@ -368,6 +411,9 @@ def run_profile_benchmark(
     root: Path,
     count_fn: Callable[[str], int],
     compiler,
+    metric_name: str = "tiktoken",
+    cost_models: Optional[List[str]] = None,
+    compile_reliability_runs: int = 0,
 ) -> Dict:
     failures: List[BenchmarkFailure] = []
     rows: List[Dict] = []
@@ -422,26 +468,34 @@ def run_profile_benchmark(
 
         aggregate = sum(target_sizes[t] for t in included)
         aggregate_total += aggregate
-        rows.append(
-            {
-                "artifact": rel,
-                "class": class_map.get(rel, "unclassified"),
-                "ainl_source_size": source_size,
-                "included_targets": list(included),
-                "excluded_targets": excluded,
-                "targets": {
-                    t: {
-                        "size": target_sizes.get(t),
-                        "included": t in included,
-                        "ratio_vs_source": _ratio(target_sizes[t], source_size) if t in included else None,
-                    }
-                    for t in TARGET_ORDER
-                },
-                "aggregate_generated_output_size": aggregate,
-                "aggregate_ratio_vs_source": _ratio(aggregate, source_size),
-                "target_structure": target_structure_per_artifact,
-            }
-        )
+        row: Dict[str, Any] = {
+            "artifact": rel,
+            "class": class_map.get(rel, "unclassified"),
+            "ainl_source_size": source_size,
+            "included_targets": list(included),
+            "excluded_targets": excluded,
+            "targets": {
+                t: {
+                    "size": target_sizes.get(t),
+                    "included": t in included,
+                    "ratio_vs_source": _ratio(target_sizes[t], source_size) if t in included else None,
+                }
+                for t in TARGET_ORDER
+            },
+            "aggregate_generated_output_size": aggregate,
+            "aggregate_ratio_vs_source": _ratio(aggregate, source_size),
+            "target_structure": target_structure_per_artifact,
+        }
+        if cost_models:
+            basis_tokens = aggregate if metric_name == "tiktoken" else tiktoken_count(source_text)
+            row["cost_estimation_basis_tokens"] = int(basis_tokens)
+            row["cost_estimation_method"] = (
+                "aggregate_emitted_tiktoken" if metric_name == "tiktoken" else "ainl_source_tiktoken_fallback"
+            )
+            row["estimated_cost_usd_per_generation"] = cost_dict_for_tokens(int(basis_tokens), cost_models)
+        if compile_reliability_runs > 0:
+            row["compile_reliability"] = _compile_reliability_probe(source_text, compiler, compile_reliability_runs)
+        rows.append(row)
 
     if failures:
         raise BenchmarkError(failures)
@@ -521,13 +575,19 @@ def build_report(
     benchmark_manifest: Dict,
     mode_payloads: Dict[str, Dict],
     handwritten_baseline_size_comparison: Optional[Dict[str, Any]] = None,
+    cost_models: Optional[List[str]] = None,
+    compile_reliability_runs: int = 0,
 ) -> Dict:
     headline_name = benchmark_manifest.get("headline_profile", "canonical_strict_valid")
     # Attach lightweight size-driver diagnostics per profile/mode.
     for mode_name, mode_data in mode_payloads.items():
         for profile in mode_data.get("profiles", []):
             profile["size_drivers"] = _compute_size_drivers(profile, mode_name=mode_name, top_n=3)
-    schema_version = "3.1" if handwritten_baseline_size_comparison else "3.0"
+    schema_version = "3.0"
+    if handwritten_baseline_size_comparison:
+        schema_version = "3.1"
+    if cost_models or compile_reliability_runs:
+        schema_version = "3.2"
     out: Dict[str, Any] = {
         "schema_version": schema_version,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -538,37 +598,74 @@ def build_report(
         "targets": list(TARGET_ORDER),
         "modes": mode_payloads,
         "handwritten_baselines": benchmark_manifest.get("handwritten_baselines", {}),
+        "compile_reliability_runs": int(compile_reliability_runs),
     }
     if handwritten_baseline_size_comparison is not None:
         out["handwritten_baseline_size_comparison"] = handwritten_baseline_size_comparison
+    if cost_models:
+        out["economics"] = economics_block(cost_models=cost_models)
     return out
 
 
-def _render_profile_table(profile: Dict) -> List[str]:
+def _cost_cells(row: Dict[str, Any], cost_models: List[str]) -> List[str]:
+    costs = row.get("estimated_cost_usd_per_generation") or {}
+    cells: List[str] = []
+    for m in cost_models:
+        v = costs.get(m)
+        cells.append("—" if v is None else f"{float(v):.6f}")
+    return cells
+
+
+def _reliability_cell(row: Dict[str, Any]) -> str:
+    rel = row.get("compile_reliability")
+    if not rel:
+        return "—"
+    sr = float(rel.get("success_rate", 0.0)) * 100.0
+    std = float(rel.get("compile_time_ms_stddev", 0.0))
+    return f"{sr:.0f}% σ={std:.3f}ms"
+
+
+def _render_profile_table(profile: Dict, cost_models: List[str], compile_rel_runs: int) -> List[str]:
+    cost_h = ""
+    if cost_models:
+        labels = []
+        for m in cost_models:
+            short = m.replace("claude-3-5-", "C-").replace("gpt-4o", "4o").replace("sonnet", "Son").replace("haiku", "Hk")
+            labels.append(f"est ${short} (USD)")
+        cost_h = "| " + " | ".join(labels) + " |"
+    rel_h = "| Compile reliability |" if compile_rel_runs > 0 else ""
     lines = [
-        "| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| Artifact | Class | AINL source | React/TS | Python API | Prisma | MT5 | Scraper | Cron | Aggregate generated output | Aggregate ratio | Included targets |"
+        + cost_h
+        + rel_h,
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|"
+        + ("|---:|" * len(cost_models) if cost_models else "")
+        + ("|---|" if compile_rel_runs > 0 else ""),
     ]
     for row in profile["artifacts"]:
         t = row["targets"]
+
         def _fmt_size(val):
             return "-" if val is None else str(val)
-        lines.append(
-            "| {artifact} | {cls} | {src} | {react} | {api} | {prisma} | {mt5} | {scraper} | {cron} | {agg} | {ratio:.2f}x | {inc} |".format(
-                artifact=row["artifact"],
-                cls=row["class"],
-                src=row["ainl_source_size"],
-                react=_fmt_size(t["react_ts"]["size"]),
-                api=_fmt_size(t["python_api"]["size"]),
-                prisma=_fmt_size(t["prisma"]["size"]),
-                mt5=_fmt_size(t["mt5"]["size"]),
-                scraper=_fmt_size(t["scraper"]["size"]),
-                cron=_fmt_size(t["cron"]["size"]),
-                agg=row["aggregate_generated_output_size"],
-                ratio=row["aggregate_ratio_vs_source"],
-                inc=", ".join(row["included_targets"]),
-            )
-        )
+
+        cells: List[str] = [
+            row["artifact"],
+            row["class"],
+            str(row["ainl_source_size"]),
+            _fmt_size(t["react_ts"]["size"]),
+            _fmt_size(t["python_api"]["size"]),
+            _fmt_size(t["prisma"]["size"]),
+            _fmt_size(t["mt5"]["size"]),
+            _fmt_size(t["scraper"]["size"]),
+            _fmt_size(t["cron"]["size"]),
+            str(row["aggregate_generated_output_size"]),
+            f"{float(row['aggregate_ratio_vs_source']):.2f}x",
+            ", ".join(row["included_targets"]),
+        ]
+        cells.extend(_cost_cells(row, cost_models))
+        if compile_rel_runs > 0:
+            cells.append(_reliability_cell(row))
+        lines.append("| " + " | ".join(cells) + " |")
     return lines
 
 
@@ -601,13 +698,16 @@ def render_markdown(report: Dict, benchmark_manifest: Dict) -> str:
     lines.append("")
     lines.append("## Metrics")
     lines.append("")
-    lines.append(f"- Active metric: `{report['metric']}`.")
+    lines.append(f"- Active metric: `{report['metric']}` (default **tiktoken** / **cl100k_base**).")
     if report["metric"] == "approx_chunks":
-        lines.append("- `approx_chunks` is a lexical-size proxy, not tokenizer-accurate pricing.")
+        lines.append("- `approx_chunks` is **legacy**; prefer `tiktoken` for production-relevant sizing.")
     elif report["metric"] == "nonempty_lines":
         lines.append("- `nonempty_lines` measures structural size, not tokenizer-accurate pricing.")
     else:
-        lines.append("- `tiktoken` mode depends on optional tokenizer availability.")
+        lines.append("- `tiktoken` uses `tooling/bench_metrics.py` (shared with runtime benchmarks).")
+    econ = report.get("economics") or {}
+    if econ:
+        lines.append("- **Economics:** estimated LLM $/run from token budgets (see JSON `economics`).")
     lines.append("")
     lines.append("## How To Read These Results")
     lines.append("")
@@ -706,7 +806,9 @@ def render_markdown(report: Dict, benchmark_manifest: Dict) -> str:
         lines.append("")
         for p in mode_payload["profiles"]:
             lines.append(f"### {p['name']}")
-            lines.extend(_render_profile_table(p))
+            cm = (report.get("economics") or {}).get("cost_models_reported") or []
+            cr = int(report.get("compile_reliability_runs") or 0)
+            lines.extend(_render_profile_table(p, cm, cr))
             lines.append("")
 
     hb = report.get("handwritten_baseline_size_comparison")
@@ -754,38 +856,52 @@ def _render_handwritten_baseline_size_markdown(hb: Dict[str, Any], report: Dict[
     if not hb.get("tiktoken_available", True):
         lines.append("*Warning:* `tiktoken` is not installed — AINL tiktoken columns and tk ratios may be empty.")
         lines.append("")
+    econ = report.get("economics") or {}
+    cm = list(econ.get("cost_models_reported") or [])
     for mode in ("minimal_emit", "full_multitarget"):
         lines.append(f"### Emit mode `{mode}`")
         lines.append("")
-        lines.append(
+        hdr = (
             "| Workflow | AINL reference | AINL emit (active) | AINL emit (tiktoken) | "
             "Pure lines | Lang lines | Pure tk | Lang tk | AINL tk ÷ Pure tk | AINL tk ÷ Lang tk |"
         )
-        lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|")
+        sep = "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
+        for mname in cm:
+            hdr += f" AINL `{mname}` USD | HW `{mname}` USD |"
+            sep += "---:|---:|"
+        lines.append(hdr + "|")
+        lines.append(sep + "|")
         for g in hb.get("groups", []):
             name = g.get("name", "")
             rel = g.get("ainl_reference_artifact") or "—"
             bs = g.get("baseline_source") or {}
             md = (g.get("modes") or {}).get(mode, {})
+
             def _r(x: Any) -> str:
                 if x is None:
                     return "—"
                 return f"{float(x):.2f}x"
 
-            lines.append(
-                "| {n} | `{r}` | {a} | {t} | {pl} | {ll} | {pt} | {lt} | {rp} | {rl} |".format(
-                    n=name,
-                    r=rel,
-                    a=md.get("ainl_aggregate_emit_active_metric", "—"),
-                    t=md.get("ainl_aggregate_emit_tiktoken", "—"),
-                    pl=bs.get("pure_nonempty_lines", "—"),
-                    ll=bs.get("lang_nonempty_lines", "—"),
-                    pt=bs.get("pure_tiktoken", "—"),
-                    lt=bs.get("lang_tiktoken", "—"),
-                    rp=_r(md.get("ratio_ainl_tiktoken_over_pure_py_tiktoken")),
-                    rl=_r(md.get("ratio_ainl_tiktoken_over_langgraph_tiktoken")),
-                )
-            )
+            row_cells = [
+                name,
+                f"`{rel}`",
+                str(md.get("ainl_aggregate_emit_active_metric", "—")),
+                str(md.get("ainl_aggregate_emit_tiktoken", "—")),
+                str(bs.get("pure_nonempty_lines", "—")),
+                str(bs.get("lang_nonempty_lines", "—")),
+                str(bs.get("pure_tiktoken", "—")),
+                str(bs.get("lang_tiktoken", "—")),
+                _r(md.get("ratio_ainl_tiktoken_over_pure_py_tiktoken")),
+                _r(md.get("ratio_ainl_tiktoken_over_langgraph_tiktoken")),
+            ]
+            ea = md.get("estimated_cost_usd_ainl_emit_tiktoken") or {}
+            eh = md.get("estimated_cost_usd_handwritten_sources_tiktoken") or {}
+            for m in cm:
+                av = ea.get(m)
+                hv = eh.get(m)
+                row_cells.append("—" if av is None else f"{float(av):.6f}")
+                row_cells.append("—" if hv is None else f"{float(hv):.6f}")
+            lines.append("| " + " | ".join(row_cells) + " |")
         lines.append("")
     for g in hb.get("groups", []):
         err = (g.get("baseline_source") or {}).get("tiktoken_error")
@@ -797,7 +913,12 @@ def _render_handwritten_baseline_size_markdown(hb: Dict[str, Any], report: Dict[
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Segmented capability-driven AINL benchmark")
-    ap.add_argument("--metric", choices=["approx_chunks", "nonempty_lines", "tiktoken"], default="approx_chunks")
+    ap.add_argument(
+        "--metric",
+        choices=["tiktoken", "approx_chunks", "nonempty_lines"],
+        default="tiktoken",
+        help="Token/size metric for emitted artifacts (default: tiktoken cl100k_base).",
+    )
     ap.add_argument("--mode", choices=["full_multitarget", "minimal_emit", "both"], default="both")
     ap.add_argument("--profile-name", default="all", help="profile name or 'all'")
     ap.add_argument("--artifact-profiles", default=str(DEFAULT_ARTIFACT_PROFILES))
@@ -813,6 +934,17 @@ def parse_args() -> argparse.Namespace:
         "--baselines-root",
         default=str(DEFAULT_BASELINES_ROOT),
         help="Root directory for handwritten baseline groups.",
+    )
+    ap.add_argument(
+        "--cost-model",
+        default="both",
+        help="Comma-separated keys or 'both' (gpt-4o+claude-3-5-sonnet), 'none' to skip $ columns.",
+    )
+    ap.add_argument(
+        "--compile-reliability-runs",
+        type=int,
+        default=0,
+        help="Repeat compile N times per artifact (0=off); reports success %% and compile-time stddev.",
     )
     return ap.parse_args()
 
@@ -832,6 +964,29 @@ def _selected_modes(mode_request: str) -> List[str]:
     return [mode_request]
 
 
+def parse_cost_model_cli(s: str) -> List[str]:
+    """Parse ``--cost-model`` (``both``, ``none``, or comma-separated pricing keys)."""
+    raw = (s or "").strip().lower()
+    if raw in ("none", "off", ""):
+        return []
+    if raw == "both":
+        return parse_cost_model_arg("both")
+    keys: List[str] = []
+    for part in raw.split(","):
+        p = part.strip()
+        if not p:
+            continue
+        keys.extend(parse_cost_model_arg(p))
+    # de-dupe preserving order
+    seen: Dict[str, None] = {}
+    out: List[str] = []
+    for k in keys:
+        if k not in seen:
+            seen[k] = None
+            out.append(k)
+    return out
+
+
 def main() -> int:
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -841,8 +996,13 @@ def main() -> int:
         artifact_profiles_path = Path(args.artifact_profiles)
         benchmark_manifest_path = Path(args.benchmark_manifest)
         benchmark_manifest = load_benchmark_manifest(benchmark_manifest_path)
+        if args.metric == "approx_chunks":
+            logger.warning(
+                "metric=approx_chunks is legacy; prefer default tiktoken for production-relevant sizing."
+            )
         count_fn = metric_counter(args.metric)
         compiler = AICodeCompiler(strict_mode=False)
+        cost_models = parse_cost_model_cli(args.cost_model)
         profile_names = _selected_profile_names(args.profile_name, benchmark_manifest)
         mode_names = _selected_modes(args.mode)
 
@@ -865,6 +1025,9 @@ def main() -> int:
                     root=ROOT,
                     count_fn=count_fn,
                     compiler=compiler,
+                    metric_name=args.metric,
+                    cost_models=cost_models or None,
+                    compile_reliability_runs=int(args.compile_reliability_runs),
                 )
                 profiles_payload.append(
                     {
@@ -890,6 +1053,7 @@ def main() -> int:
                 active_metric_fn=count_fn,
                 active_metric_name=args.metric,
                 root=ROOT,
+                cost_models=cost_models or None,
             )
 
         report = build_report(
@@ -899,6 +1063,8 @@ def main() -> int:
             benchmark_manifest=benchmark_manifest,
             mode_payloads=mode_payloads,
             handwritten_baseline_size_comparison=handwritten_cmp,
+            cost_models=cost_models or None,
+            compile_reliability_runs=int(args.compile_reliability_runs),
         )
 
         json_out = Path(args.json_out)
