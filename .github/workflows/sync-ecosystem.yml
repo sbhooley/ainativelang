@@ -26,6 +26,9 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # Avoid duplicate `Authorization` headers when create-pull-request configures HTTPS
+          # (checkout’s persisted PAT + action token → GitHub 400 "Duplicate header: Authorization").
+          persist-credentials: false
 
       - name: Ensure GitHub labels exist (idempotent)
         env:
@@ -71,7 +74,7 @@ jobs:
       - name: Open PR if ecosystem conversions changed
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
           commit-message: "chore: auto-sync upstream Clawflows & Agency-Agents conversions"
           title: "chore: sync upstream Clawflows & Agency-Agents to AINL"
           body: |
