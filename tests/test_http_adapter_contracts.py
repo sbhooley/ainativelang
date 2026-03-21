@@ -143,7 +143,7 @@ def test_http_adapter_retries_on_transport_error(monkeypatch):
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    def _fake_urlopen(req, timeout=None):
+    def _fake_urlopen(req, timeout=None, **kwargs):
         calls["n"] += 1
         if calls["n"] == 1:
             raise URLError("temporary")
@@ -162,7 +162,7 @@ def test_http_adapter_retries_on_transport_error(monkeypatch):
 def test_http_adapter_retries_and_eventually_fails(monkeypatch):
     calls = {"n": 0}
 
-    def _always_fail(req, timeout=None):
+    def _always_fail(req, timeout=None, **kwargs):
         calls["n"] += 1
         raise URLError("temporary")
 
@@ -183,7 +183,7 @@ def test_http_adapter_retries_and_eventually_fails(monkeypatch):
 def test_http_adapter_does_not_retry_on_4xx(monkeypatch):
     calls = {"n": 0}
 
-    def _fail_400(req, timeout=None):
+    def _fail_400(req, timeout=None, **kwargs):
         calls["n"] += 1
         raise HTTPError("https://example.com", 400, "bad request", {}, None)
 
@@ -204,7 +204,7 @@ def test_http_adapter_does_not_retry_on_4xx(monkeypatch):
 def test_http_adapter_retries_on_5xx_then_fails(monkeypatch):
     calls = {"n": 0}
 
-    def _fail_500(req, timeout=None):
+    def _fail_500(req, timeout=None, **kwargs):
         calls["n"] += 1
         raise HTTPError("https://example.com", 500, "server error", {}, None)
 

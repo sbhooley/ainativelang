@@ -4,8 +4,8 @@
 # any auto-remediation and is not a safe-default pattern for unsupervised agents.
 #
 # Advanced / operator-only:
-# - demonstrates `memory.put` and `memory.get` for workflow.token_cost_state
-# - demonstrates optional deterministic metadata and filtered list usage
+# - demonstrates memory put / get / list for workflow.token_cost_state (strict: R memory put | get | list)
+# - optional v1.1 metadata on put; list filters (tags_any, source, limit, updated_after positional)
 # - relies on a local SQLite-backed memory store (AINL_MEMORY_DB)
 
 S core memory

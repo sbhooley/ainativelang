@@ -42,7 +42,7 @@ X entry ({
   "session_count": session_count,
   "summary": summary_preview
 })
-R memory.append "daily_log" "daily_log.note" today_date entry ->_
+R memory append "daily_log" "daily_log.note" today_date entry ->_
 
 # Extract potential user preferences (keys containing "pref", "likes", "fav")
 X prefs_to_store []

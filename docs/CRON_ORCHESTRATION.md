@@ -40,6 +40,39 @@ All OpenClaw-specific cron/runner glue is consolidated under **`openclaw/bridge/
 
 ---
 
+## `S` line shape (cron schedules)
+
+The compiler parses each top-level **`S`** line as **exactly three slots**: **service name**, **mode**, **path** (`compiler_v2.py`). For a scheduled program the intended pattern is:
+
+```text
+S <adapter> cron "<cron expression>"
+```
+
+Examples that are **correct**:
+
+- `S core cron "0 4 * * *"`
+- `S http cron "0 * * * *"`
+- `S cache cron "*/15 * * * *"`
+
+**Do not** insert extra adapter names between the first token and `cron`. For example, `S core memory cron "*/5 * * * *"` is parsed as `service=core`, `mode=memory`, `path=cron` — the **quoted schedule is not** stored as `path`, so hosts that read `ir["services"]` will not see your cron string.
+
+Other adapters (**`memory`**, **`cache`**, **`queue`**, etc.) are used via **`R`** steps and the normal adapter registry; they are **not** declared by cramming extra tokens into `S`.
+
+**CI / local check:** `python3 scripts/validate_s_cron_schedules.py` (fails on malformed `S`+`cron` lines). Tests: `tests/test_s_cron_schedule_lines.py`.
+
+---
+
+## Security: queues, notifications, and secrets
+
+Many monitors use **`QueuePut`**, **`R queue Put`**, or OpenClaw **`notify`** paths with JSON payloads (budget figures, session summaries, monitor heartbeats).
+
+- Treat **queue names** and **notification channels** as **trust boundaries**: only trusted runners should enqueue; consumers should assume payloads are **operator-visible** (log retention, support tooling).
+- **Do not** embed API keys, long-lived tokens, or raw PII in notify payloads; use **cache/config** keys or env-backed adapters and keep notifications to **status + metrics + opaque ids**.
+- **OpenClaw cron payloads** are stored in the host’s cron store; anyone with CLI access can read them. Prefer **environment variables** or **host secret stores** for credentials referenced from wrapper scripts, not inline secrets in job text.
+- After changing what a program sends to **`notify`**, review **registry** `payload_contains` fingerprints and **downstream** logging policies so you do not accidentally broaden data exposure.
+
+---
+
 ## What AI agents should do
 
 1. **Before adding a schedule**, read the **effective** registry (`CRON_REGISTRY_PATH` or default) and inspect OpenClaw (`openclaw cron list --json`) for an existing job that already runs the same command.

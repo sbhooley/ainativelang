@@ -164,6 +164,38 @@
         "onboarding": true
       },
       "source": "S core web /api\nE /status G ->L_status ->out\n\nL_status:\n  Set status \"ok\"\n  If status ->L_ok ->L_other\nL_ok:\n  Set out \"service_ok\"\n  J out\nL_other:\n  Set out \"service_unknown\"\n  J out\n"
+    },
+    {
+      "id": "examples__timeout_demo_ainl",
+      "order": 11,
+      "path": "examples/timeout_demo.ainl",
+      "primary_pattern": "include_timeout_call",
+      "secondary_pattern": "subgraph_entry",
+      "strict_valid": true,
+      "public_safe": true,
+      "suitable_for": {
+        "finetuning": true,
+        "few_shot": true,
+        "eval": true,
+        "onboarding": true
+      },
+      "source": "# timeout_demo.ainl\n# Minimal include-based timeout demo using the strict-safe timeout starter module.\n\ninclude \"modules/common/timeout.ainl\" as timeout\n\nL1:\n  Call timeout/ENTRY ->out\n  J out\n"
+    },
+    {
+      "id": "examples__timeout_memory_prune_demo_ainl",
+      "order": 12,
+      "path": "examples/timeout_memory_prune_demo.ainl",
+      "primary_pattern": "timeout_memory_workflow",
+      "secondary_pattern": "memory_put_list_prune",
+      "strict_valid": true,
+      "public_safe": true,
+      "suitable_for": {
+        "finetuning": true,
+        "few_shot": true,
+        "eval": true,
+        "onboarding": true
+      },
+      "source": "# examples/timeout_memory_prune_demo.ainl\n# Strict-safe demo: timeout starter + workflow memory put/list/prune.\n# Good graph for visualizer PNG export, e.g.:\n#   ainl visualize examples/timeout_memory_prune_demo.ainl --png docs/assets/timeout_memory_prune_flow.png\n\ninclude \"modules/common/timeout.ainl\" as timeout\n\nL1:\n  Call timeout/ENTRY ->out\n  R core.parse \"{\\\"source\\\":\\\"timeout_memory_demo\\\",\\\"confidence\\\":1.0,\\\"tags\\\":[\\\"demo\\\"],\\\"valid_at\\\":\\\"2026-01-01T00:00:00Z\\\"}\" ->memory_meta\n  R core.parse \"{\\\"tags_any\\\":[\\\"demo\\\"],\\\"source\\\":\\\"timeout_memory_demo\\\",\\\"limit\\\":10}\" ->memory_filters\n  R core.parse \"{\\\"step\\\":\\\"timeout_demo\\\"}\" ->record_payload\n  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w\n  R memory list \"workflow\" \"demo_flow\" \"after\" \"1970-01-01T00:00:00Z\" memory_filters ->hist\n  R memory prune \"workflow\" ->_pr\n  J out\n"
     }
   ]
 }

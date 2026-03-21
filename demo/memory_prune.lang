@@ -7,7 +7,7 @@ L0:
   R core iso ->now_iso
   R memory prune ->prune_result
 
-  X pruned get prune_result "pruned_count"
+  X pruned get prune_result "pruned"
   X pruned_is_zero eq pruned 0
   If pruned_is_zero ->L_ok ->L_summary
 

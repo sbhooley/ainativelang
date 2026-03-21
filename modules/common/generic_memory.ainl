@@ -1,5 +1,6 @@
 # modules/common/generic_memory.ainl
-# Shared namespace-aware memory helpers.
+# Shared namespace-aware memory helpers (Memory Contract v1 + v1.1 list metadata filters).
+# Label ids: LWRITE → Call alias/WRITE, LLIST → Call alias/LIST (leading L stripped once by the compiler).
 #
 # Caller contract (set these frame vars before Call):
 # - memory_namespace

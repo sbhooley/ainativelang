@@ -3,7 +3,7 @@ include "modules/common/ops_memory.ainl" as opsmem
 
 S main
   # Get daily revenue target from memory config
-  R memory.get "config" "revenue_target_daily" ->cfg
+  R memory get "config" "revenue_target_daily" ->cfg
   X target (core.if (core.not cfg.found) 10000 cfg.payload.value)  # default $10k
 
   # Start of today (midnight UTC)

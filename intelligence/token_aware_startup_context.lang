@@ -6,8 +6,11 @@
 #
 # Pure compute — no LLM calls. Runs every 5 minutes.
 # Proven patterns: Loop + If branching + push array + J return.
-S core cron "*/5 * * * *"
+# Includes before S so module labels merge into the prelude.
 include "modules/common/generic_memory.ainl" as genmem
+include "modules/common/access_aware_memory.ainl" as accmem
+# S line is only `<adapter> cron "<expr>"` — extra tokens break the schedule (path becomes literal "cron").
+S core cron "*/5 * * * *"
 
 # ── Entry: load budget state and gate on remaining tokens ──
 L0:
@@ -28,7 +31,23 @@ L2:
   If true ->L3 ->L3
 
 # ── Compute allocation: 10% of remaining, clamped [200..2000] ──
+# Opt-in access metadata: touch latest prior snapshot (if any) before building new context
 L3:
+  X snap_filters {"source":"intelligence.token_aware_startup_context","tags_any":["context_injection","workflow"],"limit":1}
+  R memory list "workflow" "workflow.context_injection_snapshot" "" "1970-01-01T00:00:00Z" snap_filters ->_snaps
+  X snap_items get _snaps "items"
+  X snap_len len snap_items
+  X no_snap eq snap_len 0
+  If no_snap ->L3b ->L3a
+L3a:
+  X snap0 get snap_items "0"
+  X prev_rid get snap0 "record_id"
+  X memory_namespace "workflow"
+  X memory_kind "workflow.context_injection_snapshot"
+  X memory_record_id prev_rid
+  Call accmem/LACCESS_READ ->_
+  J L3b
+L3b:
   X raw (mul tokenCap 0.1)
   X capped (core.min raw 2000)
   X tokenCap (core.max capped 200)

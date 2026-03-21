@@ -4,8 +4,8 @@
 # safe-default pattern for unsupervised agents.
 #
 # Advanced / operator-only:
-# - demonstrates `memory.append` and `memory.get` for daily_log.note
-# - demonstrates optional deterministic metadata, filtered list, and response stats
+# - demonstrates memory append / get / list for daily_log.note (strict: R memory append | get | list)
+# - optional v1.1 metadata on append; list filters object (tags_any, source, limit) — see docs/adapters/MEMORY_CONTRACT.md
 # - relies on a local SQLite-backed memory store (AINL_MEMORY_DB)
 
 S core memory

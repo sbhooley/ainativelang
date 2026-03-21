@@ -12,7 +12,7 @@ X api_key_env "OPENROUTER_API_KEY"
 X usage_url "https://openrouter.ai/api/v1/usage"
 
 # Get current budget config from memory (long_term.budget_config) if available
-R memory.get "long_term" "budget_config" "weekly" ->budget_cfg
+R memory get "long_term" "budget_config" "weekly" ->budget_cfg
 X budget (ite budget_cfg.found (budget_cfg.payload.budget_usd) default_budget)
 
 # Get OpenRouter usage

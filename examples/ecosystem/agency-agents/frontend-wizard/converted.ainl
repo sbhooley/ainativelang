@@ -8,7 +8,7 @@ L_entry:
 
 L_check_rules:
   R core.parse "{\"kind\":\"rules_gate\",\"text\":\"(see source doc)\"}" ->rules_ctx
-  R core.parse "{\"source\":\"md_import\",\"agent\":\"frontend-developer\"}" ->memory_meta
+  R core.parse "{\"source\":\"md_import\",\"agent\":\"frontend-developer\",\"confidence\":1.0,\"tags\":[\"agent\",\"rules_snapshot\",\"frontend-developer\"]}" ->memory_meta
   R memory put "workflow" "frontend-developer" "rules_snapshot" rules_ctx 7200 memory_meta ->_mr
   If (core.eq 1 1) ->L_check_deliverables ->L_exit
 

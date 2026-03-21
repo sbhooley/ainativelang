@@ -3,8 +3,10 @@
 # Monitors session-scoped memory keys, checks bootstrap context freshness,
 # and ensures continuity data is available for new sessions.
 # Runs every 30 minutes. Pure compute — no LLM calls.
-S core cron "*/30 * * * *"
 include "modules/common/generic_memory.ainl" as genmem
+include "modules/common/access_aware_memory.ainl" as accmem
+# S line: single adapter + cron only (see token_aware_startup_context.lang).
+S core cron "*/30 * * * *"
 
 # ── Entry: timestamp and check for bootstrap context ──
 L0:
@@ -49,6 +51,21 @@ L4:
 
 # ── Report with stats ──
 L5:
+  X snap_filters {"source":"intelligence.token_aware_startup_context","tags_any":["context_injection","workflow"],"limit":1}
+  R memory list "workflow" "workflow.context_injection_snapshot" "" "1970-01-01T00:00:00Z" snap_filters ->_snaps2
+  X snap_items2 get _snaps2 "items"
+  X snap_len2 len snap_items2
+  X no_snap2 eq snap_len2 0
+  If no_snap2 ->L5b ->L5a
+L5a:
+  X snap0b get snap_items2 "0"
+  X prev_rid2 get snap0b "record_id"
+  X memory_namespace "workflow"
+  X memory_kind "workflow.context_injection_snapshot"
+  X memory_record_id prev_rid2
+  Call accmem/LACCESS_READ ->_
+  J L5b
+L5b:
   X lineStr (core.stringify lineCount)
   X tokStr (core.stringify tokenCount)
   X msg (core.concat "Session continuity OK — " lineStr " lines, " tokStr " tokens injected at " isoTs)

@@ -156,13 +156,16 @@ L_compute:
   X memory_namespace "workflow"
   X memory_list_kind memory_kind
   X memory_list_filters {"updated_after":memory_updated_after,"tags_any":memory_tags,"source":memory_source,"limit":memory_list_limit}
-  Call accmem/LACCESS_LIST ->week_hist
+  Call accmem/LACCESS_LIST_SAFE ->week_hist
   X week_records get week_hist "items"
+  X week_hist_count len week_records
 
-  # --- Example only — not executed in this graph ---
-  # Optional recency query after access-aware touches (metadata.last_accessed):
-  #   R memory list "workflow" "workflow.budget_enforcement" null null {"since_last_accessed":"2026-03-01T00:00:00Z","tags_any":["budget","enforcement"]} ->recent_enforcements
-  # Would return only audit rows with last_accessed >= cutoff — recently enforced / re-read budgets.
+  # v1.1: rows with metadata.last_accessed >= week start (after LIST_SAFE touches, these ⊆ week_hist)
+  R core iso_ts week_ago_ts ->week_cutoff_iso
+  X sa_filters {"since_last_accessed":week_cutoff_iso,"tags_any":memory_tags,"source":memory_source,"limit":memory_list_limit}
+  R memory list "workflow" "workflow.budget_enforcement" "" "1970-01-01T00:00:00Z" sa_filters ->recent_access_enforcement
+  X recent_access_items get recent_access_enforcement "items"
+  X recent_access_count len recent_access_items
 
   # Weekly spend = today's + sum from memory records
   # (Each record stores daily_used; we sum them for the week)
@@ -273,7 +276,7 @@ L_persist:
 
   # Persist to memory for audit trail (7-day TTL)
   R core concat "enforce-" now_iso ->rec_id
-  X audit_payload {"gate":gate_level,"daily_used":daily_used,"daily_limit":daily_limit,"daily_pct":daily_pct,"daily_remaining":daily_remaining,"weekly_spent":weekly_spent,"weekly_limit":weekly_limit,"weekly_pct":weekly_pct,"ts":ts}
+  X audit_payload {"gate":gate_level,"daily_used":daily_used,"daily_limit":daily_limit,"daily_pct":daily_pct,"daily_remaining":daily_remaining,"weekly_spent":weekly_spent,"weekly_limit":weekly_limit,"weekly_pct":weekly_pct,"ts":ts,"memory_week_list_count":week_hist_count,"memory_since_last_access_count":recent_access_count}
   X memory_kind "workflow.budget_enforcement"
   X memory_record_id rec_id
   X memory_payload audit_payload

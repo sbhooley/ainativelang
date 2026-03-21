@@ -42,7 +42,7 @@ L1:
 
   X memory_list_kind "long_term.distilled_insight"
   X memory_list_filters {}
-  Call accmem/LACCESS_LIST ->listed
+  Call accmem/LACCESS_LIST_SAFE ->listed
 
   X demo_out {"ok":true,"id":mem_id,"session_pruned":pr1,"distilled_found":true,"after_access_read":after_read,"list_snapshot":listed}
   J demo_out

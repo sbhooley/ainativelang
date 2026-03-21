@@ -1,19 +1,21 @@
 # Session Continuity Monitor — every 2 hours
 # Tracks session context activity; alerts if no sessions recently.
+# memory.list via genmem/LLIST (Call …/LIST): use a wide updated_after window so the count is meaningful.
+# S must be `<adapter> cron "<expr>"` only — do not insert `memory` (breaks path / drops schedule).
 S core cron "0 */2 * * *"
 include "modules/common/generic_memory.ainl" as genmem
 
 L0:
   R core now ->ts
-  R core iso_ts ts ->ts_iso
   X memory_namespace "session"
   X memory_kind "session.context"
-  X memory_updated_after ts_iso
+  X memory_updated_after "1970-01-01T00:00:00Z"
   X memory_list_limit 1000
   X memory_tags []
   X memory_source ""
   Call genmem/LIST ->sessions
-  X total len sessions
+  X session_items sessions.items
+  X total len session_items
   X has_sessions gt total 0
   If has_sessions ->L_report ->L_nothing
 

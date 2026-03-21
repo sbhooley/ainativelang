@@ -32,7 +32,9 @@
       "examples/if_call_workflow.ainl",
       "examples/webhook_automation.ainl",
       "examples/monitor_escalation.ainl",
-      "examples/status_branching.ainl"
+      "examples/status_branching.ainl",
+      "examples/timeout_demo.ainl",
+      "examples/timeout_memory_prune_demo.ainl"
     ],
     "non-strict-only": [
       "examples/api_only.lang",
@@ -83,7 +85,21 @@
       "examples/openclaw/monitor_status_advice_read.lang",
       "examples/openclaw/monitor_status_advice_request.lang",
       "examples/openclaw/token_cost_advice_read.lang",
-      "examples/openclaw/token_cost_advice_request.lang"
+      "examples/openclaw/token_cost_advice_request.lang",
+      "examples/bad_include.ainl",
+      "examples/ecosystem/agency-agents/accounts-payable-agent/converted.ainl",
+      "examples/ecosystem/agency-agents/agents-orchestrator/converted.ainl",
+      "examples/ecosystem/agency-agents/engineering-frontend-developer/converted.ainl",
+      "examples/ecosystem/agency-agents/frontend-wizard/converted.ainl",
+      "examples/ecosystem/agency-agents/mcp-builder/converted.ainl",
+      "examples/ecosystem/agency-agents/specialized-workflow-architect/converted.ainl",
+      "examples/ecosystem/clawflows/check-calendar/converted.ainl",
+      "examples/ecosystem/clawflows/check-email/converted.ainl",
+      "examples/ecosystem/clawflows/morning-briefing/converted.ainl",
+      "examples/ecosystem/clawflows/morning-journal/converted.ainl",
+      "examples/ecosystem/clawflows/plan-week/converted.ainl",
+      "examples/ecosystem/clawflows/prep-tomorrow/converted.ainl",
+      "examples/openclaw_full_unification.ainl"
     ],
     "legacy-compat": []
   },

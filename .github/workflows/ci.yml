@@ -87,6 +87,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
 
+      - name: Validate S+cron schedule lines (IR services.path)
+        run: python scripts/validate_s_cron_schedules.py
+
       - name: Run parser compatibility gate
         run: |
           python -m pytest -q \

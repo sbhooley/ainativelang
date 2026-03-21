@@ -3,9 +3,9 @@ include "modules/common/ops_memory.ainl" as opsmem
 
 S main
   # Read API key and budget from memory config (must be set manually beforehand)
-  R memory.get "config" "openrouter_api_key" ->tok
+  R memory get "config" "openrouter_api_key" ->tok
   If (core.not tok.found) ->_missing_key
-  R memory.get "config" "openrouter_daily_budget_tokens" ->budget_cfg
+  R memory get "config" "openrouter_daily_budget_tokens" ->budget_cfg
   X budget (core.if (core.not budget_cfg.found) 100000 budget_cfg.payload.value)
 
   # Build Auth header

@@ -6,10 +6,8 @@ validate `last_accessed` / `access_count` behavior with the same adapter sequenc
 `LACCESS_READ` would perform (get → merge meta → put). Graph mode also resolves
 bare child label ids under an include-style prefix (see
 ``test_graph_mode_nested_if_resolves_bare_child_labels``).
-The demo still calls ``accmem/LACCESS_LIST`` for compile coverage; nested list
-touches may be incomplete in graph-preferred mode—use ``LACCESS_LIST_SAFE`` in
-production when full per-item access updates are required (see
-``modules/common/access_aware_memory.ainl`` header).
+The demo calls ``accmem/LACCESS_LIST_SAFE`` so per-item access metadata updates
+run in graph-preferred mode (see ``modules/common/access_aware_memory.ainl``).
 """
 
 from __future__ import annotations
@@ -17,8 +15,6 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -46,7 +42,7 @@ def _touch_like_laccess_read(adp: MemoryAdapter, ns: str, kind: str, rid: str) -
 def test_session_budget_enforcer_compiles_with_access_aware_includes(tmp_path: Path) -> None:
     demo_path = ROOT / "demo" / "session_budget_enforcer.lang"
     demo = demo_path.read_text(encoding="utf-8")
-    assert "Call accmem/LACCESS_LIST" in demo
+    assert "Call accmem/LACCESS_LIST_SAFE" in demo
     assert "workflow.budget_enforcement" in demo
     # Prelude: include lines must appear before `S` so modules merge into IR.
     inc_tok = demo.index('include "modules/common/token_cost_memory.ainl"')
@@ -57,7 +53,7 @@ def test_session_budget_enforcer_compiles_with_access_aware_includes(tmp_path: P
     ir = AICodeCompiler(strict_mode=False).compile(demo, source_path=str(demo_path), emit_graph=True)
     assert not ir.get("errors")
     labels = ir.get("labels") or {}
-    assert any("accmem" in k and "ACCESS_LIST" in k.upper() for k in labels)
+    assert any("accmem" in k and "ACCESS_LIST_SAFE" in k.upper() for k in labels)
     assert any("tokenmem" in k and "WRITE" in k.upper() for k in labels)
 
     db = str(tmp_path / "enforcer_access.sqlite3")

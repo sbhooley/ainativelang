@@ -9,8 +9,9 @@
 # Supports reasoning models too — extracts from "reasoning" if "content" is null.
 #
 # Patterns: Loop + If + obj/put/push for HTTP body + R http POST for LLM.
-S core cron "0 4 * * *"
 include "modules/common/generic_memory.ainl" as genmem
+include "modules/common/access_aware_memory.ainl" as accmem
+S core cron "0 4 * * *"
 
 # ── Entry: budget gate ──
 L0:
@@ -91,6 +92,12 @@ L10:
   If atCap ->L15 ->L11
 
 L11:
+  X sum_touch_date (core.substr targetFile 0 10)
+  X pre_sum_id (core.concat "summary-" sum_touch_date)
+  X memory_namespace "workflow"
+  X memory_kind "workflow.session_summary"
+  X memory_record_id pre_sum_id
+  Call accmem/LACCESS_READ ->_
   X filePath (core.concat "memory/" targetFile)
   R fs read filePath ->dayContent
   X contentLen (core.len dayContent)

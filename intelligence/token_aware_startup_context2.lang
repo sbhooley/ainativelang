@@ -1,4 +1,11 @@
-# Minimal startup context: last ~300 estimated tokens from MEMORY.md (chronological order).
+# LEGACY / MINIMAL — prefer `intelligence/token_aware_startup_context.lang` for production.
+# That program: OpenClaw token-budget gate, high-signal line picking, cache + workflow memory
+# (`workflow.context_injection_snapshot`) with v1.1 metadata and optional prior-snapshot
+# `LACCESS_READ` via `access_aware_memory.ainl`.
+#
+# This file: last ~300 estimated tokens from MEMORY.md (chronological order), no budget gate,
+# no structured memory. Kept for tiny sandboxes and regression comparisons only.
+#
 # fs write creates parent directories in the sandbox adapter. Uses push (not Append).
 S core cron "*/5 * * * *"
 

@@ -29,7 +29,7 @@ L1: X today_bucket (core.idiv now 86400)
     # Process each record: get payload, filter by time, assign to bucket
     X _ (ForEach items (lambda item (
         X rec_id item.record_id
-        R memory.get "workflow" "workflow.service_check" rec_id ->rec
+        R memory get "workflow" "workflow.service_check" rec_id ->rec
         If rec.found ->L_have ->L_skip
       L_have:
         X payload rec.payload

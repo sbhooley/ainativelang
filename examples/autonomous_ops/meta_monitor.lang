@@ -1,5 +1,5 @@
-S cron
-Cr L_tick "*/15 * * * *"  # every 15 minutes
+# Declarative schedule: `S <adapter> cron "<expr>"` only (see scripts/validate_s_cron_schedules.py).
+S cache cron "*/15 * * * *"
 
 # Optional config: override monitored modules and thresholds
 R memory F "config" "meta_monitor" ->cfg

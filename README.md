@@ -504,9 +504,9 @@ Bottom line: AINL lowers overall token usage while increasing capability, predic
 
 **Current benchmark framing:**
 
-- **`canonical_strict_valid`** is the primary headline profile (10/10 viable).
+- **`canonical_strict_valid`** is the primary headline profile (12/12 viable).
 - Default sizing is **tiktoken cl100k_base** in markdown tables; JSON still records the CLI `--metric` (default `tiktoken`). Legacy `--metric=approx_chunks` is optional and **deprecated** for billing claims.
-- **Highlights (from [`BENCHMARK.md`](BENCHMARK.md), Mar 2026):** strict-valid **~8.91×** full_multitarget / **~2.22×** minimal_emit (tk); **`public_mixed` viable subset** **~1.02×** minimal (**46/59** artifacts—representative required-target workloads); **`compatibility_only` viable** **~0.83×** minimal (**36/49**); **legacy-inclusive** `public_mixed` minimal **~0.24×** (all 59 artifacts) reported separately. Full detail: **[`docs/benchmarks.md#benchmark-highlights-march-2026`](docs/benchmarks.md#benchmark-highlights-march-2026)**.
+- **Highlights (from [`BENCHMARK.md`](BENCHMARK.md), Mar 2026):** strict-valid **~6.60×** full_multitarget / **~1.62×** minimal_emit (tk); **`public_mixed` viable subset** **~0.80×** minimal (**62/75** artifacts—representative required-target workloads); **`compatibility_only` viable** **~0.67×** minimal (**50/63**); **legacy-inclusive** `public_mixed` minimal **~0.22×** (all 75 artifacts) reported separately. Full detail: **[`docs/benchmarks.md#benchmark-highlights-march-2026`](docs/benchmarks.md#benchmark-highlights-march-2026)**.
 - **Transparency:** **`prisma` / `react_ts`** benchmark stubs **compacted Mar 2026** (~50–70% tk reduction on those emit lines); **minimal_emit** may add a small **python_api fallback stub** (~20–30 tk) when no selected target emits code—both are documented in `BENCHMARK.md`.
 - In `full_multitarget`, canonical strict examples show strong expansion leverage; runtime traces on the tracked benchmark JSON typically show **100%** success on optional reliability batches for strict-valid workloads with **sub-millisecond** measured latency (machine-dependent).
 - In `minimal_emit`, mixed compatibility examples can be smaller or larger depending on artifact class and required targets
@@ -754,6 +754,7 @@ See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Pyt
 | `grammar_constraint.py` | Thin compatibility layer that composes formal grammar + priors + pruning APIs |
 | `docs/RUNTIME_COMPILER_CONTRACT.md` | Runtime/compiler/decoder ownership + conformance contract |
 | `scripts/validate_ainl.py` | CLI validator: compile .lang, print IR or emit artifact |
+| `scripts/validate_s_cron_schedules.py` | Guardrail: malformed `S <adapter> cron "…"` lines (also **`ainl-validate-s-cron`**); see `docs/CRON_ORCHESTRATION.md` |
 | `scripts/visualize_ainl.py` | Graph visualizer: compile to Mermaid (clusters for `include` aliases); see **Visualize your workflow** below |
 | `scripts/validator_app.py` | Web validator (FastAPI): POST .lang → validate, GET / for paste UI |
 | `scripts/generate_synthetic_dataset.py` | Generate 10k+ valid .lang programs into `data/synthetic/` |

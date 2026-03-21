@@ -23,15 +23,6 @@ def compiler_lossless() -> AICodeCompiler:
     return AICodeCompiler(strict_mode=False)
 
 
-def pytest_configure(config) -> None:
-    """Place syrupy snapshots under ``tests/snapshots/conformance``."""
-    # syrupy uses this option to choose the snapshot directory name relative to each
-    # test file's directory, so we use a path that resolves to:
-    #   tests/conformance/../snapshots/conformance -> tests/snapshots/conformance
-    if hasattr(config.option, "snapshot_dirname"):
-        config.option.snapshot_dirname = "../snapshots/conformance"
-
-
 def _load_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 

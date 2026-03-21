@@ -1,10 +1,10 @@
 {
   "schema_version": "1.2",
-  "generated_at_utc": "2026-03-21T16:42:05.841944+00:00",
+  "generated_at_utc": "2026-03-21T20:12:54.220440+00:00",
   "kind": "runtime",
   "execution_mode_graph": "graph-preferred",
-  "warmup_runs": 8,
-  "timed_runs": 20,
+  "warmup_runs": 1,
+  "timed_runs": 2,
   "execution_reliability_runs": 10,
   "mode_request": "both",
   "profile_request": "canonical_strict_valid",
@@ -21,7 +21,7 @@
             "classes": [
               "strict-valid"
             ],
-            "artifact_count": 10
+            "artifact_count": 12
           },
           "artifacts": [
             {
@@ -29,19 +29,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.5949863310282429,
+              "compile_time_ms_mean": 0.5855279935834309,
               "latency_ms": {
-                "mean_ms": 0.020295902504585683,
-                "p50_ms": 0.01989600423257798,
-                "p95_ms": 0.02209824015153572,
-                "min_ms": 0.019208004232496023,
-                "max_ms": 0.02316699828952551,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.025832996470853686,
+                "p50_ms": 0.025832996470853686,
+                "p95_ms": 0.028757992549799383,
+                "min_ms": 0.02258300082758069,
+                "max_ms": 0.029082992114126682,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
-              "peak_rss_delta_mb": 0.046875,
+              "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 0,
-              "trace_events_last_run": 112,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 37,
@@ -60,7 +60,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.008373356616409004,
+                "latency_ms_stddev": 0.004789062989586399,
                 "failure_samples": []
               }
             },
@@ -69,19 +69,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.2647359991290917,
+              "compile_time_ms_mean": 0.2256806765217334,
               "latency_ms": {
-                "mean_ms": 0.20711664838017896,
-                "p50_ms": 0.03243799437768757,
-                "p95_ms": 0.6451687426306326,
-                "min_ms": 0.011166994227096438,
-                "max_ms": 3.11837499612011,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.012333504855632782,
+                "p50_ms": 0.012333504855632782,
+                "p95_ms": 0.013121456140652299,
+                "min_ms": 0.011458003427833319,
+                "max_ms": 0.013209006283432245,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.015625,
               "adapter_calls_last_run": 1,
-              "trace_events_last_run": 56,
+              "trace_events_last_run": 6,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 18,
@@ -100,7 +100,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0023984348798102386,
+                "latency_ms_stddev": 0.0017587363958427244,
                 "failure_samples": []
               }
             },
@@ -109,19 +109,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 2.037472314744567,
+              "compile_time_ms_mean": 0.9531246614642441,
               "latency_ms": {
-                "mean_ms": 0.13102504890412092,
-                "p50_ms": 0.09570848487783223,
-                "p95_ms": 0.2883922905311921,
-                "min_ms": 0.03891700180247426,
-                "max_ms": 0.4747500061057508,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.04520850779954344,
+                "p50_ms": 0.04520850779954344,
+                "p95_ms": 0.0461836505564861,
+                "min_ms": 0.04412501584738493,
+                "max_ms": 0.04629199975170195,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 1,
-              "trace_events_last_run": 224,
+              "trace_events_last_run": 24,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 83,
@@ -140,7 +140,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.009939672653011416,
+                "latency_ms_stddev": 0.0041072499795464,
                 "failure_samples": []
               }
             },
@@ -149,7 +149,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: '>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]",
-              "compile_time_ms_mean": 0.691694663449501,
+              "compile_time_ms_mean": 0.5782359997586658,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -222,19 +222,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 2.461305324686691,
+              "compile_time_ms_mean": 0.44523632580724853,
               "latency_ms": {
-                "mean_ms": 0.06401669234037399,
-                "p50_ms": 0.0575829908484593,
-                "p95_ms": 0.12026635085931056,
-                "min_ms": 0.0191659783013165,
-                "max_ms": 0.23299999884329736,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.021458501578308642,
+                "p50_ms": 0.021458501578308642,
+                "p95_ms": 0.022733349760528654,
+                "min_ms": 0.020042003598064184,
+                "max_ms": 0.0228749995585531,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 1,
-              "trace_events_last_run": 112,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 29,
@@ -253,7 +253,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.004468553840767174,
+                "latency_ms_stddev": 0.0026043953978163014,
                 "failure_samples": []
               }
             },
@@ -262,19 +262,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 1.2735696703506012,
+              "compile_time_ms_mean": 0.5679859993203232,
               "latency_ms": {
-                "mean_ms": 0.028627099527511746,
-                "p50_ms": 0.02697900345083326,
-                "p95_ms": 0.029610459750983885,
-                "min_ms": 0.026249996153637767,
-                "max_ms": 0.0578339968342334,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.032625001040287316,
+                "p50_ms": 0.032625001040287316,
+                "p95_ms": 0.03708811564138159,
+                "min_ms": 0.02766598481684923,
+                "max_ms": 0.0375840172637254,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
-              "peak_rss_delta_mb": 0.0,
+              "peak_rss_delta_mb": 0.015625,
               "adapter_calls_last_run": 3,
-              "trace_events_last_run": 140,
+              "trace_events_last_run": 15,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 54,
@@ -293,7 +293,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.004566587740398894,
+                "latency_ms_stddev": 0.003423590156673631,
                 "failure_samples": []
               }
             },
@@ -302,7 +302,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=6 source='  R http.GET \"https://example.com/products\" ->resp'] [label=_scrape step=0 op=R stack=_scrape]",
-              "compile_time_ms_mean": 0.3948473313357681,
+              "compile_time_ms_mean": 0.3539723305342098,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -375,19 +375,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 1.8466390029061586,
+              "compile_time_ms_mean": 0.5471943295560777,
               "latency_ms": {
-                "mean_ms": 0.06626049580518156,
-                "p50_ms": 0.06585448863916099,
-                "p95_ms": 0.06757288938388228,
-                "min_ms": 0.06500000017695129,
-                "max_ms": 0.07133299368433654,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.02416700590401888,
+                "p50_ms": 0.02416700590401888,
+                "p95_ms": 0.02585451875347644,
+                "min_ms": 0.02229199162684381,
+                "max_ms": 0.026042020181193948,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 0,
-              "trace_events_last_run": 112,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 48,
@@ -406,8 +406,121 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.00512090346309059,
+                "latency_ms_stddev": 0.004662880176667423,
                 "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/timeout_demo.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 2.095082988186429,
+              "latency_ms": {
+                "mean_ms": 1.3020414917264134,
+                "p50_ms": 1.3020414917264134,
+                "p95_ms": 1.3045538362348452,
+                "min_ms": 1.2992499978281558,
+                "max_ms": 1.304832985624671,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 2,
+              "trace_events_last_run": 21,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 49,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0003475
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.006276212060486037,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/timeout_memory_prune_demo.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]",
+              "compile_time_ms_mean": 2.936374997564902,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 256,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.00183
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  }
+                ]
               }
             },
             {
@@ -415,7 +528,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: db [line=5 source='  R db.F User * ->users'] [label=_users step=0 op=R stack=_users]",
-              "compile_time_ms_mean": 0.4627223340018342,
+              "compile_time_ms_mean": 0.27194433884384733,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -488,7 +601,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=3 source='  R http.POST \"https://example.com/automation\" \"event_webhook\" ->resp'] [label=1 step=1 op=R stack=1]",
-              "compile_time_ms_mean": 1.5339443440704297,
+              "compile_time_ms_mean": 0.6291663351779183,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -558,10 +671,10 @@
             }
           ],
           "summary": {
-            "artifact_count": 10,
-            "ok_count": 6,
-            "fail_count": 4,
-            "mean_latency_mean_ms_across_ok": 0.08622364791032548
+            "artifact_count": 12,
+            "ok_count": 7,
+            "fail_count": 5,
+            "mean_latency_mean_ms_across_ok": 0.20909528705357974
           }
         }
       ]
@@ -576,7 +689,7 @@
             "classes": [
               "strict-valid"
             ],
-            "artifact_count": 10
+            "artifact_count": 12
           },
           "artifacts": [
             {
@@ -584,19 +697,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.9801663303126892,
+              "compile_time_ms_mean": 0.5220139961844931,
               "latency_ms": {
-                "mean_ms": 0.05199154693400487,
-                "p50_ms": 0.030042006983421743,
-                "p95_ms": 0.09295866329921429,
-                "min_ms": 0.0200409849639982,
-                "max_ms": 0.36212499253451824,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.02154200046788901,
+                "p50_ms": 0.02154200046788901,
+                "p95_ms": 0.02304229565197602,
+                "min_ms": 0.019875005818903446,
+                "max_ms": 0.023208995116874576,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 0,
-              "trace_events_last_run": 112,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 37,
@@ -615,7 +728,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.012430899760957325,
+                "latency_ms_stddev": 0.002517038840045602,
                 "failure_samples": []
               }
             },
@@ -624,19 +737,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.4977639958572884,
+              "compile_time_ms_mean": 0.21395799315844974,
               "latency_ms": {
-                "mean_ms": 0.010201998520642519,
-                "p50_ms": 0.010125018889084458,
-                "p95_ms": 0.010516670590732247,
-                "min_ms": 0.009832991054281592,
-                "max_ms": 0.010832998668774962,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.012208489351905882,
+                "p50_ms": 0.012208489351905882,
+                "p95_ms": 0.012920833250973374,
+                "min_ms": 0.011416996130719781,
+                "max_ms": 0.012999982573091984,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 1,
-              "trace_events_last_run": 56,
+              "trace_events_last_run": 6,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 18,
@@ -655,7 +768,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.002607837300206874,
+                "latency_ms_stddev": 0.0017023134459824114,
                 "failure_samples": []
               }
             },
@@ -664,19 +777,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 2.7557916667622826,
+              "compile_time_ms_mean": 0.8775140061819305,
               "latency_ms": {
-                "mean_ms": 0.07852284761611372,
-                "p50_ms": 0.04102100501768291,
-                "p95_ms": 0.18750414747046312,
-                "min_ms": 0.03741701948456466,
-                "max_ms": 0.27070799842476845,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.04654150689020753,
+                "p50_ms": 0.04654150689020753,
+                "p95_ms": 0.052991355187259614,
+                "min_ms": 0.03937500878237188,
+                "max_ms": 0.05370800499804318,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.015625,
               "adapter_calls_last_run": 1,
-              "trace_events_last_run": 224,
+              "trace_events_last_run": 24,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 83,
@@ -695,7 +808,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.00871448936190576,
+                "latency_ms_stddev": 0.005426463143953725,
                 "failure_samples": []
               }
             },
@@ -704,7 +817,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: '>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]",
-              "compile_time_ms_mean": 0.7842219977950057,
+              "compile_time_ms_mean": 0.5577913349649558,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -777,19 +890,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 1.9439163346153994,
+              "compile_time_ms_mean": 0.3679026655542354,
               "latency_ms": {
-                "mean_ms": 0.018545749480836093,
-                "p50_ms": 0.01847899693530053,
-                "p95_ms": 0.019296146638225764,
-                "min_ms": 0.017790996935218573,
-                "max_ms": 0.019374972907826304,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.01989598968066275,
+                "p50_ms": 0.01989598968066275,
+                "p95_ms": 0.02115238457918167,
+                "min_ms": 0.018499995348975062,
+                "max_ms": 0.02129198401235044,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 1,
-              "trace_events_last_run": 112,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 29,
@@ -808,7 +921,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.010658645338526571,
+                "latency_ms_stddev": 0.002044996485033763,
                 "failure_samples": []
               }
             },
@@ -817,19 +930,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 1.4160973272131134,
+              "compile_time_ms_mean": 0.5111666687298566,
               "latency_ms": {
-                "mean_ms": 0.06917069986229762,
-                "p50_ms": 0.040458005969412625,
-                "p95_ms": 0.12545175122795643,
-                "min_ms": 0.026208028430119157,
-                "max_ms": 0.33433298813179135,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.027833011699840426,
+                "p50_ms": 0.027833011699840426,
+                "p95_ms": 0.029108318267390132,
+                "min_ms": 0.026416004402562976,
+                "max_ms": 0.029250018997117877,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 3,
-              "trace_events_last_run": 140,
+              "trace_events_last_run": 15,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 54,
@@ -848,7 +961,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.02895544001310669,
+                "latency_ms_stddev": 0.0031348233524534862,
                 "failure_samples": []
               }
             },
@@ -857,7 +970,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=6 source='  R http.GET \"https://example.com/products\" ->resp'] [label=_scrape step=0 op=R stack=_scrape]",
-              "compile_time_ms_mean": 0.5226803283828,
+              "compile_time_ms_mean": 0.3935553249903023,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -930,19 +1043,19 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 1.068124664016068,
+              "compile_time_ms_mean": 0.5530830045851568,
               "latency_ms": {
-                "mean_ms": 0.04171259934082627,
-                "p50_ms": 0.021791987819597125,
-                "p95_ms": 0.05802918749395783,
-                "min_ms": 0.020500010577961802,
-                "max_ms": 0.3958340093959123,
-                "warmup_runs": 8,
-                "timed_runs": 20
+                "mean_ms": 0.023895991034805775,
+                "p50_ms": 0.023895991034805775,
+                "p95_ms": 0.025190183077938855,
+                "min_ms": 0.02245799987576902,
+                "max_ms": 0.02533398219384253,
+                "warmup_runs": 1,
+                "timed_runs": 2
               },
               "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 0,
-              "trace_events_last_run": 112,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 48,
@@ -961,8 +1074,121 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0030760817893206536,
+                "latency_ms_stddev": 0.0029344826124424214,
                 "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/timeout_demo.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 2.3177223338279873,
+              "latency_ms": {
+                "mean_ms": 1.311520507442765,
+                "p50_ms": 1.311520507442765,
+                "p95_ms": 1.3164520656573586,
+                "min_ms": 1.3060409983154386,
+                "max_ms": 1.3170000165700912,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 2,
+              "trace_events_last_run": 21,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 49,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0003475
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.005153132464722899,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/timeout_memory_prune_demo.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]",
+              "compile_time_ms_mean": 2.826833660947159,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 256,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.00183
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]"
+                  }
+                ]
               }
             },
             {
@@ -970,7 +1196,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: db [line=5 source='  R db.F User * ->users'] [label=_users step=0 op=R stack=_users]",
-              "compile_time_ms_mean": 0.3320973482914269,
+              "compile_time_ms_mean": 0.3396526735741645,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -1043,7 +1269,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=3 source='  R http.POST \"https://example.com/automation\" \"event_webhook\" ->resp'] [label=1 step=1 op=R stack=1]",
-              "compile_time_ms_mean": 0.6661386675356576,
+              "compile_time_ms_mean": 0.5928473353075484,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -1113,10 +1339,10 @@
             }
           ],
           "summary": {
-            "artifact_count": 10,
-            "ok_count": 6,
-            "fail_count": 4,
-            "mean_latency_mean_ms_across_ok": 0.04502424029245352
+            "artifact_count": 12,
+            "ok_count": 7,
+            "fail_count": 5,
+            "mean_latency_mean_ms_across_ok": 0.2090624995097252
           }
         }
       ]
@@ -1162,13 +1388,13 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 0.0328083973727189,
-            "p50_ms": 0.03254148759879172,
-            "p95_ms": 0.0348711502738297,
-            "min_ms": 0.03187498077750206,
-            "max_ms": 0.036375015042722225,
-            "warmup_runs": 8,
-            "timed_runs": 20
+            "mean_ms": 0.04908350820187479,
+            "p50_ms": 0.04908350820187479,
+            "p95_ms": 0.05995864776195958,
+            "min_ms": 0.03700001980178058,
+            "max_ms": 0.061166996601969004,
+            "warmup_runs": 1,
+            "timed_runs": 2
           },
           "peak_rss_delta_mb": 0.0,
           "adapter_calls_last_run": null,
@@ -1179,7 +1405,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.0029401457976724436,
+            "latency_ms_stddev": 0.0021669712626182073,
             "failure_samples": [],
             "label": "basic_scraper/pure"
           }
@@ -1188,15 +1414,15 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 2.563493701745756,
-            "p50_ms": 2.500875008990988,
-            "p95_ms": 3.8934187396080233,
-            "min_ms": 1.757666002959013,
-            "max_ms": 3.894249995937571,
-            "warmup_runs": 8,
-            "timed_runs": 20
+            "mean_ms": 2.057645993772894,
+            "p50_ms": 2.057645993772894,
+            "p95_ms": 2.1921024075709283,
+            "min_ms": 1.908249978441745,
+            "max_ms": 2.2070420091040432,
+            "warmup_runs": 1,
+            "timed_runs": 2
           },
-          "peak_rss_delta_mb": 0.078125,
+          "peak_rss_delta_mb": 0.03125,
           "adapter_calls_last_run": null,
           "notes": "No RuntimeEngine; adapter_calls N/A for handwritten baselines.",
           "execution_reliability": {
@@ -1205,7 +1431,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.22216262123727482,
+            "latency_ms_stddev": 0.2930277420984257,
             "failure_samples": [],
             "label": "basic_scraper/langgraph"
           }
@@ -1280,13 +1506,13 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 1.2905647003208287,
-            "p50_ms": 1.2795835064025596,
-            "p95_ms": 1.3346541541977786,
-            "min_ms": 1.2624170049093664,
-            "max_ms": 1.3375830021686852,
-            "warmup_runs": 8,
-            "timed_runs": 20
+            "mean_ms": 1.301957992836833,
+            "p50_ms": 1.301957992836833,
+            "p95_ms": 1.3259582890896127,
+            "min_ms": 1.2752909970004112,
+            "max_ms": 1.3286249886732548,
+            "warmup_runs": 1,
+            "timed_runs": 2
           },
           "peak_rss_delta_mb": 0.0,
           "adapter_calls_last_run": null,
@@ -1297,7 +1523,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.030454192916831983,
+            "latency_ms_stddev": 0.18658215846190998,
             "failure_samples": [],
             "label": "retry_timeout_wrapper/pure"
           }
@@ -1306,15 +1532,15 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 4.228762448474299,
-            "p50_ms": 4.189625004073605,
-            "p95_ms": 4.664402046182659,
-            "min_ms": 3.804624982876703,
-            "max_ms": 5.280040990328416,
-            "warmup_runs": 8,
-            "timed_runs": 20
+            "mean_ms": 4.095688011148013,
+            "p50_ms": 4.095688011148013,
+            "p95_ms": 4.136844111781102,
+            "min_ms": 4.0499590104445815,
+            "max_ms": 4.141417011851445,
+            "warmup_runs": 1,
+            "timed_runs": 2
           },
-          "peak_rss_delta_mb": 0.09375,
+          "peak_rss_delta_mb": 0.03125,
           "adapter_calls_last_run": null,
           "notes": "No RuntimeEngine; adapter_calls N/A for handwritten baselines.",
           "execution_reliability": {
@@ -1323,7 +1549,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.41831727484697817,
+            "latency_ms_stddev": 0.3920559222064931,
             "failure_samples": [],
             "label": "retry_timeout_wrapper/langgraph"
           }
@@ -1336,11 +1562,11 @@
           "execution_successes": 10,
           "execution_failures": 0,
           "success_rate": 1.0,
-          "latency_ms_stddev": 0.004566587740398894,
+          "latency_ms_stddev": 0.003423590156673631,
           "failure_samples": []
         },
-        "ainl_latency_mean_ms": 0.028627099527511746,
-        "ainl_peak_rss_delta_mb": 0.0,
+        "ainl_latency_mean_ms": 0.032625001040287316,
+        "ainl_peak_rss_delta_mb": 0.015625,
         "ainl_ok": true,
         "handwritten_sources_tiktoken": 1454,
         "estimated_cost_usd_per_run_handwritten_stack": {
@@ -1356,13 +1582,13 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 0.21953965042484924,
-            "p50_ms": 0.21747899882029742,
-            "p95_ms": 0.23328989773290232,
-            "min_ms": 0.2104159793816507,
-            "max_ms": 0.23562501883134246,
-            "warmup_runs": 8,
-            "timed_runs": 20
+            "mean_ms": 0.3216454933863133,
+            "p50_ms": 0.3216454933863133,
+            "p95_ms": 0.32560143736191094,
+            "min_ms": 0.31725000008009374,
+            "max_ms": 0.3260409866925329,
+            "warmup_runs": 1,
+            "timed_runs": 2
           },
           "peak_rss_delta_mb": 0.0,
           "adapter_calls_last_run": null,
@@ -1373,7 +1599,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.004174109928648923,
+            "latency_ms_stddev": 0.02168768493474796,
             "failure_samples": [],
             "label": "token_budget_monitor/pure"
           }
@@ -1382,15 +1608,15 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 10.253152050427161,
-            "p50_ms": 9.067791499546729,
-            "p95_ms": 16.18661009561039,
-            "min_ms": 4.100125021068379,
-            "max_ms": 37.33650001231581,
-            "warmup_runs": 8,
-            "timed_runs": 20
+            "mean_ms": 4.746958496980369,
+            "p50_ms": 4.746958496980369,
+            "p95_ms": 4.936295552761294,
+            "min_ms": 4.536583990557119,
+            "max_ms": 4.957333003403619,
+            "warmup_runs": 1,
+            "timed_runs": 2
           },
-          "peak_rss_delta_mb": 0.046875,
+          "peak_rss_delta_mb": 0.03125,
           "adapter_calls_last_run": null,
           "notes": "No RuntimeEngine; adapter_calls N/A for handwritten baselines.",
           "execution_reliability": {
@@ -1399,7 +1625,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.20666418859875313,
+            "latency_ms_stddev": 4.389607571166692,
             "failure_samples": [],
             "label": "token_budget_monitor/langgraph"
           }

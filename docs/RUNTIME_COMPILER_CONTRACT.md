@@ -48,6 +48,20 @@ Covered strict migration fields include:
 - `CacheSet.value`
 - `QueuePut.value`
 
+### Top-level `S` (service) lines and cron
+
+Each **`S`** line is compiled to **`ir["services"][service_name] = { "mode", "path", ... }`** using **three slots** after `S`: **name**, **mode**, **path** (see `compiler_v2.py`).
+
+For **cron-scheduled** sources the required shape is:
+
+```text
+S <adapter> cron "<cron expression>"
+```
+
+Putting extra tokens before `cron` (e.g. `S core memory cron "0 * * * *"`) mis-assigns slots so **`path` becomes the literal `cron`** and the schedule string is lost. Use **`R`** steps for `memory` / `cache` / `queue` / other adapters instead of extra `S` tokens.
+
+Repository guardrail: `scripts/validate_s_cron_schedules.py` and `tests/test_s_cron_schedule_lines.py`. Operational context: `docs/CRON_ORCHESTRATION.md` § **`S` line shape (cron schedules)** and § **Security: queues, notifications, and secrets**.
+
 ### Legacy Compatibility Policy
 
 - Canonical behavior is implemented only in `RuntimeEngine`.
@@ -89,3 +103,4 @@ without requiring a global `python` on `PATH`.
 - Runtime/compiler step-schema conformance: `tests/test_runtime_compiler_conformance.py`
 - Runtime behavior sanity and capability op execution: `tests/test_runtime_basic.py`
 - Graph/step parity and retry/error routing: `tests/test_runtime_parity.py`, `tests/test_runtime_graph_only.py`
+- Malformed `S`+`cron` schedule lines (IR `services.path` drift): `tests/test_s_cron_schedule_lines.py`

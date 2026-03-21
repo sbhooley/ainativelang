@@ -10,10 +10,10 @@ Quick **size** snapshot:
 
 | Lens | What it means | Headline ratios (tk) | Artifact coverage |
 |------|----------------|----------------------|---------------------|
-| **Strict-valid** | `canonical_strict_valid` | **8.91×** full_multitarget / **2.22×** minimal_emit | 10/10 (all viable) |
-| **Public mixed, viable subset** | Representative **required-target** workloads; excludes curated low-emit / legacy rows | **~0.96×** full / **~1.02×** minimal_emit | **46/59** viable |
-| **Compatibility only, viable** | Non-strict headline companion profile | **~0.79×** full / **~0.83×** minimal_emit | **36/49** viable |
-| **Legacy-inclusive** | **All** paths in profile (honest aggregate drag from tiny shells) | e.g. `public_mixed` **minimal_emit ~0.24×**; **full_multitarget ~1.03×** | 59/59 |
+| **Strict-valid** | `canonical_strict_valid` | **6.60×** full_multitarget / **1.62×** minimal_emit | 12/12 (all viable) |
+| **Public mixed, viable subset** | Representative **required-target** workloads; excludes curated low-emit / legacy rows | **~0.95×** full / **~0.80×** minimal_emit | **62/75** viable |
+| **Compatibility only, viable** | Non-strict headline companion profile | **~0.80×** full / **~0.67×** minimal_emit | **50/63** viable |
+| **Legacy-inclusive** | **All** paths in profile (honest aggregate drag from tiny shells) | e.g. `public_mixed` **minimal_emit ~0.22×**; **full_multitarget ~1.00×** | 75/75 |
 
 **Transparency (mirrors `BENCHMARK.md` blockquotes):**
 

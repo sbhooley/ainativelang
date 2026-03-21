@@ -4,7 +4,7 @@
 
 **Audience:** operators who run OpenClaw cron, the AINL bridge runner, and daily markdown memory.
 
-**Cross-links:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) (token budget deep dive) · [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md) (commands, env, cron patterns) · [`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md) (drift + registry)
+**Cross-links:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) (token budget deep dive) · [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md) (commands, env, cron patterns) · [`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md) (drift + registry + **`S` cron shape** + **notify/queue security**)
 
 **Narrative:** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents) — how **bridge daily markdown** relates to AINL’s tiered state and the SQLite **`memory`** adapter ([`docs/adapters/MEMORY_CONTRACT.md`](../adapters/MEMORY_CONTRACT.md)).
 

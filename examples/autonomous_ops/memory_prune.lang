@@ -1,30 +1,26 @@
-S cron
-Cr L_tick "0 3 * * *"  # daily at 3 AM
+# Memory Prune Monitor — daily at 3 AM
+# Runs memory.prune (all namespaces) and notifies with pruned count.
+# Contract: adapter returns { "ok", "pruned", "stats"? } — see docs/adapters/MEMORY_CONTRACT.md §3.6.
+# S line: only `<adapter> cron "<expr>"`; memory/cache/queue are used via R steps, not extra S tokens.
+S core cron "0 3 * * *"
 
-# Run memory.prune to physically delete expired records
-X before_stats (memory.stats)  # if available, otherwise skip
-R memory.prune ->prune_result
+L0:
+  R core now ->ts
+  R core iso ->now_iso
+  R memory prune ->prune_result
+  X pruned get prune_result "pruned"
 
-X after_stats (memory.stats)  # optional
-
-X now_iso (core.iso)
-X payload ({
-  "module": "memory_prune",
-  "ts": now_iso,
-  "pruned_records": prune_result.pruned_count,
-  "before": before_stats,
-  "after": after_stats
-})
-
-# Always send summary; status is ok regardless of count
-R queue Put "notify" ({
-  "envelope": {"version":"1.0","generated_at":now_iso},
-  "module":"memory_prune",
-  "status":"ok",
-  "ts":now_iso,
-  "metrics": payload,
-  "history_24h": {},
-  "meta": {}
-})
-X _ (cache.set "monitor_heartbeat" "memory_prune" now_iso)
-Ret null
+  X summary_payload ({
+    "envelope": {"version":"1.0","generated_at":now_iso},
+    "module":"memory_prune",
+    "status":"ok",
+    "ts":now_iso,
+    "metrics": {
+      "pruned": pruned
+    },
+    "history_24h": {},
+    "meta": {}
+  })
+  R queue Put "notify" summary_payload
+  R cache set "monitor_heartbeat" "memory_prune" ts ->_
+  Ret null

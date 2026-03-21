@@ -125,7 +125,7 @@ entry point for new users or unsupervised agents.
 - OpenClaw bridge runner reference: `openclaw/bridge/README.md`
 - Token budget wrapper (bridge): `docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`
 - AINL ↔ OpenClaw integration (wrappers, env): `docs/ainl_openclaw_unified_integration.md` — **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw:** `docs/ZEROCLAW_INTEGRATION.md`
-- Cron orchestration / drift: `docs/CRON_ORCHESTRATION.md`
+- Cron orchestration / drift: `docs/CRON_ORCHESTRATION.md` — **`S`+`cron` IR guardrail:** `scripts/validate_s_cron_schedules.py` (console script **`ainl-validate-s-cron`**), `tests/test_s_cron_schedule_lines.py`
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`
   - v1.1 additive RFC (deterministic metadata/filtering only): `docs/adapters/MEMORY_CONTRACT_V1_1_RFC.md`
