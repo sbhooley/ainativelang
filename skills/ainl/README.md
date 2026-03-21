@@ -53,13 +53,13 @@ chmod +x install.sh
 ### Option C — Manual (no skill checkout)
 
 ```bash
-pip install 'ainl-lang[benchmark,mcp]'
+pip install 'ainl-lang[mcp]'
 ainl install-zeroclaw
 ```
 
 ## What gets set up
 
-1. **`pip install --upgrade 'ainl-lang[benchmark,mcp]'`** — compiler, importer, benchmarks extras, MCP deps.  
+1. **`pip install --upgrade 'ainl-lang[mcp]'`** — compiler, importer extras, MCP dependencies.  
 2. **`ainl install-zeroclaw`** — self-upgrade path, MCP registration for ZeroClaw-style hosts, and **`~/.zeroclaw/bin/ainl-run`** so **`zeroclaw ainl run <file.ainl>`** can delegate to a compile/run wrapper.
 
 ## Typical commands

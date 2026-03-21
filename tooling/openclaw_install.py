@@ -29,7 +29,7 @@ def default_run_pip_install(verbose: bool) -> int:
         "pip",
         "install",
         "--upgrade",
-        "ainl-lang[benchmark,mcp]",
+        "ainl-lang[mcp]",
     ]
     _log(verbose, "+ " + " ".join(cmd))
     proc = subprocess.run(cmd, check=False)
@@ -175,7 +175,7 @@ def run_install_openclaw(
     pip_fn: Callable[[bool], int] = run_pip if run_pip is not None else default_run_pip_install
 
     if dry_run:
-        print("[dry-run] would run: python -m pip install --upgrade 'ainl-lang[benchmark,mcp]'")
+        print("[dry-run] would run: python -m pip install --upgrade 'ainl-lang[mcp]'")
     else:
         code = pip_fn(verbose)
         if code != 0:

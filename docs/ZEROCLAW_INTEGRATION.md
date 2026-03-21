@@ -32,7 +32,7 @@ This installs the AINL importer, runtime shim, and MCP tools directly into ZeroC
 2. **Or run the bootstrap directly**:
 
    ```bash
-   pip install 'ainl-lang[benchmark,mcp]'
+   pip install 'ainl-lang[mcp]'
    ainl install-zeroclaw
    ```
 
@@ -50,12 +50,36 @@ Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import cla
 
 | Artifact | Purpose |
 |----------|---------|
-| `pip install --upgrade 'ainl-lang[benchmark,mcp]'` | Latest compiler, importer extras, MCP dependencies |
+| `pip install --upgrade 'ainl-lang[mcp]'` | Latest compiler, importer extras, MCP dependencies |
 | `~/.zeroclaw/mcp.json` | Merges an **`ainl`** stdio server entry pointing at **`ainl-mcp`** (skipped if already present with the same command) |
 | `~/.zeroclaw/bin/ainl-run` | Shell wrapper: **`ainl compile "$1" && ainl run "$1"`** (plus extra args forwarded to **`ainl run`**) |
 | `~/.bashrc` / `~/.zshrc` | Appends **`export PATH="$HOME/.zeroclaw/bin:$PATH"`** when those files exist and do not already mention **`~/.zeroclaw/bin`** |
 
 If no shell rc file is updated, the command prints a one-line **`PATH`** tip you can paste manually.
+
+When **`ainl install-zeroclaw`** is executed **from a repo checkout** that contains **`zeroclaw/bridge/`**, it also:
+
+| Artifact | Purpose |
+|----------|---------|
+| **`~/.zeroclaw/config.toml`** **`[ainl_bridge]`** **`repo_root`** | Records the AINL git root for operators and shims |
+| **`~/.zeroclaw/bin/zeroclaw-ainl-run`** | Runs **`zeroclaw/bridge/run_wrapper_ainl.py`** (wrapper registry with ZeroClaw memory paths) |
+
+## Native bridge vs OpenClaw bridge
+
+| Piece | OpenClaw (`openclaw/bridge/`) | ZeroClaw (`zeroclaw/bridge/`) |
+|-------|-------------------------------|--------------------------------|
+| Dispatcher CLI | `ainl_bridge_main.py` | `zeroclaw_bridge_main.py` |
+| Wrapper runner | `run_wrapper_ainl.py` | `run_wrapper_ainl.py` (registers **`ZeroclawMemoryAdapter`** as **`openclaw_memory`** + **`zeroclaw_memory`**, **`ZeroclawQueueAdapter`**, **`ZeroclawBridgeTokenBudgetAdapter`**) |
+| Daily markdown | `~/.openclaw/workspace/memory/` | `~/.zeroclaw/workspace/memory/` (overridable via **`ZEROCLAW_*`**) |
+| Cron drift | `openclaw cron list --json` | `zeroclaw cron list --json` |
+| Notify | `openclaw message send` | `zeroclaw message send` |
+| Token-usage subprocess target | `openclaw/bridge/ainl_bridge_main.py` | `zeroclaw/bridge/zeroclaw_bridge_main.py` |
+
+Detail: **`zeroclaw/bridge/README.md`**.
+
+### Why CLI calls?
+
+ZeroClaw’s Rust traits and on-disk layout are **extensible** and may shift between releases. For the native bridge we call **`zeroclaw` CLI subcommands** (cron list, message send, memory search where available) instead of parsing or writing TOML/DB internals from Python: **CLI is the simplest stable surface and stays version-agnostic for now**. Where no CLI exists (e.g. appending daily markdown), we write the same **`YYYY-MM-DD.md`** files under **`~/.zeroclaw/workspace/memory/`** as a deliberate, documented contract.
 
 ## Ecosystem transparency (honest story)
 

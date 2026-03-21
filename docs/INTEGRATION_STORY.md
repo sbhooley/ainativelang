@@ -195,7 +195,7 @@ Run **`./install.sh`** or **`ainl install-zeroclaw`** so **`ainl-mcp`** is regis
 
 ### OpenClaw skill
 
-**[OpenClaw](https://github.com/openclaw/openclaw)** can consume AINL as a **skill** under **`~/.openclaw/skills`** or **`<workspace>/skills`** (copy **[`skills/openclaw/`](../skills/openclaw/)** or use **ClawHub** when available — not **`zeroclaw skills install`**).
+**[OpenClaw](https://openclaw.ai/)** can consume AINL as a **skill** under **`~/.openclaw/skills`** or **`<workspace>/skills`** (copy **[`skills/openclaw/`](../skills/openclaw/)** or use **ClawHub** when available — not **`zeroclaw skills install`**).
 
 Run **`./install.sh`** or **`ainl install-openclaw`** so **`mcpServers.ainl`** is merged into **`~/.openclaw/openclaw.json`** and **`~/.openclaw/bin/ainl-run`** is available. Walkthrough: **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **Try:** *“Import the morning briefing using AINL.”*
 

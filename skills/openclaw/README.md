@@ -1,6 +1,6 @@
 # AINL — OpenClaw skill
 
-Deterministic compiled graphs for [OpenClaw](https://github.com/openclaw/openclaw): **importer**, **CLI**, **`ainl-mcp`** merged into **`~/.openclaw/openclaw.json`**, and a **`~/.openclaw/bin/ainl-run`** compile-then-run wrapper after bootstrap.
+Deterministic compiled graphs for [OpenClaw](https://openclaw.ai/): **importer**, **CLI**, **`ainl-mcp`** merged into **`~/.openclaw/openclaw.json`**, and a **`~/.openclaw/bin/ainl-run`** compile-then-run wrapper after bootstrap.
 
 OpenClaw is normally installed with **npm** and **`openclaw onboard`**. This skill adds the **Python** **`ainl-lang`** toolchain and wires **MCP** + **`ainl-run`** for OpenClaw’s config layout.
 
@@ -52,7 +52,7 @@ chmod +x install.sh
 ### Option C — Manual (no skill folder)
 
 ```bash
-pip install 'ainl-lang[benchmark,mcp]'
+pip install 'ainl-lang[mcp]'
 ainl install-openclaw
 ```
 
@@ -76,7 +76,7 @@ OPENCLAW_SKIP_NPM=1 ./install.sh
 ## What gets set up
 
 1. **Optional `npm install -g openclaw@latest`** — refreshes the OpenClaw CLI when **npm** is on PATH (skipped if **`OPENCLAW_SKIP_NPM=1`**).
-2. **`pip install --upgrade 'ainl-lang[benchmark,mcp]'`** — compiler, importer, benchmarks extras, MCP deps.
+2. **`pip install --upgrade 'ainl-lang[mcp]'`** — compiler, importer extras, MCP dependencies.
 3. **`ainl install-openclaw`** — pip self-upgrade path, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, and **`~/.openclaw/bin/ainl-run`**.
 
 Add **`~/.openclaw/bin`** to **PATH** if you want to invoke **`ainl-run`** without a full path (the installer prints a hint).
@@ -109,4 +109,4 @@ Point the importer at the right source (Markdown path or ecosystem subcommand).
 ## Upstream
 
 - [github.com/sbhooley/ainativelang](https://github.com/sbhooley/ainativelang)
-- [github.com/openclaw/openclaw](https://github.com/openclaw/openclaw)
+- [openclaw.ai](https://openclaw.ai/) (official site and installer)

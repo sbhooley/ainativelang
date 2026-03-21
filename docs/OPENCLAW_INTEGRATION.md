@@ -10,6 +10,12 @@ AINL ships an **OpenClaw skill** under [`skills/openclaw/`](../skills/openclaw/)
 
 OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) and **`openclaw onboard`**. This skill adds the **Python** **`ainl-lang`** toolchain and merges **stdio `ainl-mcp`** into the host MCP table. OpenClaw does **not** use ZeroClaw’s **`zeroclaw skills install <url>`** — prefer **ClawHub** (when listed) or **manual copy** into **`~/.openclaw/skills`** or **`<workspace>/skills`** (default workspace is often **`~/.openclaw/workspace`**).
 
+**Official OpenClaw source:** use **[openclaw.ai](https://openclaw.ai/)** for the installer and docs (e.g. `curl -fsSL https://openclaw.ai/install.sh | bash`). There is no stable public **`openclaw/openclaw`** GitHub repo advertised as the primary home.
+
+**Cron / bridge alternative:** operator workflows that run AINL from OpenClaw cron (wrappers, token budget alerts, etc.) live under **`openclaw/bridge/`** in this repo — see **`openclaw/bridge/README.md`**. That path is separate from this MCP skill.
+
+**`ainl install-openclaw`:** shipped in current **`ainl-lang`** releases that include the CLI subcommand; upgrade from PyPI if your install reports an unknown command.
+
 ## Quickstart
 
 1. **Install the skill** — copy [`skills/openclaw/`](../skills/openclaw/) into your OpenClaw skills directory, or install via **ClawHub** when available, then:
@@ -18,12 +24,12 @@ OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) 
    cd /path/to/skill && chmod +x install.sh && ./install.sh
    ```
 
-   `install.sh` optionally refreshes the OpenClaw CLI via npm, upgrades **`ainl-lang[benchmark,mcp]`**, and runs **`ainl install-openclaw`**. To skip the global npm step: **`OPENCLAW_SKIP_NPM=1 ./install.sh`**.
+   `install.sh` optionally refreshes the OpenClaw CLI via npm, upgrades **`ainl-lang[mcp]`**, and runs **`ainl install-openclaw`**. To skip the global npm step: **`OPENCLAW_SKIP_NPM=1 ./install.sh`**.
 
 2. **Or run the bootstrap directly** (Python only):
 
    ```bash
-   pip install 'ainl-lang[benchmark,mcp]'
+   pip install 'ainl-lang[mcp]'
    ainl install-openclaw
    ```
 
@@ -41,7 +47,7 @@ Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import cla
 
 | Artifact | Purpose |
 |----------|---------|
-| `pip install --upgrade 'ainl-lang[benchmark,mcp]'` | Latest compiler, importer extras, MCP dependencies |
+| `pip install --upgrade 'ainl-lang[mcp]'` | Latest compiler, importer extras, MCP dependencies |
 | `~/.openclaw/openclaw.json` | Merges **`mcpServers.ainl`** stdio entry pointing at **`ainl-mcp`** (skipped if already present with the same resolved command); other top-level keys preserved |
 | `~/.openclaw/bin/ainl-run` | Shell wrapper: compile then **`exec ainl run`** with extra args forwarded |
 | `~/.bashrc` / `~/.zshrc` | Appends **`export PATH="$HOME/.openclaw/bin:$PATH"`** when those files exist and do not already mention **`~/.openclaw/bin`** |
@@ -64,3 +70,4 @@ If no shell rc file is updated, the command prints a one-line **`PATH`** tip you
 - MCP operator guide: **[`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](operations/EXTERNAL_ORCHESTRATION_GUIDE.md)** (stdio **`ainl-mcp`**, OpenClaw **`openclaw.json`**)
 - Integration narrative: **[`docs/INTEGRATION_STORY.md`](INTEGRATION_STORY.md)**
 - Unified bridge / workspace notes: **[`docs/ainl_openclaw_unified_integration.md`](ainl_openclaw_unified_integration.md)**
+- Cron / bridge code (non-MCP): **[`openclaw/bridge/README.md`](../openclaw/bridge/README.md)**

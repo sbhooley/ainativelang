@@ -419,13 +419,28 @@ Users on **[ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw)** can install t
 zeroclaw skills install https://github.com/sbhooley/ainativelang/tree/main/skills/ainl
 ```
 
-Then run **`./install.sh`** from the skill checkout or **`ainl install-zeroclaw`** to merge **`ainl-mcp`** into **`~/.zeroclaw/mcp.json`**, install **`~/.zeroclaw/bin/ainl-run`**, and refresh **`ainl-lang[benchmark,mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/ZEROCLAW_INTEGRATION.md`**.
+Then run **`./install.sh`** from the skill checkout or **`ainl install-zeroclaw`** to merge **`ainl-mcp`** into **`~/.zeroclaw/mcp.json`**, install **`~/.zeroclaw/bin/ainl-run`**, and refresh **`ainl-lang[mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/ZEROCLAW_INTEGRATION.md`**.
+
+#### ZeroClaw-native bridge (optional, parity with `openclaw/bridge/`)
+
+For **scheduled wrappers**, **token budget digests**, and **cron drift** checks against **`zeroclaw cron list --json`**, use **`zeroclaw/bridge/`** (see **`zeroclaw/bridge/README.md`**). When **`ainl install-zeroclaw`** is run from a git checkout, it can also append **`[ainl_bridge]`** (**`repo_root`**) to **`~/.zeroclaw/config.toml`** and install **`~/.zeroclaw/bin/zeroclaw-ainl-run`**, which invokes **`python3 zeroclaw/bridge/run_wrapper_ainl.py`** from that checkout.
+
+Typical cron payload (adjust paths and schedule):
+
+```bash
+zeroclaw cron add \
+  --name ainl-supervisor-zc \
+  --cron "*/15 * * * *" \
+  --message 'cd /ABS/PATH/AI_Native_Lang && python3 zeroclaw/bridge/run_wrapper_ainl.py supervisor'
+```
+
+Drift report (read-only): **`python3 zeroclaw/bridge/cron_drift_check.py --json`**.
 
 ### OpenClaw skill (optional host)
 
-Users on **[OpenClaw](https://github.com/openclaw/openclaw)** can add the **AINL skill** from this repository by copying **[`skills/openclaw/`](../../skills/openclaw/)** into **`~/.openclaw/skills/`** or **`<workspace>/skills/`**, or via **ClawHub** when listed (OpenClaw does not use **`zeroclaw skills install`**).
+Users on **[OpenClaw](https://openclaw.ai/)** can add the **AINL skill** from this repository by copying **[`skills/openclaw/`](../../skills/openclaw/)** into **`~/.openclaw/skills/`** or **`<workspace>/skills/`**, or via **ClawHub** when listed (OpenClaw does not use **`zeroclaw skills install`**).
 
-Then run **`./install.sh`** from the skill directory or **`ainl install-openclaw`** to merge **`mcpServers.ainl`** into **`~/.openclaw/openclaw.json`** (stdio **`ainl-mcp`**), install **`~/.openclaw/bin/ainl-run`**, and refresh **`ainl-lang[benchmark,mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/OPENCLAW_INTEGRATION.md`**.
+Then run **`./install.sh`** from the skill directory or **`ainl install-openclaw`** to merge **`mcpServers.ainl`** into **`~/.openclaw/openclaw.json`** (stdio **`ainl-mcp`**), install **`~/.openclaw/bin/ainl-run`**, and refresh **`ainl-lang[mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/OPENCLAW_INTEGRATION.md`**.
 
 ### Exposed MCP resources
 

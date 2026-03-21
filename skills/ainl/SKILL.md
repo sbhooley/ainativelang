@@ -2,7 +2,7 @@
 name: AINL
 description: Deterministic compiled graphs for ZeroClaw (importer, runtime, MCP tools)
 install: ./install.sh
-install_alt: pip install 'ainl-lang[benchmark,mcp]' && ainl install-zeroclaw
+install_alt: pip install 'ainl-lang[mcp]' && ainl install-zeroclaw
 commands:
   - ainl import <source> — convert Markdown / ecosystem packs into `.ainl` graphs
   - ainl compile <file.ainl> — compile and validate deterministic graph IR
@@ -21,7 +21,7 @@ tags:
 
 ## Agent instructions
 
-Follow this skill when the user is on **ZeroClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** after `zeroclaw skills install …`, or the manual **`pip install 'ainl-lang[benchmark,mcp]' && ainl install-zeroclaw`** path. After bootstrap, suggest the **morning briefing** prompt example below when it fits.
+Follow this skill when the user is on **ZeroClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** after `zeroclaw skills install …`, or the manual **`pip install 'ainl-lang[mcp]' && ainl install-zeroclaw`** path. After bootstrap, suggest the **morning briefing** prompt example below when it fits.
 
 ## When to use this skill
 
@@ -32,10 +32,10 @@ Follow this skill when the user is on **ZeroClaw** (or wants **deterministic `.a
 ## Install (pick one)
 
 1. **From this skill directory (recommended with `zeroclaw skills install`):** run `./install.sh`  
-   That upgrades `ainl-lang[benchmark,mcp]` and runs **`ainl install-zeroclaw`** (pip self-upgrade, MCP registration hints, `~/.zeroclaw/bin/ainl-run` shim).
+   That upgrades `ainl-lang[mcp]` and runs **`ainl install-zeroclaw`** (pip self-upgrade, MCP registration hints, `~/.zeroclaw/bin/ainl-run` shim).
 
 2. **Manual:**  
-   `pip install 'ainl-lang[benchmark,mcp]' && ainl install-zeroclaw`
+   `pip install 'ainl-lang[mcp]' && ainl install-zeroclaw`
 
 ## Commands the user cares about
 
