@@ -55,11 +55,12 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — includes MCP agent role templates, desktop-safe recipe, end-to-end validator/inspector/runner example, and Claude Code / Cowork / Dispatch guidance
+- **MCP host hub (OpenClaw, ZeroClaw, future):** `docs/HOST_MCP_INTEGRATIONS.md` — **`ainl install-mcp --host …`**, skill + CLI pattern, maintainer notes (`tooling/mcp_host_install.py`)
 - **AINL → external workers (HTTP bridge contract):** `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` — generic `http.Post` envelope for non-MCP executors; **OpenClaw / NemoClaw / ZeroClaw should prefer `ainl-mcp` first** (see doc); **OpenClaw skill:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw skill:** `docs/ZEROCLAW_INTEGRATION.md`
 - Batch repo-automation guide: `docs/operations/BATCH_AUTOMATION_GUIDE.md` — inspect-first, worktree-safe, deterministic, auditable batch flows for Dispatch-style environments
 - Integration story (AINL in agent stacks): `docs/INTEGRATION_STORY.md`
-- **OpenClaw skill + bootstrap (`ainl install-openclaw`, `~/.openclaw/openclaw.json`, `examples/ecosystem/`):** `docs/OPENCLAW_INTEGRATION.md`
-- **ZeroClaw skill + bootstrap (`ainl install-zeroclaw`, `~/.zeroclaw/mcp.json`, `examples/ecosystem/`):** `docs/ZEROCLAW_INTEGRATION.md`
+- **OpenClaw skill + bootstrap (`ainl install-mcp --host openclaw`, `~/.openclaw/openclaw.json`, `examples/ecosystem/`):** `docs/OPENCLAW_INTEGRATION.md`
+- **ZeroClaw skill + bootstrap (`ainl install-mcp --host zeroclaw`, `~/.zeroclaw/mcp.json`, `examples/ecosystem/`):** `docs/ZEROCLAW_INTEGRATION.md`
 - Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage, long-context memory
 - OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
 - Workflow patterns: `docs/PATTERNS.md`

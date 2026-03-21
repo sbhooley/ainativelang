@@ -1,8 +1,10 @@
 # OpenClaw integration
 
+**Hub (all MCP hosts):** [`HOST_MCP_INTEGRATIONS.md`](HOST_MCP_INTEGRATIONS.md) — **`ainl install-mcp --host openclaw`** (same as **`ainl install-openclaw`**).
+
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw%20Skill-AINL-blue)](https://github.com/sbhooley/ainativelang/tree/main/skills/openclaw)
 
-AINL ships an **OpenClaw skill** under [`skills/openclaw/`](../skills/openclaw/) (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-openclaw`**, a user-side bootstrap that wires PyPI, **`~/.openclaw/openclaw.json`** (`mcpServers.ainl`), and **`~/.openclaw/bin/ainl-run`** without changing the OpenClaw application itself.
+AINL ships an **OpenClaw skill** under [`skills/openclaw/`](../skills/openclaw/) (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-mcp --host openclaw`** (alias **`ainl install-openclaw`**), a user-side bootstrap that wires PyPI, **`~/.openclaw/openclaw.json`** (`mcpServers.ainl`), and **`~/.openclaw/bin/ainl-run`** without changing the OpenClaw application itself.
 
 **Standalone skill repo (optional, later):** copy **[`skills/openclaw/`](../skills/openclaw/)** to **[github.com/sbhooley/ainl-openclaw-skill](https://github.com/sbhooley/ainl-openclaw-skill)** as the repository root (`SKILL.md`, `install.sh`, `README.md`) if you want a single-purpose repo for ClawHub or docs links.
 
@@ -14,7 +16,7 @@ OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) 
 
 **Cron / bridge alternative:** operator workflows that run AINL from OpenClaw cron (wrappers, token budget alerts, etc.) live under **`openclaw/bridge/`** in this repo — see **`openclaw/bridge/README.md`**. That path is separate from this MCP skill.
 
-**`ainl install-openclaw`:** shipped in current **`ainl-lang`** releases that include the CLI subcommand; upgrade from PyPI if your install reports an unknown command.
+**CLI:** **`ainl install-mcp --host openclaw`** (same as **`install-openclaw`**) ships in current **`ainl-lang`** releases; upgrade from PyPI if your install reports an unknown command.
 
 ## Quickstart
 
@@ -24,16 +26,16 @@ OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) 
    cd /path/to/skill && chmod +x install.sh && ./install.sh
    ```
 
-   `install.sh` optionally refreshes the OpenClaw CLI via npm, upgrades **`ainl-lang[mcp]`**, and runs **`ainl install-openclaw`**. To skip the global npm step: **`OPENCLAW_SKIP_NPM=1 ./install.sh`**.
+   `install.sh` optionally refreshes the OpenClaw CLI via npm, upgrades **`ainl-lang[mcp]`**, and runs **`ainl install-mcp --host openclaw`**. To skip the global npm step: **`OPENCLAW_SKIP_NPM=1 ./install.sh`**.
 
 2. **Or run the bootstrap directly** (Python only):
 
    ```bash
    pip install 'ainl-lang[mcp]'
-   ainl install-openclaw
+   ainl install-mcp --host openclaw
    ```
 
-   Preview only: **`ainl install-openclaw --dry-run`** · noisy logs: **`--verbose`**.
+   Equivalent: **`ainl install-openclaw`**. Preview: **`--dry-run`** · noisy logs: **`--verbose`**.
 
 ## Chat example
 
@@ -65,6 +67,7 @@ If no shell rc file is updated, the command prints a one-line **`PATH`** tip you
 
 ## See also
 
+- **All MCP hosts:** **[`HOST_MCP_INTEGRATIONS.md`](HOST_MCP_INTEGRATIONS.md)**
 - Skill files: **[`skills/openclaw/README.md`](../skills/openclaw/README.md)**
 - ZeroClaw parallel: **[`docs/ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**
 - MCP operator guide: **[`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](operations/EXTERNAL_ORCHESTRATION_GUIDE.md)** (stdio **`ainl-mcp`**, OpenClaw **`openclaw.json`**)

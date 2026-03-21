@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap AINL inside ZeroClaw: PyPI install + ainl install-zeroclaw (MCP + shim).
+# Bootstrap AINL inside ZeroClaw: PyPI install + ainl install-mcp --host zeroclaw (MCP + shim).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,5 +19,5 @@ if ! command -v ainl >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Running ainl install-zeroclaw"
-exec ainl install-zeroclaw "$@"
+echo "==> Running ainl install-mcp --host zeroclaw"
+exec ainl install-mcp --host zeroclaw "$@"

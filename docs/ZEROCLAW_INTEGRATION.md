@@ -1,6 +1,8 @@
 # ZeroClaw integration
 
-AINL ships a **ZeroClaw skill** (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-zeroclaw`**, a user-side bootstrap that wires PyPI, **`~/.zeroclaw/mcp.json`**, and **`~/.zeroclaw/bin/ainl-run`** without changing the ZeroClaw application itself.
+**Hub (all MCP hosts):** [`HOST_MCP_INTEGRATIONS.md`](HOST_MCP_INTEGRATIONS.md) — **`ainl install-mcp --host zeroclaw`** (same as **`ainl install-zeroclaw`**).
+
+AINL ships a **ZeroClaw skill** (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-mcp --host zeroclaw`** (alias **`ainl install-zeroclaw`**), a user-side bootstrap that wires PyPI, **`~/.zeroclaw/mcp.json`**, and **`~/.zeroclaw/bin/ainl-run`** without changing the ZeroClaw application itself.
 
 **Why this matters:** AINL is **compile-once, run-many**—you pay authoring or import cost once, then execute a validated graph repeatedly. Size economics use **tiktoken cl100k_base**; on the **viable subset** of representative workloads, **minimal_emit** lands near **~1.02×** leverage vs unstructured baselines (see **[`BENCHMARK.md`](../BENCHMARK.md)** and **[`benchmarks.md`](benchmarks.md)** for methodology and legacy-inclusive transparency).
 
@@ -33,10 +35,10 @@ This installs the AINL importer, runtime shim, and MCP tools directly into ZeroC
 
    ```bash
    pip install 'ainl-lang[mcp]'
-   ainl install-zeroclaw
+   ainl install-mcp --host zeroclaw
    ```
 
-   Preview only: `ainl install-zeroclaw --dry-run` · noisy logs: `--verbose`.
+   Preview: **`ainl install-mcp --host zeroclaw --dry-run`** (same flags as **`install-zeroclaw`**) · noisy logs: **`--verbose`**.
 
 ## Chat example
 
@@ -57,7 +59,7 @@ Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import cla
 
 If no shell rc file is updated, the command prints a one-line **`PATH`** tip you can paste manually.
 
-When **`ainl install-zeroclaw`** is executed **from a repo checkout** that contains **`zeroclaw/bridge/`**, it also:
+When **`ainl install-mcp --host zeroclaw`** (or **`install-zeroclaw`**) is executed **from a repo checkout** that contains **`zeroclaw/bridge/`**, it also:
 
 | Artifact | Purpose |
 |----------|---------|
@@ -92,13 +94,14 @@ ZeroClaw’s Rust traits and on-disk layout are **extensible** and may shift bet
 | Benefit | Notes |
 |---------|--------|
 | Deterministic graphs | Compile-time validation; explicit cron, steps, and branches vs prose-only prompts |
-| One-command skill path | **ZeroClaw skill** + **`install.sh`** or **`ainl install-zeroclaw`** |
+| One-command skill path | **ZeroClaw skill** + **`install.sh`** or **`ainl install-mcp --host zeroclaw`** |
 | MCP parity | Same import semantics as CLI; exposure profiles in **`tooling/mcp_exposure_profiles.json`** |
 | Fresh ecosystem examples | Auto-sync + PR templates for community extensions |
 
 ## See also
 
-- **OpenClaw parallel (skill + `ainl install-openclaw`):** **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** · **[`skills/openclaw/README.md`](../skills/openclaw/README.md)**
+- **All MCP hosts:** **[`HOST_MCP_INTEGRATIONS.md`](HOST_MCP_INTEGRATIONS.md)**
+- **OpenClaw parallel (skill + `ainl install-mcp --host openclaw`):** **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** · **[`skills/openclaw/README.md`](../skills/openclaw/README.md)**
 - Skill manifest & usage: **[`skills/ainl/README.md`](../skills/ainl/README.md)**
 - MCP operator guide: **[`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](operations/EXTERNAL_ORCHESTRATION_GUIDE.md)** §9 (stdio **`ainl-mcp`**)
 - Integration narrative: **[`docs/INTEGRATION_STORY.md`](INTEGRATION_STORY.md)**

@@ -2,12 +2,12 @@
 name: AINL
 description: Deterministic compiled graphs for OpenClaw (importer, runtime, MCP tools)
 install: ./install.sh
-install_alt: pip install 'ainl-lang[mcp]' && ainl install-openclaw
+install_alt: pip install 'ainl-lang[mcp]' && ainl install-mcp --host openclaw
 commands:
   - ainl import <source> — convert Markdown / ecosystem packs into `.ainl` graphs
   - ainl compile <file.ainl> — compile and validate deterministic graph IR
   - ainl run <file.ainl> — run compiled workflow (when your graph uses the runtime path)
-  - ~/.openclaw/bin/ainl-run <file.ainl> — compile-then-run wrapper after install-openclaw (add ~/.openclaw/bin to PATH)
+  - ~/.openclaw/bin/ainl-run <file.ainl> — compile-then-run wrapper after install-mcp --host openclaw (add ~/.openclaw/bin to PATH)
 tags:
   - ainl
   - graphs
@@ -34,7 +34,7 @@ metadata:
 
 ## Agent instructions
 
-Follow this skill when the user is on **OpenClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** from a checked-out skill folder, or the manual **`pip install 'ainl-lang[mcp]' && ainl install-openclaw`** path. OpenClaw does **not** use `zeroclaw skills install <url>` — install via **ClawHub** (if available) or **copy this folder** into **`~/.openclaw/skills`** or **`<workspace>/skills`**. After bootstrap, suggest the **morning briefing** prompt example below when it fits.
+Follow this skill when the user is on **OpenClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** from a checked-out skill folder, or the manual **`pip install 'ainl-lang[mcp]' && ainl install-mcp --host openclaw`** path (alias **`ainl install-openclaw`**). OpenClaw does **not** use `zeroclaw skills install <url>` — install via **ClawHub** (if available) or **copy this folder** into **`~/.openclaw/skills`** or **`<workspace>/skills`**. After bootstrap, suggest the **morning briefing** prompt example below when it fits.
 
 ## When to use this skill
 
@@ -45,10 +45,10 @@ Follow this skill when the user is on **OpenClaw** (or wants **deterministic `.a
 ## Install (pick one)
 
 1. **From this skill directory (after ClawHub or manual copy):** run `./install.sh`  
-   That optionally refreshes the **OpenClaw CLI** via npm, upgrades **`ainl-lang[mcp]`**, and runs **`ainl install-openclaw`** (pip self-upgrade, MCP merge into **`openclaw.json`**, **`~/.openclaw/bin/ainl-run`** wrapper).
+   That optionally refreshes the **OpenClaw CLI** via npm, upgrades **`ainl-lang[mcp]`**, and runs **`ainl install-mcp --host openclaw`** (MCP merge into **`openclaw.json`**, **`~/.openclaw/bin/ainl-run`** wrapper).
 
 2. **Manual (no skill checkout):**  
-   `pip install 'ainl-lang[mcp]' && ainl install-openclaw`
+   `pip install 'ainl-lang[mcp]' && ainl install-mcp --host openclaw`
 
 ## Commands the user cares about
 
@@ -57,7 +57,7 @@ Follow this skill when the user is on **OpenClaw** (or wants **deterministic `.a
 | `ainl import …` | Import Markdown or ecosystem sources into `.ainl` |
 | `ainl compile …` | Compile / validate graphs |
 | `ainl run …` | Execute a graph via the CLI runtime where applicable |
-| `~/.openclaw/bin/ainl-run <file.ainl>` | After `install-openclaw`: wrapper that compiles then runs |
+| `~/.openclaw/bin/ainl-run <file.ainl>` | After `install-mcp --host openclaw`: wrapper that compiles then runs |
 
 ## After install — prompt suggestion
 
@@ -69,7 +69,7 @@ Tell the user they can say in OpenClaw:
 
 ## MCP
 
-Configure the host so **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`** runs **`ainl-mcp`** as a stdio MCP server (see AINL docs: *OpenClaw integration* / *External orchestration*). **`ainl install-openclaw`** merges that entry when missing.
+Configure the host so **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`** runs **`ainl-mcp`** as a stdio MCP server (see AINL docs: *OpenClaw integration* / *External orchestration*). **`ainl install-mcp --host openclaw`** merges that entry when missing.
 
 ## References
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap AINL inside OpenClaw: optional npm OpenClaw CLI refresh, PyPI install + ainl install-openclaw.
+# Bootstrap AINL inside OpenClaw: optional npm OpenClaw CLI refresh, PyPI install + ainl install-mcp --host openclaw.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,5 +31,5 @@ if ! command -v ainl >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Running ainl install-openclaw"
-exec ainl install-openclaw "$@"
+echo "==> Running ainl install-mcp --host openclaw"
+exec ainl install-mcp --host openclaw "$@"

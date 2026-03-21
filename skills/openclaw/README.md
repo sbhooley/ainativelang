@@ -53,12 +53,12 @@ chmod +x install.sh
 
 ```bash
 pip install 'ainl-lang[mcp]'
-ainl install-openclaw
+ainl install-mcp --host openclaw
 ```
 
 ### Flags
 
-Pass **`ainl install-openclaw`** flags through the script:
+Pass **`ainl install-mcp`** flags (e.g. **`--dry-run`**, **`--verbose`**) through the script:
 
 ```bash
 ./install.sh --verbose
@@ -77,7 +77,7 @@ OPENCLAW_SKIP_NPM=1 ./install.sh
 
 1. **Optional `npm install -g openclaw@latest`** — refreshes the OpenClaw CLI when **npm** is on PATH (skipped if **`OPENCLAW_SKIP_NPM=1`**).
 2. **`pip install --upgrade 'ainl-lang[mcp]'`** — compiler, importer extras, MCP dependencies.
-3. **`ainl install-openclaw`** — pip self-upgrade path, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, and **`~/.openclaw/bin/ainl-run`**.
+3. **`ainl install-mcp --host openclaw`** — pip self-upgrade path, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, and **`~/.openclaw/bin/ainl-run`**.
 
 Add **`~/.openclaw/bin`** to **PATH** if you want to invoke **`ainl-run`** without a full path (the installer prints a hint).
 
@@ -88,7 +88,7 @@ Add **`~/.openclaw/bin`** to **PATH** if you want to invoke **`ainl-run`** witho
 | `ainl import …` | Import Markdown or ecosystem sources into `.ainl` |
 | `ainl compile <file.ainl>` | Compile / validate |
 | `ainl run <file.ainl>` | Run via CLI where the graph supports it |
-| `~/.openclaw/bin/ainl-run <file.ainl>` | After `install-openclaw`: shim entrypoint |
+| `~/.openclaw/bin/ainl-run <file.ainl>` | After MCP bootstrap: shim entrypoint |
 
 ## Try in OpenClaw
 
@@ -103,7 +103,7 @@ Point the importer at the right source (Markdown path or ecosystem subcommand).
 | File | Role |
 |------|------|
 | `SKILL.md` | Skill manifest + `metadata.openclaw` + agent instructions |
-| `install.sh` | Optional npm OpenClaw CLI + pip + `ainl install-openclaw` |
+| `install.sh` | Optional npm OpenClaw CLI + pip + `ainl install-mcp --host openclaw` |
 | `README.md` | Human-facing install and use |
 
 ## Upstream

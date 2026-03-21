@@ -181,7 +181,7 @@ executors (webhooks, internal services, or a multi-backend gateway), see
 [`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](integrations/EXTERNAL_EXECUTOR_BRIDGE.md).
 That document is **MCP-first** for OpenClaw / NemoClaw / ZeroClaw: prefer `ainl-mcp` when the
 host is MCP-capable; use the HTTP bridge pattern when workers are not exposed
-as MCP. **OpenClaw** onboarding ( **`openclaw.json`** + **`ainl install-openclaw`** ): **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **ZeroClaw** onboarding: **[`docs/ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**.
+as MCP. **OpenClaw** onboarding ( **`openclaw.json`** + **`ainl install-mcp --host openclaw`** ): **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **ZeroClaw** onboarding: **[`docs/ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)** · hub **[`docs/HOST_MCP_INTEGRATIONS.md`](HOST_MCP_INTEGRATIONS.md)**.
 
 ### ZeroClaw skill
 
@@ -191,13 +191,13 @@ as MCP. **OpenClaw** onboarding ( **`openclaw.json`** + **`ainl install-openclaw
 zeroclaw skills install https://github.com/sbhooley/ainativelang/tree/main/skills/ainl
 ```
 
-Run **`./install.sh`** or **`ainl install-zeroclaw`** so **`ainl-mcp`** is registered under **`~/.zeroclaw/`** and **`ainl-run`** is on **`PATH`**. Narrative, chat examples, and ecosystem links: **[`docs/ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**. **Try:** *“Import the morning briefing using AINL.”*
+Run **`./install.sh`** or **`ainl install-mcp --host zeroclaw`** so **`ainl-mcp`** is registered under **`~/.zeroclaw/`** and **`ainl-run`** is on **`PATH`**. Narrative, chat examples, and ecosystem links: **[`docs/ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**. **Try:** *“Import the morning briefing using AINL.”*
 
 ### OpenClaw skill
 
 **[OpenClaw](https://openclaw.ai/)** can consume AINL as a **skill** under **`~/.openclaw/skills`** or **`<workspace>/skills`** (copy **[`skills/openclaw/`](../skills/openclaw/)** or use **ClawHub** when available — not **`zeroclaw skills install`**).
 
-Run **`./install.sh`** or **`ainl install-openclaw`** so **`mcpServers.ainl`** is merged into **`~/.openclaw/openclaw.json`** and **`~/.openclaw/bin/ainl-run`** is available. Walkthrough: **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **Try:** *“Import the morning briefing using AINL.”*
+Run **`./install.sh`** or **`ainl install-mcp --host openclaw`** so **`mcpServers.ainl`** is merged into **`~/.openclaw/openclaw.json`** and **`~/.openclaw/bin/ainl-run`** is available. Walkthrough: **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **Try:** *“Import the morning briefing using AINL.”*
 
 ### Import Clawflows & Agency-Agents via MCP
 
@@ -218,7 +218,7 @@ the server).
 
 **Benefits:** upstream Markdown stays human-authored; AINL adds **compile-time
 graph structure** (cron, sequential `Call` steps or agent gates, optional
-OpenClaw-style `memory` / `queue` hooks; on **OpenClaw**, the same surface via **`skills/openclaw`** and **`ainl install-openclaw`**; on **ZeroClaw**, the same importer and MCP tools via the **ZeroClaw skill** and **`ainl install-zeroclaw`**) for **deterministic execution** at the
+OpenClaw-style `memory` / `queue` hooks; on **OpenClaw**, the same surface via **`skills/openclaw`** and **`ainl install-mcp --host openclaw`**; on **ZeroClaw**, the same importer and MCP tools via the **ZeroClaw skill** and **`ainl install-mcp --host zeroclaw`**) for **deterministic execution** at the
 workflow layer—**compile-once, run-many** at the orchestration boundary. On tokenizer-aligned **viable subset** workloads (**tiktoken cl100k_base**), that structure pairs with roughly **~1.02×** leverage vs ad-hoc prompt-only flows; **legacy-inclusive** tables and **minimal_emit fallback stub** behavior are documented honestly in [`BENCHMARK.md`](../BENCHMARK.md) and [`benchmarks.md`](benchmarks.md).
 
 **Governance:** these tools perform **outbound HTTPS**. They are enabled in

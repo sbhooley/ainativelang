@@ -54,13 +54,13 @@ chmod +x install.sh
 
 ```bash
 pip install 'ainl-lang[mcp]'
-ainl install-zeroclaw
+ainl install-mcp --host zeroclaw
 ```
 
 ## What gets set up
 
 1. **`pip install --upgrade 'ainl-lang[mcp]'`** — compiler, importer extras, MCP dependencies.  
-2. **`ainl install-zeroclaw`** — self-upgrade path, MCP registration for ZeroClaw-style hosts, and **`~/.zeroclaw/bin/ainl-run`** so **`zeroclaw ainl run <file.ainl>`** can delegate to a compile/run wrapper.
+2. **`ainl install-mcp --host zeroclaw`** (alias **`install-zeroclaw`**) — self-upgrade path, MCP registration for ZeroClaw-style hosts, and **`~/.zeroclaw/bin/ainl-run`** so **`zeroclaw ainl run <file.ainl>`** can delegate to a compile/run wrapper.
 
 ## Typical commands
 
@@ -69,7 +69,7 @@ ainl install-zeroclaw
 | `ainl import …` | Import Markdown or ecosystem sources into `.ainl` |
 | `ainl compile <file.ainl>` | Compile / validate |
 | `ainl run <file.ainl>` | Run via CLI where the graph supports it |
-| `zeroclaw ainl run <file.ainl>` | After `install-zeroclaw`: shim entrypoint |
+| `zeroclaw ainl run <file.ainl>` | After MCP bootstrap: shim entrypoint |
 
 ## Try in ZeroClaw
 
@@ -84,7 +84,7 @@ Point the importer at the right source (Markdown path or ecosystem subcommand).
 | File | Role |
 |------|------|
 | `SKILL.md` | Skill manifest + agent instructions (YAML frontmatter) |
-| `install.sh` | `pip install` + `ainl install-zeroclaw` |
+| `install.sh` | `pip install` + `ainl install-mcp --host zeroclaw` |
 | `README.md` | Human-facing install and use |
 
 ## Upstream

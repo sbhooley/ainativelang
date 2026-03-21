@@ -52,7 +52,8 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **Read the docs hub:** [`docs/README.md`](docs/README.md)
 > - **See updated benchmarks (tiktoken cl100k_base, viable subset, minimal_emit fallback stub):** [`BENCHMARK.md`](BENCHMARK.md) · [`docs/benchmarks.md`](docs/benchmarks.md#benchmark-highlights-march-2026)
 > - **ZeroClaw skill (one-command install → deterministic graphs):** [`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md) · [`skills/ainl/`](skills/ainl/) · curated trees **[`examples/ecosystem/`](examples/ecosystem/)**
-> - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-openclaw`**
+> - **MCP host hub:** [`docs/HOST_MCP_INTEGRATIONS.md`](docs/HOST_MCP_INTEGRATIONS.md) · **`ainl install-mcp --host openclaw|zeroclaw`**
+> - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-mcp --host openclaw`**
 > - **Using Claude Code / Cowork / Dispatch-style tools?** See the MCP/integration guidance in [`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md) and [`docs/INTEGRATION_STORY.md`](docs/INTEGRATION_STORY.md)
 
 > TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
@@ -157,7 +158,7 @@ zeroclaw skills install https://github.com/sbhooley/ainativelang/tree/main/skill
 
 This installs the AINL importer, runtime shim, and MCP tools directly into ZeroClaw.
 
-**Bootstrap** (PyPI self-upgrade, **`ainl-mcp`** in **`~/.zeroclaw/mcp.json`**, **`~/.zeroclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-zeroclaw`** (use **`--dry-run`** / **`--verbose`** as needed). Alternative skill URL (standalone repo, when published): `https://github.com/sbhooley/ainl-zeroclaw-skill`.
+**Bootstrap** (PyPI self-upgrade, **`ainl-mcp`** in **`~/.zeroclaw/mcp.json`**, **`~/.zeroclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-mcp --host zeroclaw`** (use **`--dry-run`** / **`--verbose`** as needed). Alternative skill URL (standalone repo, when published): `https://github.com/sbhooley/ainl-zeroclaw-skill`.
 
 **Try in chat:** *“Import the morning briefing using AINL.”* (Then point the agent at a Clawflows URL, a preset from **`ainl_list_ecosystem`**, or **`ainl import markdown …`**.)
 
@@ -167,7 +168,7 @@ Details: **[`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md)** · s
 
 [OpenClaw](https://openclaw.ai/) uses **npm** + **`openclaw onboard`** for the host CLI. AINL is added as a **skill folder** (not via **`zeroclaw skills install`**): copy **[`skills/openclaw/`](skills/openclaw/)** to **`~/.openclaw/skills/`** or **`<workspace>/skills/`**, or install from **ClawHub** when the skill is listed there.
 
-**Bootstrap** (PyPI self-upgrade, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-openclaw`** (use **`--dry-run`** / **`--verbose`** as needed). **`install.sh`** may run **`npm install -g openclaw@latest`** when npm is on PATH; set **`OPENCLAW_SKIP_NPM=1`** to skip.
+**Bootstrap** (PyPI self-upgrade, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-mcp --host openclaw`** (use **`--dry-run`** / **`--verbose`** as needed). **`install.sh`** may run **`npm install -g openclaw@latest`** when npm is on PATH; set **`OPENCLAW_SKIP_NPM=1`** to skip.
 
 **Try in chat:** *“Import the morning briefing using AINL.”*
 
