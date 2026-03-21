@@ -19,6 +19,9 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Editable install should register packages; this guarantees imports resolve on the runner.
+    env:
+      PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,6 +45,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+
+      - name: Verify packaging (tooling + adapters importable)
+        run: |
+          python -c "import tooling, tooling.graph_normalize; import adapters; print('ok')"
 
       - name: Import latest Clawflows samples
         run: |

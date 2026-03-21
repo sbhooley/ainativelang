@@ -70,8 +70,9 @@ py-modules = [
 ]
 
 [tool.setuptools.packages.find]
-# Include packages used by compiler/cli at import time (`pip install -e .` must expose them).
-include = ["scripts*", "cli*", "tooling*", "adapters*"]
+where = ["."]
+# Explicit roots + globs so `tooling` / `adapters` are never skipped (CLI imports `tooling.*`; runtime.compat imports `adapters`).
+include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
