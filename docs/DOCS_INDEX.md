@@ -82,6 +82,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Runtime benchmark script: `scripts/benchmark_runtime.py`
 - Shared bench metrics (tiktoken, pricing helpers): `tooling/bench_metrics.py`
 - Benchmark JSON regression checker: `scripts/compare_benchmark_json.py`
+- Tracked runtime benchmark JSON (CI regression baseline): `tooling/benchmark_runtime_results.json`
 - Compile-once / run-many proof pack: `docs/architecture/COMPILE_ONCE_RUN_MANY.md`
   - Includes `scripts/summarize_runs.py` for aggregating `RuntimeEngine.run(..., trace=True)` JSON payloads into small health summaries.
 - Launch copy pack: `docs/launch/SHORT_POST.md`, `docs/launch/TECHNICAL_POST.md`

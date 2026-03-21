@@ -458,41 +458,60 @@ AINL's contribution lives primarily in the third layer.
 
 ## 12. Benchmark Posture and Truthful Compactness Claims
 
-AINL includes a benchmark framework focused on source compactness versus generated artifacts. The benchmark must be interpreted carefully.
+AINL ships a **reproducible benchmark suite** spanning **size**, **runtime**, and optional **LLM-generation** quality—not a single scoreboard. Results must stay profile-scoped, mode-scoped, and honest about what each lane measures. The documentation hub is `docs/benchmarks.md`.
 
-### 12.1 Active Metric
+### 12.1 Size Benchmark (Emitted Surface + Compiler Cost)
 
-The current benchmark uses `approx_chunks`, a lexical-size proxy.
+- **Default metric:** `tiktoken` with the **`cl100k_base`** encoder (shared with runtime tooling via `tooling/bench_metrics.py`). This is the production-relevant lane for tokenizer-aware sizing and cost estimation.
+- **Legacy lane:** `approx_chunks` remains available as a lexical-size proxy; it is **not** equivalent to tokenizer-accurate billing.
+- **Compile latency:** each artifact reports **mean wall-clock compile time over three timed compiles** (`compile_time_ms_mean`, schema `3.3+` in `tooling/benchmark_size.json`), surfaced in `BENCHMARK.md` as **Compile ms (mean×3)**—separate from optional multi-run **compile reliability** batches.
+- **Economics:** optional estimated USD per generation from published list-price assumptions (same helper module as runtime).
+- **Handwritten baselines:** `--compare-baselines` measures mapped AINL emits against `benchmarks/handwritten_baselines/` (pure async vs LangGraph-style stacks) using aligned metrics where possible.
 
-It is **not** equivalent to tokenizer-accurate billing.
+**Outputs:** `scripts/benchmark_size.py` → `BENCHMARK.md`, `tooling/benchmark_size.json`.
 
-### 12.2 Profiles
+### 12.2 Runtime Benchmark (Compile-Once / Run-Many)
 
-The benchmark is segmented into profiles such as:
+- **Post-compile** execution via `RuntimeEngine`: latency, peak RSS delta, adapter/trace counters.
+- **Optional:** execution reliability batches, **scalability** probe on a large golden workflow, **cost** columns from source tiktokens + economics assumptions.
+- **Baselines:** async handwritten stacks can be benchmarked beside AINL reference artifacts for latency and reliability.
 
-- `canonical_strict_valid`
+**Outputs:** `scripts/benchmark_runtime.py` → `tooling/benchmark_runtime_results.json` (tracked for CI baseline when committed).
+
+### 12.3 LLM Generation Benchmark (Ollama + Optional Cloud)
+
+- **`ainl-ollama-benchmark`** runs the same prompt suite across local **Ollama** models.
+- **`--cloud-model`** (e.g. `claude-3-5-sonnet`) optionally runs the same tasks through **Anthropic Messages** (`temperature=0`) for a cloud baseline; requires `ANTHROPIC_API_KEY` and `pip install anthropic` (optional extra `[anthropic]`). Missing key or SDK **skips** the cloud leg with a warning—local results still stand.
+
+### 12.4 Profiles and Modes (Size / Runtime)
+
+Profiles include:
+
+- `canonical_strict_valid` (primary headline)
 - `public_mixed`
 - `compatibility_only`
 
-The primary headline profile is `canonical_strict_valid`.
+Modes:
 
-### 12.3 Modes
+- **full_multitarget** — total downstream expansion potential across emitters
+- **minimal_emit** — closer to practical deployment (capability-planned target set)
 
-Two important modes exist:
+### 12.5 CI, Regression Gate, and Local Targets
 
-- **full_multitarget** — measures total downstream expansion potential
-- **minimal_emit** — closer to practical deployment comparison
+- **`make benchmark`** — full local refresh (default JSON + markdown for size; runtime as configured in the Makefile).
+- **`make benchmark-ci`** — CI-style JSON outputs (`tooling/benchmark_size_ci.json`, `tooling/benchmark_runtime_ci.json`) without editing `BENCHMARK.md` in automation.
+- **GitHub Actions** `benchmark-regression` runs the CI slice, uploads JSON artifacts, and **`scripts/compare_benchmark_json.py`** fails the build on regressions beyond a tolerance (default 10%) against the baseline commit when baseline JSON exists in git.
 
-### 12.4 Truthful Headline
+### 12.6 Truthful Headline
 
 The strongest current truthful claim is:
 
-> AINL provides reproducible, profile-segmented compactness advantages in many canonical multi-target examples, and can materially reduce repeated generation effort by expressing workflow intent once and reusing it across execution and emission surfaces.
+> AINL provides reproducible, profile-segmented compactness advantages in many canonical multi-target examples, and can materially reduce repeated generation effort by expressing workflow intent once and reusing it across execution and emission surfaces—while **runtime benchmarks** ground the **compile-once / run-many** cost story in measured post-compile behavior.
 
 **Not supported:**
 
 - Universal superiority claims over mainstream languages
-- Guaranteed pricing claims from lexical metrics alone
+- Guaranteed pricing claims from assumptions alone (economics tables are labeled and scenario-dependent)
 
 ---
 
@@ -765,6 +784,7 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Starter include demo artifact** — `examples/timeout_demo.ainl` provides a strict-safe timeout include example for docs and social/demo usage.
 - **Memory v1.1 deterministic contract upgrade** — extension-level memory now supports additive deterministic metadata (`source`, `confidence`, `tags`, `valid_at`), bounded list filters (`tags_any`/`tags_all`, created/updated windows, `limit`/`offset`), namespace TTL/prune policy hooks, response operational counters, and capability-advertised memory profile metadata (`memory_profile`) without introducing semantic retrieval or policy cognition into core runtime semantics.
 - **External executor bridge (HTTP)** — documented contract in `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` for calling non-MCP workers via `http.Post` (and optional host-mapped **`bridge`** adapter for executor keys → URLs). **MCP (`ainl-mcp`) remains primary** for OpenClaw/NemoClaw; the HTTP bridge is the secondary pattern for generic gateways and plugins.
+- **Reproducible benchmark suite** — `tiktoken` default sizing (`cl100k_base`), **Compile ms (mean×3)** in size tables, runtime benchmark (latency/RSS, optional reliability and scalability probe), shared **economics** helpers (`tooling/bench_metrics.py`), handwritten **baseline** comparison, **CI regression** gating (`scripts/compare_benchmark_json.py`, `make benchmark-ci`, workflow `benchmark-regression`), hub doc **`docs/benchmarks.md`**, and **`ainl-ollama-benchmark --cloud-model`** for an optional **Anthropic Claude** baseline (`temperature=0`, graceful skip without key/SDK).
 
 ### 17.2 Remaining Future Work
 
@@ -773,7 +793,7 @@ Promising future work includes:
 - Interactive graph UX beyond static Mermaid/DOT exports (graph diffing, live drill-down, and runtime-overlay views)
 - Stronger patch / semantic diff tooling
 - Broader emitter maturity across additional target platforms
-- Tokenizer-aware benchmark lanes for more precise cost modeling
+- Deeper benchmark normalization (e.g. cross-hardware runtime baselines, richer adapter-reported token usage to tighten economics)
 - Circuit breaker patterns and retryable vs non-retryable error classification
 - Deeper MCP and A2A protocol bridges (beyond the current thin workflow-level
   MCP server) as standards and host ecosystems stabilize
@@ -982,7 +1002,14 @@ Paths are relative to the repository root.
 - `docs/PATTERNS.md` — workflow patterns (RetryWithBackoff, RateLimit, BatchProcess, CacheWarm)
 
 ### Benchmarks and tooling
-- `BENCHMARK.md` — size benchmarks
+- `docs/benchmarks.md` — hub: metrics, `make` targets, CI gate, value framing
+- `BENCHMARK.md` — human-readable **size** benchmark (generated; includes **Compile ms (mean×3)**)
+- `scripts/benchmark_size.py`, `scripts/benchmark_runtime.py` — size and runtime generators
+- `tooling/benchmark_size.json` — machine-readable size report (schema `3.3+`)
+- `tooling/benchmark_runtime_results.json` — machine-readable runtime report (CI baseline when committed)
+- `tooling/bench_metrics.py` — shared `tiktoken` counting and pricing helpers
+- `scripts/compare_benchmark_json.py` — regression checker for CI
+- `scripts/benchmark_ollama.py` / `ainl-ollama-benchmark` — multi-model LLM bench; optional **`--cloud-model`** (Anthropic)
 - `tooling/artifact_profiles.json` — artifact/strict profiles
 - `tooling/benchmark_manifest.json` — benchmark manifest
 - `tooling/support_matrix.json` — support levels

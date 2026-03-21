@@ -33,9 +33,11 @@ It does **not** introduce new semantics; it only packages existing tools and tes
   - `ainl run ... --replay-adapters calls.json`
   - Documented in `docs/INSTALL.md` and `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`.
 
-- **Size benchmark (optional)**
-  - `BENCHMARK.md`, `scripts/benchmark_size.py`, `tooling/benchmark_size.json`.
-  - Shows reproducible size ratios; **not** required for the minimal proof recipe.
+- **Benchmarks (optional)**
+  - **Size:** `BENCHMARK.md`, `scripts/benchmark_size.py`, `tooling/benchmark_size.json` (default **tiktoken** / `cl100k_base`, **Compile ms (mean×3)** column).
+  - **Runtime:** `scripts/benchmark_runtime.py`, `tooling/benchmark_runtime_results.json` (post-compile latency/RSS; optional reliability and scalability probe).
+  - **Hub:** `docs/benchmarks.md` ties metrics, `make benchmark` / `make benchmark-ci`, and CI regression gating together.
+  - Not required for the minimal proof recipe below.
 
 ---
 

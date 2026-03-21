@@ -10,10 +10,10 @@ Human-written baselines (`--compare-baselines`) anchor claims against real Pytho
 
 ## Where to read results
 
-- **Human-readable size report:** [`BENCHMARK.md`](../BENCHMARK.md) (generated; commit when refreshing public numbers).
+- **Human-readable size report:** repository root `BENCHMARK.md` (generated; commit when refreshing public numbers). On **ainativelang.com**, the same content is published as the [Benchmarks](/benchmark) page.
 - **Machine-readable size JSON:** `tooling/benchmark_size.json` (schema `3.3+`).
-- **Runtime JSON:** `tooling/benchmark_runtime_results.json` (when generated).
-- **LLM eval / multi-model bench:** [`OLLAMA_EVAL.md`](OLLAMA_EVAL.md) — local Ollama plus optional **Anthropic Claude** via `ainl-ollama-benchmark --cloud-model …` (`pip install -e ".[anthropic]"`, `ANTHROPIC_API_KEY`).
+- **Runtime JSON:** `tooling/benchmark_runtime_results.json` (generated; tracked in git as the CI baseline when committed).
+- **LLM eval / multi-model bench:** `docs/OLLAMA_EVAL.md` — local Ollama plus optional **Anthropic Claude** via `ainl-ollama-benchmark --cloud-model …` (`pip install -e ".[anthropic]"`, `ANTHROPIC_API_KEY`).
 
 ## Key metrics (quick glossary)
 
