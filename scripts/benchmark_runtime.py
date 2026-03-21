@@ -1116,8 +1116,8 @@ def _baseline_runtime_markdown_lines(baselines: Dict[str, Any], report: Dict[str
         "| Workflow | AINL src tk | AINL mean (ms) | Pure mean (ms) | Lang mean (ms) | "
         "AINL RSS Δ | Pure RSS Δ | Lang RSS Δ | AINL/Pure | AINL/Lang |"
     )
-        for m in cost_models:
-            header += f" AINL `{m}` USD | HW `{m}` USD |"
+    for m in cost_models:
+        header += f" AINL `{m}` USD | HW `{m}` USD |"
     if rel_n > 0:
         header += " AINL Rel | Pure Rel | Lang Rel |"
     header += " Notes |"
