@@ -329,6 +329,45 @@ def test_prune_scoped_to_namespace(tmp_path):
     assert adp.call("get", [ns1, "workflow.checkpoint", "exp-wf"], {})["found"] is False
 
 
+def test_since_last_accessed_list_filter(tmp_path):
+    adp = _make_adapter(tmp_path)
+    ns = "long_term"
+    kind = "long_term.distilled_insight"
+
+    adp.call(
+        "put",
+        [
+            ns,
+            kind,
+            "a",
+            {"text": "old"},
+            None,
+            {"last_accessed": "2026-03-01T00:00:00+00:00", "tags": ["insight"]},
+        ],
+        {},
+    )
+    adp.call(
+        "put",
+        [
+            ns,
+            kind,
+            "b",
+            {"text": "new"},
+            None,
+            {"last_accessed": "2026-03-15T00:00:00+00:00", "tags": ["insight"]},
+        ],
+        {},
+    )
+    adp.call("put", [ns, kind, "c", {"text": "no_ts"}, None, {"tags": ["insight"]}], {})
+
+    res = adp.call(
+        "list",
+        [ns, kind, None, None, {"since_last_accessed": "2026-03-10T00:00:00+00:00"}],
+        {},
+    )
+    assert [i["record_id"] for i in res["items"]] == ["b"]
+
+
 def test_metadata_roundtrip_and_tag_filters(tmp_path):
     adp = _make_adapter(tmp_path)
     ns = "workflow"

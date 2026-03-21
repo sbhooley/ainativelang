@@ -31,7 +31,9 @@ These run through **`openclaw/bridge/run_wrapper_ainl.py`** and append to OpenCl
 | `token-budget-alert` | `0 23 * * *` UTC | [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) |
 | `weekly-token-trends` | `0 9 * * 0` | [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](UNIFIED_MONITORING_GUIDE.md) |
 
-Single operator guide: [`UNIFIED_MONITORING_GUIDE.md`](UNIFIED_MONITORING_GUIDE.md) · Bridge README: [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md).
+**ZeroClaw bridge** (`zeroclaw/bridge/`, **`zeroclaw-ainl-run`**) includes the same daily/weekly wrappers plus **`monthly-token-summary`** (`0 3 1 * *` UTC). See [`docs/ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md).
+
+Single operator guide: [`UNIFIED_MONITORING_GUIDE.md`](UNIFIED_MONITORING_GUIDE.md) · OpenClaw bridge README: [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md) · ZeroClaw bridge README: [`zeroclaw/bridge/README.md`](../../zeroclaw/bridge/README.md).
 
 ---
 

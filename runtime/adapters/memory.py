@@ -158,6 +158,21 @@ class MemoryAdapter(RuntimeAdapter):
             if valid_at is not None and (not isinstance(valid_at, str) or not valid_at):
                 raise AdapterError("memory metadata.valid_at must be a non-empty RFC3339 string or null")
             out["valid_at"] = valid_at
+        if "last_accessed" in metadata:
+            last_accessed = metadata["last_accessed"]
+            if last_accessed is not None and (not isinstance(last_accessed, str) or not last_accessed):
+                raise AdapterError(
+                    "memory metadata.last_accessed must be a non-empty RFC3339 string or null"
+                )
+            out["last_accessed"] = last_accessed
+        if "access_count" in metadata:
+            access_count = metadata["access_count"]
+            if access_count is not None:
+                if isinstance(access_count, bool) or not isinstance(access_count, int) or access_count < 0:
+                    raise AdapterError(
+                        "memory metadata.access_count must be a non-negative integer or null"
+                    )
+            out["access_count"] = access_count
 
         # Preserve any future optional keys as additive metadata.
         for k, v in metadata.items():
@@ -473,6 +488,10 @@ class MemoryAdapter(RuntimeAdapter):
             if valid_at_before:
                 sql.append("AND json_extract(metadata_json, '$.valid_at') <= ?")
                 params.append(valid_at_before)
+            since_last_accessed = filters.get("since_last_accessed")
+            if since_last_accessed:
+                sql.append("AND json_extract(metadata_json, '$.last_accessed') >= ?")
+                params.append(since_last_accessed)
             tags_any = filters.get("tags_any")
             if tags_any:
                 placeholders = ",".join(["?"] * len(tags_any))
@@ -537,6 +556,7 @@ class MemoryAdapter(RuntimeAdapter):
             "updated_before",
             "valid_at_after",
             "valid_at_before",
+            "since_last_accessed",
             "source",
             "limit",
             "offset",
@@ -546,7 +566,16 @@ class MemoryAdapter(RuntimeAdapter):
             raise AdapterError(f"memory.list filters contain unsupported keys: {', '.join(unknown)}")
 
         out: Dict[str, Any] = {}
-        for k in ("created_after", "created_before", "updated_after", "updated_before", "valid_at_after", "valid_at_before", "source"):
+        for k in (
+            "created_after",
+            "created_before",
+            "updated_after",
+            "updated_before",
+            "valid_at_after",
+            "valid_at_before",
+            "since_last_accessed",
+            "source",
+        ):
             if k in value and value[k] is not None:
                 if not isinstance(value[k], str) or not value[k]:
                     raise AdapterError(f"memory.list filter '{k}' must be a non-empty string")

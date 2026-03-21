@@ -1,0 +1,47 @@
+# Demo: short-TTL session raw vs durable distilled insight + opt-in access touches.
+# Adapters: core, memory. Requires AINL_MEMORY_DB (default /tmp/ainl_memory.sqlite3).
+#
+# Session row uses a short TTL (advisory); `memory.prune "session"` only deletes it once
+# expired (age > ttl from created_at). Re-run after the TTL window to see pruned > 0.
+# The distilled `long_term` record has ttl_seconds null and is never TTL-pruned.
+S core memory
+
+include "modules/common/access_aware_memory.ainl" as accmem
+include "modules/common/distill_pattern.ainl" as distill
+
+L0:
+  R core now ->ts
+  R core stringify ts ->suffix
+  R core concat "memdistill-" suffix ->mem_id
+
+  X memory_session_id mem_id
+  X memory_session_payload {"raw":"ephemeral chat excerpt for summarization","ts":ts}
+  X memory_session_ttl 120
+  Call distill/LWRITE_SESSION_RAW ->_
+
+  X memory_distill_id mem_id
+  X memory_distill_payload {"insight":"User prefers concise summaries.","ts":ts}
+  X memory_distill_confidence 0.9
+  Call distill/LDISTILL_WRITE ->_
+
+  R memory prune "session" ->pr1
+
+  R memory get "long_term" "long_term.distilled_insight" mem_id ->kept
+  If kept.found ->L1 ->L_fail
+
+L_fail:
+  X demo_out {"ok":false,"reason":"distilled_missing_after_prune","prune_session":pr1}
+  J demo_out
+
+L1:
+  X memory_namespace "long_term"
+  X memory_kind "long_term.distilled_insight"
+  X memory_record_id mem_id
+  Call accmem/LACCESS_READ ->after_read
+
+  X memory_list_kind "long_term.distilled_insight"
+  X memory_list_filters {}
+  Call accmem/LACCESS_LIST ->listed
+
+  X demo_out {"ok":true,"id":mem_id,"session_pruned":pr1,"distilled_found":true,"after_access_read":after_read,"list_snapshot":listed}
+  J demo_out

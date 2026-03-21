@@ -5,20 +5,27 @@ Memory heuristics use ``~/.zeroclaw/workspace/memory/`` (see ``ZEROCLAW_WORKSPAC
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import mean
 from typing import Any, Dict, List, Optional, Tuple
 
 from runtime.adapters.base import RuntimeAdapter, AdapterError
 
+logger = logging.getLogger("ainl.zeroclaw.wrapper")
+
 _BRIDGE = Path(__file__).resolve().parent
 _ROOT = _BRIDGE.parent.parent
+
+
+def _zeroclaw_wrapper_verbose() -> bool:
+    return os.environ.get("AINL_ZC_WRAPPER_VERBOSE", "").strip().lower() in ("1", "true", "yes")
 
 
 def _context_dry(context: Dict[str, Any]) -> bool:
@@ -144,9 +151,32 @@ def _parse_token_usage_block(text: str) -> Tuple[Optional[int], Optional[float]]
     return est, pct
 
 
+def _token_report_parse_block_dict(text: str) -> Dict[str, Any]:
+    """Canonical parser for "## Token Usage Report" blocks.
+
+    Used by: token_report_parse_block handler, weekly_token_trends_markdown,
+    monthly_token_summary_markdown, and AINL helpers via R bridge.
+    """
+    est, pct = _parse_token_usage_block(text)
+    return {
+        "has_token_usage_section": "## Token Usage Report" in text,
+        "estimated_total_tokens": est,
+        "budget_used_pct": pct,
+        "input_tokens": None,
+        "output_tokens": None,
+    }
+
+
+def _token_report_parse_block_json(text: str) -> str:
+    return json.dumps(_token_report_parse_block_dict(text), ensure_ascii=False)
+
+
 def _weekly_token_trends_markdown() -> str:
+    vrb = _zeroclaw_wrapper_verbose()
     mem = _zeroclaw_memory_dir()
     if not mem.is_dir():
+        if vrb:
+            logger.info("weekly_token_trends: memory_dir missing or not a directory: %s", mem)
         return (
             "## Weekly Token Trends\n"
             "- No memory directory found; set ZEROCLAW_MEMORY_DIR or ZEROCLAW_WORKSPACE.\n"
@@ -154,7 +184,12 @@ def _weekly_token_trends_markdown() -> str:
     paths = [p for p in mem.glob("*.md") if _DAY_MD_RE.match(p.name)]
     paths.sort(key=lambda p: p.stem, reverse=True)
     newest14 = paths[:14]
+    if vrb:
+        logger.info("weekly_token_trends: memory_dir=%s daily_md_count=%s", mem, len(paths))
+        logger.info("weekly_token_trends: newest_14=%s", [p.name for p in newest14])
     if not newest14:
+        if vrb:
+            logger.info("weekly_token_trends: no YYYY-MM-DD.md files under memory/")
         return "## Weekly Token Trends\n- No daily `YYYY-MM-DD.md` files found under memory/.\n"
     chrono = sorted(newest14, key=lambda p: p.stem)
     if len(chrono) >= 14:
@@ -166,32 +201,59 @@ def _weekly_token_trends_markdown() -> str:
     else:
         prev7 = []
         last7 = chrono
+    if vrb:
+        logger.info("weekly_token_trends: last7_window=%s prev7_window=%s", [p.name for p in last7], [p.name for p in prev7])
 
     day_tokens: List[int] = []
     for p in last7:
         try:
             body = p.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        except OSError as e:
+            if vrb:
+                logger.info("weekly_token_trends: file=%s read_failed=%s", p.name, e)
             continue
-        est, _pct = _parse_token_usage_block(body)
+        rep = _token_report_parse_block_dict(body)
+        est = rep.get("estimated_total_tokens")
+        if vrb:
+            logger.info(
+                "weekly_token_trends: file=%s token_est=%s",
+                p.name,
+                est if est is not None else "(no ## Token Usage Report estimate)",
+            )
         if est is not None:
             day_tokens.append(est)
 
     if not day_tokens:
+        # Informational warning for sparse data windows — does not affect calculations
+        miss = ""
+        if len(last7) < 7:
+            miss = (
+                f"- Note: Only {len(last7)} of 7 calendar days found in window "
+                "(missing daily report files)\n"
+            )
         return (
             "## Weekly Token Trends\n"
-            f"- Scanned {len(last7)} recent file(s) under ZeroClaw memory; "
+            + miss
+            + f"- Scanned {len(last7)} recent file(s) under ZeroClaw memory; "
             "no `## Token Usage Report` token estimates found.\n"
         )
 
     total_w = sum(day_tokens)
     avg_d = int(round(total_w / len(day_tokens)))
-    lines = [
-        "## Weekly Token Trends",
+    lines = ["## Weekly Token Trends"]
+    # Informational warning for sparse data windows — does not affect calculations
+    if len(last7) < 7:
+        lines.append(
+            f"- Note: Only {len(last7)} of 7 calendar days found in window "
+            "(missing daily report files)"
+        )
+    lines.extend(
+        [
         f"- Days in window: {len(day_tokens)} (from memory `*.md` files)",
         f"- Avg daily: ~{avg_d} tokens (heuristic from reports)",
         f"- Total week: ~{total_w} tokens",
-    ]
+        ]
+    )
     if len(day_tokens) >= 3:
         older = mean(day_tokens[: max(1, len(day_tokens) // 2)])
         newer = mean(day_tokens[len(day_tokens) // 2 :])
@@ -221,7 +283,8 @@ def _weekly_token_trends_markdown() -> str:
                 body = p.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            est, _ = _parse_token_usage_block(body)
+            rep = _token_report_parse_block_dict(body)
+            est = rep.get("estimated_total_tokens")
             if est is not None:
                 prev_vals.append(est)
         if prev_vals and total_w > 0:
@@ -230,6 +293,152 @@ def _weekly_token_trends_markdown() -> str:
                 ch = int(round((total_w - prev_tot) / prev_tot * 100))
                 sym = "↑" if ch > 0 else "↓" if ch < 0 else "→"
                 lines.append(f"- vs prior 7 days: {sym} {ch:+d}% (weekly totals heuristic)")
+
+    return "\n".join(lines) + "\n"
+
+
+def _monthly_token_summary_markdown() -> str:
+    """Rolling 30 calendar days (UTC) of daily `YYYY-MM-DD.md` files with token estimates."""
+    vrb = _zeroclaw_wrapper_verbose()
+    mem = _zeroclaw_memory_dir()
+    if not mem.is_dir():
+        if vrb:
+            logger.info("monthly_token_summary: memory_dir missing or not a directory: %s", mem)
+        return (
+            "## Monthly Token Summary\n"
+            "- No memory directory found; set ZEROCLAW_MEMORY_DIR or ZEROCLAW_WORKSPACE.\n"
+        )
+    today = datetime.now(timezone.utc).date()
+    window_start = today - timedelta(days=29)
+    prev_start = today - timedelta(days=59)
+    prev_end = today - timedelta(days=30)
+
+    all_paths = [p for p in mem.glob("*.md") if _DAY_MD_RE.match(p.name)]
+
+    def _stem_date(path: Path):
+        try:
+            return datetime.strptime(path.stem, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    window: List[Path] = []
+    prev_window: List[Path] = []
+    for p in all_paths:
+        d = _stem_date(p)
+        if d is None:
+            continue
+        if window_start <= d <= today:
+            window.append(p)
+        elif prev_start <= d <= prev_end:
+            prev_window.append(p)
+    window.sort(key=lambda p: p.stem)
+    prev_window.sort(key=lambda p: p.stem)
+
+    if vrb:
+        logger.info("monthly_token_summary: memory_dir=%s daily_md_count=%s", mem, len(all_paths))
+        logger.info(
+            "monthly_token_summary: window_utc=[%s .. %s] files=%s",
+            window_start.isoformat(),
+            today.isoformat(),
+            [p.name for p in window],
+        )
+
+    if not window:
+        if vrb:
+            logger.info("monthly_token_summary: no daily files in rolling 30-day UTC window")
+        return (
+            "## Monthly Token Summary\n"
+            f"- No daily `YYYY-MM-DD.md` files in the last 30 days (UTC): {window_start.isoformat()} … {today.isoformat()}.\n"
+        )
+
+    day_tokens: List[int] = []
+    for p in window:
+        try:
+            body = p.read_text(encoding="utf-8", errors="replace")
+        except OSError as e:
+            if vrb:
+                logger.info("monthly_token_summary: file=%s read_failed=%s", p.name, e)
+            continue
+        rep = _token_report_parse_block_dict(body)
+        est = rep.get("estimated_total_tokens")
+        if vrb:
+            logger.info(
+                "monthly_token_summary: file=%s token_est=%s",
+                p.name,
+                est if est is not None else "(no ## Token Usage Report estimate)",
+            )
+        if est is not None:
+            day_tokens.append(est)
+
+    if not day_tokens:
+        # Informational warning for sparse data windows — does not affect calculations
+        miss = ""
+        if len(window) < 30:
+            miss = (
+                f"- Note: Only {len(window)} of 30 calendar days found in window "
+                "(missing daily report files)\n"
+            )
+        return (
+            "## Monthly Token Summary\n"
+            + miss
+            + f"- Scanned {len(window)} daily file(s) in the 30-day UTC window; "
+            "no `## Token Usage Report` token estimates found.\n"
+        )
+
+    total_m = sum(day_tokens)
+    avg_d = int(round(total_m / len(day_tokens)))
+    lines = ["## Monthly Token Summary"]
+    # Informational warning for sparse data windows — does not affect calculations
+    if len(window) < 30:
+        lines.append(
+            f"- Note: Only {len(window)} of 30 calendar days found in window "
+            "(missing daily report files)"
+        )
+    lines.extend(
+        [
+        f"- Days in window: {len(day_tokens)} (from memory `*.md` files, last 30 days UTC)",
+        f"- Avg daily: ~{avg_d} tokens (heuristic from reports)",
+        f"- Total month: ~{total_m} tokens",
+        ]
+    )
+    if len(day_tokens) >= 3:
+        older = mean(day_tokens[: max(1, len(day_tokens) // 2)])
+        newer = mean(day_tokens[len(day_tokens) // 2 :])
+        if newer > older * 1.05:
+            arrow = "↑"
+            try:
+                pct_ch = int(round((newer - older) / max(older, 1) * 100))
+            except Exception:
+                pct_ch = 0
+            lines.append(f"- Trend: {arrow} ~{pct_ch}% higher in newer half of window vs older half")
+        elif newer < older * 0.95:
+            arrow = "↓"
+            try:
+                pct_ch = int(round((older - newer) / max(older, 1) * 100))
+            except Exception:
+                pct_ch = 0
+            lines.append(f"- Trend: {arrow} ~{pct_ch}% lower in newer half of window vs older half")
+        else:
+            lines.append("- Trend: → roughly flat within this window")
+    else:
+        lines.append("- Trend: → not enough days for split-window trend")
+
+    prev_vals: List[int] = []
+    for p in prev_window:
+        try:
+            body = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rep = _token_report_parse_block_dict(body)
+        est = rep.get("estimated_total_tokens")
+        if est is not None:
+            prev_vals.append(est)
+    if prev_vals and total_m > 0:
+        prev_tot = sum(prev_vals)
+        if prev_tot > 0:
+            ch = int(round((total_m - prev_tot) / prev_tot * 100))
+            sym = "↑" if ch > 0 else "↓" if ch < 0 else "→"
+            lines.append(f"- vs prior 30 days: {sym} {ch:+d}% (totals heuristic)")
 
     return "\n".join(lines) + "\n"
 
@@ -408,6 +617,17 @@ class ZeroclawBridgeTokenBudgetAdapter(RuntimeAdapter):
                 return 0
         if t == "weekly_token_trends_report":
             return _weekly_token_trends_markdown()
+        if t == "token_report_parse_block":
+            return _token_report_parse_block_json(str(args[0]) if args else "")
+        if t == "token_report_list_daily_md":
+            raw = str(args[0]) if args else ""
+            root = Path(raw).expanduser()
+            if not root.is_dir():
+                return "[]"
+            names = sorted(p.name for p in root.glob("*.md") if _DAY_MD_RE.match(p.name))
+            return json.dumps(names, ensure_ascii=False)
+        if t == "monthly_token_summary_report":
+            return _monthly_token_summary_markdown()
         if t == "token_budget_notify_build":
             if not self._notify_lines:
                 return ""
@@ -519,6 +739,8 @@ class ZeroclawBridgeTokenBudgetAdapter(RuntimeAdapter):
             f"bridge unknown target {t!r}; see monitor_cache_stat, monitor_cache_prune, "
             "monitor_cache_prune_markdown, monitor_cache_prune_error_markdown, "
             "monitor_cache_prune_result, token_report_today_sent, token_report_today_touch, "
-            "weekly_token_trends_report, token_budget_notify_reset, token_budget_notify_add, "
-            "token_budget_notify_build, token_budget_notify_text, token_budget_warn, token_budget_report"
+            "weekly_token_trends_report, monthly_token_summary_report, token_report_parse_block, "
+            "token_report_list_daily_md, token_budget_notify_reset, "
+            "token_budget_notify_add, token_budget_notify_build, token_budget_notify_text, token_budget_warn, "
+            "token_budget_report"
         )

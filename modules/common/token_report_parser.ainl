@@ -1,0 +1,68 @@
+# modules/common/token_report_parser.ainl
+# Shared helpers for "## Token Usage Report" sections in daily YYYY-MM-DD.md files.
+# Include module only — no top-level S/E ops. Parsing is delegated to R bridge (same heuristics
+# as weekly/monthly aggregations). No memory writes; read-only fs + bridge.
+#
+# -----------------------------------------------------------------------------
+# Usage (parent program)
+# -----------------------------------------------------------------------------
+#   include "modules/common/token_report_parser.ainl" as tr
+#
+#   # From file path (R fs read under workspace sandbox, then parse):
+#   L1:
+#     Set token_report_path "memory/2025-03-10.md"
+#     Call tr/PARSE_DAILY_TOKEN_REPORT ->stats
+#     J stats
+#
+#   # From markdown already in frame:
+#   L2:
+#     Set token_report_content "## Token Usage Report\n- estimated_total_tokens: ~1200\n"
+#     Call tr/EXTRACT_TOKEN_STATS ->stats
+#     J stats
+#
+#   # List sorted YYYY-MM-DD.md basenames in a directory (bridge filters names):
+#   L3:
+#     Set token_report_memory_dir "memory"
+#     Call tr/LIST_DAILY_FILES ->names_json
+#     J names_json
+#
+# Bridge verbs used:
+# - token_report_parse_block (markdown block → JSON via _token_report_parse_block_dict)
+# - token_report_list_daily_md (dir → sorted YYYY-MM-DD.md basenames)
+# Weekly/monthly aggregators (weekly_token_trends_report, monthly_token_summary_report)
+# also use the same _token_report_parse_block_dict internally.
+#
+# -----------------------------------------------------------------------------
+# Frame contract
+# -----------------------------------------------------------------------------
+# PARSE_DAILY_TOKEN_REPORT  — in: token_report_path (string). Out: token_report_json (JSON string).
+# EXTRACT_TOKEN_STATS       — in: token_report_content (string). Out: token_report_json (JSON string).
+# LIST_DAILY_FILES          — in: token_report_memory_dir (string). Out: token_daily_md_json (JSON array string).
+#
+# JSON shape from parse (R bridge token_report_parse_block):
+# {
+#   "has_token_usage_section": bool,
+#   "estimated_total_tokens": int|null,
+#   "budget_used_pct": float|null,
+#   "input_tokens": int|null,
+#   "output_tokens": int|null
+# }
+# (null placeholders until daily reports carry separate in/out numbers)
+#
+# Future weekly/monthly wrappers may Call tr/EXTRACT_* after fetching body via R fs or adapters;
+# aggregate reports (weekly_token_trends_report, monthly_token_summary_report) stay in bridge until refactored.
+#
+# One-line note: add `include "modules/common/token_report_parser.ainl" as <alias>` and `Call <alias>/PARSE_DAILY_TOKEN_REPORT` (etc.) from any bridge-friendly graph that registers `fs` + `bridge`.
+
+LPARSE_DAILY_TOKEN_REPORT:
+  R fs read token_report_path ->token_report_content
+  R bridge token_report_parse_block token_report_content ->token_report_json
+  J token_report_json
+
+LEXTRACT_TOKEN_STATS:
+  R bridge token_report_parse_block token_report_content ->token_report_json
+  J token_report_json
+
+LLIST_DAILY_FILES:
+  R bridge token_report_list_daily_md token_report_memory_dir ->token_daily_md_json
+  J token_daily_md_json

@@ -1,6 +1,7 @@
 """Integration checks for scripts/ shims → openclaw/bridge/."""
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -193,3 +194,38 @@ def test_run_wrapper_weekly_token_trends_dry_run() -> None:
     assert '"wrapper": "weekly-token-trends"' in out
     assert "Weekly Token Trends" in out
     assert "Avg daily" in out
+
+
+def _load_openclaw_bridge_token_budget_adapter():
+    path = REPO / "openclaw" / "bridge" / "bridge_token_budget_adapter.py"
+    spec = importlib.util.spec_from_file_location("openclaw_bridge_token_budget", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_openclaw_bridge_token_report_parse_block() -> None:
+    # Verifies that bridge verb, weekly/monthly aggregators, and AINL helpers all converge on the same parsed structure
+    mod = _load_openclaw_bridge_token_budget_adapter()
+    ad = mod.BridgeTokenBudgetAdapter()
+    md = "## Token Usage Report\n- estimated_total_tokens: ~888\n- budget_used_pct: 3.0%\n"
+    raw = ad.call("token_report_parse_block", [md], {})
+    d = json.loads(raw)
+    assert d["has_token_usage_section"] is True
+    assert d["estimated_total_tokens"] == 888
+    assert d["budget_used_pct"] == 3.0
+
+
+def test_openclaw_bridge_token_report_list_daily_md(tmp_path: Path) -> None:
+    mod = _load_openclaw_bridge_token_budget_adapter()
+    mem = tmp_path / "memory"
+    mem.mkdir(parents=True)
+    (mem / "2025-02-02.md").write_text("x", encoding="utf-8")
+    (mem / "2025-02-01.md").write_text("x", encoding="utf-8")
+    (mem / "other.md").write_text("x", encoding="utf-8")
+
+    ad = mod.BridgeTokenBudgetAdapter()
+    raw = ad.call("token_report_list_daily_md", [str(mem)], {})
+    names = json.loads(raw)
+    assert names == ["2025-02-01.md", "2025-02-02.md"]

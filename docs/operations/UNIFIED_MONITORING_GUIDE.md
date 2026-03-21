@@ -84,6 +84,16 @@ Scans up to **14** recent `YYYY-MM-DD.md` files under the memory directory, pars
 
 ---
 
+## ZeroClaw bridge monitoring
+
+**ZeroClaw** uses **`zeroclaw/bridge/`** (not **`openclaw/bridge/`**): **`zeroclaw-ainl-run`** or **`python3 zeroclaw/bridge/run_wrapper_ainl.py`**, with daily notes under **`~/.zeroclaw/workspace/memory/`** (override with **`ZEROCLAW_WORKSPACE`** / **`ZEROCLAW_MEMORY_DIR`**). The production wrappers **`token-budget-alert`**, **`weekly-token-trends`**, and **`monthly-token-summary`** append reports to **today’s** note on live runs and enqueue a short outbound notify routed by **`ZEROCLAW_NOTIFY_TARGET`**.
+
+**JSON stdout (ZeroClaw runner only):** prints **`{"status": "ok", "out": …, "wrapper": …}`** on **`--dry-run`** or when **`--json`** / **`--output=json`** is set; add **`--pretty`** for indented JSON. **Live** runs omit stdout by default (unlike **`openclaw/bridge/run_wrapper_ainl.py`**, which always prints a JSON envelope with **`"ok": true`**).
+
+At-a-glance cadence, cron hints, and notify prefixes: **[`docs/ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md#cadence-overview)**.
+
+---
+
 ## Cron jobs
 
 Set **`AINL_WORKSPACE`** to your AINL repo root (see [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md)).
@@ -187,6 +197,7 @@ rm -f /tmp/token_report_today_sent
 
 - **[`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md)** — overview, sentinel, env vars, sample output, troubleshooting
 - **[`openclaw/bridge/README.md`](../../openclaw/bridge/README.md)** — monitoring tools table, **Scheduled reporting & alerting**, `AINL_WORKSPACE` patterns
+- **[`docs/ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md)** — ZeroClaw bridge, **`zeroclaw-ainl-run`**, monthly wrapper, **`ZEROCLAW_NOTIFY_TARGET`**, JSON CLI flags
 - **[`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md)** — drift checks, `openclaw/bridge/wrappers/` note
 - **[`docs/ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md)** — integration boundaries and env vars
 

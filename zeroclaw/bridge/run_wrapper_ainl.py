@@ -13,15 +13,30 @@ Optional: set ``AINL_ZC_COMPILE_SUBPROCESS=1`` to run ``ainl compile <wrapper>``
 before executing (validates toolchain); graph execution stays in-process.
 
 Usage:
-  python3 zeroclaw/bridge/run_wrapper_ainl.py <name> [--dry-run] [--trace] [--verbose]
+  python3 zeroclaw/bridge/run_wrapper_ainl.py <name> [--dry-run] [--trace] [--verbose] [--json] [--output {text,json}] [--pretty]
 
 Dry-run: sets frame[\"dry_run\"] and ``AINL_DRY_RUN`` so adapters skip network/disk side effects.
 
+JSON stdout: ``--dry-run`` always prints ``{"status": "ok", "out": ..., "wrapper": ...}``.
+On live runs, stdout is silent unless ``--json`` or ``--output=json`` (same envelope).
+
+- ``--json``: emit JSON on live runs (useful for scripting).
+- ``--pretty``: indent JSON output (dry-run, ``--json``, or ``--output=json``).
+
+Examples:
+
+  zeroclaw-ainl-run weekly-token-trends --json --pretty
+  zeroclaw-ainl-run monthly-token-summary --output=json --pretty
+
 With ``AINL_ZC_COMPILE_SUBPROCESS=1``, ``--verbose`` logs the ``ainl compile`` subprocess
 command, exit code, and stderr (truncated).
+
+``--verbose`` / ``-v`` also sets ``AINL_ZC_WRAPPER_VERBOSE=1`` so the bridge logs extra runtime
+detail (e.g. which daily ``*.md`` files ``weekly_token_trends`` / ``monthly_token_summary`` considered).
 """
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
@@ -71,8 +86,9 @@ WRAPPERS = {
     "content-engine": ROOT / "scripts" / "wrappers" / "content-engine.ainl",
     "supervisor": ROOT / "scripts" / "wrappers" / "supervisor.ainl",
     "full-unification": ROOT / "examples" / "openclaw_full_unification.ainl",
-    "token-budget-alert": ROOT / "openclaw" / "bridge" / "wrappers" / "token_budget_alert.ainl",
-    "weekly-token-trends": ROOT / "openclaw" / "bridge" / "wrappers" / "weekly_token_trends.ainl",
+    "token-budget-alert": _BRIDGE_DIR / "wrappers" / "token_budget_alert.ainl",
+    "weekly-token-trends": _BRIDGE_DIR / "wrappers" / "weekly_token_trends.ainl",
+    "monthly-token-summary": _BRIDGE_DIR / "wrappers" / "monthly_token_summary.ainl",
 }
 
 
@@ -151,21 +167,41 @@ def _maybe_subprocess_compile(path: Path, *, verbose: bool) -> None:
 
 
 def main() -> None:
-    argv = [a for a in sys.argv[1:] if a]
-    trace = "--trace" in argv
-    dry = "--dry-run" in argv
-    verbose = "--verbose" in argv or "-v" in argv
-    argv = [a for a in argv if a not in ("--trace", "--dry-run", "--verbose", "-v")]
-    if not argv:
-        print(__doc__, file=sys.stderr)
-        sys.exit(1)
-    name = argv[0]
+    parser = argparse.ArgumentParser(
+        description="Run ZeroClaw bridge wrappers (memory, queue, token budget).",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("name", help="Wrapper CLI name (e.g. weekly-token-trends)")
+    parser.add_argument("--dry-run", action="store_true", help="Skip append_today, queue notify, etc.")
+    parser.add_argument("--trace", action="store_true", help="Trace graph execution")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose bridge logs (AINL_ZC_WRAPPER_VERBOSE)")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="On live runs, print JSON envelope to stdout (dry-run always prints JSON)",
+    )
+    parser.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="text: default live stdout silence; json: same as --json on live runs (POSIX-style alias)",
+    )
+    parser.add_argument(
+        "--pretty",
+        action="store_true",
+        help="Pretty-print JSON when emitting (dry-run, --json, or --output=json)",
+    )
+    args = parser.parse_args()
+
+    if args.verbose:
+        os.environ["AINL_ZC_WRAPPER_VERBOSE"] = "1"
+    name = args.name
     path = WRAPPERS.get(name)
     if not path or not path.is_file():
         logger.error("Unknown wrapper %r; known: %s", name, ", ".join(WRAPPERS))
         sys.exit(1)
 
-    _maybe_subprocess_compile(path, verbose=verbose)
+    _maybe_subprocess_compile(path, verbose=args.verbose)
 
     src = path.read_text(encoding="utf-8")
     ir = AICodeCompiler(strict_mode=False, strict_reachability=False).compile(src, emit_graph=True)
@@ -175,11 +211,11 @@ def main() -> None:
         sys.exit(2)
 
     reg = build_wrapper_registry()
-    eng = RuntimeEngine(ir, adapters=reg, trace=trace, execution_mode="graph-preferred")
+    eng = RuntimeEngine(ir, adapters=reg, trace=args.trace, execution_mode="graph-preferred")
     frame: dict = {
         "crm_health_url": _crm_health_url(),
     }
-    if dry:
+    if args.dry_run:
         frame["dry_run"] = True
         os.environ.setdefault("AINL_DRY_RUN", "1")
 
@@ -189,8 +225,14 @@ def main() -> None:
         logger.exception("Runtime error: %s", e)
         sys.exit(3)
 
-    payload = {"ok": True, "wrapper": name, "out": out}
-    print(json.dumps(payload, indent=2, default=str))
+    emit_json = args.dry_run or args.json or args.output == "json"
+    if emit_json:
+        md = "" if out is None else out
+        data = {"status": "ok", "out": md, "wrapper": name}
+        if args.pretty:
+            print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
+        else:
+            print(json.dumps(data, ensure_ascii=False, default=str))
 
 
 if __name__ == "__main__":

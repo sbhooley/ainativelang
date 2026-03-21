@@ -1,0 +1,27 @@
+# Monthly token summary aggregation (ZeroClaw bridge wrapper).
+# Uses R openclaw_memory → ZeroclawMemoryAdapter (resolves under ZEROCLAW_WORKSPACE / ZEROCLAW_MEMORY_DIR).
+# Live: append monthly MD to today's note, then R queue Put "notify" (short summary); ZeroclawQueueAdapter + ZEROCLAW_NOTIFY_TARGET route the send (same as token-budget-alert).
+# No monthly sentinel / de-dupe (run once per month via host cron; dry-run skips append_today and notify).
+# Inputs: daily YYYY-MM-DD.md files with ## Token Usage Report sections.
+# Window: rolling last 30 calendar days (UTC), by filename date; optional vs prior 30 days when data exists.
+# Optional: includes "vs prior 30 days" comparison when earlier data exists.
+# Outputs: live = note append + outbound notify; dry-run = JSON `out` only (no append, no queue).
+# Run: zeroclaw/bridge/run_wrapper_ainl.py or zeroclaw-ainl-run monthly-token-summary.
+# Bridge: R bridge monthly_token_summary_report aggregates token estimates in the 30-day UTC window.
+# S core cron "0 3 1 * *"
+S core cron "0 3 1 * *"
+
+L0:
+  R bridge monthly_token_summary_report ->md
+  If dry_run ->L_out ->L_append
+L_append:
+  R openclaw_memory append_today md ->_
+L_out:
+  # ── Unified notification via queue (respects ZEROCLAW_NOTIFY_TARGET in ZeroclawQueueAdapter) ──
+  # Only fires on live runs; dry-run skips queue Put
+  If dry_run ->L_end_notify ->L_notify
+L_notify:
+  Set notify_msg "Monthly Token Summary Report complete – see today's daily note in workspace for full details"
+  R queue Put "notify" notify_msg ->_
+L_end_notify:
+  J md

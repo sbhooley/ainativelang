@@ -144,6 +144,26 @@ def _parse_token_usage_block(text: str) -> Tuple[Optional[int], Optional[float]]
     return est, pct
 
 
+def _token_report_parse_block_dict(text: str) -> Dict[str, Any]:
+    """Canonical parser for "## Token Usage Report" blocks.
+
+    Used by: token_report_parse_block handler, weekly_token_trends_markdown,
+    monthly_token_summary_markdown, and AINL helpers via R bridge.
+    """
+    est, pct = _parse_token_usage_block(text)
+    return {
+        "has_token_usage_section": "## Token Usage Report" in text,
+        "estimated_total_tokens": est,
+        "budget_used_pct": pct,
+        "input_tokens": None,
+        "output_tokens": None,
+    }
+
+
+def _token_report_parse_block_json(text: str) -> str:
+    return json.dumps(_token_report_parse_block_dict(text), ensure_ascii=False)
+
+
 def _weekly_token_trends_markdown() -> str:
     mem = _openclaw_memory_dir()
     if not mem.is_dir():
@@ -170,7 +190,8 @@ def _weekly_token_trends_markdown() -> str:
             body = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        est, _pct = _parse_token_usage_block(body)
+        rep = _token_report_parse_block_dict(body)
+        est = rep.get("estimated_total_tokens")
         if est is not None:
             day_tokens.append(est)
 
@@ -217,7 +238,8 @@ def _weekly_token_trends_markdown() -> str:
                 body = p.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            est, _ = _parse_token_usage_block(body)
+            rep = _token_report_parse_block_dict(body)
+            est = rep.get("estimated_total_tokens")
             if est is not None:
                 prev_vals.append(est)
         if prev_vals and total_w > 0:
@@ -404,6 +426,15 @@ class BridgeTokenBudgetAdapter(RuntimeAdapter):
                 return 0
         if t == "weekly_token_trends_report":
             return _weekly_token_trends_markdown()
+        if t == "token_report_parse_block":
+            return _token_report_parse_block_json(str(args[0]) if args else "")
+        if t == "token_report_list_daily_md":
+            raw = str(args[0]) if args else ""
+            root = Path(raw).expanduser()
+            if not root.is_dir():
+                return "[]"
+            names = sorted(p.name for p in root.glob("*.md") if _DAY_MD_RE.match(p.name))
+            return json.dumps(names, ensure_ascii=False)
         if t == "token_budget_notify_build":
             if not self._notify_lines:
                 return ""
@@ -515,6 +546,7 @@ class BridgeTokenBudgetAdapter(RuntimeAdapter):
             f"bridge unknown target {t!r}; see monitor_cache_stat, monitor_cache_prune, "
             "monitor_cache_prune_markdown, monitor_cache_prune_error_markdown, "
             "monitor_cache_prune_result, token_report_today_sent, token_report_today_touch, "
-            "weekly_token_trends_report, token_budget_notify_reset, token_budget_notify_add, "
-            "token_budget_notify_build, token_budget_notify_text, token_budget_warn, token_budget_report"
+            "weekly_token_trends_report, token_report_parse_block, token_report_list_daily_md, "
+            "token_budget_notify_reset, token_budget_notify_add, token_budget_notify_build, "
+            "token_budget_notify_text, token_budget_warn, token_budget_report"
         )

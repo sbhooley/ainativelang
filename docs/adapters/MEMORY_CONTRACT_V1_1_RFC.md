@@ -55,8 +55,12 @@ v1 envelope (unchanged fields omitted):
 - `confidence: number|null` - advisory confidence in `[0.0, 1.0]`
 - `tags: string[]` - deterministic labels for filtering
 - `valid_at: RFC3339 string|null` - business validity timestamp (distinct from created/updated)
+- `last_accessed: RFC3339 string|null` - **caller-maintained only**; last time the record was explicitly treated as “accessed” by workflow/agent code (never auto-updated by `memory.get` / `memory.list`)
+- `access_count: int|null` - **caller-maintained only**; non-negative integer incremented only when workflow/agent code explicitly updates it (never auto-incremented by the adapter)
 
 All fields are optional. Missing `metadata` is valid.
+
+`last_accessed` and `access_count` exist solely for **opt-in, auditable** usage (for example via shared helpers that perform a follow-up `memory.put` after a read). They MUST NOT be written or mutated by the adapter on `get` or `list`.
 
 ---
 
@@ -89,6 +93,7 @@ v1.1 adds optional deterministic filters:
 - `created_before: RFC3339`
 - `valid_at_after: RFC3339`
 - `valid_at_before: RFC3339`
+- `since_last_accessed: RFC3339` - include only records whose stored `metadata.last_accessed` is present and lexically / chronologically `>=` the given timestamp (same comparison style as other RFC3339 window filters). Records with no `last_accessed` in metadata are excluded.
 - `source: string`
 - `limit: int` (bounded; implementation-defined max)
 - `offset: int`

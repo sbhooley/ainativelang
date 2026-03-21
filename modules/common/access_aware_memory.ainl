@@ -1,0 +1,85 @@
+# modules/common/access_aware_memory.ainl
+# Opt-in access metadata: explicit last_accessed + access_count updates only here.
+# Normal memory.get / memory.list are unchanged (no adapter side effects).
+#
+# Before Call LACCESS_READ:
+#   - memory_namespace, memory_kind, memory_record_id
+# Returns: final memory.get envelope (same shape as a plain get after optional put).
+#
+# Before Call LACCESS_LIST:
+#   - memory_namespace, memory_list_kind, memory_list_filters (object; use {} for none)
+# Lists via memory.list (namespace, kind, null, null, filters), then get+put per item.
+# Returns: the same list response object as the initial memory.list (membership/order
+# for that snapshot; underlying rows may have newer updated_at after touches).
+
+LACCESS_READ:
+  R memory get memory_namespace memory_kind memory_record_id ->access_read_res
+  If access_read_res.found ->L_ar_touch ->J access_read_res
+L_ar_touch:
+  X access_rec access_read_res.record
+  X access_payload access_rec.payload
+  X access_ttl access_rec.ttl_seconds
+  X access_meta access_rec.metadata
+  If (eq access_meta null) ->L_ar_m0 ->L_ar_m1
+L_ar_m0:
+  X access_meta {}
+  J L_ar_patch
+L_ar_m1:
+  J L_ar_patch
+L_ar_patch:
+  X access_now (core.iso)
+  Set access_meta "last_accessed" access_now
+  X ac_prev (get access_meta "access_count")
+  If (eq ac_prev null) ->L_ar_ac1 ->L_ar_acn
+L_ar_ac1:
+  Set access_meta "access_count" 1
+  J L_ar_store
+L_ar_acn:
+  X ac_next (core.add ac_prev 1)
+  Set access_meta "access_count" ac_next
+  J L_ar_store
+L_ar_store:
+  R memory put memory_namespace memory_kind memory_record_id access_payload access_ttl access_meta ->_
+  R memory get memory_namespace memory_kind memory_record_id ->access_read_res
+  J access_read_res
+
+LACCESS_LIST:
+  R memory list memory_namespace memory_list_kind null null memory_list_filters ->access_list_raw
+  X access_list_items access_list_raw.items
+  X _ (ForEach access_list_items (lambda item (
+    X al_rk item.record_kind
+    X al_rid item.record_id
+    R memory get memory_namespace al_rk al_rid ->al_rec
+    If al_rec.found ->L_al_upd ->L_al_skip
+  L_al_upd:
+    X access_rec al_rec.record
+    X access_payload access_rec.payload
+    X access_ttl access_rec.ttl_seconds
+    X access_meta access_rec.metadata
+    If (eq access_meta null) ->L_al_m0 ->L_al_m1
+  L_al_m0:
+    X access_meta {}
+    J L_al_patch
+  L_al_m1:
+    J L_al_patch
+  L_al_patch:
+    X access_now (core.iso)
+    Set access_meta "last_accessed" access_now
+    X ac_prev (get access_meta "access_count")
+    If (eq ac_prev null) ->L_al_ac1 ->L_al_acn
+  L_al_ac1:
+    Set access_meta "access_count" 1
+    J L_al_put
+  L_al_acn:
+    X ac_next (core.add ac_prev 1)
+    Set access_meta "access_count" ac_next
+    J L_al_put
+  L_al_put:
+    R memory put memory_namespace al_rk al_rid access_payload access_ttl access_meta ->_
+    J L_al_next
+  L_al_skip:
+    Ret null
+  L_al_next:
+    Ret null
+  )))
+  J access_list_raw

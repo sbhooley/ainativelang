@@ -1,0 +1,24 @@
+# modules/common/distill_pattern.ainl
+# Starter pattern (not enforced): volatile raw capture vs durable distilled_insight.
+#
+# Typical agent flow:
+# 1) LWRITE_SESSION_RAW — append or put short-TTL `session.chat_summary` (prune-friendly).
+# 2) LDISTILL_WRITE — promote key facts to `long_term` / `long_term.distilled_insight`
+#    with ttl_seconds null (no TTL) so records persist until explicit delete.
+# 3) Optionally Call access_aware_memory/LACCESS_READ or LACCESS_LIST on insights
+#    to maintain metadata.last_accessed and metadata.access_count explicitly.
+#
+# LWRITE_SESSION_RAW — set: memory_session_id, memory_session_payload, memory_session_ttl
+# LDISTILL_WRITE — set: memory_distill_id, memory_distill_payload, memory_distill_confidence
+
+LWRITE_SESSION_RAW:
+  X distill_now (core.iso)
+  X session_raw_meta {"source":"modules.common.distill_pattern","tags":["raw_chat","session_summary"],"valid_at":distill_now}
+  R memory put "session" "session.chat_summary" memory_session_id memory_session_payload memory_session_ttl session_raw_meta ->session_raw_put
+  J session_raw_put
+
+LDISTILL_WRITE:
+  X distill_now2 (core.iso)
+  X distill_meta {"source":"modules.common.distill_pattern","confidence":memory_distill_confidence,"tags":["distilled_insight","insight"],"valid_at":distill_now2}
+  R memory put "long_term" "long_term.distilled_insight" memory_distill_id memory_distill_payload null distill_meta ->distill_put_res
+  J distill_put_res

@@ -1,0 +1,25 @@
+# Weekly token trends aggregation (ZeroClaw bridge wrapper).
+# Uses R openclaw_memory → ZeroclawMemoryAdapter (resolves under ZEROCLAW_WORKSPACE / ZEROCLAW_MEMORY_DIR).
+# Live: append weekly MD to today's note, then R queue Put "notify" (short summary); ZeroclawQueueAdapter + ZEROCLAW_NOTIFY_TARGET route the send (same as token-budget-alert).
+# No weekly sentinel / de-dupe (runs every Sunday; dry-run skips append_today and notify).
+# Inputs: daily YYYY-MM-DD.md files with ## Token Usage Report sections.
+# Outputs: live = note append + outbound notify; dry-run = JSON `out` only (no append, no queue).
+# Run: zeroclaw/bridge/run_wrapper_ainl.py or zeroclaw-ainl-run weekly-token-trends.
+# Bridge: R bridge weekly_token_trends_report scans newest 14 `*.md`, aggregates last 7 with token estimates.
+# S core cron "0 9 * * 0"
+S core cron "0 9 * * 0"
+
+L0:
+  R bridge weekly_token_trends_report ->md
+  If dry_run ->L_out ->L_append
+L_append:
+  R openclaw_memory append_today md ->_
+L_out:
+  # ── Unified notification via queue (respects ZEROCLAW_NOTIFY_TARGET in ZeroclawQueueAdapter) ──
+  # Only fires on live runs; dry-run skips queue Put
+  If dry_run ->L_end_notify ->L_notify
+L_notify:
+  Set notify_msg "Weekly Token Trends Report complete – see today's daily note in workspace for full details"
+  R queue Put "notify" notify_msg ->_
+L_end_notify:
+  J md
