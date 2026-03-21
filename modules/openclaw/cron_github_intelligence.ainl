@@ -1,0 +1,2 @@
+# GitHub intelligence wrapper — every 6 hours at :15 (mirror CRON_GITHUB_INTELLIGENCE in adapters/openclaw_defaults.py)
+S core cron "15 */6 * * *"

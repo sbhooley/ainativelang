@@ -1,0 +1,2 @@
+# Content-engine wrapper — every 30 minutes (mirror CRON_CONTENT_ENGINE in adapters/openclaw_defaults.py)
+S core cron "*/30 * * * *"

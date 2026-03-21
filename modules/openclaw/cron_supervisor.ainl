@@ -1,0 +1,2 @@
+# Supervisor wrapper — every 15 minutes (mirror CRON_SUPERVISOR in adapters/openclaw_defaults.py)
+S core cron "*/15 * * * *"

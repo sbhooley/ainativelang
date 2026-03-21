@@ -1,0 +1,14 @@
+# GitHub intelligence wrapper — search → CRM digest row → OpenClaw daily memory → notify
+# Schedule: modules/openclaw/cron_github_intelligence.ainl (keep in sync with adapters/openclaw_defaults.py).
+include "modules/openclaw/cron_github_intelligence.ainl"
+
+L0:
+  R core iso ->generatedAt
+  R github search_repos "ainativelang" ->repos
+  X newCount (core.len repos)
+  R crm create_github_intelligence_digest generatedAt newCount repos ->digestId
+  R core concat "github-intelligence digestId=" digestId " newCount=" newCount ->memline
+  R openclaw_memory append_today memline ->_
+  R core concat "AINL github-intelligence: repos=" newCount " digestId=" digestId ->note
+  # Optional: `QueuePut notify note` for Telegram (omitted so `run_wrapper_ainl.py --dry-run` stays queue-silent)
+  Ret digestId

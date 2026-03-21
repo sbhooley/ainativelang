@@ -1,0 +1,14 @@
+# Lightweight supervisor — service matrix, cache checkpoint, structured notify, memory line
+include "modules/openclaw/cron_supervisor.ainl"
+
+L0:
+  R svc caddy ->s_caddy
+  R svc cloudflared ->s_cloud
+  R svc maddy ->s_maddy
+  R svc crm ->s_crm
+  R core now ->ts
+  R core concat "supervisor watchdog caddy=" s_caddy " cloudflared=" s_cloud " maddy=" s_maddy " crm=" s_crm " ts=" ts ->note
+  R cache set "supervisor" "last_check_ts" ts ->_
+  # Production: add `QueuePut notify note` here for Telegram (skipped in default wrapper so --dry-run stays side-effect free for queue)
+  R openclaw_memory append_today note ->_
+  Ret ts

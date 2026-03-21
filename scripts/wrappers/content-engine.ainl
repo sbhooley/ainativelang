@@ -1,0 +1,14 @@
+# Content-engine wrapper — probe CRM health, upsert a telemetry lead, log to OpenClaw memory, notify
+# Health URL: frame key crm_health_url (set by scripts/run_wrapper_ainl.py from adapters/openclaw_defaults.py).
+include "modules/openclaw/cron_content_engine.ainl"
+
+L0:
+  R extras http_status crm_health_url ->h
+  R core iso ->ts
+  R core stringify h ->hs
+  R core concat "{\"source\":\"ainl.content_engine\",\"kind\":\"health_probe\",\"health_http\":" hs ",\"checked_at\":\"" ts "\"}" ->json_s
+  R crm upsert_lead json_s ->lead_id
+  R core concat "content-engine health_http=" h " lead_id=" lead_id ->mem
+  R openclaw_memory append_today mem ->_
+  # Optional: `QueuePut notify mem` for Telegram
+  Ret h

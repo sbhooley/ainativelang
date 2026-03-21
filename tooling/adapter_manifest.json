@@ -325,6 +325,46 @@
       "sandbox_safe": true,
       "recommended_for": "stateful_workflows",
       "notes": "Recommended durable state adapter for any workflow needing persistence across runs. Keyed by (namespace, record_kind, record_id). Extension classification reflects packaging origin, not importance."
+    },
+    "openclaw_memory": {
+      "support_tier": "extension_openclaw",
+      "strict_contract": false,
+      "recommended_lane": "noncanonical",
+      "verbs": ["append_today", "read_today", "search"],
+      "effect_default": "io",
+      "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
+      "notes": "Append/read OpenClaw-style daily markdown under OPENCLAW_MEMORY_DIR (default workspace memory/) and search via openclaw memory search --json; uses MONITOR_CACHE_JSON for search TTL cache."
+    },
+    "github": {
+      "support_tier": "extension_openclaw",
+      "strict_contract": false,
+      "recommended_lane": "noncanonical",
+      "verbs": ["search_repos", "get_repo", "create_issue"],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "GitHub REST via requests; optional GITHUB_TOKEN; MONITOR_CACHE_JSON for short-lived GET caching; respects dry_run / AINL_DRY_RUN."
+    },
+    "crm": {
+      "support_tier": "extension_openclaw",
+      "strict_contract": false,
+      "recommended_lane": "noncanonical",
+      "verbs": [
+        "create_github_intelligence_digest",
+        "find_github_intelligence",
+        "upsert_lead"
+      ],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "HTTP to local CRM; default base URL from adapters/openclaw_defaults.py (non-standard port, override CRM_API_BASE). CRM_PATH_* env vars; GET cache for find_github_intelligence; dry_run skips writes."
     }
   }
 }

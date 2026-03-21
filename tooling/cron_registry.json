@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "description": "Canonical intent for scheduled work that touches AINL wrappers or related OpenClaw jobs. One row per logical job; execution_owner names who actually fires the clock.",
+    "execution_owners": {
+      "openclaw": "OpenClaw cron store (openclaw cron list). This is the usual execution truth for agentTurn jobs.",
+      "system": "OS crontab, launchd, systemd timer, or Advocate daemon — host-owned.",
+      "none": "AINL source declares S core cron for IR / emit / docs only; nothing external must fire on that expression unless you promote it."
+    },
+    "agent_playbook_url": "docs/CRON_ORCHESTRATION.md",
+    "portability_note": "Any OpenClaw user can adopt this pattern: ship your own cron_registry.json (or CRON_REGISTRY_PATH), define openclaw_match.payload_contains from YOUR job payloads, and set untracked_payload_substrings to strings that appear only in YOUR automation (or omit for no heuristic).",
+    "untracked_payload_substrings": [
+      "run_wrapper_ainl.py",
+      "run_intelligence.py"
+    ]
+  },
+  "jobs": [
+    {
+      "id": "wrapper_supervisor",
+      "human_name": "AINL wrapper — supervisor",
+      "execution_owner": "openclaw",
+      "ainl_role": "declares_schedule",
+      "schedule_cron": "*/15 * * * *",
+      "ainl_program": "scripts/wrappers/supervisor.ainl",
+      "schedule_module": "modules/openclaw/cron_supervisor.ainl",
+      "runner_hint": "python3 scripts/run_wrapper_ainl.py supervisor",
+      "openclaw_match": {
+        "payload_contains": "run_wrapper_ainl.py supervisor"
+      },
+      "openclaw_required": false,
+      "notes_for_agents": "Do not add a second crontab entry for this if OpenClaw already runs it. To migrate system cron → OpenClaw: disable the system line, then openclaw cron add with the same runner_hint. To disable: openclaw cron disable (or UI) — do not delete AINL source; update this registry enabled field."
+    },
+    {
+      "id": "wrapper_content_engine",
+      "human_name": "AINL wrapper — content-engine",
+      "execution_owner": "openclaw",
+      "ainl_role": "declares_schedule",
+      "schedule_cron": "*/30 * * * *",
+      "ainl_program": "scripts/wrappers/content-engine.ainl",
+      "schedule_module": "modules/openclaw/cron_content_engine.ainl",
+      "runner_hint": "python3 scripts/run_wrapper_ainl.py content-engine",
+      "openclaw_match": {
+        "payload_contains": "run_wrapper_ainl.py content-engine"
+      },
+      "openclaw_required": false,
+      "notes_for_agents": "Same ownership rules as wrapper_supervisor. CRM health URL comes from frame crm_health_url / CRM_* env (see run_wrapper_ainl.py)."
+    },
+    {
+      "id": "wrapper_github_intelligence",
+      "human_name": "AINL wrapper — github-intelligence",
+      "execution_owner": "openclaw",
+      "ainl_role": "declares_schedule",
+      "schedule_cron": "15 */6 * * *",
+      "ainl_program": "scripts/wrappers/github-intelligence.ainl",
+      "schedule_module": "modules/openclaw/cron_github_intelligence.ainl",
+      "runner_hint": "python3 scripts/run_wrapper_ainl.py github-intelligence",
+      "openclaw_match": {
+        "payload_contains": "run_wrapper_ainl.py github-intelligence"
+      },
+      "openclaw_required": false,
+      "notes_for_agents": "GitHub + CRM digest path; keep GITHUB_TOKEN and CRM_* aligned with adapters/openclaw_defaults.py defaults."
+    }
+  ]
+}
