@@ -36,6 +36,8 @@ make benchmark
 
 The **`[benchmark]`** extra includes **`aiohttp`** and **`langgraph`** so runtime benchmarks with **`--compare-baselines`** can execute handwritten `pure_async_python.py` / `langgraph_version.py` stacks (without them, those groups are skipped with a warning).
 
+If you use **`.venv-py310`** but still have a **`.venv`** directory, **`make`** prefers **`.venv`** first—either remove the unused env or run **`make benchmark-ci PYTHON=./.venv-py310/bin/python`** (after **`pip install -e ".[benchmark]"`** in that venv).
+
 CI-style (JSON only, smaller runtime sampling; matches the spirit of the `benchmark-regression` workflow):
 
 ```bash
