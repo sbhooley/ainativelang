@@ -1,100 +1,88 @@
 # Unified AINL + OpenClaw Monitoring Guide
 
-**Audience:** operators running OpenClaw cron, AINL bridge wrappers, and daily markdown memory.
+**Audience:** operators who run OpenClaw cron, the AINL bridge runner, and daily markdown memory.
 
-**Related:** [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md) · [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) · [`docs/ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md) · [`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md) · [`docs/AINL_CANONICAL_CORE.md`](../AINL_CANONICAL_CORE.md) (bridge is *non-canonical* but production-critical)
+**Cross-links:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) (token budget deep dive) · [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md) (commands, env, cron patterns) · [`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md) (drift + registry)
 
 ---
 
 ## Architecture overview
 
+The **OpenClaw bridge** (`openclaw/bridge/`) is the supported integration layer between OpenClaw cron/shell and AINL graphs: **`run_wrapper_ainl.py`** loads registered wrappers (e.g. **`token-budget-alert`**, **`weekly-token-trends`**), runs **`RuntimeEngine`** with the OpenClaw monitor registry, and coordinates adapters:
+
+- **`openclaw_memory`** — append/read **daily markdown** at **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**
+- **`bridge`** (`BridgeTokenBudgetAdapter`) — token-usage JSON subprocess, cache **stat** / **prune**, notify queue assembly
+- **`queue`** — single consolidated **notify** put (live) for Telegram / OpenClaw delivery
+- **`core`** — timestamps (`R core now`), string ops, guards
+
+**Token budget system:** The daily wrapper produces a **`## Token Usage Report`** in memory, optional **`## Cache Prune`**, and (live) one outbound **Daily AINL Status** message when there is anything to say. A **sentinel file** stops duplicating the **main** report on the same UTC calendar day.
+
+**Weekly trends:** A separate wrapper scans recent daily `*.md` files and appends **`## Weekly Token Trends`**.
+
+Canonical language/compiler/runtime semantics are unchanged; see **`docs/AINL_CANONICAL_CORE.md`** § *OpenClaw Bridge Layer*.
+
 ```text
 OpenClaw cron / manual shell
         │
         ▼
-openclaw/bridge/run_wrapper_ainl.py  <─── registered wrapper name
-        │
-        ├─► RuntimeEngine (graph-preferred) + openclaw_monitor_registry()
+openclaw/bridge/run_wrapper_ainl.py  <─── wrapper name
         │
         ├─► openclaw_memory  ──►  ~/.openclaw/workspace/memory/YYYY-MM-DD.md
-        ├─► bridge (BridgeTokenBudgetAdapter)  ──► token-usage JSON, cache stat/prune, notify queue
-        ├─► queue (notify)     ──► Telegram / OpenClaw message (live only)
-        └─► core (now, concat, X ops)  ──► timestamps, guards, math
+        ├─► bridge             ──►  token-usage, cache stat/prune, notify queue
+        ├─► queue (notify)     ──►  Telegram / OpenClaw (live only)
+        └─► core               ──►  UTC header timestamp, guards
 ```
-
-- **Canonical AINL** (language, compiler, portable runtime) does **not** include this glue; see **`docs/AINL_CANONICAL_CORE.md`** § *OpenClaw Bridge Layer*.
-- **All monitoring-specific file I/O for token reports** that must touch `/tmp` or arbitrary paths is implemented in **`openclaw/bridge/bridge_token_budget_adapter.py`**, not in the sandboxed `fs` adapter (which may not see `/tmp`).
 
 ---
 
-## Memory file locations
+## Key locations
 
 | Artifact | Default path | Override |
 |----------|--------------|----------|
-| Daily OpenClaw markdown log | **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`** | `OPENCLAW_MEMORY_DIR` or `OPENCLAW_DAILY_MEMORY_DIR` |
-| Monitor / search cache JSON | `/tmp/monitor_state.json` | `MONITOR_CACHE_JSON` |
+| Daily OpenClaw markdown | **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`** | `OPENCLAW_MEMORY_DIR`, `OPENCLAW_DAILY_MEMORY_DIR`, or `OPENCLAW_WORKSPACE` |
+| Monitor / search cache JSON | **`/tmp/monitor_state.json`** | `MONITOR_CACHE_JSON` |
+| Sentinel (main report duplicate guard) | **`/tmp/token_report_today_sent`** (contains one line `YYYY-MM-DD`, UTC) | `AINL_TOKEN_REPORT_SENTINEL` |
 
-The `openclaw_memory` adapter appends under a dated filename; AINL bridge wrappers use the same resolution rules as `adapters/openclaw_memory.py`.
-
-**Verify today’s file exists (live):**
+Verify paths:
 
 ```bash
 ls -la ~/.openclaw/workspace/memory/$(date -u +%Y-%m-%d).md
+ls -la "${MONITOR_CACHE_JSON:-/tmp/monitor_state.json}"
+ls -la "${AINL_TOKEN_REPORT_SENTINEL:-/tmp/token_report_today_sent}"
 ```
 
 ---
 
-## Daily token budget system
+## Daily token budget alert
 
-**Wrapper:** `openclaw/bridge/wrappers/token_budget_alert.ainl`  
-**Runner name:** `token-budget-alert`  
-**Declared schedule (documentation / drift):** `S core cron "0 23 * * *"` (23:00 UTC daily)
+**Runner:** `python3 openclaw/bridge/run_wrapper_ainl.py token-budget-alert`  
+**Declared cron in source:** **`0 23 * * *`** (23:00 UTC daily) — keep OpenClaw jobs in sync.
 
-**What it does (high level):**
+**What it monitors**
 
-1. Resets an in-memory notify queue (`token_budget_notify_reset`).
-2. Reads monitor cache size via **`R bridge monitor_cache_stat`** (file size of `MONITOR_CACHE_JSON`).
-3. If cache **> 10 MB**: sets `cache_ok = 0`, appends a warning line to today’s memory, optionally queues a **critical cache** notify line (live).
-4. Loads **`token_budget_report`** / **`token_budget_warn`** (subprocess `ainl_bridge_main.py token-usage --json-output`).
-5. **Live only:** duplicate guard — if today’s sentinel says the main report was already appended, **skips** the main `## Token Usage Report` append (see **Sentinel duplicate guard**).
-6. **Dry-run:** does **not** append the main token report and does **not** write the sentinel.
-7. If cache **> 12 MB**: **`monitor_cache_prune auto`** (tunable `days_old` via env); appends prune markdown or error markdown; may queue prune-success notify (live, if count > 0).
-8. **Consolidated notification (live):** one **`R queue Put "notify" …`** with header **`Daily AINL Status - <UTC timestamp from R core now>`** and joined lines (critical / prune / budget warning if eligible).
+- Estimated token usage vs **`AINL_ADVOCATE_DAILY_TOKEN_BUDGET`** (default **500000** unless set).
+- **`MONITOR_CACHE_JSON`** file size: **> 10 MB** drops **`cache_ok`** (budget line may be omitted from chat); **> 15 MB** can add a **critical cache** notify line; **> 12 MB** triggers **`monitor_cache_prune auto`** after the report path.
 
-**Dry-run (safe):**
+**When it alerts (live)**
 
-```bash
-cd /path/to/AI_Native_Lang
-python3 openclaw/bridge/run_wrapper_ainl.py token-budget-alert --dry-run
-```
+- **Consolidated** `R queue Put` only if at least one line was queued: critical cache, prune success (if keys removed), and/or budget warning (only if **`budget_warning`** and **`cache_ok`**).
 
-**JSON health check:** stdout includes `"ok": true`, `"wrapper": "token-budget-alert"`, and `"out"` with the markdown report (and prune section if branches ran). Stderr may show `[dry_run] openclaw_memory.append_today` for secondary appends still invoked on dry paths where the graph calls `append_today` (adapter no-ops the write).
-
-Detail reference: **[`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md)**
+**Detail:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md)
 
 ---
 
 ## Weekly token trends
 
-**Wrapper:** `openclaw/bridge/wrappers/weekly_token_trends.ainl`  
-**Runner name:** `weekly-token-trends`  
-**Declared schedule:** `S core cron "0 9 * * 0"` (Sunday 09:00 — self-documenting in source)
+**Runner:** `python3 openclaw/bridge/run_wrapper_ainl.py weekly-token-trends`  
+**Declared cron in source:** **`0 9 * * 0`** — Sunday **09:00 UTC**.
 
-The **bridge** scans up to **14** recent `YYYY-MM-DD.md` files under the memory directory (newest first by filename), parses **`## Token Usage Report`** blocks for heuristic token totals / budget %, and emits a **`## Weekly Token Trends`** markdown block.
-
-**Dry-run:**
-
-```bash
-python3 openclaw/bridge/run_wrapper_ainl.py weekly-token-trends --dry-run
-```
-
-**Live append** to today’s file: same command **without** `--dry-run`.
+Scans up to **14** recent `YYYY-MM-DD.md` files under the memory directory, parses **`## Token Usage Report`** sections, and appends **`## Weekly Token Trends`** to **today’s** file (live). Use **`--dry-run`** to validate without writing.
 
 ---
 
-## Cron jobs (copy-paste)
+## Cron jobs
 
-Set `AINL_WORKSPACE` to your repo root (see [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md)).
+Set **`AINL_WORKSPACE`** to your AINL repo root (see [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md)).
 
 **Daily token budget (23:00 UTC):**
 
@@ -107,7 +95,7 @@ openclaw cron add \
   --description "AINL daily token usage, prune, consolidated notify"
 ```
 
-**Weekly trends (Sunday 09:00):**
+**Weekly trends (Sunday 09:00 UTC):**
 
 ```bash
 openclaw cron add \
@@ -118,99 +106,86 @@ openclaw cron add \
   --description "AINL weekly token trends markdown append"
 ```
 
-Staging: add `--dry-run` **before** the wrapper name in the Python argv inside `--message` if you need zero writes (e.g. `'... run_wrapper_ainl.py token-budget-alert --dry-run'`).
+Staging: insert **`--dry-run`** immediately before the wrapper name in the payload when you need zero memory writes.
 
-Governance and drift: **`docs/CRON_ORCHESTRATION.md`**, **`python3 openclaw/bridge/cron_drift_check.py`**.
-
----
-
-## Sentinel duplicate guard
-
-**Purpose:** prevent the **full** daily **`## Token Usage Report`** block from being appended twice on repeated **live** manual runs the same **UTC calendar day**.
-
-**Mechanism:**
-
-- Bridge verbs **`token_report_today_sent`** / **`token_report_today_touch`** read/write a small file (default **`/tmp/token_report_today_sent`**) containing a single **`YYYY-MM-DD`** line (UTC).
-- After a successful main report append, the wrapper marks the sentinel.
-- **Dry-run** never writes the sentinel and never appends the main report.
-
-**Override path:** `AINL_TOKEN_REPORT_SENTINEL`
-
-**Reset for testing:**
-
-```bash
-rm -f /tmp/token_report_today_sent
-# or delete your custom AINL_TOKEN_REPORT_SENTINEL path
-```
+After changes, run **`python3 openclaw/bridge/cron_drift_check.py`** and follow [`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md).
 
 ---
 
 ## Environment variables reference
 
-| Variable | Role |
-|----------|------|
-| `OPENCLAW_MEMORY_DIR` / `OPENCLAW_DAILY_MEMORY_DIR` | Daily markdown directory (default under `~/.openclaw/workspace/memory/`) |
-| `OPENCLAW_WORKSPACE` | Default parent for `memory/` if memory dir not set |
-| `MONITOR_CACHE_JSON` | Token monitor cache file path |
-| `AINL_TOKEN_PRUNE_DAYS` | Prune age threshold when using `monitor_cache_prune auto` (else default **60** days) |
-| `AINL_TOKEN_REPORT_SENTINEL` | Duplicate-guard file path |
-| `AINL_DRY_RUN` / `--dry-run` on runner | Skip real `append_today` writes, queue sends, sentinel touch, live prune writes |
-| `AINL_BRIDGE_FAKE_CACHE_MB` | **Test:** force reported cache size (MB) |
-| `AINL_BRIDGE_PRUNE_FORCE_ERROR` | **Test:** simulate prune error |
-| `OPENCLAW_TARGET`, `OPENCLAW_NOTIFY_CHANNEL` | Notify delivery (with `openclaw` CLI) |
-| `AINL_ADVOCATE_DAILY_TOKEN_BUDGET` | Budget line in token-usage (see `token_usage_reporter.py` docs in bridge README) |
+| Name | Default (typical) | Purpose |
+|------|-------------------|---------|
+| `OPENCLAW_MEMORY_DIR` / `OPENCLAW_DAILY_MEMORY_DIR` | (unset → under `~/.openclaw/workspace/memory/`) | Directory for `YYYY-MM-DD.md` |
+| `OPENCLAW_WORKSPACE` | `~/.openclaw/workspace` | Parent for `memory/` when dir envs unset |
+| `MONITOR_CACHE_JSON` | `/tmp/monitor_state.json` | Token monitor / search cache path |
+| `AINL_ADVOCATE_DAILY_TOKEN_BUDGET` | `500000` | Denominator for budget % in token-usage |
+| `AINL_TOKEN_PRUNE_DAYS` | (unset → **60** in `auto` prune) | Age threshold (days) for prune |
+| `AINL_TOKEN_REPORT_SENTINEL` | `/tmp/token_report_today_sent` | Duplicate-guard file for main daily report |
+| `AINL_DRY_RUN` | — | Frame/env dry run when set (prefer `--dry-run` on CLI) |
+| `AINL_BRIDGE_FAKE_CACHE_MB` | — | **Test:** fake cache size (MB) |
+| `AINL_BRIDGE_PRUNE_FORCE_ERROR` | — | **Test:** simulate prune error |
+| `OPENCLAW_BIN` | `openclaw` on PATH | CLI for memory / notify subprocesses |
+| `OPENCLAW_TARGET`, `OPENCLAW_NOTIFY_CHANNEL` | install-specific | Notify routing |
 
 ---
 
 ## Monitoring commands
 
 ```bash
-# Daily wrapper — dry run (no writes / no queue)
+# Daily wrapper — no live append / no queue / no sentinel (main report)
 python3 openclaw/bridge/run_wrapper_ainl.py token-budget-alert --dry-run
-
-# Token usage only — JSON for scripts
-python3 openclaw/bridge/ainl_bridge_main.py token-usage --dry-run --json-output
 
 # Weekly trends — dry run
 python3 openclaw/bridge/run_wrapper_ainl.py weekly-token-trends --dry-run
+
+# Token usage JSON only (scripts)
+python3 openclaw/bridge/ainl_bridge_main.py token-usage --dry-run --json-output
 
 # Cron drift (read-only)
 python3 openclaw/bridge/cron_drift_check.py
 ```
 
----
+**Inspect memory / cache from shell:**
 
-## Troubleshooting
-
-| Symptom | Checks |
-|---------|--------|
-| No line in `~/.openclaw/workspace/memory/YYYY-MM-DD.md` | Run **without** `--dry-run`; confirm `OPENCLAW_MEMORY_DIR`; disk permissions. |
-| Duplicate full reports same day | Expected **blocked** by sentinel; `rm` sentinel to force one more append; ensure cron uses same UTC day boundary. |
-| No Telegram | `dry_run` must be false; `queue` Put only when notify queue non-empty; check `OPENCLAW_BIN` / env; oversized cache (>10 MB) drops **budget** line from notify but may still send critical/prune lines. |
-| Prune never runs | Cache must be **> 12 MB** on `monitor_cache_stat`; check `MONITOR_CACHE_JSON` path and real file size. |
-| `/tmp` issues | Bridge uses Python paths for sentinel and cache stat — not `R fs`. If `/tmp` is read-only, set `AINL_TOKEN_REPORT_SENTINEL` and `MONITOR_CACHE_JSON` to writable locations. |
-| Weekly trends empty | Need `YYYY-MM-DD.md` files with `## Token Usage Report` in the memory dir. |
+```bash
+tail -n 80 ~/.openclaw/workspace/memory/$(date -u +%Y-%m-%d).md
+grep -E "Token Usage|Cache Prune|Weekly Token" ~/.openclaw/workspace/memory/*.md | tail -20
+ls -la "${MONITOR_CACHE_JSON:-/tmp/monitor_state.json}"
+```
 
 ---
 
-## Tuning thresholds
+## Troubleshooting & tuning
 
-| Threshold | Where | Default / note |
-|-----------|--------|----------------|
-| Cache “too big” for budget notify | `token_budget_alert.ainl` | **> 10 MB** → `cache_ok = 0` |
-| Critical cache notify | same | **> 15 MB** → extra notify line (live) |
-| Auto prune | same | **> 12 MB** → `monitor_cache_prune auto` |
-| Prune age | `AINL_TOKEN_PRUNE_DAYS` or bridge default | **60** days if env unset |
+**Reset sentinel** (allow one more **live** main report today):
 
-To change MB thresholds or cron times, edit **`openclaw/bridge/wrappers/token_budget_alert.ainl`** and keep **`tooling/cron_registry.json`** / OpenClaw jobs in sync (`docs/CRON_ORCHESTRATION.md`).
+```bash
+rm -f /tmp/token_report_today_sent
+# or: rm -f "$AINL_TOKEN_REPORT_SENTINEL"
+```
+
+**Fake cache testing:** `AINL_BRIDGE_FAKE_CACHE_MB=16` with **`--dry-run`** — see [`BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md).
+
+**Telegram / queue silent:** Ensure not dry-run; check `OPENCLAW_*` env; remember budget line requires cache **≤ 10 MB**.
+
+**Threshold / schedule changes:** Edit `openclaw/bridge/wrappers/token_budget_alert.ainl` (and weekly wrapper if needed), update **`tooling/cron_registry.json`** and OpenClaw jobs, then **`cron_drift_check.py`**.
+
+| Threshold | Behavior |
+|-----------|-----------|
+| Cache **> 10 MB** | `cache_ok = 0`; budget line typically omitted from consolidated notify |
+| Cache **> 12 MB** | `monitor_cache_prune auto` after report path |
+| Cache **> 15 MB** | Extra **critical cache** notify line (live) |
 
 ---
 
-## Confirmation checklist
+## Cross-links
 
-- [ ] Memory path understood: **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**
-- [ ] Dry-run validated before enabling live cron
-- [ ] Sentinel behavior understood for manual re-runs
-- [ ] `cron_drift_check.py` run after schedule or payload changes
+- **[`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md)** — overview, sentinel, env vars, sample output, troubleshooting
+- **[`openclaw/bridge/README.md`](../../openclaw/bridge/README.md)** — monitoring tools table, **Scheduled reporting & alerting**, `AINL_WORKSPACE` patterns
+- **[`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md)** — drift checks, `openclaw/bridge/wrappers/` note
+- **[`docs/ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md)** — integration boundaries and env vars
 
-*End of Unified AINL + OpenClaw Monitoring Guide.*
+---
+
+**Checklist:** [ ] Memory path **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`** · [ ] Dry-run before live cron · [ ] Sentinel understood · [ ] Drift check after schedule/payload edits
