@@ -926,6 +926,11 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--json-out", default=str(DEFAULT_JSON_OUT))
     ap.add_argument("--markdown-out", default=str(DEFAULT_MARKDOWN_OUT))
     ap.add_argument(
+        "--skip-markdown-inject",
+        action="store_true",
+        help="Only write JSON; skip markdown generation (CI / regression checks).",
+    )
+    ap.add_argument(
         "--compare-baselines",
         action="store_true",
         help="Include handwritten baseline source size vs mapped AINL emitted aggregates.",
@@ -1070,11 +1075,12 @@ def main() -> int:
         json_out = Path(args.json_out)
         md_out = Path(args.markdown_out)
         json_out.parent.mkdir(parents=True, exist_ok=True)
-        md_out.parent.mkdir(parents=True, exist_ok=True)
         json_out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-        md_out.write_text(render_markdown(report, benchmark_manifest), encoding="utf-8")
         print(f"wrote JSON benchmark: {json_out}")
-        print(f"wrote markdown benchmark: {md_out}")
+        if not args.skip_markdown_inject:
+            md_out.parent.mkdir(parents=True, exist_ok=True)
+            md_out.write_text(render_markdown(report, benchmark_manifest), encoding="utf-8")
+            print(f"wrote markdown benchmark: {md_out}")
         return 0
     except BenchmarkError as exc:
         print(str(exc), file=sys.stderr)

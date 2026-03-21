@@ -166,3 +166,126 @@ jobs:
 
       - name: Run full profile
         run: python scripts/run_test_profiles.py --profile full
+
+  # Benchmarks + JSON regression gate (size vs tooling/benchmark_size.json on base commit;
+  # runtime vs tooling/benchmark_runtime_results.json when that file exists on the base).
+  benchmark-regression:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      BENCH_THRESHOLD: "0.10"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-bench-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-bench-
+
+      - name: Install deps (dev + benchmark)
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev,benchmark]
+
+      - name: Resolve baseline SHA
+        id: baseline
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ] \
+            && [ -n "${{ github.event.before }}" ] \
+            && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=$(git rev-parse origin/main 2>/dev/null || echo "")" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract baseline JSON (from git)
+        id: baselines
+        run: |
+          set -euo pipefail
+          SHA="${{ steps.baseline.outputs.sha }}"
+          mkdir -p /tmp/bench-baseline
+          if [ -z "$SHA" ]; then
+            echo "size=missing" >> "$GITHUB_OUTPUT"
+            echo "runtime=missing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git cat-file -e "${SHA}:tooling/benchmark_size.json" 2>/dev/null; then
+            git show "${SHA}:tooling/benchmark_size.json" > /tmp/bench-baseline/benchmark_size.json
+            echo "size=present" >> "$GITHUB_OUTPUT"
+          else
+            echo "size=missing" >> "$GITHUB_OUTPUT"
+          fi
+          if git cat-file -e "${SHA}:tooling/benchmark_runtime_results.json" 2>/dev/null; then
+            git show "${SHA}:tooling/benchmark_runtime_results.json" > /tmp/bench-baseline/benchmark_runtime_results.json
+            echo "runtime=present" >> "$GITHUB_OUTPUT"
+          else
+            echo "runtime=missing" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run size benchmark (CI slice)
+        run: |
+          python scripts/benchmark_size.py \
+            --mode minimal_emit \
+            --profile-name canonical_strict_valid \
+            --compare-baselines \
+            --cost-model gpt-4o \
+            --json-out tooling/benchmark_size_ci.json \
+            --skip-markdown-inject
+
+      - name: Run runtime benchmark
+        run: |
+          python scripts/benchmark_runtime.py \
+            --profile-name canonical_strict_valid \
+            --compare-baselines \
+            --reliability-runs 10 \
+            --cost-model gpt-4o \
+            --json-out tooling/benchmark_runtime_ci.json \
+            --skip-markdown-inject
+
+      - name: Regression check (size)
+        if: steps.baselines.outputs.size == 'present'
+        run: |
+          python scripts/compare_benchmark_json.py \
+            --old-json /tmp/bench-baseline/benchmark_size.json \
+            --new-json tooling/benchmark_size_ci.json \
+            --threshold "$BENCH_THRESHOLD"
+
+      - name: Regression check (size baseline missing)
+        if: steps.baselines.outputs.size != 'present'
+        run: |
+          echo "::notice::No tooling/benchmark_size.json at baseline SHA; skipping size regression compare."
+
+      - name: Regression check (runtime)
+        if: steps.baselines.outputs.runtime == 'present'
+        run: |
+          python scripts/compare_benchmark_json.py \
+            --old-json /tmp/bench-baseline/benchmark_runtime_results.json \
+            --new-json tooling/benchmark_runtime_ci.json \
+            --threshold "$BENCH_THRESHOLD"
+
+      - name: Runtime baseline missing (informational)
+        if: steps.baselines.outputs.runtime != 'present'
+        run: |
+          echo "::notice::No tooling/benchmark_runtime_results.json at baseline SHA; commit that file on main to enable runtime regression checks."
+
+      - name: Upload benchmark JSON artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-json-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            tooling/benchmark_size_ci.json
+            tooling/benchmark_runtime_ci.json
