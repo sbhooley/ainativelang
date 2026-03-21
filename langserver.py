@@ -42,6 +42,7 @@ from compiler_v2 import (
 )
 from grammar_constraint import next_token_mask, next_token_priors
 from grammar_priors import sample_tokens_for_classes
+from runtime.engine import RUNTIME_VERSION
 
 try:
     from pygls.server import LanguageServer
@@ -745,7 +746,7 @@ if HAS_PYGLS:
     @server.feature(InitializeParams)
     async def initialize(params: InitializeParams) -> InitializeResult:
         return InitializeResult(
-            server_info=InitializeResultServerInfo(name="ainl-ls", version="1.2.0"),
+            server_info=InitializeResultServerInfo(name="ainl-ls", version=RUNTIME_VERSION),
             capabilities={
                 "textDocument": {
                     "completion": {"completionItem": {"detailSupport": True, "documentationFormat": ["markdown", "plaintext"]}},

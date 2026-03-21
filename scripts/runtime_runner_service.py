@@ -508,7 +508,7 @@ async def _lifespan(app: FastAPI):
         _STOP.set()
 
 
-app = FastAPI(title="AINL Runtime Runner", version="1.2.0", lifespan=_lifespan)
+app = FastAPI(title="AINL Runtime Runner", version=RUNTIME_VERSION, lifespan=_lifespan)
 
 
 @app.get("/health")

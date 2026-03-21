@@ -4,7 +4,7 @@ This page is the **docs-hub** entry for the short primer. The same narrative liv
 
 **AINL** (AI Native Lang) is a **graph-canonical** programming system for deterministic AI workflows: compact source compiles to canonical **nodes/edges** IR, then the **runtime** executes with explicit adapters for I/O. It targets **AI engineers**, **agent builders**, and teams that need repeatability, validation, and auditability—not ad hoc prompt loops for every step.
 
-For positioning, audience, and “what AINL is not,” read the root primer end-to-end. Below are **current-shipped** capabilities that matter most after **v1.2.0**.
+For positioning, audience, and “what AINL is not,” read the root primer end-to-end. Below are **current-shipped** capabilities that matter most after **v1.2.4** (see `docs/RELEASE_NOTES.md`).
 
 ---
 
