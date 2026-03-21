@@ -11,6 +11,7 @@ import pytest
 
 from tooling.zeroclaw_install import (
     _PATH_LINE,
+    _SHIM_ZC_AINL,
     _WRAPPER_NAME,
     ensure_ainl_run_wrapper,
     ensure_mcp_registration,
@@ -42,7 +43,10 @@ def test_run_install_zeroclaw_writes_wrapper_and_mcp(tmp_path: Path) -> None:
     def ok_pip(verbose: bool) -> int:
         return 0
 
-    with patch("tooling.zeroclaw_install._which_or_fallback") as w:
+    with (
+        patch("tooling.mcp_host_install._which_or_fallback") as w,
+        patch("tooling.zeroclaw_bridge.detect_ainl_repo_root", return_value=None),
+    ):
         w.side_effect = lambda name, fb: f"/fake/{name}" if name in ("ainl", "ainl-mcp") else fb
         rc = run_install_zeroclaw(dry_run=False, verbose=False, home=home, run_pip=ok_pip)
     assert rc == 0
@@ -70,7 +74,7 @@ def test_ensure_mcp_skips_when_same_command(tmp_path: Path) -> None:
     payload = {"mcpServers": {"ainl": {"command": "/usr/bin/ainl-mcp", "args": []}}}
     mcp.write_text(json.dumps(payload), encoding="utf-8")
 
-    with patch("tooling.zeroclaw_install._which_or_fallback", return_value="/usr/bin/ainl-mcp"):
+    with patch("tooling.mcp_host_install._which_or_fallback", return_value="/usr/bin/ainl-mcp"):
         ensure_mcp_registration(home=home, dry_run=False, verbose=False)
 
     assert json.loads(mcp.read_text(encoding="utf-8")) == payload
@@ -109,11 +113,36 @@ def test_pip_failure_returns_nonzero(tmp_path: Path) -> None:
     assert not (home / ".zeroclaw").exists()
 
 
+def test_install_writes_bridge_shim_and_config_when_repo_detected(tmp_path: Path) -> None:
+    repo = tmp_path / "checkout"
+    (repo / "zeroclaw" / "bridge").mkdir(parents=True)
+    (repo / "pyproject.toml").write_text('[project]\nname = "ainl"\n', encoding="utf-8")
+    (repo / "zeroclaw" / "bridge" / "zeroclaw_bridge_main.py").write_text("# stub\n", encoding="utf-8")
+    home = tmp_path / "h"
+    home.mkdir()
+
+    def ok_pip(verbose: bool) -> int:
+        return 0
+
+    with patch("tooling.mcp_host_install._which_or_fallback") as w:
+        w.side_effect = lambda name, fb: f"/fake/{name}" if name in ("ainl", "ainl-mcp") else fb
+        with patch("tooling.zeroclaw_bridge.detect_ainl_repo_root", return_value=repo):
+            rc = run_install_zeroclaw(dry_run=False, verbose=False, home=home, run_pip=ok_pip)
+    assert rc == 0
+    shim = home / ".zeroclaw" / "bin" / _SHIM_ZC_AINL
+    assert shim.is_file()
+    assert "run_wrapper_ainl.py" in shim.read_text(encoding="utf-8")
+    cfg = home / ".zeroclaw" / "config.toml"
+    assert cfg.is_file()
+    assert "[ainl_bridge]" in cfg.read_text(encoding="utf-8")
+    assert "repo_root" in cfg.read_text(encoding="utf-8")
+
+
 @pytest.mark.parametrize("dry", [True, False])
 def test_ensure_ainl_run_wrapper_respects_dry_run(tmp_path: Path, dry: bool) -> None:
     home = tmp_path / "h"
     home.mkdir()
-    with patch("tooling.zeroclaw_install._which_or_fallback", return_value="/x/ainl"):
+    with patch("tooling.mcp_host_install._which_or_fallback", return_value="/x/ainl"):
         ensure_ainl_run_wrapper(home=home, dry_run=dry, verbose=False)
     p = home / ".zeroclaw" / "bin" / _WRAPPER_NAME
     assert p.exists() != dry

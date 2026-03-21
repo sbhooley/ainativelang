@@ -42,7 +42,7 @@ def test_run_install_openclaw_writes_wrapper_and_mcp(tmp_path: Path) -> None:
     def ok_pip(verbose: bool) -> int:
         return 0
 
-    with patch("tooling.openclaw_install._which_or_fallback") as w:
+    with patch("tooling.mcp_host_install._which_or_fallback") as w:
         w.side_effect = lambda name, fb: f"/fake/{name}" if name in ("ainl", "ainl-mcp") else fb
         rc = run_install_openclaw(dry_run=False, verbose=False, home=home, run_pip=ok_pip)
     assert rc == 0
@@ -73,7 +73,7 @@ def test_ensure_mcp_skips_when_same_command(tmp_path: Path) -> None:
     }
     cfg.write_text(json.dumps(payload), encoding="utf-8")
 
-    with patch("tooling.openclaw_install._which_or_fallback", return_value="/usr/bin/ainl-mcp"):
+    with patch("tooling.mcp_host_install._which_or_fallback", return_value="/usr/bin/ainl-mcp"):
         ensure_mcp_registration(home=home, dry_run=False, verbose=False)
 
     assert json.loads(cfg.read_text(encoding="utf-8")) == payload
@@ -130,7 +130,7 @@ def test_pip_failure_returns_nonzero(tmp_path: Path) -> None:
 def test_ensure_ainl_run_wrapper_respects_dry_run(tmp_path: Path, dry: bool) -> None:
     home = tmp_path / "h"
     home.mkdir()
-    with patch("tooling.openclaw_install._which_or_fallback", return_value="/x/ainl"):
+    with patch("tooling.mcp_host_install._which_or_fallback", return_value="/x/ainl"):
         ensure_ainl_run_wrapper(home=home, dry_run=dry, verbose=False)
     p = home / ".openclaw" / "bin" / _WRAPPER_NAME
     assert p.exists() != dry

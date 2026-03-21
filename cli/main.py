@@ -664,6 +664,39 @@ def main() -> None:
     cmp.add_argument("--strict", action="store_true")
     cmp.set_defaults(func=cmd_check)
 
+    from tooling.mcp_host_install import list_mcp_host_ids, run_install_mcp_host
+
+    def cmd_install_mcp(args: argparse.Namespace) -> int:
+        if bool(getattr(args, "mcp_list_hosts", False)):
+            print(" ".join(list_mcp_host_ids()))
+            return 0
+        return run_install_mcp_host(
+            args.mcp_host,
+            dry_run=bool(args.dry_run),
+            verbose=bool(args.verbose),
+        )
+
+    mcp_inst = sub.add_parser(
+        "install-mcp",
+        help="Bootstrap AINL MCP + ainl-run for any supported host (same as install-openclaw / install-zeroclaw)",
+    )
+    mcp_mx = mcp_inst.add_mutually_exclusive_group(required=True)
+    mcp_mx.add_argument(
+        "--list-hosts",
+        dest="mcp_list_hosts",
+        action="store_true",
+        help="Print supported --host values and exit",
+    )
+    mcp_mx.add_argument(
+        "--host",
+        dest="mcp_host",
+        choices=list(list_mcp_host_ids()),
+        help="Agent stack: openclaw, zeroclaw, …",
+    )
+    mcp_inst.add_argument("--dry-run", action="store_true", help="Print actions only; no pip or file writes")
+    mcp_inst.add_argument("--verbose", "-v", action="store_true", help="Log each step to stderr")
+    mcp_inst.set_defaults(func=cmd_install_mcp)
+
     def cmd_install_zeroclaw(args: argparse.Namespace) -> int:
         from tooling.zeroclaw_install import run_install_zeroclaw
 
