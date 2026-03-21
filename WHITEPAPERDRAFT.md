@@ -289,6 +289,16 @@ deployment environments.
 
 See `docs/architecture/STATE_DISCIPLINE.md` for the full specification.
 
+### 7.4 Narrative and integration references
+
+For a single readable walkthrough of tiered state, the **`memory`** adapter
+contract, MCP hosts (**OpenClaw** and **ZeroClaw**), and how **OpenClaw bridge**
+daily markdown differs from SQLite-backed workflow memory, see **[AINL,
+structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents)**.
+Canonical specs: `docs/architecture/STATE_DISCIPLINE.md`,
+`docs/adapters/MEMORY_CONTRACT.md`, `docs/getting_started/HOST_MCP_INTEGRATIONS.md`,
+`docs/ainl_openclaw_unified_integration.md`, `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
+
 ---
 
 ## 8. Adapter Model
@@ -418,6 +428,16 @@ These examples show that AINL is not limited to CRUD or toy orchestration; it is
 - Partial self-healing
 - Stateful operational logic
 - Coordinated monitor fleets
+
+### 10.4 Memory surfaces in operational stacks
+
+Operational validation spans **graph-local durable state** (the `memory`
+adapter) and **host-specific surfaces**: OpenClaw **bridge** cron can append
+**daily markdown** under the workspace memory directory, which is **orthogonal**
+to structured SQLite records. **ZeroClaw**-hosted flows use the same AINL
+memory path via MCP without depending on OpenClaw's markdown layout. See
+**[AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents)**
+and `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 
 ---
 

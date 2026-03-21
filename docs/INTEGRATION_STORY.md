@@ -7,6 +7,8 @@ governance. It does not replace your platform, sandbox, or orchestrator — it
 sits inside them and makes agent workflows reproducible, inspectable, and
 controllable.
 
+**Public article (memory tiers, MCP hosts, bridge vs adapter):** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
+
 ---
 
 ## What AINL solves

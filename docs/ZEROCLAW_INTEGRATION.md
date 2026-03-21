@@ -4,6 +4,8 @@
 
 AINL ships a **ZeroClaw skill** (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-mcp --host zeroclaw`** (alias **`ainl install-zeroclaw`**), a user-side bootstrap that wires PyPI, **`~/.zeroclaw/mcp.json`**, and **`~/.zeroclaw/bin/ainl-run`** without changing the ZeroClaw application itself.
 
+**Memory:** ZeroClaw-hosted runs use the same AINL **`memory`** adapter and MCP tools as other hosts; they do **not** depend on OpenClaw’s **`~/.openclaw/workspace/memory/`** daily markdown (that path is **OpenClaw bridge**–specific). See [`docs/adapters/MEMORY_CONTRACT.md`](adapters/MEMORY_CONTRACT.md) and [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
+
 **Why this matters:** AINL is **compile-once, run-many**—you pay authoring or import cost once, then execute a validated graph repeatedly. Size economics use **tiktoken cl100k_base**; on the **viable subset** of representative workloads, **minimal_emit** lands near **~1.02×** leverage vs unstructured baselines (see **[`BENCHMARK.md`](../BENCHMARK.md)** and **[`benchmarks.md`](benchmarks.md)** for methodology and legacy-inclusive transparency).
 
 ### Install AINL as a ZeroClaw skill

@@ -4,9 +4,13 @@
 
 - **AINL canonical core** (language, compiler, graph runtime, portable examples) is defined in **`docs/AINL_CANONICAL_CORE.md`**. It must not depend on OpenClaw paths, cron payloads, or workspace memory layout.
 - **OpenClaw integration** — runner, drift tooling, memory CLI, triggers, and cron/supervisor documentation — is **isolated** under **`openclaw/bridge/`**. That directory is the **single source of truth** for how OpenClaw (and OS cron) invoke AINL wrappers with `--dry-run`, dynamic adapter registration, and registry-aligned fingerprints.
-- **OpenClaw MCP skill (host config)** — in-repo **`skills/openclaw/`**, **`ainl install-openclaw`**, **`~/.openclaw/openclaw.json`** (`mcpServers.ainl`), **`~/.openclaw/bin/ainl-run`** — is documented in **`docs/OPENCLAW_INTEGRATION.md`** (orthogonal to **`openclaw/bridge/`** cron/memory automation).
-- **ZeroClaw integration** — **ZeroClaw skill**, **`ainl install-zeroclaw`**, **`~/.zeroclaw/mcp.json`**, and **`ainl-mcp`** — is documented in **`docs/ZEROCLAW_INTEGRATION.md`** (separate from **`openclaw/bridge/`**).
+- **OpenClaw MCP skill (host config)** — in-repo **`skills/openclaw/`**, **`ainl install-mcp --host openclaw`** (alias **`install-openclaw`**), **`~/.openclaw/openclaw.json`** (`mcpServers.ainl`), **`~/.openclaw/bin/ainl-run`** — is documented in **`docs/OPENCLAW_INTEGRATION.md`** (orthogonal to **`openclaw/bridge/`** cron/memory automation).
+- **ZeroClaw integration** — **ZeroClaw skill**, **`ainl install-mcp --host zeroclaw`** (alias **`install-zeroclaw`**), **`~/.zeroclaw/mcp.json`**, and **`ainl-mcp`** — is documented in **`docs/ZEROCLAW_INTEGRATION.md`** (separate from **`openclaw/bridge/`**; same AINL **`memory`** adapter as other hosts, not OpenClaw markdown).
 - **`scripts/run_wrapper_ainl.py`**, **`scripts/cron_drift_check.py`**, and **`scripts/ainl_memory_append_cli.py`** remain as **thin shims** that delegate to `openclaw/bridge/` so existing automation and registry paths keep working without duplicating logic.
+
+## Related narrative (keep in sync)
+
+For one readable walkthrough of **four tiered state**, **SQLite `memory` vs OpenClaw daily markdown**, **MCP on OpenClaw and ZeroClaw**, and **bridge monitoring**, see **[AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents)**. Host wiring hub: **[`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)**.
 
 This document describes the **additive** integration: Python adapters (`openclaw_memory`, `github`, `crm`), manifest entries, thin `.ainl` wrappers under `scripts/wrappers/`, and the bridge runner under `openclaw/bridge/run_wrapper_ainl.py`. Core compiler/runtime behavior is unchanged; Advocate Suite daemon scripts are orthogonal.
 

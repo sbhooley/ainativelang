@@ -210,3 +210,4 @@ adapter to be in the allowlist.
 - **Sandbox execution profiles:** `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - **External orchestration guide:** `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
 - **Agent coordination contract:** `docs/advanced/AGENT_COORDINATION_CONTRACT.md`
+- **Public article (memory tiers, MCP hosts, OpenClaw bridge vs SQLite `memory`):** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents)

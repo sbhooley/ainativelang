@@ -1,8 +1,8 @@
 ## AINL Memory Contract (v1, extension-level)
 
-> **OpenClaw (MCP skill):** **[`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)** — **`skills/openclaw/`**, **`ainl install-openclaw`**, **`ainl-mcp`**; not the bridge **daily markdown** path below.
+> **OpenClaw (MCP skill):** **[`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)** — **`skills/openclaw/`**, **`ainl install-mcp --host openclaw`** (alias **`install-openclaw`**), **`ainl-mcp`**; not the bridge **daily markdown** path below.
 >
-> **ZeroClaw:** **[`../ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md)** — skill + **`ainl-mcp`**; not the OpenClaw **`~/.openclaw/workspace/memory/`** layout described below.
+> **ZeroClaw:** **[`../ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md)** — skill + **`ainl install-mcp --host zeroclaw`** (alias **`install-zeroclaw`**), **`ainl-mcp`**; not the OpenClaw **`~/.openclaw/workspace/memory/`** layout described below.
 
 Status: **design + v1 adapter implementation**. This document describes the v1
 memory contract as an extension-level adapter. It does **not** change compiler
@@ -13,6 +13,8 @@ additive proposal that keeps deterministic behavior while adding optional query
 metadata and filters (no vector semantics, no policy cognition).
 
 **OpenClaw daily markdown (bridge):** Operator workflows that append human-readable logs via `openclaw_memory` typically use **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`** (directory overridable with `OPENCLAW_MEMORY_DIR`). That path is **orthogonal** to the SQLite-backed `memory` adapter contract below; see [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](../operations/UNIFIED_MONITORING_GUIDE.md) for token-budget and related bridge monitoring.
+
+**Public article (tiers, hosts, bridge vs adapter):** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
 
 **Implementation note (v1.1 additive):** the current adapter now supports
 optional deterministic metadata (`source`, `confidence`, `tags`, `valid_at`)
