@@ -2,7 +2,7 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.2.2
+**Version:** 1.2.4
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `scripts/runtime_runner_service.py`
 **Reference ecosystem:** OpenClaw/NemoClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters, sandboxed operator deployments
@@ -206,7 +206,7 @@ This distinction is important for truthful documentation and benchmarking.
 
 ### 5.4 Compile-time composition (includes)
 
-AINL programs can **`include`** other `.ainl` sources before compilation completes. The compiler **merges** included labels under an **alias prefix** (`alias/LABEL`, e.g. `retry/ENTRY`, `retry/EXIT_OK`). Shared modules declare **`LENTRY:`** and **`LEXIT_*:`** labels; parents invoke them with **`Call alias/ENTRY ->out`**. This is **compile-time** composition only—no runtime plugin loader—so agents and humans can reuse **verified** subgraphs, shrink duplicated control flow, and reason over **qualified** names in the canonical IR. Starter modules ship under `modules/common/` with strict-safe patterns, and a minimal include demo is provided in `examples/timeout_demo.ainl`. Semantics and tests: `tests/test_includes.py`; introspection: `docs/architecture/GRAPH_INTROSPECTION.md`.
+AINL programs can **`include`** other `.ainl` sources before compilation completes. The compiler **merges** included labels under an **alias prefix** (`alias/LABEL`, e.g. `retry/ENTRY`, `retry/EXIT_OK`). Shared modules declare **`LENTRY:`** and **`LEXIT_*:`** labels; parents invoke them with **`Call alias/ENTRY ->out`**. This is **compile-time** composition only—no runtime plugin loader—so agents and humans can reuse **verified** subgraphs, shrink duplicated control flow, and reason over **qualified** names in the canonical IR. **`include` directives must appear before the first top-level `S` / `E`** in the host file so the prelude merges into IR. At runtime, **`RuntimeEngine`** may **qualify bare child label names** (e.g. on **If** / **Loop** edges) using the current **`alias/`** stack frame so graph execution reaches merged keys—see §6.4. Starter modules ship under `modules/common/` with strict-safe patterns, and a minimal include demo is provided in `examples/timeout_demo.ainl`. Semantics and tests: `tests/test_includes.py`; introspection: `docs/architecture/GRAPH_INTROSPECTION.md`.
 
 ### 5.5 Graph visualization CLI and diagnostic surfacing
 
@@ -244,6 +244,10 @@ The runtime enforces operational limits such as:
 - Optional policy validation
 
 This makes it suitable for recurring and semi-autonomous workflows.
+
+### 6.4 Label routing after `include` (bare vs qualified ids)
+
+Merged IR stores most label keys as **`alias/LABEL`**. Branch and loop steps sometimes still name a target as a **short** id (e.g. a child of the same module). The reference runtime resolves **`Call`**, **Jump**, and graph edges to **`labels`** keys by: (1) using the name as-is when it is already a key; (2) if the name contains no `/` and is missing, prepending the **`alias/`** segment taken from the innermost stacked label id that contains **`/`** (e.g. executing under **`accmem/LACCESS_LIST`** qualifies **`_child`** to **`accmem/_child`** when that key exists). This is deterministic, preserves programs that already use fully qualified names, and keeps nested control flow inside included subgraphs aligned with graph-preferred execution. Spec pointer: `docs/RUNTIME_COMPILER_CONTRACT.md`.
 
 ---
 
@@ -288,6 +292,8 @@ beyond a single run. It is the primary persistent state tier across all
 deployment environments.
 
 See `docs/architecture/STATE_DISCIPLINE.md` for the full specification.
+
+**Optional access metadata (opt-in module):** `modules/common/access_aware_memory.ainl` provides **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and **`LACCESS_LIST_SAFE`** helpers that bump **`metadata.last_accessed`** (ISO timestamp) and **`metadata.access_count`** on selected **`memory.get`** / **`memory.list`** / **`memory.put`** paths. Plain adapter calls remain unchanged if you do not use the module. **`LACCESS_LIST_SAFE`** uses a **While** + index loop for graph-reliable list snapshots; **`LACCESS_LIST`** uses a **`ForEach`** surface form whose IR may not yet fully match **Loop** lowering—hosts that rely on **graph-preferred** execution should prefer **`LACCESS_LIST_SAFE`** until the compiler emits an equivalent **Loop**. Details: module header, `modules/common/README.md`, `docs/RELEASE_NOTES.md` (v1.2.4).
 
 ### 7.4 Narrative and integration references
 

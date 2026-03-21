@@ -52,6 +52,7 @@ Supporting detail:
 - **What is AINL?** [`WHAT_IS_AINL.md`](WHAT_IS_AINL.md) (docs hub primer; includes v1.2 capabilities). Root copy: [`../WHAT_IS_AINL.md`](../WHAT_IS_AINL.md).
 - **Graph diagrams (Mermaid/images):** root `README.md` → *Visualize your workflow*; details in [`architecture/GRAPH_INTROSPECTION.md`](architecture/GRAPH_INTROSPECTION.md) §7 (`ainl visualize`, `ainl-visualize`, `--png`, `--svg`).
 - **Starter include demos:** `examples/timeout_demo.ainl` (minimal timeout include) and `examples/timeout_memory_prune_demo.ainl` (timeout + memory put/list/prune, used for PNG export docs).
+- **Shared `modules/common/` helpers:** index and include-before-`S` rule in [`../modules/common/README.md`](../modules/common/README.md); optional access-aware memory touches in [`../modules/common/access_aware_memory.ainl`](../modules/common/access_aware_memory.ainl) (`LACCESS_READ` / `LACCESS_WRITE` / `LACCESS_LIST` / graph-safe `LACCESS_LIST_SAFE`).
 - **Full conformance matrix:** run `make conformance` from repo root (or `SNAPSHOT_UPDATE=1 make conformance` when intentionally updating snapshots). Outputs are written to `tests/snapshots/conformance/`.
 - **Benchmarks (size, runtime, economics, CI regression):** [`benchmarks.md`](benchmarks.md) — links [`BENCHMARK.md`](../BENCHMARK.md), `make benchmark` / `make benchmark-ci`, and LLM bench + optional Claude cloud comparison.
 - `DOCS_INDEX.md` remains in place as the detailed reference map.

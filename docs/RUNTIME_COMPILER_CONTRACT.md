@@ -20,6 +20,8 @@ The canonical execution source of truth is the compiler-emitted IR consumed by `
 
 **Compile-time `include`:** Submodule sources are merged into the parent program during compilation. The runtime only sees the resulting **`labels`** map (possibly with **qualified** ids such as `retry/ENTRY`). There is no runtime `include` loader.
 
+**Qualified vs bare label targets:** After merge, **`labels`** keys are typically **`alias/LABEL`**. Some IR edges or step fields may still name a child as a **bare** id (e.g. `_patch`). Before entering a label, **`RuntimeEngine`** resolves the target: if the bare name is not a key, it tries **`{alias}/{name}`** using the **`alias/`** prefix from the innermost stacked frame that contains a `/`. This keeps nested **If** / **Loop** / **While** / **Call** / **Jump** behavior aligned with merged includes without changing programs that already use fully qualified ids. See `runtime/engine.py` (`_resolve_label_key`).
+
 Runtime executes compiler-emitted IR fields directly:
 
 - Label routing and normalization via compiler-owned label helper.

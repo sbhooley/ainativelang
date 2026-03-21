@@ -202,6 +202,8 @@ include modules/common/timeout.ainl as timeout
 
 Quotes around the path are optional when unambiguous; **`as alias`** sets the prefix for every label from that file.
 
+**Prelude order:** put every **`include`** line **before** the first top-level **`S`** or **`E`** (service / endpoint). Lines after **`S`** / **`E`** are not part of the include prelude; modules merged too late will not expose **`Call alias/…`** targets. See **`modules/common/README.md`**.
+
 ```ainl
 include "modules/common/retry.ainl" as retry
 include "modules/common/timeout.ainl" as timeout
@@ -224,6 +226,7 @@ Shared modules live in a **`modules/`** directory next to your files (with CWD /
 | `modules/common/token_cost_memory.ainl` | Shared deterministic memory helper for monitor workflows using the `workflow` namespace (`WRITE` + bounded `LIST` with metadata and filters). |
 | `modules/common/ops_memory.ainl` | Shared deterministic memory helper for monitor workflows using the `ops` namespace (`WRITE` + bounded `LIST` with metadata and filters). |
 | `modules/common/generic_memory.ainl` | Shared namespace-aware deterministic memory helper for workflows that write/list outside `workflow`/`ops` (for example `session`, `long_term`, `intel`). |
+| `modules/common/access_aware_memory.ainl` | Opt-in **access metadata** on reads/lists/writes: bumps **`metadata.last_accessed`** and **`metadata.access_count`** via **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, or graph-safe **`LACCESS_LIST_SAFE`** (recommended when using graph-preferred execution for list snapshots). See module header and **`modules/common/README.md`**. |
 
 ### Starter Modules (in `modules/common/`)
 
@@ -581,7 +584,7 @@ For implementation and shipped-capability status, see:
 
 #### Memory & State
 
-Workflow memory is **externalized through adapters** (not the prompt). Production-style programs combine **session or workflow namespaces**, **TTLs**, **bounded list filters**, and **prune** so retention stays predictable under load. For a full OpenClaw-style illustration of cache + memory + budget enforcement (including audit rows and pruning hooks), see **`demo/session_budget_enforcer.lang`**.
+Workflow memory is **externalized through adapters** (not the prompt). Production-style programs combine **session or workflow namespaces**, **TTLs**, **bounded list filters**, and **prune** so retention stays predictable under load. For a full OpenClaw-style illustration of cache + memory + budget enforcement (including audit rows and pruning hooks), see **`demo/session_budget_enforcer.lang`**. Optional **access-aware** touches (recency / frequency metadata on **`memory`** records) live in **`modules/common/access_aware_memory.ainl`**; use **`LACCESS_LIST_SAFE`** when you need list-wide touches under **graph-preferred** execution (see module header).
 - Runtime semantics: `SEMANTICS.md`
 - Runtime/compiler ownership: `docs/RUNTIME_COMPILER_CONTRACT.md`
 - Grammar reference: `docs/language/grammar.md`

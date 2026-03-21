@@ -1,5 +1,17 @@
 # Release notes
 
+## AINL v1.2.4 — Access-aware memory helpers, graph label resolution, docs (2026-03-21)
+
+Follow-up to v1.2.3 focused on **opt-in access metadata** on top of Memory Contract v1.1, **runtime correctness for included subgraphs** in graph mode, and **documentation** so hosts can choose graph-safe list paths.
+
+- **`modules/common/access_aware_memory.ainl`:** optional **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and graph-safe **`LACCESS_LIST_SAFE`** (While + index loop; no `ForEach` in IR). Header documents graph-preferred limitations for `LACCESS_LIST` (ForEach not lowered to `Loop` today) and points callers at **`LACCESS_LIST_SAFE`** for full per-item touches. Uses **`Call`** chains and **`X … put …`** for metadata patches where needed for reliable execution.
+- **Runtime (`runtime/engine.py`):** **`_resolve_label_key`** qualifies bare branch / loop / call targets (e.g. `_child`) against the current **`alias/…`** stack frame so graph (and step) execution reaches merged **`alias/child`** labels after `include`. Preserves behavior for programs that already use fully qualified ids.
+- **Demos:** `demo/session_budget_enforcer.lang` and `demo/memory_distill_example.lang` keep **`include` lines before the first top-level `S` / `E`** so module labels merge; access-aware usage remains documented in-module.
+- **Tests:** `tests/test_demo_enforcer.py` — compile + memory adapter checks; regression for bare child label resolution in graph-only mode.
+- **Docs:** `modules/common/README.md` indexes shared helpers (include-before-`S`, `LACCESS_LIST` vs `LACCESS_LIST_SAFE`). Root **`README.md`**, **`WHAT_IS_AINL.md`**, **`docs/WHAT_IS_AINL.md`**, **`WHITEPAPERDRAFT.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/README.md`**, **`docs/adapters/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/CHANGELOG.md`**, and this file updated to match.
+
+---
+
 ## AINL v1.2.3 — Shared memory include modules across monitors (2026-03-20)
 
 This release consolidates repeated memory logic in production monitor programs into reusable include modules while preserving deterministic runtime behavior.

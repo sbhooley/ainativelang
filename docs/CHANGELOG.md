@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.4 (March 21, 2026)
+
+- **feat(modules)**: `modules/common/access_aware_memory.ainl` — opt-in **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, **`LACCESS_LIST_SAFE`** (graph-safe list touches via While + index); header warnings and usage notes for graph vs ForEach
+- **fix(runtime)**: resolve bare label targets against include **alias** from call stack (`_resolve_label_key` in `runtime/engine.py`) so nested **If** / **Loop** / **Call** / **While** reach **`alias/label`** keys after merge
+- **docs**: `modules/common/README.md`; refresh root **`README.md`**, **`WHAT_IS_AINL.md`**, **`docs/WHAT_IS_AINL.md`**, **`WHITEPAPERDRAFT.md`**, **`docs/RELEASE_NOTES.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/README.md`**, **`docs/adapters/README.md`**, **`docs/DOCS_INDEX.md`**
+- **test**: `tests/test_demo_enforcer.py` (demo compile + access-aware smoke; graph-only bare-label regression)
+
 ## v1.2.3 (March 20, 2026)
 
 - **bench(docs)**: major **size benchmark** documentation refresh (Mar 2026): default **tiktoken cl100k_base** in **`BENCHMARK.md`** tables; **viable subset** vs **legacy-inclusive** dual reporting; **minimal_emit** **python_api fallback stub** and **prisma** / **react_ts** **compaction** called out in transparency notes; JSON schema **`3.5+`**; hub **`docs/benchmarks.md`** highlights table; README / **`WHITEPAPERDRAFT.md`** §12 / cross-links updated. *Representative headline:* `public_mixed` **minimal_emit ~1.02×** on **viable** rows (46/59); legacy-inclusive minimal **~0.24×** shown separately.

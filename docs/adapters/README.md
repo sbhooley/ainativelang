@@ -9,6 +9,7 @@ Use this section to understand how AINL reaches external systems and how capabil
 - [`../operations/UNIFIED_MONITORING_GUIDE.md`](../operations/UNIFIED_MONITORING_GUIDE.md) — bridge token budget, weekly trends, daily markdown **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**, cron, sentinel, env vars
 - [`MEMORY_CONTRACT.md`](MEMORY_CONTRACT.md) — memory contract and state surfaces
 - [`MEMORY_CONTRACT_V1_1_RFC.md`](MEMORY_CONTRACT_V1_1_RFC.md) — additive v1.1 proposal for deterministic query metadata and filters
+- **Opt-in access metadata on memory rows** (bump `last_accessed` / `access_count` on read, list, or write): source module [`../../modules/common/access_aware_memory.ainl`](../../modules/common/access_aware_memory.ainl), index [`../../modules/common/README.md`](../../modules/common/README.md); graph-safe list path: **`LACCESS_LIST_SAFE`**
 
 ## Related sections
 
