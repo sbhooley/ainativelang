@@ -29,20 +29,7 @@ conformance:
 # Benchmarks need tiktoken + psutil (pyproject [benchmark] extra). Installed on demand below.
 # ainl-lang baseline is Python 3.10+ (see pyproject.toml requires-python); fail fast with a clear message.
 benchmark-deps: ## Install [benchmark] extra if tiktoken/psutil missing in $(PYTHON)
-	@$(PYTHON) - <<'PY'
-import sys
-if sys.version_info < (3, 10):
-    print("ERROR: ainl-lang requires Python 3.10+ (project baseline; matches pyproject.toml requires-python).")
-    print(
-        "       Current: Python %d.%d.%d"
-        % (sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
-    )
-    print("       Executable:", sys.executable)
-    print(
-        '       Fix: python3.11 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev,benchmark]"'
-    )
-    raise SystemExit(1)
-PY
+	@$(PYTHON) scripts/check_python_baseline.py
 	@$(PYTHON) -c "import tiktoken, psutil" 2>/dev/null || \
 	  (echo "==> Installing optional [benchmark] deps (tiktoken, psutil)..." && \
 	   $(PYTHON) -m pip install -q -e ".[benchmark]")
