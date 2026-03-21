@@ -19,11 +19,11 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    # Editable install should register packages; this guarantees imports resolve on the runner.
     env:
+      # Belt-and-suspenders with repo-root imports (see import steps using `python -m cli.main`).
       PYTHONPATH: ${{ github.workspace }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -37,28 +37,34 @@ jobs:
           gh label create agent --color "FBCA04" --description "Agency-Agents-style agent contribution" 2>/dev/null || true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
-      - name: Install AINL (CLI entry point `ainl`)
+      # Editable install keeps parity with local dev; imports use `python -m cli.main` so
+      # sys.path includes the repo root (console script `ainl` alone can miss `tooling`).
+      - name: Install AINL
         run: |
           python -m pip install --upgrade pip
           pip install -e .
 
-      - name: Verify packaging (tooling + adapters importable)
+      - name: Verify repo-root imports (same entry path as import steps)
+        working-directory: ${{ github.workspace }}
         run: |
-          python -c "import tooling, tooling.graph_normalize; import adapters; print('ok')"
+          python -m cli.main check examples/hello.ainl >/dev/null
+          python -c "import tooling.graph_normalize; import compiler_v2; print('ok')"
 
       - name: Import latest Clawflows samples
+        working-directory: ${{ github.workspace }}
         run: |
-          ainl import clawflows \
+          python -m cli.main import clawflows \
             --output-dir examples/ecosystem/clawflows \
             --no-openclaw-bridge
 
       - name: Import latest Agency-Agents samples
+        working-directory: ${{ github.workspace }}
         run: |
-          ainl import agency-agents \
+          python -m cli.main import agency-agents \
             --output-dir examples/ecosystem/agency-agents \
             --no-openclaw-bridge
 
