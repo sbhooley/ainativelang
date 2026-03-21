@@ -34,6 +34,8 @@ pip install -e ".[dev,benchmark]"
 make benchmark
 ```
 
+The **`[benchmark]`** extra includes **`aiohttp`** and **`langgraph`** so runtime benchmarks with **`--compare-baselines`** can execute handwritten `pure_async_python.py` / `langgraph_version.py` stacks (without them, those groups are skipped with a warning).
+
 CI-style (JSON only, smaller runtime sampling; matches the spirit of the `benchmark-regression` workflow):
 
 ```bash

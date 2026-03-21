@@ -8,8 +8,8 @@
 #   make conformance PYTHON=./.venv-py310/bin/python
 CONFORMANCE_DIR ?= tests/conformance
 
-# Prefer repo .venv when present so benchmark/conformance match `source .venv/bin/activate`.
-PYTHON ?= $(if $(wildcard $(CURDIR)/.venv/bin/python),$(CURDIR)/.venv/bin/python,python3)
+# Prefer repo .venv, then .venv-py310, so make matches common activate layouts.
+PYTHON ?= $(if $(wildcard $(CURDIR)/.venv/bin/python),$(CURDIR)/.venv/bin/python,$(if $(wildcard $(CURDIR)/.venv-py310/bin/python),$(CURDIR)/.venv-py310/bin/python,python3))
 PYTEST ?= $(PYTHON) -m pytest
 SNAPSHOT_UPDATE ?= 0
 CONFORMANCE_LOG ?= tests/snapshots/conformance/last_run.log
