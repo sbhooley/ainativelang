@@ -4,10 +4,11 @@
 # Session row uses a short TTL (advisory); `memory.prune "session"` only deletes it once
 # expired (age > ttl from created_at). Re-run after the TTL window to see pruned > 0.
 # The distilled `long_term` record has ttl_seconds null and is never TTL-pruned.
-S core memory
-
+#
+# Includes before `S` so the compiler prelude merges modules.
 include "modules/common/access_aware_memory.ainl" as accmem
 include "modules/common/distill_pattern.ainl" as distill
+S core memory
 
 L0:
   R core now ->ts

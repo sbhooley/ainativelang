@@ -890,10 +890,26 @@ class RuntimeEngine:
             strategy = "fixed"
         return {"count": max(1, count), "backoff_ms": max(0, backoff_ms), "backoff_strategy": strategy}
 
+    def _resolve_label_key(self, label_id: Any, stack: List[str]) -> str:
+        # Support nested If/ForEach in included subgraphs (fixes access_aware_memory.ainl LACCESS_LIST etc.)
+        n = _norm_lid(label_id)
+        if n in self.labels:
+            return n
+        if "/" in n:
+            return n
+        for frame_lid in reversed(stack):
+            if "/" not in frame_lid:
+                continue
+            alias = frame_lid.split("/", 1)[0]
+            cand = f"{alias}/{n}"
+            if cand in self.labels:
+                return cand
+        return n
+
     def _run_label(self, label_id: str, frame: Dict[str, Any], stack: List[str], force_steps: bool = False) -> Any:
         if not stack:
             self._start_run()
-        lid = _norm_lid(label_id)
+        lid = self._resolve_label_key(label_id, stack)
         stack = stack + [lid]
         self._guard_depth(stack)
         body = self.labels.get(lid, {})

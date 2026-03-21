@@ -2,6 +2,15 @@
 # Opt-in access metadata: explicit last_accessed + access_count updates only here.
 # Normal memory.get / memory.list are unchanged (no adapter side effects).
 #
+# Example (bind frame vars, then call — not inline string args):
+#   X memory_namespace "long_term"
+#   X memory_kind "long_term.distilled_insight"
+#   X memory_record_id "key123"
+#   X memory_payload payload
+#   X memory_ttl null
+#   X memory_access_put_meta meta
+#   Call accmem/LACCESS_WRITE ->res
+#
 # Before Call LACCESS_READ:
 #   - memory_namespace, memory_kind, memory_record_id
 # Returns: final memory.get envelope (same shape as a plain get after optional put).
@@ -11,15 +20,66 @@
 # Lists via memory.list (namespace, kind, null, null, filters), then get+put per item.
 # Returns: the same list response object as the initial memory.list (membership/order
 # for that snapshot; underlying rows may have newer updated_at after touches).
+#
+# IMPORTANT NOTICE:
+# LACCESS_LIST uses ForEach, which may not fully execute nested touches in graph-preferred mode due to current compiler IR limitations (ForEach not emitted as Loop node).
+# Use LACCESS_READ or LACCESS_WRITE for single-record operations — they are graph-safe.
+# Runtime supports bare label resolution (fixed in engine.py), but ForEach body may be skipped.
+#
+# Before Call LACCESS_LIST_SAFE (graph-safe list touches; opt-in):
+# - Same frame bindings as LACCESS_LIST (memory_namespace, memory_list_kind, memory_list_filters).
+# - Same return value as the initial memory.list snapshot (access_list_raw).
+# - Implements the same per-item get/put touch logic using While + index (no ForEach).
+#
+# Before Call LACCESS_WRITE:
+#   - memory_namespace, memory_kind, memory_record_id, memory_payload
+#   - memory_ttl (null for no TTL)
+#   - memory_access_put_meta (optional metadata object or null)
+# Does: memory.put with caller payload/meta; on ok, get + patch last_accessed/access_count + put again.
+# Returns: final memory.put response (second put when ok; else first put response).
+
+LACCESS_WRITE:
+  R memory put memory_namespace memory_kind memory_record_id memory_payload memory_ttl memory_access_put_meta ->aw_put1
+  X aw_ok get aw_put1 "ok"
+  If aw_ok ->L_aw_touch ->J aw_put1
+L_aw_touch:
+  R memory get memory_namespace memory_kind memory_record_id ->aw_got
+  If aw_got.found ->L_aw_patch ->J aw_put1
+L_aw_patch:
+  X access_rec get aw_got "record"
+  X access_payload get access_rec "payload"
+  X access_ttl get access_rec "ttl_seconds"
+  X access_meta get access_rec "metadata"
+  If (eq access_meta null) ->L_aw_m0 ->L_aw_m1
+L_aw_m0:
+  X access_meta {}
+  J L_aw_patch2
+L_aw_m1:
+  J L_aw_patch2
+L_aw_patch2:
+  X access_now (core.iso)
+  Set access_meta "last_accessed" access_now
+  X ac_prev (get access_meta "access_count")
+  If (eq ac_prev null) ->L_aw_ac1 ->L_aw_acn
+L_aw_ac1:
+  Set access_meta "access_count" 1
+  J L_aw_store
+L_aw_acn:
+  X ac_next (core.add ac_prev 1)
+  Set access_meta "access_count" ac_next
+  J L_aw_store
+L_aw_store:
+  R memory put memory_namespace memory_kind memory_record_id access_payload access_ttl access_meta ->aw_put2
+  J aw_put2
 
 LACCESS_READ:
   R memory get memory_namespace memory_kind memory_record_id ->access_read_res
   If access_read_res.found ->L_ar_touch ->J access_read_res
 L_ar_touch:
-  X access_rec access_read_res.record
-  X access_payload access_rec.payload
-  X access_ttl access_rec.ttl_seconds
-  X access_meta access_rec.metadata
+  X access_rec get access_read_res "record"
+  X access_payload get access_rec "payload"
+  X access_ttl get access_rec "ttl_seconds"
+  X access_meta get access_rec "metadata"
   If (eq access_meta null) ->L_ar_m0 ->L_ar_m1
 L_ar_m0:
   X access_meta {}
@@ -45,17 +105,17 @@ L_ar_store:
 
 LACCESS_LIST:
   R memory list memory_namespace memory_list_kind null null memory_list_filters ->access_list_raw
-  X access_list_items access_list_raw.items
+  X access_list_items get access_list_raw "items"
   X _ (ForEach access_list_items (lambda item (
-    X al_rk item.record_kind
-    X al_rid item.record_id
+    X al_rk get item "record_kind"
+    X al_rid get item "record_id"
     R memory get memory_namespace al_rk al_rid ->al_rec
     If al_rec.found ->L_al_upd ->L_al_skip
   L_al_upd:
-    X access_rec al_rec.record
-    X access_payload access_rec.payload
-    X access_ttl access_rec.ttl_seconds
-    X access_meta access_rec.metadata
+    X access_rec get al_rec "record"
+    X access_payload get access_rec "payload"
+    X access_ttl get access_rec "ttl_seconds"
+    X access_meta get access_rec "metadata"
     If (eq access_meta null) ->L_al_m0 ->L_al_m1
   L_al_m0:
     X access_meta {}
@@ -82,4 +142,59 @@ LACCESS_LIST:
   L_al_next:
     Ret null
   )))
+  J access_list_raw
+
+# Usage (identical args & return shape as LACCESS_LIST):
+#   After binding memory_namespace, memory_list_kind, memory_list_filters in the frame (see "Before Call LACCESS_LIST" above):
+#   Call accmem/LACCESS_LIST_SAFE ->result
+# Returns the same list snapshot; each matching record gets last_accessed bumped and access_count incremented.
+# Concise ForEach → LACCESS_LIST (see IMPORTANT NOTICE). Graph-safe execution → LACCESS_LIST_SAFE (same prerequisites).
+
+LACCESS_LIST_SAFE:
+  R memory list memory_namespace memory_list_kind null null memory_list_filters ->access_list_raw
+  X access_list_items get access_list_raw "items"
+  Set al_i 0
+  X len_n len access_list_items
+  X al_more lt al_i len_n
+  While al_more ->L_als_iter ->L_als_after limit=10000
+L_als_iter:
+  X al_ip (core.concat "" al_i)
+  X al_item get access_list_items al_ip
+  X al_rk get al_item "record_kind"
+  X al_rid get al_item "record_id"
+  R memory get memory_namespace al_rk al_rid ->al_rec
+  X al_found get al_rec "found"
+  If al_found ->L_als_upd ->L_als_inc
+L_als_upd:
+  X access_rec get al_rec "record"
+  X access_payload get access_rec "payload"
+  X access_ttl get access_rec "ttl_seconds"
+  X access_meta get access_rec "metadata"
+  If access_meta? ->L_als_m1 ->L_als_m0
+L_als_m0:
+  X access_meta {}
+  Call L_als_tail ->_
+L_als_m1:
+  Call L_als_tail ->_
+L_als_tail:
+  X access_now (core.iso)
+  X access_meta put access_meta "last_accessed" access_now
+  X ac_prev (get access_meta "access_count")
+  X ac_is_null eq ac_prev null
+  If ac_is_null ->L_als_ac1 ->L_als_acn
+L_als_ac1:
+  X access_meta put access_meta "access_count" 1
+  Call L_als_put ->_
+L_als_acn:
+  X ac_next (core.add ac_prev 1)
+  X access_meta put access_meta "access_count" ac_next
+  Call L_als_put ->_
+L_als_put:
+  R memory put memory_namespace al_rk al_rid access_payload access_ttl access_meta ->_
+  Call L_als_inc ->_
+L_als_inc:
+  X al_i (core.add al_i 1)
+  X al_more lt al_i len_n
+  J null
+L_als_after:
   J access_list_raw

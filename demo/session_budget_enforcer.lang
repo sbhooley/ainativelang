@@ -4,6 +4,8 @@
 # the OpenRouter /api/v1/auth/key endpoint, compares against daily and weekly
 # limits, and writes enforcement flags that other AINL programs already read.
 #
+# Now tracks access on list for budget enforcement (opt-in via helpers)
+#
 # Integration points (all via existing cache keys — no code changes needed):
 #
 #   cache "workflow" "token_budget"
@@ -33,8 +35,11 @@
 #
 # Adapters: core, http, cache, memory, queue
 # No LLM calls. Pure deterministic enforcement.
-S http cron "0 * * * *"
+#
+# Includes must precede any `S`/`E` line so the compiler prelude merges modules.
 include "modules/common/token_cost_memory.ainl" as tokenmem
+include "modules/common/access_aware_memory.ainl" as accmem
+S http cron "0 * * * *"
 
 # ══════════════════════════════════════════════
 # ENTRY: Load config from cache or use defaults
@@ -148,8 +153,16 @@ L_compute:
   X memory_tags ["budget","enforcement"]
   X memory_source "demo.session_budget_enforcer"
   X memory_kind "workflow.budget_enforcement"
-  Call tokenmem/LIST ->week_hist
+  X memory_namespace "workflow"
+  X memory_list_kind memory_kind
+  X memory_list_filters {"updated_after":memory_updated_after,"tags_any":memory_tags,"source":memory_source,"limit":memory_list_limit}
+  Call accmem/LACCESS_LIST ->week_hist
   X week_records get week_hist "items"
+
+  # --- Example only — not executed in this graph ---
+  # Optional recency query after access-aware touches (metadata.last_accessed):
+  #   R memory list "workflow" "workflow.budget_enforcement" null null {"since_last_accessed":"2026-03-01T00:00:00Z","tags_any":["budget","enforcement"]} ->recent_enforcements
+  # Would return only audit rows with last_accessed >= cutoff — recently enforced / re-read budgets.
 
   # Weekly spend = today's + sum from memory records
   # (Each record stores daily_used; we sum them for the week)
