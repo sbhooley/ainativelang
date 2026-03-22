@@ -1,0 +1,39 @@
+# modules/llm/llm_safe_json_parse.ainl
+# Extract the first JSON array from raw LLM text via gateway (same regex/parse as gateway _extract_json_array).
+# On transport failure, non-array, or parse errors, yields an empty list [] (never throws from this ENTRY).
+#
+# Frame in (caller binds before Call):
+#   llm_raw_text — string (assistant message body, may include prose around a [...] array).
+#
+# Frame out (return value of Call ... ->out):
+#   Parsed list (possibly empty). Caller may read ok/array from bridge body via separate unwrap if needed;
+#   this ENTRY returns the list directly for strict linear pipelines.
+#
+# Bridge executor key: llm.json_array_extract (POST body { "text": "<raw>" } or payload.text).
+#
+# Usage:
+#   include "modules/llm/llm_safe_json_parse.ainl" as llm_sjp
+#   R core.stringify some_text -> llm_raw_text
+#   Call llm_sjp/ENTRY ->score_rows
+#
+# Edge cases:
+#   - Empty string -> [] (gateway returns ok false or empty array).
+#   - Valid object but not array -> [] (gateway reason not_array).
+#   - Network error -> http envelope not ok; still map to [] by checking body.array null (handled via bridge unwrap pattern in host if extended).
+
+LENTRY:
+  Set llm_parse_array null
+  R core.parse "{}" -> sj_req
+  R core.parse "\"text\"" -> sj_k
+  X sj_req put sj_req sj_k llm_raw_text
+  R bridge.POST llm.json_array_extract sj_req -> sj_http
+  X sj_b get sj_http body
+  X sj_arr get sj_b array
+  R core.parse "[]" -> sj_empty
+  X llm_parse_array (ite (eq sj_arr null) sj_empty sj_arr)
+  J llm_parse_array
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

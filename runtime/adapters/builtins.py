@@ -14,7 +14,7 @@ class CoreBuiltinAdapter(RuntimeAdapter):
     Builtin stdlib adapter namespace: core.*
     Supported targets include:
       add/sub/mul/div/idiv/min/max/clamp
-      concat/split/join/lower/upper/replace
+      concat/split/join/lower/upper/replace/contains
       substr(s, start, length) — string slice
       env(name, default?) — os.getenv
       parse/stringify
@@ -72,6 +72,13 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             return str(args[0]).upper()
         if t == "replace":
             return str(args[0]).replace(str(args[1]), str(args[2]))
+        if t == "contains":
+            # substring search: needle in haystack (string coercion; empty needle -> True)
+            hay = str(args[0]) if args else ""
+            needle = str(args[1]) if len(args) > 1 else ""
+            if needle == "":
+                return True
+            return needle in hay
         if t == "parse":
             return json.loads(str(args[0]))
         if t == "stringify":

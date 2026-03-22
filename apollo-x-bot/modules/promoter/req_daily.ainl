@@ -1,0 +1,8 @@
+# Bridge body for promoter.maybe_daily_post. Output: req_daily
+include "../../../modules/common/executor_bridge_request.ainl" as bridge_req
+LENTRY:
+  R core.ECHO "{\"run_id\":\"ainl-x-promoter\",\"step_id\":\"daily\",\"executor\":\"promoter.maybe_daily_post\",\"payload\":{\"topic\":\"AINL + OpenClaw deterministic graphs\",\"link\":\"https://github.com/sbhooley/ainativelang\"},\"timeout_s\":120}" ->ainl_bridge_request_json
+  Call bridge_req/ENTRY ->req_daily
+  J req_daily
+LEXIT_OK:
+  J "ok"

@@ -21,6 +21,7 @@
         "LOWER",
         "UPPER",
         "REPLACE",
+        "CONTAINS",
         "SUBSTR",
         "PARSE",
         "STRINGIFY",

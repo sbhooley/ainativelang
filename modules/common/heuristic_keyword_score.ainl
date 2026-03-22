@@ -1,0 +1,37 @@
+# modules/common/heuristic_keyword_score.ainl
+# Data-driven keyword hit check: POST promoter.text_contains_any (substring match, case-insensitive on gateway).
+#
+# Frame in:
+#   heuristic_haystack     — text to search (e.g. tweet body or JSON blob).
+#   heuristic_keywords_json — JSON array string of phrases, e.g. "[\"openclaw\",\"ai agent\"]".
+#
+# Frame out:
+#   Return value: bridge response **body** dict { hit_count, any } (same shape as gateway).
+#
+# Pure alternative: R core.contains on lowercased haystack per keyword in an outer Loop (strict graphs:
+# keep keyword list short or use this bridge for unbounded lists).
+#
+# Usage:
+#   include "modules/common/heuristic_keyword_score.ainl" as hkw
+#   R core.ECHO "[\"openclaw\",\"graph\"]" -> heuristic_keywords_json
+#   X heuristic_haystack get tweet text
+#   Call hkw/ENTRY ->hk_out
+#
+# Edge cases:
+#   - Invalid heuristic_keywords_json -> runtime parse error (caller should stringify a valid array).
+#   - Empty phrases list -> hit_count 0, any false.
+
+LENTRY:
+  Set hk_body null
+  R core.parse heuristic_keywords_json -> hk_phrases
+  R core.parse "{}" -> hk_req
+  X hk_req put hk_req "haystack" heuristic_haystack
+  X hk_req put hk_req "phrases" hk_phrases
+  R bridge.POST promoter.text_contains_any hk_req -> hk_http
+  X hk_body get hk_http body
+  J hk_body
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

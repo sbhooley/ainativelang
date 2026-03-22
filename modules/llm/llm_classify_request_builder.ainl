@@ -1,0 +1,54 @@
+# modules/llm/llm_classify_request_builder.ainl
+# Build the llm.classify **envelope-mode** payload: classify_response=raw, messages (OpenAI-style), tweets (parsed list).
+# Uses promoter.classify_prompts (file-backed gateway prompts) + modules/llm/llm_prompt_builder.ainl for the user turn.
+#
+# Frame in (caller binds before Call):
+#   llm_batch_items_json — JSON *text* of the tweet list (same order as batch classify), e.g. R core.stringify tweets -> llm_batch_items_json.
+#
+# Frame out:
+#   Return value: dict suitable as HTTP body to POST /v1/llm.classify (no executor wrapper), keys:
+#     classify_response — "raw"
+#     messages — [{role, content}, ...]
+#     tweets — list parsed from llm_batch_items_json
+#
+# Strict note: system/user strings are embedded via R core.stringify so quotes/newlines are JSON-safe.
+#
+# Usage:
+#   include "modules/llm/llm_classify_request_builder.ainl" as llm_crb
+#   R core.stringify tweets -> llm_batch_items_json
+#   Call llm_crb/ENTRY -> cls_envelope
+#   R bridge.POST llm.classify cls_envelope -> scored_http
+#   (unwrap body for v1 envelope { raw_text, ... } or legacy list when classify_response omitted)
+#
+# Edge cases:
+#   - llm_batch_items_json invalid JSON -> parse step fails at runtime (caller must stringify valid list).
+#   - classify_prompts unreachable -> bridge error propagates from R bridge.POST.
+
+include "modules/llm/llm_prompt_builder.ainl" as llm_user
+
+LENTRY:
+  Set cr_pay null
+  R core.parse "{}" -> cr_empty
+  R bridge.POST promoter.classify_prompts cr_empty -> cr_pr_http
+  X cr_pr get cr_pr_http body
+  X cr_sys get cr_pr system
+  X llm_batch_instruction_text get cr_pr instruction
+  R core.PARSE "\"Tweets\"" -> llm_batch_items_label
+  Call llm_user/ENTRY ->_
+  R core.stringify cr_sys -> cr_sys_j
+  R core.stringify llm_batch_user_message -> cr_usr_j
+  R core.concat "{\"role\":\"system\",\"content\":" cr_sys_j "}" -> cr_m0s
+  R core.concat "{\"role\":\"user\",\"content\":" cr_usr_j "}" -> cr_m1s
+  R core.concat "[" cr_m0s "," cr_m1s "]" -> cr_msgs_s
+  R core.parse cr_msgs_s -> cr_msgs
+  R core.parse "{}" -> cr_pay
+  X cr_pay put cr_pay "classify_response" "raw"
+  X cr_pay put cr_pay "messages" cr_msgs
+  R core.parse llm_batch_items_json -> cr_tw_list
+  X cr_pay put cr_pay "tweets" cr_tw_list
+  J cr_pay
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

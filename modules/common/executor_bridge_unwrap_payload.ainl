@@ -1,0 +1,32 @@
+# modules/common/executor_bridge_unwrap_payload.ainl
+# Normalize executor-bridge / gateway JSON: prefer inner "payload" object when the key exists and is non-null.
+#
+# Linear strict-safe ENTRY (no If): uses eq + ite so the subgraph compiles under strict_mode includes.
+#
+# Frame in:
+#   unwrap_bridge_body — object (full bridge response body or a pre-cut subtree). Use {} if unknown.
+#
+# Frame out (return value of Call):
+#   unwrap_inner — object reference: unwrap_bridge_body when payload is null/missing; else unwrap_bridge_body["payload"].
+#
+# Edge cases:
+#   - Missing "payload" key: get yields null → outer envelope (matches typical .get("payload") or body).
+#   - payload: null → outer envelope (callers can read ok/error at top level).
+#   - Empty payload {}: kept (non-null).
+#
+# Usage:
+#   include "modules/common/executor_bridge_unwrap_payload.ainl" as br_unwrap
+#   X unwrap_bridge_body resp_body
+#   Call br_unwrap/ENTRY ->inner
+
+LENTRY:
+  Set unwrap_res null
+  X unwrap_p get unwrap_bridge_body "payload"
+  X unwrap_miss eq unwrap_p null
+  X unwrap_res (ite unwrap_miss unwrap_bridge_body unwrap_p)
+  J unwrap_res
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

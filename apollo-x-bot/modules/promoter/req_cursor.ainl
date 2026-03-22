@@ -1,0 +1,8 @@
+# Bridge body for promoter.search_cursor_commit. Output: req_cursor
+include "../../../modules/common/executor_bridge_request.ainl" as bridge_req
+LENTRY:
+  R core.ECHO "{\"run_id\":\"ainl-x-promoter\",\"step_id\":\"_cursor\",\"executor\":\"promoter.search_cursor_commit\",\"payload\":{},\"timeout_s\":60}" ->ainl_bridge_request_json
+  Call bridge_req/ENTRY ->req_cursor
+  J req_cursor
+LEXIT_OK:
+  J "ok"

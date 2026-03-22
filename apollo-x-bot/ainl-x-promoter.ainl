@@ -1,0 +1,72 @@
+# ainl-x-promoter — public reference graph: X awareness + AINL promotion.
+#
+# What lives here (AINL): schedule metadata, retries, JSON request shaping, data plumbing (X/put/get),
+# relevance filtering (core.FILTER_HIGH_SCORE + env-driven floor), loop orchestration, and explicit
+# ordering of bridge steps — including committing the X search cursor after all tweets are handled
+# (so incremental search stays correct if a run stops mid-loop).
+#
+# LLM system + classify instruction text: apollo-x-bot/prompts/*.txt (loaded by gateway; overridable via body).
+# Bridge JSON shells: modules/promoter/*.ainl.
+#
+# What lives in the gateway (Python): OAuth 1.0a / Bearer HTTP to X, OpenAI-compatible classify + draft,
+# SQLite (caps, cooldown, audit), and the strict-mode-friendly per-tweet pipeline behind one POST
+# (Loop bodies must end with exactly one J — see README).
+#
+# OpenClaw: map cron "*/45 * * * *" to label _poll. Register every bridge executor key below.
+
+include "../modules/common/retry.ainl" as retry
+include "../modules/common/timeout.ainl" as timeout
+include "modules/promoter/req_search.ainl" as promo_search
+include "modules/promoter/req_process_tweet.ainl" as promo_process
+include "modules/promoter/req_cursor.ainl" as promo_cursor
+include "modules/promoter/req_daily.ainl" as promo_daily
+
+S core cron "*/45 * * * *"
+
+# --- Search → classify (LLM; prompts from files) → score floor → Loop ---
+L_poll:
+  Call promo_search/ENTRY ->req_search
+  R bridge.POST x.search req_search ->search_resp
+  X tweets get search_resp body.tweets
+  R core.PARSE "{}" ->cls_in
+  R core.PARSE "\"tweets\"" ->twkey
+  X cls_in put cls_in twkey tweets
+  R bridge.POST llm.classify cls_in ->scored
+  X scored_list get scored body
+  R core.env "PROMOTER_CLASSIFY_MIN_SCORE" "5" ->score_floor
+  R core.FILTER_HIGH_SCORE scored_list score_floor ->good_tweets
+  Loop good_tweets tweet L_each L_after_loop
+
+# Single J: retry wrapper + bridge hop (modules/promoter/req_process_tweet.ainl).
+L_each:
+  Call retry/ENTRY ->_
+  Call promo_process/ENTRY ->step_out
+  J step_out
+
+# Commit incremental X search cursor, then daily original post if due.
+L_after_loop:
+  Call promo_cursor/ENTRY ->req_cursor
+  R bridge.POST promoter.search_cursor_commit req_cursor ->cursor_out
+  Call promo_daily/ENTRY ->req_daily
+  R bridge.POST promoter.maybe_daily_post req_daily ->daily_out
+  J "ok"
+
+# --- Optional v2 classify (envelope + AINL-side shaping) — NOT WIRED; keep L_poll legacy path as default.
+# Intended flow (register all bridge keys in README / run-with-gateway.sh):
+#   1) include "../modules/llm/llm_classify_request_builder.ainl" as llm_crb
+#   2) include "../modules/llm/llm_safe_json_parse.ainl" as llm_sjp
+#   3) include "../modules/common/merge_llm_scores_into_items.ainl" as llm_merge
+#   4) include "../modules/common/heuristic_keyword_score.ainl" as hkw
+#   5) include "../modules/common/promoter_decision_gate.ainl" as promo_gate
+#   6) After x.search: R core.stringify tweets -> llm_batch_items_json ; Call llm_crb/ENTRY -> cls_env
+#      (cls_env = { classify_response: "raw", messages, tweets } from prompts + llm_prompt_builder)
+#   7) R bridge.POST llm.classify cls_env -> raw_http ; X raw_envelope get raw_http body
+#      (unwrap executor HTTP envelope if needed — see executor_bridge_unwrap_payload.ainl)
+#   8) X llm_raw_text get raw_envelope raw_text (or body.raw_text depending on unwrap)
+#   9) Call llm_sjp/ENTRY -> score_rows  (safe JSON array; [] on failure)
+#  10) Either: R bridge.POST llm.merge_classify_rows { tweets, score_rows } -> merged_http ; X scored_list get merged_http body.items
+#      Or: strict Loop index over tweets: bind merge_llm_base_item + merge_llm_score_row ; Call llm_merge/ENTRY (per item)
+#  11) Per tweet before process_tweet: optional heuristic_keyword_score (keywords_json frame) as fallback signal;
+#      Call promo_gate/ENTRY with gate_tweet_id / gate_user_id ; skip bridge to process_tweet when proceed is false
+# Strict graph-mode caveat: If + shared Loop in one label is awkward under graph-preferred; prefer steps-only execution
+# or keep batch merge via llm.merge_classify_rows, then existing Loop good_tweets L_each unchanged.

@@ -1,0 +1,5 @@
+gateway.log
+gateway.pid
+__pycache__/
+*.pyc
+.env

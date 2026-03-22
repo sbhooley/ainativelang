@@ -1,0 +1,47 @@
+# modules/common/merge_llm_scores_into_items.ainl
+# Apply one LLM score row onto one base object (shallow JSON copy + score + optional why).
+#
+# Strict include contract: this ENTRY is linear (ends with a single J) so it compiles under strict_mode
+# when included from strict graphs. Aligning parallel lists by index requires a host loop (Loop in parent,
+# or While in a non-strict fragment, or merge inside Python like apollo-x-bot gateway handle_llm_classify).
+#
+# Frame in:
+#   merge_llm_base_item   — object (e.g. one tweet dict).
+#   merge_llm_score_row   — object (keys score, optional relevance, optional why). Use {} when missing.
+#
+# Frame out:
+#   Return value: merged object with score coerced via R core add (handles null score/relevance → 0).
+#   Why: written only when non-null and non-empty string; otherwise key set to empty string (differs from
+#   Python gateway which omits the key — safe for FILTER_HIGH_SCORE and most consumers).
+#
+# Score selection (eq-based, preserves numeric 0):
+#   score if score key not null; else relevance if not null; else 0.
+#
+# Batch pattern (parent graph, strict Loop body must stay linear — use index Loop or unrolled steps):
+#   For index i: set merge_llm_base_item from list i, merge_llm_score_row from scores i (or {}), Call this ENTRY, push result.
+#
+# Usage:
+#   include "modules/common/merge_llm_scores_into_items.ainl" as llm_merge
+#   X merge_llm_base_item tw
+#   X merge_llm_score_row row
+#   Call llm_merge/ENTRY ->merged
+
+LENTRY:
+  Set merged null
+  Set merge_item_json ""
+  R core.stringify merge_llm_base_item -> merge_item_json
+  R core.parse merge_item_json -> merged
+  X merge_sc1 get merge_llm_score_row "score"
+  X merge_sc2 get merge_llm_score_row "relevance"
+  X merge_sc (ite (eq merge_sc1 null) (ite (eq merge_sc2 null) 0 merge_sc2) merge_sc1)
+  R core.add merge_sc 0 -> merge_sc_f
+  X merged put merged "score" merge_sc_f
+  X merge_why get merge_llm_score_row "why"
+  X merge_why_out (ite (eq merge_why null) "" (ite (eq merge_why "") "" merge_why))
+  X merged put merged "why" merge_why_out
+  J merged
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

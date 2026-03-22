@@ -1,0 +1,10 @@
+# Bridge request for promoter.process_tweet (reply system prompt from apollo-x-bot/prompts/reply_system.txt).
+# Frame must hold tweet (loop item). Output: step_out
+LENTRY:
+  R core.PARSE "\"payload\"" ->plkey
+  R core.PARSE "{\"run_id\":\"ainl-x-promoter\",\"step_id\":\"_each\",\"executor\":\"promoter.process_tweet\",\"timeout_s\":300}" ->req_head
+  X req_pt put req_head plkey tweet
+  R bridge.POST promoter.process_tweet req_pt ->step_out
+  J step_out
+LEXIT_OK:
+  J "ok"

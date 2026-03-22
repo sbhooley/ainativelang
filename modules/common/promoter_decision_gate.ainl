@@ -1,0 +1,37 @@
+# modules/common/promoter_decision_gate.ainl
+# Evaluate Apollo promoter reply gates (daily cap, per-user cooldown, replied-tweet dedupe) via SQLite-backed gateway.
+#
+# **Source of truth:** POST promoter.gate_eval — mirrors handle_process_tweet skip logic in gateway_server.py.
+# Optional audit/history in access_aware_memory.ainl is complementary only; do not use memory alone for caps
+# unless it shares the same backing store as PromoterState.
+#
+# Frame in:
+#   gate_tweet_id — string
+#   gate_user_id  — string
+#
+# Frame out:
+#   Return value: body dict { proceed, reason, dry_run, daily_count, daily_cap }.
+#
+# Usage:
+#   include "modules/common/promoter_decision_gate.ainl" as promo_gate
+#   X gate_tweet_id get tweet id
+#   X gate_user_id get tweet user_id
+#   Call promo_gate/ENTRY ->gate
+#   X ok get gate proceed
+#
+# Edge cases:
+#   Missing ids -> treated as empty strings (gateway may still proceed).
+
+LENTRY:
+  Set gate_result null
+  R core.parse "{}" -> g_req
+  X g_req put g_req "tweet_id" gate_tweet_id
+  X g_req put g_req "user_id" gate_user_id
+  R bridge.POST promoter.gate_eval g_req -> g_http
+  X gate_result get g_http body
+  J gate_result
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

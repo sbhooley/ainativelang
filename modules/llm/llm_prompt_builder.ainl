@@ -1,0 +1,40 @@
+# modules/llm/llm_prompt_builder.ainl
+# Build the standard batch-classify user message: instruction + labeled JSON array text + JSON-only reminder.
+# Pairs with modules/llm/json_array_system.ainl for the system role.
+#
+# Frame in (caller binds before Call):
+#   llm_batch_instruction_text — task-specific instruction string.
+#   llm_batch_items_label      — label for the array, e.g. Tweets, Leads.
+#   llm_batch_items_json       — JSON text for the array (R core stringify items -> llm_batch_items_json).
+#
+# Frame out:
+#   llm_batch_user_message — string for chat role user.
+#
+# Usage:
+#   include "modules/llm/json_array_system.ainl" as llm_sys
+#   include "modules/llm/llm_prompt_builder.ainl" as llm_user
+#   Call llm_sys/ENTRY ->system_text
+#   X llm_batch_instruction_text instr
+#   X llm_batch_items_label "Tweets"
+#   R core stringify tweets -> llm_batch_items_json
+#   Call llm_user/ENTRY ->user_text
+
+LENTRY:
+  Set lb_a ""
+  Set lb_b ""
+  Set lb_c ""
+  Set lb_d ""
+  Set lb_e ""
+  Set llm_batch_user_message ""
+  R core.concat "Instruction: " llm_batch_instruction_text -> lb_a
+  R core.concat lb_a "\n\n" -> lb_b
+  R core.concat lb_b llm_batch_items_label -> lb_c
+  R core.concat lb_c " (JSON array, same order): " -> lb_d
+  R core.concat lb_d llm_batch_items_json -> lb_e
+  R core.concat lb_e "\n\nReturn ONLY a JSON array of objects, one per item in order, each with id, score, and why fields as required by the system message." -> llm_batch_user_message
+  J llm_batch_user_message
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"
