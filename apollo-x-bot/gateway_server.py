@@ -972,6 +972,30 @@ def handle_search_cursor_commit(body: Dict[str, Any], state: PromoterState) -> D
     return {"ok": True, "action": "committed", "since_id": pending}
 
 
+def handle_kv_get(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    inner = _http_inner_dict(body)
+    key = str(inner.get("key") or "").strip()
+    if not key:
+        return {"ok": False, "error": "missing_key"}
+    val = state.kv_get(key)
+    return {"ok": True, "value": val}
+
+
+def handle_kv_set(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    inner = _http_inner_dict(body)
+    key = str(inner.get("key") or "").strip()
+    if not key:
+        return {"ok": False, "error": "missing_key"}
+    if "value" not in inner:
+        return {"ok": False, "error": "missing_value"}
+    raw = inner.get("value")
+    if raw is None:
+        state.kv_delete(key)
+    else:
+        state.kv_set(key, str(raw))
+    return {"ok": True}
+
+
 def handle_maybe_daily(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
     payload = body.get("payload") or {}
     topic = str(payload.get("topic", "AINL"))
@@ -1006,6 +1030,8 @@ def handle_maybe_daily(body: Dict[str, Any], state: PromoterState) -> Dict[str, 
 _STATE: Optional[PromoterState] = None
 
 ROUTES = {
+    "/v1/kv.get": handle_kv_get,
+    "/v1/kv.set": handle_kv_set,
     "/v1/x.search": handle_x_search,
     "/v1/llm.classify": handle_llm_classify,
     "/v1/llm.json_array_extract": handle_llm_json_array_extract,
@@ -1068,11 +1094,18 @@ class GatewayHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
+_DOTENV_PRESERVE_IF_SET = frozenset(
+    {"PROMOTER_GATEWAY_PORT", "PROMOTER_GATEWAY_HOST", "PROMOTER_DRY_RUN"}
+)
+
+
 def _load_local_dotenv() -> None:
     """Load KEY=VALUE from optional `.env` beside this file.
 
     Non-empty values from the file **overwrite** os.environ so a filled `.env` wins over empty
     placeholders exported in the shell (a common reason X_BEARER_TOKEN appeared \"missing\").
+    Keys in ``_DOTENV_PRESERVE_IF_SET`` are not overwritten when the environment already has a
+    non-empty value (so e.g. ``PROMOTER_GATEWAY_PORT=17311`` survives for a side-by-side gateway).
     """
     raw = os.environ.get("PROMOTER_DOTENV")
     p = Path(raw).expanduser() if raw else Path(__file__).resolve().parent / ".env"
@@ -1090,6 +1123,9 @@ def _load_local_dotenv() -> None:
         k = k.strip().lstrip("\ufeff")
         v = v.strip().strip("'").strip('"')
         if k and v:
+            # Keep explicit shell/cron overrides for bind + dry-run; .env still fills missing keys and overwrites secrets.
+            if k in _DOTENV_PRESERVE_IF_SET and (os.environ.get(k) or "").strip():
+                continue
             os.environ[k] = v
 
 

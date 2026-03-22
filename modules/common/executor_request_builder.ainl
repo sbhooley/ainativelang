@@ -1,0 +1,49 @@
+# modules/common/executor_request_builder.ainl
+# Build the standard executor-bridge JSON object (run_id, step_id, executor, payload, timeout_s) from frame fields,
+# then parse it via modules/common/executor_bridge_request.ainl so callers can R bridge.POST <executor> req ->resp.
+#
+# Frame in (set before Call …/ENTRY):
+#   executor_req_executor      — required logical executor id (e.g. "x.search", "llm.classify").
+#   executor_req_payload_json  — JSON *text* of the payload object. Omit or null → "{}".
+#   executor_req_run_id        — optional string; null → "ainl-x-promoter".
+#   executor_req_step_id       — optional string; null → "_poll".
+#   executor_req_timeout_s     — optional whole number (e.g. 120); null → 120.
+#
+# Frame out:
+#   Return value: parsed dict (same shape as executor_bridge_request output), ready as HTTP JSON body for the route
+#   that matches executor (gateway validates when top-level "executor" is present).
+#
+# Usage:
+#   include "modules/common/executor_request_builder.ainl" as exreq
+#   R core.echo "x.search" -> executor_req_executor
+#   R core.echo "{\"query\":\"@handle\"}" -> executor_req_payload_json
+#   X executor_req_step_id "_poll"
+#   X executor_req_timeout_s 120
+#   Call exreq/ENTRY -> req
+#   R bridge.POST x.search req -> resp
+#
+# Edge cases:
+#   - Non-JSON executor_req_payload_json → parse fails at Call erb_inner/ENTRY (caller must stringify valid objects).
+#   - timeout_s is emitted unquoted in JSON; bind an integer (120, 300), not a string "120".
+#   - For nested payload objects, always R core.stringify your object → executor_req_payload_json.
+#   - For strict graph lowering, prefer R … ->outvar with no space after -> (e.g. ->req) so the output binding is not misparsed as an extra operand.
+
+include "modules/common/executor_bridge_request.ainl" as erb_inner
+
+LENTRY:
+  Set executor_bridge_out null
+  X rid_u (ite (eq executor_req_run_id null) "ainl-x-promoter" executor_req_run_id)
+  X sid_u (ite (eq executor_req_step_id null) "_poll" executor_req_step_id)
+  X to_u (ite (eq executor_req_timeout_s null) 120 executor_req_timeout_s)
+  X pj (ite (eq executor_req_payload_json null) "{}" executor_req_payload_json)
+  R core.stringify rid_u ->erb_rid_j
+  R core.stringify sid_u ->erb_sid_j
+  R core.stringify executor_req_executor ->erb_ex_j
+  R core.concat "{\"run_id\":" erb_rid_j ",\"step_id\":" erb_sid_j ",\"executor\":" erb_ex_j ",\"payload\":" pj ",\"timeout_s\":" to_u "}" ->ainl_bridge_request_json
+  Call erb_inner/ENTRY ->executor_bridge_out
+  J executor_bridge_out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

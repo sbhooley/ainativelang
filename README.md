@@ -246,6 +246,10 @@ More patterns coming soon (approval gate, circuit breaker, RAG retrieval, etc.).
 
 **See your includes in a diagram:** `ainl visualize main.ainl -o graph.mmd` — each alias becomes a Mermaid subgraph cluster; synthetic `Call →` edges into `alias/ENTRY` are annotated in the output.
 
+### Reference bots
+
+- **Apollo X promoter** — production-shaped **strict** graph, HTTP **executor gateway**, OpenClaw/cron entrypoints, `executor_request_builder`, `record_decision`, and KV snapshot hooks: **[`apollo-x-bot/README.md`](apollo-x-bot/README.md)**.
+
 ---
 
 ## Choose Your Path

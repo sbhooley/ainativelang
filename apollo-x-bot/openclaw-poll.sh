@@ -30,10 +30,14 @@ GATEWAY="${PROMOTER_GATEWAY_URL:-http://127.0.0.1:17301}"
 GATEWAY="${GATEWAY%/}"
 
 export PROMOTER_STATE_PATH="${PROMOTER_STATE_PATH:-$ROOT/apollo-x-bot/data/promoter_state.sqlite}"
+# Default: apollo-x-bot/data/promoter_memory.sqlite — backs record_decision / memory.put (override AINL_MEMORY_DB=...). Same DB can host access_aware_memory-style writes if you add them at graph top level.
+export AINL_MEMORY_DB="${AINL_MEMORY_DB:-$ROOT/apollo-x-bot/data/promoter_memory.sqlite}"
 
 cd "$ROOT"
 exec "$PY" -m cli.main run "$ROOT/apollo-x-bot/ainl-x-promoter.ainl" --strict --label _poll \
   --enable-adapter bridge \
+  --enable-adapter memory \
+  --memory-db "$AINL_MEMORY_DB" \
   --bridge-endpoint "x.search=${GATEWAY}/v1/x.search" \
   --bridge-endpoint "llm.classify=${GATEWAY}/v1/llm.classify" \
   --bridge-endpoint "llm.json_array_extract=${GATEWAY}/v1/llm.json_array_extract" \
@@ -44,4 +48,6 @@ exec "$PY" -m cli.main run "$ROOT/apollo-x-bot/ainl-x-promoter.ainl" --strict --
   --bridge-endpoint "promoter.gate_eval=${GATEWAY}/v1/promoter.gate_eval" \
   --bridge-endpoint "promoter.process_tweet=${GATEWAY}/v1/promoter.process_tweet" \
   --bridge-endpoint "promoter.search_cursor_commit=${GATEWAY}/v1/promoter.search_cursor_commit" \
-  --bridge-endpoint "promoter.maybe_daily_post=${GATEWAY}/v1/promoter.maybe_daily_post"
+  --bridge-endpoint "promoter.maybe_daily_post=${GATEWAY}/v1/promoter.maybe_daily_post" \
+  --bridge-endpoint "kv.get=${GATEWAY}/v1/kv.get" \
+  --bridge-endpoint "kv.set=${GATEWAY}/v1/kv.set"

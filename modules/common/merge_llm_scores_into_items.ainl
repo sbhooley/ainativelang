@@ -29,12 +29,12 @@
 LENTRY:
   Set merged null
   Set merge_item_json ""
-  R core.stringify merge_llm_base_item -> merge_item_json
-  R core.parse merge_item_json -> merged
+  R core.stringify merge_llm_base_item ->merge_item_json
+  R core.parse merge_item_json ->merged
   X merge_sc1 get merge_llm_score_row "score"
   X merge_sc2 get merge_llm_score_row "relevance"
   X merge_sc (ite (eq merge_sc1 null) (ite (eq merge_sc2 null) 0 merge_sc2) merge_sc1)
-  R core.add merge_sc 0 -> merge_sc_f
+  R core.add merge_sc 0 ->merge_sc_f
   X merged put merged "score" merge_sc_f
   X merge_why get merge_llm_score_row "why"
   X merge_why_out (ite (eq merge_why null) "" (ite (eq merge_why "") "" merge_why))

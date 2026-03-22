@@ -1,0 +1,79 @@
+# modules/common/record_decision.ainl
+# Standardized audit row in the AINL memory adapter (SQLite), reusable across programs.
+#
+# Frame in (set before Call …/ENTRY):
+#   record_rd_action       — required short string, e.g. "gate_eval", "cursor_commit".
+#   record_rd_detail_json  — optional JSON *text* of a detail object; null/omit → "{}".
+#   record_rd_tweet_id     — optional string (use null when N/A).
+#   record_rd_score        — optional number or null (e.g. heuristic_keyword_score items[0].score).
+#   record_rd_scope        — optional logical scope string; null → "promoter" (stored inside payload only).
+#
+# Storage (memory v1 allowlist):
+#   memory.namespace — "ops"
+#   record_kind        — "promoter.decision"
+#   record_id          — "<action>-<iso>-<tweet_id|na>"
+#
+# Payload (JSON object) written as memory payload:
+#   schema "record_decision.v1", action, scope, detail (caller JSON + recorded_at), tweet_id, score, recorded_at.
+#
+# Implementation note: uses the same 7-arg `R memory put …` shape as access_aware_memory’s first write.
+# Strict compilation cannot nest the full access_aware_memory module as an include (no single ENTRY);
+# for last_accessed/access_count touches, invoke access_aware from a top-level graph or rely on gateway audit.
+#
+# Usage:
+#   include "modules/common/record_decision.ainl" as rd
+#   R core.echo "gate_eval" ->record_rd_action
+#   R core.echo "{\"proceed\":true}" ->record_rd_detail_json
+#   Set record_rd_tweet_id null
+#   X record_rd_tweet_id get tweet id
+#   Set record_rd_score null
+#   Set record_rd_score heur_hit
+#   Set record_rd_scope null
+#   Call rd/ENTRY ->rd_out
+#
+# Edge cases:
+#   - Invalid record_rd_detail_json → parse/put may fail.
+#   - Requires --enable-adapter memory and AINL_MEMORY_DB (or --memory-db).
+
+LENTRY:
+  Set memory_ttl null
+  Set memory_access_put_meta null
+  R core.echo "ops" ->memory_namespace
+  R core.echo "promoter.decision" ->memory_kind
+  X record_rd_ts (core.iso)
+  Set record_rd_detail_json_u null
+  X record_rd_detail_json_u (ite (eq record_rd_detail_json null) "{}" record_rd_detail_json)
+  R core.parse record_rd_detail_json_u ->rd_user_detail
+  X rd_user_detail put rd_user_detail "recorded_at" record_rd_ts
+  Set record_rd_scope_u null
+  X record_rd_scope_u (ite (eq record_rd_scope null) "promoter" record_rd_scope)
+  X rd_user_detail put rd_user_detail "scope" record_rd_scope_u
+  R core.parse "{}" ->memory_payload
+  R core.echo "record_decision.v1" ->rd_v_schema
+  R core.parse "\"schema\"" ->rd_k_schema
+  X memory_payload put memory_payload rd_k_schema rd_v_schema
+  R core.parse "\"action\"" ->rd_k_action
+  X memory_payload put memory_payload rd_k_action record_rd_action
+  R core.parse "\"scope\"" ->rd_k_scope
+  X memory_payload put memory_payload rd_k_scope record_rd_scope_u
+  R core.parse "\"detail\"" ->rd_k_detail
+  X memory_payload put memory_payload rd_k_detail rd_user_detail
+  R core.parse "\"recorded_at\"" ->rd_k_rec_at
+  X memory_payload put memory_payload rd_k_rec_at record_rd_ts
+  R core.parse "\"tweet_id\"" ->rd_k_tid
+  X memory_payload put memory_payload rd_k_tid record_rd_tweet_id
+  R core.parse "\"score\"" ->rd_k_score
+  X memory_payload put memory_payload rd_k_score record_rd_score
+  Set record_tid_sfx null
+  X record_tid_sfx (ite (eq record_rd_tweet_id null) "na" record_rd_tweet_id)
+  Set record_rid_mid null
+  R core.concat record_rd_action "-" record_rd_ts ->record_rid_mid
+  Set memory_record_id null
+  R core.concat record_rid_mid "-" record_tid_sfx ->memory_record_id
+  R memory put memory_namespace memory_kind memory_record_id memory_payload memory_ttl memory_access_put_meta ->rd_mem_out
+  J rd_mem_out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

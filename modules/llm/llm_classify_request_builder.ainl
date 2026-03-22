@@ -28,23 +28,23 @@ include "modules/llm/llm_prompt_builder.ainl" as llm_user
 
 LENTRY:
   Set cr_pay null
-  R core.parse "{}" -> cr_empty
-  R bridge.POST promoter.classify_prompts cr_empty -> cr_pr_http
+  R core.parse "{}" ->cr_empty
+  R bridge.POST promoter.classify_prompts cr_empty ->cr_pr_http
   X cr_pr get cr_pr_http body
   X cr_sys get cr_pr system
   X llm_batch_instruction_text get cr_pr instruction
-  R core.PARSE "\"Tweets\"" -> llm_batch_items_label
+  R core.PARSE "\"Tweets\"" ->llm_batch_items_label
   Call llm_user/ENTRY ->_
-  R core.stringify cr_sys -> cr_sys_j
-  R core.stringify llm_batch_user_message -> cr_usr_j
-  R core.concat "{\"role\":\"system\",\"content\":" cr_sys_j "}" -> cr_m0s
-  R core.concat "{\"role\":\"user\",\"content\":" cr_usr_j "}" -> cr_m1s
-  R core.concat "[" cr_m0s "," cr_m1s "]" -> cr_msgs_s
-  R core.parse cr_msgs_s -> cr_msgs
-  R core.parse "{}" -> cr_pay
+  R core.stringify cr_sys ->cr_sys_j
+  R core.stringify llm_batch_user_message ->cr_usr_j
+  R core.concat "{\"role\":\"system\",\"content\":" cr_sys_j "}" ->cr_m0s
+  R core.concat "{\"role\":\"user\",\"content\":" cr_usr_j "}" ->cr_m1s
+  R core.concat "[" cr_m0s "," cr_m1s "]" ->cr_msgs_s
+  R core.parse cr_msgs_s ->cr_msgs
+  R core.parse "{}" ->cr_pay
   X cr_pay put cr_pay "classify_response" "raw"
   X cr_pay put cr_pay "messages" cr_msgs
-  R core.parse llm_batch_items_json -> cr_tw_list
+  R core.parse llm_batch_items_json ->cr_tw_list
   X cr_pay put cr_pay "tweets" cr_tw_list
   J cr_pay
 

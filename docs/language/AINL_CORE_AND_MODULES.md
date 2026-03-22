@@ -221,7 +221,7 @@ The repository ships **strict-safe** subgraph files merged at compile time via `
 | **`modules/common/`** | Any program (`demo/`, `examples/`, `intelligence/`, apps); includes **`executor_bridge_request.ainl`** for HTTP bridge JSON envelopes | [modules/common/README.md](../../modules/common/README.md) |
 | **`modules/llm/`** | LLM / OpenAI-shaped **system** strings and JSON discipline (strict `include` subgraphs) | [modules/llm/README.md](../../modules/llm/README.md) |
 | **`modules/openclaw/`** | OpenClaw cron sketches | See headers in each `.ainl` |
-| **App-local `modules/promoter/`** (next to your bridge / gateway) | One deployment’s bridge JSON shells + main graph; **not** shared across products | Keep README + `include` layout beside the gateway that owns executor keys |
+| **App-local `modules/<your-app>/`** (next to your bridge / gateway) | One deployment’s bridge JSON shells + main graph; **not** shared across products | Keep README + `include` layout beside the gateway that owns executor keys |
 | **App-local `prompts/`** (e.g. `.txt` beside the gateway) | LLM system/instruction copy loaded at runtime — version as code, not secrets | Point your gateway at a directory via config / env (same idea as `PROMOTER_PROMPTS_DIR`) |
 
 **Rule of thumb:** If an include mentions a specific `run_id`, executor key, or product copy for one deployment, keep it **next to that app** (e.g. `my-app/modules/`). Long **LLM prose** can live as **`.txt` / `.md` files** next to the gateway and be read at runtime. If it is a **generic** strict subgraph usable with any bridge/HTTP LLM call, put it under **`modules/llm/`** or **`modules/common/`**.

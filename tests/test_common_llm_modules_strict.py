@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parent.parent
         "modules/llm/llm_classify_request_builder.ainl",
         "modules/common/heuristic_keyword_score.ainl",
         "modules/common/promoter_decision_gate.ainl",
+        "modules/common/executor_request_builder.ainl",
+        "modules/common/record_decision.ainl",
     ],
 )
 def test_module_strict_compile_standalone(rel):
@@ -43,24 +45,24 @@ include "modules/common/promoter_decision_gate.ainl" as pg
 S core web /t
 E /t G ->L0 ->z
 L0:
-  R core.parse "{}" -> merge_llm_base_item
-  R core.parse "{}" -> merge_llm_score_row
+  R core.parse "{}" ->merge_llm_base_item
+  R core.parse "{}" ->merge_llm_score_row
   Call m/ENTRY ->x
-  R core.parse "{}" -> unwrap_bridge_body
+  R core.parse "{}" ->unwrap_bridge_body
   Call u/ENTRY ->y
   X llm_batch_instruction_text "hi"
   X llm_batch_items_label "Items"
   X llm_batch_items_json "[]"
   Call p/ENTRY ->z
-  R core.echo "[]" -> llm_raw_text
+  R core.echo "[]" ->llm_raw_text
   Call sjp/ENTRY ->_
-  R core.echo "[]" -> llm_batch_items_json
+  R core.echo "[]" ->llm_batch_items_json
   Call crb/ENTRY ->_
-  R core.echo "[]" -> heuristic_keywords_json
-  R core.echo "x" -> heuristic_haystack
+  R core.parse "{\"id\":\"1\",\"text\":\"x\"}" ->hkw_tweet
+  R core.echo "[]" ->heuristic_keywords_json
   Call hkw/ENTRY ->_
-  R core.echo "1" -> gate_tweet_id
-  R core.echo "u" -> gate_user_id
+  R core.echo "1" ->gate_tweet_id
+  R core.echo "u" ->gate_user_id
   Call pg/ENTRY ->_
   J z
 """

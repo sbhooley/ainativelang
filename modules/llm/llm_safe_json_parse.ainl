@@ -23,13 +23,13 @@
 
 LENTRY:
   Set llm_parse_array null
-  R core.parse "{}" -> sj_req
-  R core.parse "\"text\"" -> sj_k
+  R core.parse "{}" ->sj_req
+  R core.parse "\"text\"" ->sj_k
   X sj_req put sj_req sj_k llm_raw_text
-  R bridge.POST llm.json_array_extract sj_req -> sj_http
+  R bridge.POST llm.json_array_extract sj_req ->sj_http
   X sj_b get sj_http body
   X sj_arr get sj_b array
-  R core.parse "[]" -> sj_empty
+  R core.parse "[]" ->sj_empty
   X llm_parse_array (ite (eq sj_arr null) sj_empty sj_arr)
   J llm_parse_array
 

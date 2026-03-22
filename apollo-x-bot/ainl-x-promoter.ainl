@@ -1,72 +1,278 @@
-# ainl-x-promoter — public reference graph: X awareness + AINL promotion.
+# ainl-x-promoter — v2: envelope classify + executor_request_builder + gate_eval + heuristic_keyword_score + record_decision.
 #
-# What lives here (AINL): schedule metadata, retries, JSON request shaping, data plumbing (X/put/get),
-# relevance filtering (core.FILTER_HIGH_SCORE + env-driven floor), loop orchestration, and explicit
-# ordering of bridge steps — including committing the X search cursor after all tweets are handled
-# (so incremental search stays correct if a run stops mid-loop).
+# L_poll: Call L79 returns scored_list; classify_scored / classify_filtered audit via record_decision (memory ops).
+# L_each: heuristic_keyword_score → promoter.heuristic_scores → items[0].score as gate payload heuristic_score (extra signal only; gate_eval is authority).
+# L_after_loop: kv.get snapshot (since_id / pending) for audit; cursor promotion stays on promoter.search_cursor_commit (do not duplicate KV writes with kv.set here).
 #
-# LLM system + classify instruction text: apollo-x-bot/prompts/*.txt (loaded by gateway; overridable via body).
-# Bridge JSON shells: modules/promoter/*.ainl.
-#
-# What lives in the gateway (Python): OAuth 1.0a / Bearer HTTP to X, OpenAI-compatible classify + draft,
-# SQLite (caps, cooldown, audit), and the strict-mode-friendly per-tweet pipeline behind one POST
-# (Loop bodies must end with exactly one J — see README).
-#
-# OpenClaw: map cron "*/45 * * * *" to label _poll. Register every bridge executor key below.
+# Requires: --enable-adapter bridge + memory (see apollo-x-bot/README.md). OpenClaw: cron below.
 
 include "../modules/common/retry.ainl" as retry
 include "../modules/common/timeout.ainl" as timeout
-include "modules/promoter/req_search.ainl" as promo_search
-include "modules/promoter/req_process_tweet.ainl" as promo_process
-include "modules/promoter/req_cursor.ainl" as promo_cursor
-include "modules/promoter/req_daily.ainl" as promo_daily
+include "../modules/common/executor_request_builder.ainl" as exreq
+include "../modules/llm/llm_classify_request_builder.ainl" as llm_crb
+include "../modules/llm/llm_safe_json_parse.ainl" as llm_sjp
+include "../modules/common/heuristic_keyword_score.ainl" as hkw
+include "../modules/common/record_decision.ainl" as rd
 
 S core cron "*/45 * * * *"
 
-# --- Search → classify (LLM; prompts from files) → score floor → Loop ---
 L_poll:
-  Call promo_search/ENTRY ->req_search
+  R core.echo "x.search" ->executor_req_executor
+  R core.echo "{\"query\":\"@Apollo_AINL\"}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_search
   R bridge.POST x.search req_search ->search_resp
   X tweets get search_resp body.tweets
-  R core.PARSE "{}" ->cls_in
-  R core.PARSE "\"tweets\"" ->twkey
-  X cls_in put cls_in twkey tweets
-  R bridge.POST llm.classify cls_in ->scored
-  X scored_list get scored body
+  R core.stringify tweets ->llm_batch_items_json
+  Call llm_crb/ENTRY ->cls_inner_pay
+  R core.stringify cls_inner_pay ->executor_req_payload_json
+  R core.echo "llm.classify" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_classify
+  R bridge.POST llm.classify req_classify ->classify_http
+  X classify_body get classify_http body
+  X items_raw get classify_body items
+  R core.parse "[]" ->items_empty
+  X items_use (ite (eq items_raw null) items_empty items_raw)
+  X items_n len items_use
+  Call L79 ->scored_list
+  X scored_n len scored_list
+  R core.parse "{}" ->rd_sc
+  X rd_sc put rd_sc "scored_count" scored_n
+  R core.stringify rd_sc ->record_rd_detail_json
+  R core.echo "classify_scored" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
   R core.env "PROMOTER_CLASSIFY_MIN_SCORE" "5" ->score_floor
   R core.FILTER_HIGH_SCORE scored_list score_floor ->good_tweets
+  X good_n len good_tweets
+  R core.parse "{}" ->rd_fi
+  X rd_fi put rd_fi "good_count" good_n
+  X rd_fi put rd_fi "scored_count" scored_n
+  R core.stringify rd_fi ->record_rd_detail_json
+  R core.echo "classify_filtered" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
   Loop good_tweets tweet L_each L_after_loop
 
-# Single J: retry wrapper + bridge hop (modules/promoter/req_process_tweet.ainl).
+L79:
+  Set hub_has null
+  X hub_has gt items_n 0
+  If hub_has ->L81 ->L82
+
+L81:
+  R core.stringify items_use ->_score_fast_json
+  R core.parse _score_fast_json ->scored_list
+  J scored_list
+
+L82:
+  X llm_raw_text get classify_body raw_text
+  Call llm_sjp/ENTRY ->parsed_rows
+  X pr_n len parsed_rows
+  Set poll_has_parsed null
+  X poll_has_parsed gt pr_n 0
+  If poll_has_parsed ->L83 ->L84
+
+L83:
+  Set scored_list null
+  R core.stringify tweets ->merge_tw_j
+  R core.stringify parsed_rows ->merge_pr_j
+  R core.concat "{\"tweets\":" merge_tw_j ",\"score_rows\":" merge_pr_j "}" ->executor_req_payload_json
+  R core.echo "llm.merge_classify_rows" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_merge
+  R bridge.POST llm.merge_classify_rows req_merge ->merge_http
+  X scored_list get merge_http body.items
+  J scored_list
+
+L84:
+  Set scored_list null
+  R core.stringify tweets ->heur_tw_j
+  R core.concat "{\"tweets\":" heur_tw_j "}" ->executor_req_payload_json
+  R core.echo "promoter.heuristic_scores" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_heur
+  R bridge.POST promoter.heuristic_scores req_heur ->heur_http
+  X scored_list get heur_http body.items
+  J scored_list
+
 L_each:
   Call retry/ENTRY ->_
-  Call promo_process/ENTRY ->step_out
+  R core.parse "0" ->zero_heur
+  R core.stringify tweet ->hkw_tweet_json
+  R core.parse hkw_tweet_json ->hkw_tweet
+  R core.echo "[\"openclaw\",\"zeroclaw\",\"agent framework\",\"ai agent\",\"deterministic\",\"orchestration\",\"memory\",\"workflow\"]" ->heuristic_keywords_json
+  Call hkw/ENTRY ->hkw_out
+  Set heur_score null
+  X heur_items get hkw_out items
+  X heur_row get heur_items 0
+  X heur_score get heur_row score
+  Set gate_proceed null
+  R core.parse "{}" ->gate_pl
+  R core.parse "\"tweet_id\"" ->gk_tid
+  R core.parse "\"user_id\"" ->gk_uid
+  R core.parse "\"heuristic_score\"" ->gk_hsc
+  X gate_tweet_id get tweet id
+  X gate_user_id get tweet user_id
+  X gate_pl put gate_pl gk_tid gate_tweet_id
+  X gate_pl put gate_pl gk_uid gate_user_id
+  # heuristic_score is observability only; gate_eval controls proceed/skip
+  X gate_pl put gate_pl gk_hsc heur_score
+  R core.stringify gate_pl ->executor_req_payload_json
+  R core.echo "promoter.gate_eval" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_each" ->executor_req_step_id
+  R core.add 60 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_gate
+  R bridge.POST promoter.gate_eval req_gate ->gate_http
+  X gate_b get gate_http body
+  X gate_proceed get gate_b proceed
+  If gate_proceed ->L_do_process ->L72
+
+L_do_process:
+  R core.stringify gate_b ->record_rd_detail_json
+  R core.echo "gate_eval" ->record_rd_action
+  X record_rd_tweet_id get tweet id
+  X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  Set step_out null
+  R core.parse "\"payload\"" ->plkey
+  R core.parse "{}" ->pt_head
+  X pt_head put pt_head plkey tweet
+  R core.stringify pt_head ->executor_req_payload_json
+  R core.echo "promoter.process_tweet" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_each" ->executor_req_step_id
+  R core.add 300 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_pt
+  R bridge.POST promoter.process_tweet req_pt ->step_out
+  X proc_b get step_out body
+  R core.stringify proc_b ->record_rd_detail_json
+  R core.echo "process_tweet" ->record_rd_action
+  X record_rd_tweet_id get tweet id
+  X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
   J step_out
 
-# Commit incremental X search cursor, then daily original post if due.
+L72:
+  R core.stringify gate_b ->record_rd_detail_json
+  R core.echo "gate_skip" ->record_rd_action
+  X record_rd_tweet_id get tweet id
+  X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  Set sk null
+  X gate_reason get gate_b reason
+  X gate_dry get gate_b dry_run
+  R core.parse "{}" ->sk
+  R core.parse "\"ok\"" ->sk_ok
+  R core.parse "\"action\"" ->sk_ac
+  R core.parse "\"reason\"" ->sk_re
+  R core.parse "\"dry_run\"" ->sk_dr
+  R core.parse "true" ->sk_true
+  R core.parse "\"skipped\"" ->sk_skip
+  X sk put sk sk_ok sk_true
+  X sk put sk sk_ac sk_skip
+  X sk put sk sk_re gate_reason
+  X sk put sk sk_dr gate_dry
+  J sk
+
 L_after_loop:
-  Call promo_cursor/ENTRY ->req_cursor
+  R core.echo "kv.get" ->executor_req_executor
+  R core.echo "{\"key\":\"x_search_since_id\"}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_cursor" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_kv_since
+  R bridge.POST kv.get req_kv_since ->kv_since_http
+  X kv_snap_since get kv_since_http body value
+  R core.echo "{\"key\":\"x_search_pending_newest_id\"}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_cursor" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_kv_pending
+  R bridge.POST kv.get req_kv_pending ->kv_pending_http
+  X kv_snap_pending get kv_pending_http body value
+  R core.parse "{}" ->rd_kv
+  R core.parse "\"x_search_since_id\"" ->k_since
+  R core.parse "\"x_search_pending_newest_id\"" ->k_pending
+  X rd_kv put rd_kv k_since kv_snap_since
+  X rd_kv put rd_kv k_pending kv_snap_pending
+  R core.stringify rd_kv ->record_rd_detail_json
+  R core.echo "cursor_kv_snapshot" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  R core.echo "promoter.search_cursor_commit" ->executor_req_executor
+  R core.echo "{}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_cursor" ->executor_req_step_id
+  R core.add 60 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_cursor
   R bridge.POST promoter.search_cursor_commit req_cursor ->cursor_out
-  Call promo_daily/ENTRY ->req_daily
+  X cursor_b get cursor_out body
+  R core.stringify cursor_b ->record_rd_detail_json
+  R core.echo "cursor_commit" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  R core.echo "promoter.maybe_daily_post" ->executor_req_executor
+  R core.echo "{\"topic\":\"AINL + OpenClaw deterministic graphs\",\"link\":\"https://github.com/sbhooley/ainativelang\"}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "daily" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_daily
   R bridge.POST promoter.maybe_daily_post req_daily ->daily_out
+  X daily_b get daily_out body
+  R core.stringify daily_b ->record_rd_detail_json
+  R core.echo "daily_post" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
   J "ok"
 
-# --- Optional v2 classify (envelope + AINL-side shaping) — NOT WIRED; keep L_poll legacy path as default.
-# Intended flow (register all bridge keys in README / run-with-gateway.sh):
-#   1) include "../modules/llm/llm_classify_request_builder.ainl" as llm_crb
-#   2) include "../modules/llm/llm_safe_json_parse.ainl" as llm_sjp
-#   3) include "../modules/common/merge_llm_scores_into_items.ainl" as llm_merge
-#   4) include "../modules/common/heuristic_keyword_score.ainl" as hkw
-#   5) include "../modules/common/promoter_decision_gate.ainl" as promo_gate
-#   6) After x.search: R core.stringify tweets -> llm_batch_items_json ; Call llm_crb/ENTRY -> cls_env
-#      (cls_env = { classify_response: "raw", messages, tweets } from prompts + llm_prompt_builder)
-#   7) R bridge.POST llm.classify cls_env -> raw_http ; X raw_envelope get raw_http body
-#      (unwrap executor HTTP envelope if needed — see executor_bridge_unwrap_payload.ainl)
-#   8) X llm_raw_text get raw_envelope raw_text (or body.raw_text depending on unwrap)
-#   9) Call llm_sjp/ENTRY -> score_rows  (safe JSON array; [] on failure)
-#  10) Either: R bridge.POST llm.merge_classify_rows { tweets, score_rows } -> merged_http ; X scored_list get merged_http body.items
-#      Or: strict Loop index over tweets: bind merge_llm_base_item + merge_llm_score_row ; Call llm_merge/ENTRY (per item)
-#  11) Per tweet before process_tweet: optional heuristic_keyword_score (keywords_json frame) as fallback signal;
-#      Call promo_gate/ENTRY with gate_tweet_id / gate_user_id ; skip bridge to process_tweet when proceed is false
-# Strict graph-mode caveat: If + shared Loop in one label is awkward under graph-preferred; prefer steps-only execution
-# or keep batch merge via llm.merge_classify_rows, then existing Loop good_tweets L_each unchanged.
+# =============================================================================
+# LEGACY v1: restore pre-v2 graph from git history (older app-local req_* includes + labels).
+# =============================================================================
+#
+# L_poll:
+#   Call promo_search/ENTRY ->req_search
+#   R bridge.POST x.search req_search ->search_resp
+#   X tweets get search_resp body.tweets
+#   R core.parse "{}" ->cls_in
+#   R core.parse "\"tweets\"" ->twkey
+#   X cls_in put cls_in twkey tweets
+#   R bridge.POST llm.classify cls_in ->scored
+#   X scored_list get scored body
+#   R core.env "PROMOTER_CLASSIFY_MIN_SCORE" "5" ->score_floor
+#   R core.FILTER_HIGH_SCORE scored_list score_floor ->good_tweets
+#   Loop good_tweets tweet L_each L_after_loop
+#
+# L_each:
+#   Call retry/ENTRY ->_
+#   Call promo_process/ENTRY ->step_out
+#   J step_out
+#
+# L_after_loop:
+#   Call promo_cursor/ENTRY ->req_cursor
+#   R bridge.POST promoter.search_cursor_commit req_cursor ->cursor_out
+#   Call promo_daily/ENTRY ->req_daily
+#   R bridge.POST promoter.maybe_daily_post req_daily ->daily_out
+#   J "ok"

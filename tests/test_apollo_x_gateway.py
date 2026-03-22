@@ -17,6 +17,7 @@ import gateway_server as gw  # noqa: E402
 
 from runtime.adapters.builtins import CoreBuiltinAdapter  # noqa: E402
 from runtime.adapters.executor_bridge import ExecutorBridgeAdapter  # noqa: E402
+from runtime.adapters.memory import MemoryAdapter  # noqa: E402
 from runtime.adapters.base import AdapterRegistry  # noqa: E402
 from runtime.engine import RuntimeEngine  # noqa: E402
 
@@ -28,7 +29,7 @@ def _serve_gateway(state_path: Path) -> ThreadingHTTPServer:
     return httpd
 
 
-def _registry(port: int) -> AdapterRegistry:
+def _registry(port: int, memory_db: Path) -> AdapterRegistry:
     base = f"http://127.0.0.1:{port}"
     endpoints = {
         "x.search": f"{base}/v1/x.search",
@@ -42,10 +43,13 @@ def _registry(port: int) -> AdapterRegistry:
         "promoter.process_tweet": f"{base}/v1/promoter.process_tweet",
         "promoter.search_cursor_commit": f"{base}/v1/promoter.search_cursor_commit",
         "promoter.maybe_daily_post": f"{base}/v1/promoter.maybe_daily_post",
+        "kv.get": f"{base}/v1/kv.get",
+        "kv.set": f"{base}/v1/kv.set",
     }
-    r = AdapterRegistry(allowed=["core", "bridge"])
+    r = AdapterRegistry(allowed=["core", "bridge", "memory"])
     r.register("core", CoreBuiltinAdapter())
     r.register("bridge", ExecutorBridgeAdapter(endpoints=endpoints, default_timeout_s=120.0))
+    r.register("memory", MemoryAdapter(db_path=str(memory_db)))
     return r
 
 
@@ -54,6 +58,10 @@ def test_promoter_graph_runs_with_gateway_dry_run():
     os.close(fd)
     os.unlink(tmp)
     state_path = Path(tmp)
+    fd_m, tmp_m = tempfile.mkstemp(suffix=".sqlite")
+    os.close(fd_m)
+    os.unlink(tmp_m)
+    memory_path = Path(tmp_m)
 
     old = os.environ.get("PROMOTER_DRY_RUN")
     os.environ["PROMOTER_DRY_RUN"] = "1"
@@ -66,7 +74,7 @@ def test_promoter_graph_runs_with_gateway_dry_run():
         eng = RuntimeEngine.from_code(
             code,
             strict=True,
-            adapters=_registry(port),
+            adapters=_registry(port, memory_path),
             source_path=str(ROOT / "apollo-x-bot/ainl-x-promoter.ainl"),
         )
         out = eng.run_label("_poll", frame={})
@@ -79,6 +87,8 @@ def test_promoter_graph_runs_with_gateway_dry_run():
         os.environ.pop("PROMOTER_STATE_PATH", None)
         if state_path.exists():
             state_path.unlink()
+        if memory_path.exists():
+            memory_path.unlink()
         if httpd is not None:
             httpd.shutdown()
 
@@ -133,6 +143,17 @@ def test_gateway_text_contains_any_and_gate_eval(tmp_path):
     assert h["any"] is True
     g = gw.handle_promoter_gate_eval({"tweet_id": "t1", "user_id": "u1"}, st)
     assert g["proceed"] is True
+
+
+def test_gateway_kv_get_set(tmp_path):
+    state_path = tmp_path / "st.sqlite"
+    st = gw.PromoterState(state_path)
+    gw._STATE = st
+    assert gw.handle_kv_get({}, st) == {"ok": False, "error": "missing_key"}
+    assert gw.handle_kv_set({"key": "k1", "value": "v1"}, st) == {"ok": True}
+    assert gw.handle_kv_get({"key": "k1"}, st) == {"ok": True, "value": "v1"}
+    assert gw.handle_kv_set({"key": "k1", "value": None}, st) == {"ok": True}
+    assert gw.handle_kv_get({"key": "k1"}, st) == {"ok": True, "value": None}
 
 
 def test_promoter_state_replied_dedupe_and_kv(tmp_path):

@@ -24,10 +24,10 @@
 
 LENTRY:
   Set gate_result null
-  R core.parse "{}" -> g_req
+  R core.parse "{}" ->g_req
   X g_req put g_req "tweet_id" gate_tweet_id
   X g_req put g_req "user_id" gate_user_id
-  R bridge.POST promoter.gate_eval g_req -> g_http
+  R bridge.POST promoter.gate_eval g_req ->g_http
   X gate_result get g_http body
   J gate_result
 
