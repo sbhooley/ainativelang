@@ -233,7 +233,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         return cmd_self_test_graph(args)
     if not args.file:
         raise SystemExit("run requires <file> unless --self-test-graph is set")
-    with open(args.file, "r", encoding="utf-8") as f:
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
         code = f.read()
     reg = _adapter_registry_from_args(args)
     _register_enabled_adapters(reg, args)
@@ -247,6 +248,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         unknown_op_policy=args.unknown_op_policy,
         limits=_limits_from_args(args),
         adapters=reg,
+        source_path=src_path,
     )
     label = args.label or eng.default_entry_label()
     try:
@@ -343,10 +345,11 @@ def cmd_self_test_graph(args: argparse.Namespace) -> int:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-    with open(args.file, "r", encoding="utf-8") as f:
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
         code = f.read()
     c = AICodeCompiler(strict_mode=args.strict)
-    ir = c.compile(code, emit_graph=True)
+    ir = c.compile(code, emit_graph=True, source_path=src_path)
     ok = len(ir.get("errors", [])) == 0
     diagnostics = list(ir.get("diagnostics") or [])
     if not diagnostics:

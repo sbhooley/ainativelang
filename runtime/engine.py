@@ -135,9 +135,10 @@ class RuntimeEngine:
         execution_mode: str = "graph-preferred",
         unknown_op_policy: Optional[str] = None,
         trace_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
+        source_path: Optional[str] = None,
     ) -> "RuntimeEngine":
         c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
-        ir = c.compile(code, emit_graph=True)
+        ir = c.compile(code, emit_graph=True, source_path=source_path)
         if ir.get("errors"):
             raise RuntimeError("compile failed: " + "; ".join(ir.get("errors", [])[:5]))
         return cls(
@@ -520,7 +521,11 @@ class RuntimeEngine:
         self._count_adapter_call(lid, idx, op, stack)
         if "." in adapter:
             adp_name, verb = adapter.split(".", 1)
-            return self.adapters.call(adp_name, verb, [target] + args, frame)
+            # Graph-mode R steps put the first operand in `target` without pre-resolving; step-mode
+            # does the same via _exec_r_step. Resolve here so frame variables (e.g. core.PARSE var)
+            # work consistently with JSON literals that pass through _resolve unchanged.
+            t0 = self._resolve(target, frame) if isinstance(target, str) else target
+            return self.adapters.call(adp_name, verb, [t0] + args, frame)
         return self.adapters.call(adapter, target, args, frame)
 
     def _exec_r_step(self, step: Dict[str, Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]) -> Any:

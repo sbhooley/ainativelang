@@ -2265,7 +2265,10 @@ class AICodeCompiler:
                         )
                     self._errors.append(msg)
 
-            # Call effect inclusion: callee effects must be subset of caller effects.
+            # Call / control-flow effect inclusion: callee label effects must be subset of caller.
+            # Loop/While jump to body/after labels; those callees' effects are not in the caller's
+            # local effect_summary, so expand the allowed set with all label targets from the same
+            # Loop/While/Call node (and Call remains a single target).
             if self.strict_mode:
                 caller_effects = set((body.get("effect_summary") or {}).get("effects") or [])
                 for e in edges:
@@ -2276,8 +2279,21 @@ class AICodeCompiler:
                         continue
                     callee_body = self.labels.get(callee_lid) or {}
                     callee_effects = set((callee_body.get("effect_summary") or {}).get("effects") or [])
-                    if callee_effects and not (callee_effects <= caller_effects):
-                        extra = callee_effects - caller_effects
+                    eff_caller = set(caller_effects)
+                    from_node = node_by_id.get(e.get("from"))
+                    from_op = (from_node or {}).get("op")
+                    from_id = from_node.get("id") if from_node else None
+                    if from_op in ("Loop", "While") and from_id:
+                        for e2 in edges:
+                            if e2.get("from") != from_id or e2.get("to_kind") != "label":
+                                continue
+                            tl = self._norm_lid(e2.get("to", ""))
+                            if not tl or tl not in self.labels:
+                                continue
+                            tl_body = self.labels.get(tl) or {}
+                            eff_caller |= set((tl_body.get("effect_summary") or {}).get("effects") or [])
+                    if callee_effects and not (callee_effects <= eff_caller):
+                        extra = callee_effects - eff_caller
                         self._errors.append(
                             f"Label {lid!r}: Call to label {callee_lid!r} has effects {sorted(extra)!r} not allowed in caller"
                         )

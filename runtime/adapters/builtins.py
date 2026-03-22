@@ -19,6 +19,7 @@ class CoreBuiltinAdapter(RuntimeAdapter):
       env(name, default?) — os.getenv
       parse/stringify
       now/iso/iso_ts/sleep/echo
+      filter_high_score(list, min) — keep dict items with score/relevance >= min
     """
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
@@ -104,4 +105,25 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             if ms > 0:
                 time.sleep(ms / 1000.0)
             return None
+        if t == "filter_high_score":
+            # FILTER_HIGH_SCORE <list_var> <min_int> — keep dict-like items with numeric score >= min.
+            items = args[0] if args else []
+            # IR often passes the list variable name as a string; resolve from frame when present.
+            if isinstance(items, str) and isinstance(context, dict) and items in context:
+                items = context.get(items)
+            if not isinstance(items, list):
+                return []
+            floor = int(_num(args[1])) if len(args) > 1 else 0
+            out = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                raw = it.get("score", it.get("relevance", 0))
+                try:
+                    s = float(raw)
+                except (TypeError, ValueError):
+                    continue
+                if s >= floor:
+                    out.append(it)
+            return out
         raise RuntimeError(f"unsupported core builtin target: {t}")
