@@ -16,6 +16,8 @@ OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) 
 
 **Cron / bridge alternative:** operator workflows that run AINL from OpenClaw cron (wrappers, token budget alerts, etc.) live under **`openclaw/bridge/`** in this repo — see **`openclaw/bridge/README.md`**. That path is separate from this MCP skill.
 
+**Apollo X promoter (supervised HTTP gateway + `ExecutorBridgeAdapter`):** the graph in **`apollo-x-bot/ainl-x-promoter.ainl`** expects a **long-lived** [`apollo-x-bot/gateway_server.py`](../apollo-x-bot/gateway_server.py) and **`ainl run`** with **`--enable-adapter bridge`** (plus **`memory`**). OpenClaw cron should call **`apollo-x-bot/openclaw-poll.sh`** (or an equivalent command line). That script sets a **long `--http-timeout-s`** so batched **`llm.classify`** over the bridge does not abort at the default **5s** client limit. Production layout and env files: **[`apollo-x-bot/OPENCLAW_DEPLOY.md`](../apollo-x-bot/OPENCLAW_DEPLOY.md)**.
+
 **Memory surfaces:** durable **structured** workflow state uses the SQLite **`memory`** adapter (see [`docs/adapters/MEMORY_CONTRACT.md`](adapters/MEMORY_CONTRACT.md)). OpenClaw **bridge** cron may append **daily markdown** under **`~/.openclaw/workspace/memory/`**, which is **orthogonal** to that adapter. **ZeroClaw** uses the same AINL memory/MCP path—not OpenClaw’s markdown layout. Narrative: [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
 
 **CLI:** **`ainl install-mcp --host openclaw`** (same as **`install-openclaw`**) ships in current **`ainl-lang`** releases; upgrade from PyPI if your install reports an unknown command.

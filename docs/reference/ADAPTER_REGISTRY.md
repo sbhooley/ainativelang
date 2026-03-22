@@ -137,6 +137,12 @@ R bridge.Post executor_key body_var ->resp
 - **CLI**: `ainl run program.ainl --enable-adapter bridge --bridge-endpoint my.exec=https://.../v1/execute` (repeatable).
 - **Runner service**: `adapters.enable` includes `"bridge"` and `adapters.bridge.endpoints` is set.
 
+### 2.4.3 Client timeout (`ainl run`)
+
+The **`bridge`** adapter uses the same **`SimpleHttpAdapter`** stack as **`http`**. For **`ainl run`**, per-request waits are controlled by **`--http-timeout-s`** (CLI default **5** seconds). Slow backends — batched **LLM** calls, OpenRouter, fan-out gateways that block until a worker finishes — usually need **60–180** seconds on the client or the runtime will report a **transport timeout** while the server is still working.
+
+**Reference:** [`apollo-x-bot/openclaw-poll.sh`](../../apollo-x-bot/openclaw-poll.sh) and [`apollo-x-bot/run-with-gateway.sh`](../../apollo-x-bot/run-with-gateway.sh) pass **`--http-timeout-s 120`** and honor **`AINL_HTTP_TIMEOUT_S`**. See also [`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](../integrations/EXTERNAL_EXECUTOR_BRIDGE.md) §7.
+
 ---
 
 ## 3. Cache adapter – `cache`

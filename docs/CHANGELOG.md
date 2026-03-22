@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.4 (March 21, 2026) — addendum 2026-03-22
+
+- **fix(apollo-x-bot)**: `gateway_server.py` — **`_classify_wants_envelope`** only when **`messages`** is a non-empty list (avoids **`envelope_missing_messages`** on **`classify_response=raw`** without messages; legacy tweet+prompt path); clearer bind error on **EADDRINUSE**; swallow **BrokenPipeError** / connection resets when the client disconnects early (timeouts).
+- **fix(cli)**: **`ainl run --http-timeout-s`** help text — note LLM / bridge latency; default remains **5** (callers with slow routes must raise it).
+- **fix(apollo-x-bot)**: **`openclaw-poll.sh`** / **`run-with-gateway.sh`** — **`--http-timeout-s 120`**, overridable via **`AINL_HTTP_TIMEOUT_S`**.
+- **fix(graph)**: **`apollo-x-bot/ainl-x-promoter.ainl`** — **`promoter.process_tweet`** payload: stringify **`tweet`** directly for the bridge body; skip branch uses boolean **`true`** for JSON **`ok`** (strict-safe).
+- **test**: **`tests/test_apollo_x_gateway.py`** — regression for classify **raw** without **messages**; expanded gateway coverage as applicable.
+- **fix(compiler_v2)**: strict reachability — treat **If** as a valid label terminator (skip “exactly one J” false positive when **If** is last); include **If** when wiring **Loop**/**While** fall-through edges to following labels.
+- **fix(demo)**: **`demo/infrastructure_watchdog.lang`** — restart services when down; verify after restart before alerting.
+- **docs**: **`docs/reference/ADAPTER_REGISTRY.md`** §2.4.3 (**bridge** client timeout); **`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`** §7 (timeouts + **`llm.classify`** envelope rule); **`docs/OPENCLAW_INTEGRATION.md`** (Apollo promoter + **`openclaw-poll.sh`** pointer); **`apollo-x-bot/OPENCLAW_DEPLOY.md`** (**`AINL_HTTP_TIMEOUT_S`** / **`--http-timeout-s`**).
+
 ## v1.2.4 (March 21, 2026)
 
 - **packaging**: **`pyproject.toml` / `ainl-lang`** **1.2.4**; **`RUNTIME_VERSION`** (`runtime/engine.py`, mirrored `tests/emits/server/runtime/engine.py`) **1.2.4**; language server **`serverInfo.version`** and runner service **FastAPI** `app.version` follow **`RUNTIME_VERSION`** (runner: `scripts/runtime_runner_service.py`; LSP: `langserver.py`)
