@@ -2283,7 +2283,7 @@ class AICodeCompiler:
                     from_node = node_by_id.get(e.get("from"))
                     from_op = (from_node or {}).get("op")
                     from_id = from_node.get("id") if from_node else None
-                    if from_op in ("Loop", "While") and from_id:
+                    if from_op in ("Loop", "While", "If") and from_id:
                         for e2 in edges:
                             if e2.get("from") != from_id or e2.get("to_kind") != "label":
                                 continue
@@ -3571,6 +3571,9 @@ class AICodeCompiler:
                     self._errors.append(f"Targeted label {tl!r} has no legacy.steps")
                     continue
                 j_steps = [s for s in steps if s.get("op") == "J"]
+                # If as last step: then/else targets must each end with exactly one J (checked separately).
+                if steps and steps[-1].get("op") == "If":
+                    continue
                 if len(j_steps) != 1:
                     self._errors.append(f"Targeted label {tl!r} must contain exactly one J (has {len(j_steps)})")
                     continue
