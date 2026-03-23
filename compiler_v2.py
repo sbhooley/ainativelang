@@ -4139,6 +4139,117 @@ class AICodeCompiler:
             py += "    pass\n\n"
         return py
 
+    def emit_hyperspace_agent(self, ir: Dict[str, Any], *, source_stem: str = "ainl_graph") -> str:
+        """Emit standalone hyperspace_agent.py: embedded IR, RuntimeEngine, Phase-3 adapters, optional SDK stub."""
+        import base64
+        import json as _json
+
+        ir_blob = base64.standard_b64encode(_json.dumps(ir, ensure_ascii=False).encode("utf-8")).decode("ascii")
+        stem = str(source_stem or "ainl_graph").replace("\\", "/").split("/")[-1]
+
+        py = '"""Standalone AINL runtime wrapper with optional Hyperspace SDK integration stub."""\n'
+        py += self._emit_provenance_comment_block("#", "AINL emitted Hyperspace agent wrapper")
+        py += "import base64\nimport json\nimport logging\nimport os\nimport sys\nimport warnings\nfrom pathlib import Path\n\n"
+        py += "_log = logging.getLogger(__name__)\n\n"
+        py += "try:\n"
+        py += "    import hyperspace_sdk  # type: ignore\n"
+        py += "    _HYPERSPACE_SDK = True\n"
+        py += "except ImportError:\n"
+        py += "    hyperspace_sdk = None  # type: ignore\n"
+        py += "    _HYPERSPACE_SDK = False\n"
+        py += "    warnings.warn(\n"
+        py += (
+            '        "hyperspace_sdk not installed; running AINL RuntimeEngine only '
+            '(install the official SDK when available).",\n'
+        )
+        py += "        RuntimeWarning,\n"
+        py += "        stacklevel=2,\n"
+        py += "    )\n\n"
+        py += "_IR_B64 = " + repr(ir_blob) + "\n"
+        py += "_SOURCE_STEM = " + repr(stem) + "\n\n"
+
+        py += "def _repo_root() -> Path:\n"
+        py += "    _here = Path(__file__).resolve().parent\n"
+        py += "    for start in (_here, Path.cwd().resolve()):\n"
+        py += "        root = start\n"
+        py += "        for _ in range(14):\n"
+        py += "            if (root / \"runtime\" / \"engine.py\").is_file() and (root / \"adapters\").is_dir():\n"
+        py += "                return root\n"
+        py += "            if root.parent == root:\n"
+        py += "                break\n"
+        py += "            root = root.parent\n"
+        py += "    return _here\n\n"
+
+        py += "_ROOT = _repo_root()\n"
+        py += "if str(_ROOT) not in sys.path:\n"
+        py += "    sys.path.insert(0, str(_ROOT))\n\n"
+
+        py += "from runtime.engine import RuntimeEngine\n"
+        py += "from runtime.adapters.base import AdapterError, AdapterRegistry, RuntimeAdapter\n\n"
+        py += "try:\n"
+        py += "    from adapters.vector_memory import VectorMemoryAdapter\n"
+        py += "except ImportError:\n\n"
+        py += "    class VectorMemoryAdapter(RuntimeAdapter):\n"
+        py += "        def call(self, target, args, context):\n"
+        py += "            raise AdapterError(\n"
+        py += '                "vector_memory adapter missing: add adapters/vector_memory.py (Phase 3) "\n'
+        py += '                f"or remove R vector_memory.* steps (got {target!r})"\n'
+        py += "            )\n\n"
+        py += "try:\n"
+        py += "    from adapters.tool_registry import ToolRegistryAdapter\n"
+        py += "except ImportError:\n\n"
+        py += "    class ToolRegistryAdapter(RuntimeAdapter):\n"
+        py += "        def call(self, target, args, context):\n"
+        py += "            raise AdapterError(\n"
+        py += '                "tool_registry adapter missing: add adapters/tool_registry.py (Phase 3) "\n'
+        py += '                f"or remove R tool_registry.* steps (got {target!r})"\n'
+        py += "            )\n\n"
+
+        py += "def build_registry() -> AdapterRegistry:\n"
+        py += (
+            "    reg = AdapterRegistry(allowed=[\"core\", \"vector_memory\", \"tool_registry\"])\n"
+        )
+        py += "    reg.register(\"vector_memory\", VectorMemoryAdapter())\n"
+        py += "    reg.register(\"tool_registry\", ToolRegistryAdapter())\n"
+        py += "    return reg\n\n"
+
+        py += "def trajectory_log_path_from_env():\n"
+        py += "    v = os.environ.get(\"AINL_LOG_TRAJECTORY\", \"\").strip().lower()\n"
+        py += "    if v in (\"1\", \"true\", \"yes\", \"on\"):\n"
+        py += "        return str(Path.cwd() / f\"{_SOURCE_STEM}.trajectory.jsonl\")\n"
+        py += "    return None\n\n"
+
+        py += "def make_engine(registry: AdapterRegistry, trajectory_log_path):\n"
+        py += "    _ir = json.loads(base64.standard_b64decode(_IR_B64))\n"
+        py += "    return RuntimeEngine(\n"
+        py += "        ir=_ir,\n"
+        py += "        adapters=registry,\n"
+        py += "        trace=False,\n"
+        py += "        step_fallback=True,\n"
+        py += "        execution_mode=\"graph-preferred\",\n"
+        py += "        trajectory_log_path=trajectory_log_path,\n"
+        py += "    )\n\n"
+
+        py += "def run_ainl(label=None, frame=None):\n"
+        py += "    reg = build_registry()\n"
+        py += "    traj = trajectory_log_path_from_env()\n"
+        py += "    if traj:\n"
+        py += "        _log.info(\"AINL trajectory logging -> %s\", traj)\n"
+        py += "    eng = make_engine(reg, traj)\n"
+        py += "    lid = label if label is not None else eng.default_entry_label()\n"
+        py += "    return eng.run_label(lid, frame=frame if frame is not None else {})\n\n"
+
+        py += 'if __name__ == "__main__":\n'
+        py += "    logging.basicConfig(level=logging.INFO, format=\"%(levelname)s %(message)s\")\n"
+        py += "    if _HYPERSPACE_SDK:\n"
+        py += "        # TODO: integrate with hyperspace_sdk (Agent/Session, register run_ainl as callback,\n"
+        py += "        # tool discovery via tool_registry.LIST / DISCOVER, session-scoped trajectory).\n"
+        py += "        _log.info(\"Hyperspace SDK present; native bridge not yet wired — executing graph directly.\")\n"
+        py += "    result = run_ainl()\n"
+        py += "    print(result)\n"
+
+        return py
+
     def emit_server(self, ir: Dict[str, Any]) -> str:
         """Emit server that runs labels via RuntimeEngine + pluggable adapters."""
         core = ir["services"].get("core", {})

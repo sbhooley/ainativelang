@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -276,9 +277,15 @@ def main() -> None:
     ap.add_argument("file", nargs="?", help="Path to .lang file (default: stdin)")
     ap.add_argument(
         "--emit",
-        choices=["ir", "server", "react", "openapi", "prisma", "sql"],
+        choices=["ir", "server", "react", "openapi", "prisma", "sql", "hyperspace"],
         default="ir",
         help="Emit this artifact instead of IR JSON",
+    )
+    ap.add_argument(
+        "-o",
+        "--output",
+        default=None,
+        help="Write path for --emit hyperspace (default: hyperspace_agent.py in cwd)",
     )
     ap.add_argument(
         "--lint-canonical",
@@ -386,6 +393,18 @@ def main() -> None:
         print(c.emit_prisma_schema(ir))
     elif args.emit == "sql":
         print(c.emit_sql_migrations(ir, dialect="postgres"))
+    elif args.emit == "hyperspace":
+        stem = Path(args.file).stem if args.file else "ainl_graph"
+        content = c.emit_hyperspace_agent(ir, source_stem=stem)
+        out = Path(args.output).expanduser() if args.output else Path.cwd() / "hyperspace_agent.py"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(content, encoding="utf-8")
+        print(
+            json.dumps(
+                {"ok": True, "emit": "hyperspace", "path": str(out.resolve()), "source_stem": stem},
+                indent=2,
+            )
+        )
     sys.exit(0)
 
 
