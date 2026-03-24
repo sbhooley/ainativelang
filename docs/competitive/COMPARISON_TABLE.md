@@ -15,6 +15,8 @@ Figures below are copied from **committed** artifacts only — **`BENCHMARK.md`*
 - **Headline emit expansion:** **`full_multitarget`** aggregate generated ÷ authoring is **~362.44×** across the **19** strict-valid paths (§A headline row + **`BENCHMARK.md`**).
 - **Planner mode:** **`minimal_emit`** aggregate emitted size is **~0.76×** the same **2590** tk authoring sum (§A headline row + §B).
 
+Full raw benchmark data, detailed tables, and methodology live in [BENCHMARK.md](/benchmark).
+
 ---
 
 ## A. Authoring compactness (tiktoken cl100k_base)

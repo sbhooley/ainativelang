@@ -30,6 +30,14 @@ Quick **size** snapshot:
 
 Head-to-head **commands**, suggested table rows, and scope boundaries (what we do and do not claim) live in **[`competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**. Use it with the tables in **[`BENCHMARK.md`](../BENCHMARK.md)** so published numbers stay reproducible.
 
+### Competitive Context
+
+These benchmarks power the head-to-head comparison tables:
+
+- [Comparison tables (committed data only)](/docs/competitive/COMPARISON_TABLE)
+- [Versus LangGraph & Temporal: benchmark methodology](/docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS)
+- [Full competitive overview](/docs/competitive/OVERVIEW)
+
 ## Why these benchmarks matter
 
 AINL is **compile-once, run-many**: you pay LLM tokens (or human time) to author a program once, then the runtime executes the graph deterministically—no prompt loop on every invocation. The **runtime** benchmarks measure that second phase: wall-clock latency, RSS deltas, optional execution reliability, and (with `tiktoken`) source-token economics. The **size** benchmarks quantify how much emitted surface area you get per AINL artifact (profile- and mode-scoped), including **mean compile time over three timed compiles** so you can see compiler cost separately from emit size. Together, they show a different cost structure from “LLM re-generates orchestration code every time.”

@@ -44,6 +44,14 @@ Use this repo’s benchmarks to compare **authoring compactness** (tiktoken on `
 - **OpenClaw / MCP production worksheet:** [`docs/competitive/OPENCLAW_PRODUCTION_SAVINGS.md`](docs/competitive/OPENCLAW_PRODUCTION_SAVINGS.md)
 - **Comparison tables** ([`docs/competitive/COMPARISON_TABLE.md`](docs/competitive/COMPARISON_TABLE.md)): committed benchmark figures + **TBD** where noted.
 
+### Competitive Context
+
+These benchmarks power the head-to-head comparison tables:
+
+- [Comparison tables (committed data only)](/docs/competitive/COMPARISON_TABLE)
+- [Versus LangGraph & Temporal: benchmark methodology](/docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS)
+- [Full competitive overview](/docs/competitive/OVERVIEW)
+
 ## Metrics
 
 - **Default / recommended:** `tiktoken` (**cl100k_base**) via `tooling/bench_metrics.py` (shared with runtime benchmarks).
