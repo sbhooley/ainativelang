@@ -48,7 +48,7 @@ Record means on a quiet machine; commit methodology, not one-off magic numbers.
 
 ## See also
 
-- **[`COMPARISON_TABLE.md`](COMPARISON_TABLE.md)** — ready-to-fill markdown tables for publishing numbers.
+- **[`COMPARISON_TABLE.md`](COMPARISON_TABLE.md)** — comparison tables with committed numbers, JSON source paths, and **TBD** rows for pending runs.
 - **[`FROM_LANGGRAPH_TO_AINL.md`](FROM_LANGGRAPH_TO_AINL.md)**
 - **[`AINL_AND_TEMPORAL.md`](AINL_AND_TEMPORAL.md)**
 - **[`OPENCLAW_PRODUCTION_SAVINGS.md`](OPENCLAW_PRODUCTION_SAVINGS.md)**
