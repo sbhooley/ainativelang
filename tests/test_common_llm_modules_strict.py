@@ -14,10 +14,12 @@ ROOT = Path(__file__).resolve().parent.parent
         "modules/llm/llm_prompt_builder.ainl",
         "modules/llm/llm_safe_json_parse.ainl",
         "modules/llm/llm_classify_request_builder.ainl",
+        "modules/llm/promoter_daily_post_payload.ainl",
         "modules/common/heuristic_keyword_score.ainl",
         "modules/common/promoter_decision_gate.ainl",
         "modules/common/executor_request_builder.ainl",
         "modules/common/record_decision.ainl",
+        "modules/common/promoter_discover_from_tweets.ainl",
     ],
 )
 def test_module_strict_compile_standalone(rel):

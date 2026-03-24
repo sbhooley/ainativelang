@@ -1,6 +1,6 @@
 # ainl-x-promoter — v2: envelope classify + executor_request_builder + gate_eval + heuristic_keyword_score + record_decision.
 #
-# L_poll: Call L79 returns scored_list; classify_scored / classify_filtered audit via record_decision (memory ops).
+# L_poll: x.search → optional discovery: default single bridge pdt (promoter.discover_tweet_authors), or Track A when PROMOTER_DISCOVERY_AINL_STEPS=1 (candidates → score_users → FILTER_HIGH_SCORE → promoter.discovery_apply_batch); then classify; L79 returns scored_list; classify_scored / classify_filtered audit via record_decision (memory ops).
 # L_each: heuristic_keyword_score → promoter.heuristic_scores → items[0].score as gate payload heuristic_score (extra signal only; gate_eval is authority).
 # L_after_loop: kv.get snapshot (since_id / pending) for audit; cursor promotion stays on promoter.search_cursor_commit (do not duplicate KV writes with kv.set here).
 #
@@ -13,6 +13,8 @@ include "../modules/llm/llm_classify_request_builder.ainl" as llm_crb
 include "../modules/llm/llm_safe_json_parse.ainl" as llm_sjp
 include "../modules/common/heuristic_keyword_score.ainl" as hkw
 include "../modules/common/record_decision.ainl" as rd
+include "../modules/common/promoter_discover_from_tweets.ainl" as pdt
+include "../modules/llm/promoter_daily_post_payload.ainl" as pdpp
 
 S core cron "*/45 * * * *"
 
@@ -25,6 +27,7 @@ L_poll:
   Call exreq/ENTRY ->req_search
   R bridge.POST x.search req_search ->search_resp
   X tweets get search_resp body.tweets
+  Call L_discover_from_search_maybe ->_
   R core.stringify tweets ->llm_batch_items_json
   Call llm_crb/ENTRY ->cls_inner_pay
   R core.stringify cls_inner_pay ->executor_req_payload_json
@@ -62,6 +65,78 @@ L_poll:
   R core.echo "promoter" ->record_rd_scope
   Call rd/ENTRY ->_
   Loop good_tweets tweet L_each L_after_loop
+
+L_discover_from_search_maybe:
+  R core.env "PROMOTER_DRY_RUN" "0" ->dry_s
+  R core.parse dry_s ->dry_n
+  Set not_dry null
+  X not_dry eq dry_n 0
+  If not_dry ->L_disc_env ->L_disc_jret
+
+L_disc_env:
+  R core.env "PROMOTER_DISCOVERY_ENABLED" "1" ->pde_s
+  R core.parse pde_s ->pde_n
+  Set pde_ok null
+  X pde_ok eq pde_n 1
+  If pde_ok ->L_disc_fs ->L_disc_jret
+
+L_disc_fs:
+  R core.env "PROMOTER_DISCOVERY_FROM_SEARCH" "1" ->pdfs_s
+  R core.parse pdfs_s ->pdfs_n
+  Set pdfs_ok null
+  X pdfs_ok eq pdfs_n 1
+  If pdfs_ok ->L_disc_do ->L_disc_jret
+
+L_disc_do:
+  X pd_tweets get tweets
+  R core.env "PROMOTER_DISCOVERY_AINL_STEPS" "0" ->steps_s
+  R core.parse steps_s ->steps_n
+  Set use_steps null
+  X use_steps eq steps_n 1
+  If use_steps ->L_disc_steps_run ->L_disc_mono_run
+
+L_disc_mono_run:
+  Call pdt/ENTRY ->_
+  J "ok"
+
+L_disc_steps_run:
+  R core.stringify pd_tweets ->pd_tw_j
+  R core.concat "{\"tweets\":" pd_tw_j "}" ->executor_req_payload_json
+  R core.echo "promoter.discovery_candidates_from_tweets" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_cand
+  R bridge.POST promoter.discovery_candidates_from_tweets req_cand ->cand_http
+  X users_raw get cand_http body users
+  R core.parse "[]" ->users_empty
+  X users_use (ite (eq users_raw null) users_empty users_raw)
+  R core.stringify users_use ->users_j
+  R core.concat "{\"users\":" users_j "}" ->executor_req_payload_json
+  R core.echo "promoter.discovery_score_users" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_score
+  R bridge.POST promoter.discovery_score_users req_score ->score_http
+  X items_raw get score_http body items
+  R core.parse "[]" ->items_empty
+  X items_use (ite (eq items_raw null) items_empty items_raw)
+  R core.env "PROMOTER_DISCOVERY_MIN_SCORE" "7" ->disc_ms
+  R core.parse disc_ms ->disc_floor_n
+  R core.FILTER_HIGH_SCORE items_use disc_floor_n ->disc_good
+  R core.stringify disc_good ->disc_good_j
+  R core.concat "{\"items\":" disc_good_j "}" ->executor_req_payload_json
+  R core.echo "promoter.discovery_apply_batch" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_batch
+  R bridge.POST promoter.discovery_apply_batch req_batch ->batch_http
+  J "ok"
+
+L_disc_jret:
+  J "ok"
 
 L79:
   Set hub_has null
@@ -233,8 +308,8 @@ L_after_loop:
   Set record_rd_score null
   R core.echo "promoter" ->record_rd_scope
   Call rd/ENTRY ->_
+  Call pdpp/ENTRY ->executor_req_payload_json
   R core.echo "promoter.maybe_daily_post" ->executor_req_executor
-  R core.echo "{\"topic\":\"AINL + OpenClaw deterministic graphs\",\"link\":\"https://github.com/sbhooley/ainativelang\"}" ->executor_req_payload_json
   Set executor_req_run_id null
   R core.echo "daily" ->executor_req_step_id
   R core.add 120 0 ->executor_req_timeout_s

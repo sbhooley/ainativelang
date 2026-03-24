@@ -1,0 +1,29 @@
+# modules/common/promoter_discover_from_tweets.ainl
+# One bridge call: score / monitor / follow authors from x.search tweet list (gateway implements policy).
+#
+# Frame in (set before Call …/ENTRY):
+#   pd_tweets  — list of tweet dicts (same shape as x.search body.tweets: id, text, user_id, username, …)
+#
+# Requires:
+#   include "modules/common/executor_request_builder.ainl" as exreq
+#   Bridge maps promoter.discover_tweet_authors → POST /v1/promoter.discover_tweet_authors
+#
+# The main graph (e.g. ainl-x-promoter) decides *when* to call this (after x.search, env-gated).
+
+include "modules/common/executor_request_builder.ainl" as exreq
+
+LENTRY:
+  R core.stringify pd_tweets ->pd_tw_j
+  R core.concat "{\"tweets\":" pd_tw_j "}" ->executor_req_payload_json
+  R core.echo "promoter.discover_tweet_authors" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_pdt
+  R bridge.POST promoter.discover_tweet_authors req_pdt ->pdt_http
+  J pdt_http
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

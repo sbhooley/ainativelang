@@ -1,5 +1,5 @@
 # Apollo growth pack — discover authors via x.search_users (+ heuristic + optional LLM merge in gateway).
-# Set PROMOTER_DISCOVERY_ENABLED=1 and pass merge_monitored in payload below.
+# Default: discovery on (PROMOTER_DISCOVERY_ENABLED=1). Disable with PROMOTER_DISCOVERY_ENABLED=0.
 # Run: --strict --label _discover
 
 include "../../../modules/common/executor_request_builder.ainl" as exreq
@@ -8,7 +8,7 @@ include "../../../modules/common/record_decision.ainl" as rd
 S core cron "15 */6 * * *"
 
 L_discover:
-  R core.env "PROMOTER_DISCOVERY_ENABLED" "0" ->dis_en_s
+  R core.env "PROMOTER_DISCOVERY_ENABLED" "1" ->dis_en_s
   R core.parse dis_en_s ->dis_en_n
   Set dis_on null
   X dis_on eq dis_en_n 1

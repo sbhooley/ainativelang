@@ -1,0 +1,1 @@
+Write exactly one post for X (Twitter). Under 260 characters. Energetic, plain language, grounded in the excerpts above. Vary tone from other posts today: witty or playful sometimes, serious sometimes, always promoting AINL. Include the link from the header verbatim. No markdown fences, no hashtag spam.

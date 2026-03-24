@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Optional: account discovery (account_discovery.ainl). Set PROMOTER_DISCOVERY_ENABLED=1 for merge into monitored_accounts.
+# Optional: extra discovery pass (account_discovery.ainl). Main poll (`ainl-x-promoter.ainl`) runs discovery after x.search when PROMOTER_DISCOVERY_ENABLED=1, PROMOTER_DISCOVERY_FROM_SEARCH=1, PROMOTER_DRY_RUN=0 (default single bridge `promoter.discover_tweet_authors`, or Track A `promoter.discovery_*` when PROMOTER_DISCOVERY_AINL_STEPS=1).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

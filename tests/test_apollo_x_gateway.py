@@ -8,6 +8,7 @@ import tempfile
 import threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -34,13 +35,21 @@ def _registry(port: int, memory_db: Path) -> AdapterRegistry:
     endpoints = {
         "x.search": f"{base}/v1/x.search",
         "llm.classify": f"{base}/v1/llm.classify",
+        "llm.chat": f"{base}/v1/llm.chat",
         "llm.json_array_extract": f"{base}/v1/llm.json_array_extract",
         "llm.merge_classify_rows": f"{base}/v1/llm.merge_classify_rows",
         "promoter.text_contains_any": f"{base}/v1/promoter.text_contains_any",
         "promoter.heuristic_scores": f"{base}/v1/promoter.heuristic_scores",
         "promoter.classify_prompts": f"{base}/v1/promoter.classify_prompts",
+        "promoter.daily_post_prompts": f"{base}/v1/promoter.daily_post_prompts",
+        "promoter.daily_snippets": f"{base}/v1/promoter.daily_snippets",
         "promoter.gate_eval": f"{base}/v1/promoter.gate_eval",
         "promoter.process_tweet": f"{base}/v1/promoter.process_tweet",
+        "promoter.discover_tweet_authors": f"{base}/v1/promoter.discover_tweet_authors",
+        "promoter.discovery_candidates_from_tweets": f"{base}/v1/promoter.discovery_candidates_from_tweets",
+        "promoter.discovery_score_users": f"{base}/v1/promoter.discovery_score_users",
+        "promoter.discovery_apply_one": f"{base}/v1/promoter.discovery_apply_one",
+        "promoter.discovery_apply_batch": f"{base}/v1/promoter.discovery_apply_batch",
         "promoter.search_cursor_commit": f"{base}/v1/promoter.search_cursor_commit",
         "promoter.maybe_daily_post": f"{base}/v1/promoter.maybe_daily_post",
         "kv.get": f"{base}/v1/kv.get",
@@ -169,6 +178,71 @@ def test_gateway_text_contains_any_and_gate_eval(tmp_path):
     assert h["any"] is True
     g = gw.handle_promoter_gate_eval({"tweet_id": "t1", "user_id": "u1"}, st)
     assert g["proceed"] is True
+
+
+def test_process_tweet_missing_tweet_id_skips_without_x_post(tmp_path):
+    """Empty/missing tweet id must not call X post (avoids in_reply_to_tweet_id='' 400)."""
+    state_path = tmp_path / "st.sqlite"
+    st = gw.PromoterState(state_path)
+    gw._STATE = st
+    old_dry = os.environ.get("PROMOTER_DRY_RUN")
+    os.environ["PROMOTER_DRY_RUN"] = "0"
+    try:
+        with patch.object(gw, "_x_post_reply") as mock_x_post:
+            out = gw.handle_process_tweet(
+                {"payload": {"text": "hello", "user_id": "u1"}},
+                st,
+            )
+            assert out["ok"] is True
+            assert out.get("reason") == "missing_tweet_id"
+            assert out.get("action") == "skipped"
+            mock_x_post.assert_not_called()
+
+        with patch.object(gw, "_x_post_reply") as mock_x_post:
+            out2 = gw.handle_process_tweet(
+                {"payload": {"id": "", "text": "hello", "user_id": "u1"}},
+                st,
+            )
+            assert out2.get("reason") == "missing_tweet_id"
+            mock_x_post.assert_not_called()
+    finally:
+        if old_dry is None:
+            os.environ.pop("PROMOTER_DRY_RUN", None)
+        else:
+            os.environ["PROMOTER_DRY_RUN"] = old_dry
+
+
+def test_gate_eval_missing_tweet_id_does_not_proceed(tmp_path):
+    state_path = tmp_path / "st.sqlite"
+    st = gw.PromoterState(state_path)
+    gw._STATE = st
+    g = gw.handle_promoter_gate_eval({"tweet_id": "", "user_id": "u1"}, st)
+    assert g["proceed"] is False
+    assert g.get("reason") == "missing_tweet_id"
+
+
+def test_gateway_discovery_track_a_preflight_skips_when_dry_run(tmp_path):
+    """Track A endpoints return empty + skipped when PROMOTER_DRY_RUN=1 (same as monolithic preflight)."""
+    state_path = tmp_path / "st.sqlite"
+    st = gw.PromoterState(state_path)
+    gw._STATE = st
+    old_dry = os.environ.get("PROMOTER_DRY_RUN")
+    os.environ["PROMOTER_DRY_RUN"] = "1"
+    try:
+        tweets = [{"id": "1", "user_id": "u1", "text": "hi"}]
+        c = gw.handle_promoter_discovery_candidates_from_tweets({"tweets": tweets}, st)
+        assert c.get("skipped") is True
+        assert c.get("users") == []
+        s = gw.handle_promoter_discovery_score_users({"users": [{"user_id": "u1", "username": "a"}]}, st)
+        assert s.get("skipped") is True
+        assert s.get("items") == []
+        b = gw.handle_promoter_discovery_apply_batch({"items": [{"user_id": "u1", "username": "a", "score": 9.0}]}, st)
+        assert b.get("skipped") is True
+    finally:
+        if old_dry is None:
+            os.environ.pop("PROMOTER_DRY_RUN", None)
+        else:
+            os.environ["PROMOTER_DRY_RUN"] = old_dry
 
 
 def test_gateway_kv_get_set(tmp_path):

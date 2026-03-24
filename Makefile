@@ -1,4 +1,8 @@
-.PHONY: conformance benchmark benchmark-ci benchmark-deps
+.PHONY: conformance benchmark benchmark-ci benchmark-deps check-apollo-promoter
+
+# Apollo X promoter: strict IR + gateway integration tests (see scripts/check_apollo_promoter.sh).
+check-apollo-promoter:
+	bash scripts/check_apollo_promoter.sh
 
 # Automated Conformance Test Suite (snapshot-driven).
 # Usage:

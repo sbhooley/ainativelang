@@ -8,6 +8,8 @@ The gateway loads these **UTF-8** files at request time (no secrets here — onl
 | `classify_instruction.txt` | `llm.classify` user message | Preamble instruction before the tweet batch JSON. |
 | `reply_system.txt` | `POST /v1/promoter.process_tweet` | OpenAI `system` role for drafting replies. |
 | `discovery_user_instruction.txt` | `POST /v1/x.search_users` (optional) | User-turn instructions for per-author relevance scores (fallback string in gateway if missing). |
+| `daily_post_system.txt` | `POST /v1/promoter.daily_post_prompts` → `llm.chat` | System role for the strict-graph daily post chain (`ainl-x-promoter` → **`promoter_daily_post_payload.ainl`**). |
+| `daily_post_user_suffix.txt` | `promoter.daily_post_prompts` | Instructions **after** repo snippets; topic/link/header are built in AINL. |
 
 **Override directory:** set `PROMOTER_PROMPTS_DIR` to an absolute path; otherwise `apollo-x-bot/prompts/` next to `gateway_server.py`.
 
