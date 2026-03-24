@@ -1,0 +1,45 @@
+# examples/hyperspace_demo.ainl
+# Demo: common modules + local vector_memory / tool_registry (strict-safe dotted verbs).
+#
+# ainl-validate examples/hyperspace_demo.ainl --strict
+# ainl run examples/hyperspace_demo.ainl --enable-adapter vector_memory --enable-adapter tool_registry --log-trajectory --json
+# ainl-validate examples/hyperspace_demo.ainl --strict --emit hyperspace -o demo_agent.py
+# cd /path/to/AI_Native_Lang && AINL_LOG_TRAJECTORY=1 python3 demo_agent.py
+
+include "modules/common/guard.ainl" as guard
+include "modules/common/session_budget.ainl" as sb
+
+L1:
+  Set guard_skip false
+  Set guard_tokens_used 0
+  Set guard_max_tokens 500
+  Set guard_elapsed_sec 0
+  Set guard_max_duration_sec 3600
+  Set guard_condition_ok true
+  Set guard_audit false
+  Call guard/ENTRY ->g_out
+  Set budget_tokens_start 0
+  Set budget_tokens_delta 1
+  Set budget_max_tokens 10000
+  Set budget_time_start 0
+  Set budget_time_delta_sec 0
+  Set budget_max_duration_sec 86400
+  Set budget_log_memory false
+  Call sb/ENTRY ->b_out
+  R vector_memory.UPSERT "demo" "note" "n1" "hyperspace demo vector text" "{}" ->vm_u
+  R vector_memory.SEARCH "vector" 3 ->vm_hits
+  R tool_registry.REGISTER "demo_tool" "Hyperspace demo capability" "{}" ->tr_reg
+  R tool_registry.LIST "." ->tr_list
+  R tool_registry.DISCOVER "." ->tr_disc
+  R core.STRINGIFY vm_hits ->s_hits
+  R core.STRINGIFY tr_list ->s_list
+  R core.STRINGIFY tr_disc ->s_disc
+  R core.concat g_out " | " ->p1
+  R core.concat p1 b_out ->p2
+  R core.concat p2 " | " ->p3
+  R core.concat p3 s_hits ->p4
+  R core.concat p4 " | " ->p5
+  R core.concat p5 s_list ->p6
+  R core.concat p6 " | " ->p7
+  R core.concat p7 s_disc ->out
+  J out
