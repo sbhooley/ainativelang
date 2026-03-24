@@ -33,6 +33,8 @@
 
 **AINL helps turn AI from "a smart conversation" into "a structured worker."**
 
+**Positioning (v1.2.5):** AINL is the system that lets you **author with an LLM once**, **validate with a compiler** (strict mode, reachability, single-exit discipline), and **emit production artifacts** for **LangGraph**, **Temporal**, **FastAPI**, **React**, **Hyperspace**, **Prisma**, **cron**, and more — while **deterministic execution**, **policy**, and **audit** (runner service, trajectory JSONL) stay on the AINL side. **Write in AINL → emit LangGraph or Temporal when you need their ecosystem today**; keep the `.ainl` source as the single source of truth ([`docs/HYBRID_GUIDE.md`](docs/HYBRID_GUIDE.md), [`docs/competitive/README.md`](docs/competitive/README.md)).
+
 It is designed for teams building AI workflows that need multiple steps, state and memory, tool use, repeatable execution, validation and control, and lower dependence on long prompt loops.
 
 > [!TIP]
@@ -48,7 +50,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **Understand AINL first:** [ainativelang.com](https://ainativelang.com)
 > - **Run it now (CLI / runner / MCP):** [Choose Your Path](#choose-your-path)
 > - **Read the docs hub:** [`docs/README.md`](docs/README.md)
-> - **See updated benchmarks (tiktoken cl100k_base, viable subset, minimal_emit fallback stub):** [`BENCHMARK.md`](BENCHMARK.md) · [`docs/benchmarks.md`](docs/benchmarks.md#benchmark-highlights-march-2026)
+> - **See updated benchmarks (tiktoken cl100k_base, viable subset, minimal_emit fallback stub):** [`BENCHMARK.md`](BENCHMARK.md) · [`docs/benchmarks.md`](docs/benchmarks.md#benchmark-highlights-march-2026) · comparative methodology [`docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
 > - **ZeroClaw skill (one-command install → deterministic graphs):** [`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md) · [`skills/ainl/`](skills/ainl/) · curated trees **[`examples/ecosystem/`](examples/ecosystem/)**
 > - **MCP host hub:** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) · **`ainl install-mcp --host openclaw|zeroclaw`**
 > - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-mcp --host openclaw`**

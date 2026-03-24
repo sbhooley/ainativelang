@@ -63,6 +63,20 @@ AINL addresses this by moving workflow structure out of the prompt and into a de
 6. **Validation and governance**  
    AINL includes strict validation, support-level contracts, profile-aware examples, and governance-oriented tooling for advanced workflows.
 
+7. **Author once, validate, deploy to multiple runtimes (v1.2.5+)**  
+   The same strict-valid **AINL** program can emit **LangGraph** (`--emit langgraph`), **Temporal** (`--emit temporal`), **Hyperspace**, **FastAPI**, **React**, and other targets — without treating any one vendor runtime as the permanent source of truth. See **[`HYBRID_GUIDE.md`](HYBRID_GUIDE.md)** and **[`competitive/README.md`](competitive/README.md)**.
+
+## Positioning snapshot (operational agents, 2026)
+
+For teams that want **LLMs to author the workflow** (not only call tools inside someone else’s loop) and need **deterministic, auditable, repeatable** execution, AINL combines:
+
+- a **compact AI-native DSL** + **strict canonical IR** (compile guarantees LangGraph/CrewAI-style prompt loops do not provide),
+- **compile-once / run-many** execution (recurring runs avoid re-spending orchestration tokens),
+- **multi-target emission** including **to** ecosystems you already use (LangGraph, Temporal, etc.),
+- **MCP-native** integration paths for **OpenClaw / ZeroClaw / NemoClaw** hosts.
+
+Narrative guides (grounded in shipped emitters): **[`competitive/FROM_LANGGRAPH_TO_AINL.md`](competitive/FROM_LANGGRAPH_TO_AINL.md)**, **[`competitive/AINL_AND_TEMPORAL.md`](competitive/AINL_AND_TEMPORAL.md)**. Reproducible comparison methodology: **[`competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**.
+
 ## Who AINL is for
 
 AINL is best for people building serious AI workflows, not just casual prompt experiments.

@@ -35,6 +35,14 @@ The **`benchmark-regression`** workflow compares the freshly generated **CI slic
 - `emit_capabilities.needs_langgraph` / `needs_temporal`: opt-in hybrid wrapper targets (default **false** in the compiler).
 - `required_emit_targets.minimal_emit`: compiler-planned minimal target set (planner primary source).
 
+## Comparative methodology (vs LangGraph, Temporal, prompt-loop frameworks)
+
+Use this repo’s benchmarks to compare **authoring compactness** (tiktoken on `.ainl` vs emitted `--emit langgraph` / `--emit temporal` vs hand-written baselines) and **post-compile runtime** cost — not to claim parity with every hosted feature of other stacks.
+
+- **Step-by-step commands and honest boundaries:** [`docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
+- **Onboarding + positioning (no fake numbers):** [`docs/competitive/FROM_LANGGRAPH_TO_AINL.md`](docs/competitive/FROM_LANGGRAPH_TO_AINL.md), [`docs/competitive/AINL_AND_TEMPORAL.md`](docs/competitive/AINL_AND_TEMPORAL.md)
+- **OpenClaw / MCP production worksheet:** [`docs/competitive/OPENCLAW_PRODUCTION_SAVINGS.md`](docs/competitive/OPENCLAW_PRODUCTION_SAVINGS.md)
+
 ## Metrics
 
 - **Default / recommended:** `tiktoken` (**cl100k_base**) via `tooling/bench_metrics.py` (shared with runtime benchmarks).

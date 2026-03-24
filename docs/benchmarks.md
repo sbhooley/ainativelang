@@ -26,6 +26,10 @@ Quick **size** snapshot:
 - **Hybrid wrapper emitters in full_multitarget** — **`langgraph`** / **`temporal`** sizes come from `scripts/emit_langgraph.py` and `scripts/emit_temporal.py`; not part of **`minimal_emit`** unless `emit_capabilities` gains matching flags later.
 - **`--strict-mode`** — `scripts/benchmark_size.py` with **`--profile-name=canonical_strict_valid`** runs the compiler in strict reachability mode; see the strict callout in `BENCHMARK.md` when enabled.
 
+## Comparative methodology (LangGraph, Temporal, others)
+
+Head-to-head **commands**, suggested table rows, and scope boundaries (what we do and do not claim) live in **[`competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**. Use it with the tables in **[`BENCHMARK.md`](../BENCHMARK.md)** so published numbers stay reproducible.
+
 ## Why these benchmarks matter
 
 AINL is **compile-once, run-many**: you pay LLM tokens (or human time) to author a program once, then the runtime executes the graph deterministically—no prompt loop on every invocation. The **runtime** benchmarks measure that second phase: wall-clock latency, RSS deltas, optional execution reliability, and (with `tiktoken`) source-token economics. The **size** benchmarks quantify how much emitted surface area you get per AINL artifact (profile- and mode-scoped), including **mean compile time over three timed compiles** so you can see compiler cost separately from emit size. Together, they show a different cost structure from “LLM re-generates orchestration code every time.”

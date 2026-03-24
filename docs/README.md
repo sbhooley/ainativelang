@@ -18,7 +18,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 - [`emitters/`](emitters/README.md) — multi-target output surfaces and emitter philosophy
 - [`examples/`](examples/README.md) — example support levels, walkthroughs, and example-oriented guidance
 - [`case_studies/`](case_studies/README.md) — narrative proof, production lessons, and applied explanations
-- [`competitive/`](competitive/README.md) — comparative framing and “AINL vs X” materials
+- [`competitive/`](competitive/README.md) — comparative framing, LangGraph/Temporal onboarding, benchmark methodology vs other stacks
 - [`operations/`](operations/README.md) — autonomous ops, monitors, and deployment-style operational docs
 - [`advanced/`](advanced/README.md) — operator-only, OpenClaw / ZeroClaw-adjacent ops, and advanced coordination surfaces
 - [`reference/`](reference/README.md) — schemas, contracts, indexes, and reference-style maps

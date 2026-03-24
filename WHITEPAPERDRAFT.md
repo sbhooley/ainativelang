@@ -17,6 +17,10 @@ AINL addresses an emerging systems problem in modern AI engineering: as large la
 
 The language has been exercised in production-style OpenClaw workflows involving email, calendar, social monitoring, database access, infrastructure checks, queues, WebAssembly modules, cache, memory, and autonomous operational monitors. This whitepaper describes AINL's architecture, semantics, strict-mode guarantees, operational role, benchmark posture, and relevance to AI-native systems design.
 
+### Positioning note (v1.2.5): portable authoring layer
+
+AINL is positioned as the **authoring and validation layer** where an LLM (or human) produces a **compact program** that **compiles** to canonical IR; the **runtime** executes that graph deterministically (**compile-once / run-many**). When a deployment needs another ecosystem’s worker model today, validate can **emit** artifacts such as **LangGraph** or **Temporal** modules while keeping **`.ainl`** as the **single source of truth** — see **`docs/HYBRID_GUIDE.md`**, **`docs/competitive/README.md`**, and **`BENCHMARK.md`** § comparative methodology. MCP integration (OpenClaw / ZeroClaw / NemoClaw) is a first-class distribution path (`docs/OPENCLAW_INTEGRATION.md`, `docs/getting_started/HOST_MCP_INTEGRATIONS.md`).
+
 ---
 
 ## 1. Introduction

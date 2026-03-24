@@ -5,7 +5,8 @@ from __future__ import annotations
 
 Contract boundary:
 - This service exposes runtime execution APIs (`/run`, `/enqueue`, `/result`,
-  `/health`, `/ready`, `/metrics`, `/capabilities`).
+  `/health`, `/ready`, `/metrics`, `/capabilities`,
+  `/capabilities/langgraph`, `/capabilities/temporal` (static emitter discovery for MCP hosts).
 - It intentionally does not expose emitted product/business REST routes (for example `/api/products`, `/api/checkout`).
 - UI/frontends expecting business routes should run against emitted app servers, not this runner.
 """
@@ -572,12 +573,52 @@ def _load_capabilities() -> Dict[str, Any]:
 _CAPABILITIES_CACHE: Optional[Dict[str, Any]] = None
 
 
+def _capabilities_langgraph() -> Dict[str, Any]:
+    """Static descriptor for validate_ainl --emit langgraph (runner does not compile)."""
+    return {
+        "schema_version": "1.0",
+        "emitter": "langgraph",
+        "runtime_version": RUNTIME_VERSION,
+        "summary": "LangGraph StateGraph wrapper module from compiled AINL IR.",
+        "cli_example_strict": (
+            "python3 scripts/validate_ainl.py --strict path/workflow.ainl --emit langgraph -o workflow_langgraph.py"
+        ),
+        "docs": ["docs/HYBRID_GUIDE.md", "examples/hybrid/README.md"],
+        "emit_entrypoint": "scripts/emit_langgraph.py",
+    }
+
+
+def _capabilities_temporal() -> Dict[str, Any]:
+    """Static descriptor for validate_ainl --emit temporal (runner does not compile)."""
+    return {
+        "schema_version": "1.0",
+        "emitter": "temporal",
+        "runtime_version": RUNTIME_VERSION,
+        "summary": "Temporal activities + workflow Python modules from compiled AINL IR.",
+        "cli_example_strict": (
+            "python3 scripts/validate_ainl.py --strict path/workflow.ainl --emit temporal -o ./out/prefix"
+        ),
+        "docs": ["docs/HYBRID_GUIDE.md", "docs/hybrid_temporal.md", "examples/hybrid/README.md"],
+        "emit_entrypoint": "scripts/emit_temporal.py",
+    }
+
+
 @app.get("/capabilities")
 def capabilities():
     global _CAPABILITIES_CACHE
     if _CAPABILITIES_CACHE is None:
         _CAPABILITIES_CACHE = _load_capabilities()
     return _CAPABILITIES_CACHE
+
+
+@app.get("/capabilities/langgraph")
+def capabilities_langgraph():
+    return _capabilities_langgraph()
+
+
+@app.get("/capabilities/temporal")
+def capabilities_temporal():
+    return _capabilities_temporal()
 
 
 @app.post("/run")

@@ -4,4 +4,4 @@
 
 **One line:** AI Native Lang (AINL) is a graph-canonical system for deterministic, multi-step AI workflows: compile to IR, execute with explicit adapters, validate in strict mode.
 
-**Quick links:** [`README.md`](README.md) · [`docs/README.md`](docs/README.md) · [`docs/CHANGELOG.md`](docs/CHANGELOG.md) · [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) (**v1.2.5**) · [`BENCHMARK.md`](BENCHMARK.md) · [`docs/trajectory.md`](docs/trajectory.md) · [`docs/emitters/README.md`](docs/emitters/README.md)
+**Quick links:** [`README.md`](README.md) · [`docs/README.md`](docs/README.md) · [`docs/CHANGELOG.md`](docs/CHANGELOG.md) · [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) (**v1.2.5**) · [`BENCHMARK.md`](BENCHMARK.md) · [`docs/competitive/README.md`](docs/competitive/README.md) · [`docs/trajectory.md`](docs/trajectory.md) · [`docs/emitters/README.md`](docs/emitters/README.md)

@@ -82,6 +82,9 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Maintainer release operations: `docs/RELEASING.md`
 - Reproducible size benchmark report (tiktoken **cl100k_base**, viable vs legacy-inclusive transparency): `BENCHMARK.md`
 - Benchmark hub (highlights Mar 2026, metrics glossary, `make benchmark` / `make benchmark-ci`, CI gate, LLM/cloud bench): `docs/benchmarks.md`
+- Competitive framing + vs LangGraph/Temporal methodology: `docs/competitive/README.md` · `docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`
+- Hybrid emitters (LangGraph / Temporal / `S hybrid`): `docs/HYBRID_GUIDE.md`
+- Runner emitter discovery (MCP / HTTP): `GET /capabilities/langgraph`, `GET /capabilities/temporal` on `scripts/runtime_runner_service.py`
 - Ecosystem examples (Clawflows / Agency-Agents, weekly auto-sync, OpenClaw / ZeroClaw hooks, MCP pointers): `docs/ECOSYSTEM_OPENCLAW.md` · **OpenClaw:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw:** `docs/ZEROCLAW_INTEGRATION.md`
 - Benchmark generator script: `scripts/benchmark_size.py`
 - Machine-readable benchmark output: `tooling/benchmark_size.json`

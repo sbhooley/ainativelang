@@ -1,12 +1,13 @@
 """
-Tests for the /capabilities endpoint on the runner service.
+Tests for the /capabilities endpoints on the runner service.
 
 Covers:
-- endpoint returns 200 with expected schema
+- /capabilities returns 200 with expected schema (schema_version 1.1)
 - response includes runtime_version, adapters, policy_support
 - adapter entries include verbs, support_tier, effect_default
 - core adapters are present
 - response is stable across repeated calls (cached)
+- /capabilities/langgraph and /capabilities/temporal static emitter descriptors
 """
 
 import os
@@ -32,7 +33,7 @@ def test_capabilities_has_required_fields():
     assert "runtime_version" in body
     assert "adapters" in body
     assert "policy_support" in body
-    assert body["schema_version"] == "1.0"
+    assert body["schema_version"] == "1.1"
     assert isinstance(body["runtime_version"], str)
     assert body["policy_support"] is True
 
@@ -75,3 +76,23 @@ def test_capabilities_is_stable():
     a = client.get("/capabilities").json()
     b = client.get("/capabilities").json()
     assert a == b
+
+
+def test_capabilities_langgraph_returns_200():
+    resp = client.get("/capabilities/langgraph")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["emitter"] == "langgraph"
+    assert body["schema_version"] == "1.0"
+    assert "cli_example_strict" in body
+    assert "LangGraph" in body["summary"]
+
+
+def test_capabilities_temporal_returns_200():
+    resp = client.get("/capabilities/temporal")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["emitter"] == "temporal"
+    assert body["schema_version"] == "1.0"
+    assert "cli_example_strict" in body
+    assert "Temporal" in body["summary"]

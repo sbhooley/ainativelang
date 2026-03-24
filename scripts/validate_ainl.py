@@ -4,6 +4,7 @@ AINL Validator / REPL: compile .lang from file or stdin, print IR or errors.
 Usage:
   python scripts/validate_ainl.py [file.lang]
   python scripts/validate_ainl.py --emit server [file.lang]
+  python scripts/validate_ainl.py --strict workflow.ainl --emit langgraph -o workflow_langgraph.py
   python scripts/validate_ainl.py --emit langgraph workflow.ainl -o workflow_langgraph.py
   python scripts/validate_ainl.py --emit temporal workflow.ainl -o ./out/prefix
   echo "S core web /api" | python scripts/validate_ainl.py
@@ -285,6 +286,7 @@ def main() -> None:
             "Emit artifact instead of IR JSON. "
             "Hybrid interop: langgraph (StateGraph wrapper → docs/hybrid_langgraph.md), "
             "temporal (*_activities.py + *_workflow.py → docs/hybrid_temporal.md). "
+            "Typical strict path: --strict <file.ainl> --emit langgraph|temporal -o … "
             "Overview: docs/HYBRID_GUIDE.md"
         ),
     )
