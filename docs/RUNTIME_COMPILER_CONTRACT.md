@@ -108,3 +108,8 @@ without requiring a global `python` on `PATH`.
 - Runtime behavior sanity and capability op execution: `tests/test_runtime_basic.py`
 - Graph/step parity and retry/error routing: `tests/test_runtime_parity.py`, `tests/test_runtime_graph_only.py`
 - Malformed `S`+`cron` schedule lines (IR `services.path` drift): `tests/test_s_cron_schedule_lines.py`
+
+## CI gate behavior note (v1.2.6 line)
+
+- The `dev` extra includes runtime-service test imports (`fastapi`, `uvicorn`) so `core-pr` collection succeeds on all CI operating systems.
+- Runtime benchmark JSON comparison remains part of PR visibility, but strict pass/fail enforcement is reserved for non-PR lanes where baseline hardware variance is lower.

@@ -303,3 +303,8 @@ These tests define “conformance in spirit”; implement as automated suite whe
   the GitHub Actions matrix, use `PYTHON_BIN=python3.10` and `VENV_DIR=.venv-py310`
   (see [INSTALL.md](INSTALL.md)). Pre-commit’s docs-contract hook prefers
   `./.venv-py310/bin/python` when present.
+
+## CI conformance note (v1.2.6 line)
+
+- The CI `core-pr` profile installs `fastapi`/`uvicorn` through the `dev` extra so runtime-runner service tests import consistently across Linux/macOS/Windows.
+- Runtime benchmark comparisons are still produced on pull requests, while strict runtime regression failure gating is enforced on non-PR lanes (push/release) to reduce host-noise false negatives in PR checks.
