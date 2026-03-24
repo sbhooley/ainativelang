@@ -18,7 +18,7 @@ S core cron "*/45 * * * *"
 
 L_poll:
   R core.echo "x.search" ->executor_req_executor
-  R core.echo "{\"query\":\"from:sbhooley OR from:AINativeLang OR @ainativelang OR @sbhooley OR \\\"AINL\\\" OR \\\"AI Native Language\\\" -is:retweet lang:en\"}" ->executor_req_payload_json
+  R core.echo "{\"query\":\"@Apollo_AINL\"}" ->executor_req_payload_json
   Set executor_req_run_id null
   R core.echo "_poll" ->executor_req_step_id
   R core.add 120 0 ->executor_req_timeout_s
@@ -128,7 +128,6 @@ L_each:
   X gate_user_id get tweet user_id
   X gate_pl put gate_pl gk_tid gate_tweet_id
   X gate_pl put gate_pl gk_uid gate_user_id
-  # heuristic_score is observability only; gate_eval controls proceed/skip
   X gate_pl put gate_pl gk_hsc heur_score
   R core.stringify gate_pl ->executor_req_payload_json
   R core.echo "promoter.gate_eval" ->executor_req_executor
@@ -138,18 +137,21 @@ L_each:
   Call exreq/ENTRY ->req_gate
   R bridge.POST promoter.gate_eval req_gate ->gate_http
   X gate_b get gate_http body
-  X gate_proceed get gate_b proceed
-  If gate_proceed ->L_do_process ->L72
-
-L_do_process:
   R core.stringify gate_b ->record_rd_detail_json
   R core.echo "gate_eval" ->record_rd_action
   X record_rd_tweet_id get tweet id
   X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
   R core.echo "promoter" ->record_rd_scope
   Call rd/ENTRY ->_
+  X gate_proceed get gate_b proceed
+  If gate_proceed ->L71 ->L72
+
+L71:
   Set step_out null
-  R core.stringify tweet ->executor_req_payload_json
+  R core.parse "\"payload\"" ->plkey
+  R core.parse "{}" ->pt_head
+  X pt_head put pt_head plkey tweet
+  R core.stringify pt_head ->executor_req_payload_json
   R core.echo "promoter.process_tweet" ->executor_req_executor
   Set executor_req_run_id null
   R core.echo "_each" ->executor_req_step_id
@@ -166,12 +168,6 @@ L_do_process:
   J step_out
 
 L72:
-  R core.stringify gate_b ->record_rd_detail_json
-  R core.echo "gate_skip" ->record_rd_action
-  X record_rd_tweet_id get tweet id
-  X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
-  R core.echo "promoter" ->record_rd_scope
-  Call rd/ENTRY ->_
   Set sk null
   X gate_reason get gate_b reason
   X gate_dry get gate_b dry_run
@@ -180,12 +176,20 @@ L72:
   R core.parse "\"action\"" ->sk_ac
   R core.parse "\"reason\"" ->sk_re
   R core.parse "\"dry_run\"" ->sk_dr
-  R core.echo true ->sk_true
+  R core.parse "\"user_id\"" ->sk_uid
+  R core.parse "true" ->sk_true
   R core.parse "\"skipped\"" ->sk_skip
   X sk put sk sk_ok sk_true
   X sk put sk sk_ac sk_skip
   X sk put sk sk_re gate_reason
   X sk put sk sk_dr gate_dry
+  X sk put sk sk_uid gate_user_id
+  R core.stringify sk ->record_rd_detail_json
+  R core.echo "gate_skip" ->record_rd_action
+  X record_rd_tweet_id get tweet id
+  X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
   J sk
 
 L_after_loop:

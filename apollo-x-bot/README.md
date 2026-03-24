@@ -59,6 +59,21 @@ The graph uses `R bridge.POST <executor_key> <json_body>` (see `docs/integration
 | `kv.get` | `POST /v1/kv.get` | Read promoter SQLite KV: body `{ "key": "<name>" }` (or executor-bridge `payload` with same keys) → `{ ok, value }` (`value` is JSON `null` when missing). |
 | `kv.set` | `POST /v1/kv.set` | Write/delete KV: `{ "key", "value" }` — string values stored; `value: null` deletes the key. Same SQLite file as search cursor / dedupe (`PROMOTER_STATE_PATH`). |
 
+### Human monitoring (read-only GET + token audit)
+
+The gateway logs **every successful chat/completion** that returns a `usage` object as **`audit` rows** with `action = llm.usage` and JSON detail: `context` (e.g. `llm.classify_legacy`, `process_tweet_reply_draft`), `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`. Providers that omit `usage` produce no row (nothing to estimate). **Dollar cost** is not computed (model pricing varies); sum tokens and apply your provider’s rates.
+
+| Path | Role |
+|------|------|
+| `GET /` or `GET /v1/promoter.dashboard` | Single-page **HTML** monitor: **Chart.js** graphs (stacked hourly audit actions, LLM tokens/hour, 24h action mix doughnut, daily reply counts), 24h token totals, audit summaries, recent `audit` + `record_decision` tables. Auto-refresh 60s. |
+| `GET /v1/promoter.stats` | JSON snapshot: paths, today’s reply count, dedupe size, `audit` action counts (24h / 7d), LLM token sums (24h), plus **`charts`** (hourly series, `daily_replies`, pie data). Tune `PROMOTER_DASHBOARD_CHART_HOURS` / `PROMOTER_DASHBOARD_CHART_DAYS`. |
+| `GET /v1/promoter.audit_tail?limit=80` | JSON: newest `audit` rows with parsed `detail` objects. |
+| `GET /v1/promoter.memory_tail?limit=40` | JSON: newest `memory_records` for `ops` / `promoter.decision` (same DB as `--memory-db`). |
+
+Disable with **`PROMOTER_DASHBOARD_ENABLED=0`** if the process is exposed beyond localhost (no auth on these routes).
+
+**SQLite views** (on `PROMOTER_STATE_PATH`, created automatically at gateway startup): **`v_audit_timeline`** (flattened `tweet_id`, `user_id`, `reason`, LLM fields from `detail_json`) and **`v_llm_usage`** (only `llm.usage` rows). Example: `SELECT * FROM v_llm_usage ORDER BY id DESC LIMIT 20;`
+
 **Strict modules (repo `modules/`):** `common/executor_request_builder.ainl` (all bridge JSON envelopes in this graph), `llm/llm_classify_request_builder.ainl`, `llm/llm_safe_json_parse.ainl`, `common/heuristic_keyword_score.ainl` (wraps **`promoter.heuristic_scores`** for one tweet + keyword list), `common/promoter_decision_gate.ainl`, `common/record_decision.ainl` (memory audit). **Heuristic note:** `L_each` copies the loop `tweet` into `hkw_tweet`, sets `heuristic_keywords_json`, calls **`heuristic_keyword_score/ENTRY`**, then **`X heur_score get heur_row score`** (via `items` → index `0`). That score is forwarded as **`heuristic_score`** on the gate payload only; classify batch fallback in `L_poll` still uses **`promoter.heuristic_scores`** directly when merge is unavailable.
 
 ### `record_decision` (memory audit)
@@ -111,6 +126,7 @@ You can put variables in **`apollo-x-bot/.env`** (`KEY=value` per line). The gat
 | `PROMOTER_GATEWAY_HOST` | Default `127.0.0.1`. |
 | `PROMOTER_GATEWAY_PORT` | Default `17301`. |
 | `PROMOTER_GATEWAY_DEBUG` | Set to `1` to print `[apollo-x-gateway] …` lines on **stderr** (tweet counts, `n_score_ge_8`, skip reasons). |
+| `PROMOTER_DASHBOARD_ENABLED` | Default **on** (`1`): serve GET dashboard + JSON stats. Set **`0`** to disable when the gateway is reachable beyond localhost. |
 | `PROMOTER_MONITOR_ENABLED` | Growth pack: `1` enables optional **`monitor-poll.sh`** / `follow_manager.ainl` (default `0`). |
 | `PROMOTER_DISCOVERY_ENABLED` | Growth pack: `1` allows **`x.search_users`** `merge_monitored: true` to append high-score authors to **`monitored_accounts`** (default `0`). |
 | `PROMOTER_LIKE_ENABLED` | Growth pack: `1` allows **`x.like`** and auto-like after **`process_tweet`** when the author is in **`monitored_accounts`** (default `0`). |

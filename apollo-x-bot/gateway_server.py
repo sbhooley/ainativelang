@@ -36,6 +36,13 @@ Environment (production):
   PROMOTER_AWARENESS_BOOST     If 1, append extra AINL GitHub CTAs to daily post text
   PROMOTER_DISCOVERY_MIN_SCORE Minimum heuristic score (1-10) to merge discovered users (default 7)
 
+  Monitoring (read-only, bind localhost in production):
+  PROMOTER_DASHBOARD_ENABLED   If 0/false, disables GET /v1/promoter.dashboard, .stats, .audit_tail, .memory_tail (default: 1 / on).
+  PROMOTER_DASHBOARD_TWEET_LOOKUP_MAX  Max tweet IDs to resolve to @handles per dashboard JSON request via GET /2/tweets (default 120; 0 disables).
+  PROMOTER_DASHBOARD_CHART_HOURS   Hour buckets for dashboard activity chart (default 48, max 168).
+  PROMOTER_DASHBOARD_CHART_DAYS    Days of daily_replies history on dashboard (default 7, max 30).
+  Each chat/completion logs llm.usage rows in audit (prompt/completion/total tokens + context label) when the provider returns usage.
+
 Bind defaults to 127.0.0.1 for safety.
 
 Optional: place a `.env` file in this directory (`apollo-x-bot/.env`) with `KEY=value` lines; the gateway loads it
@@ -58,9 +65,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
@@ -93,6 +101,14 @@ def _env_int(name: str, default: int) -> int:
         return int(os.environ.get(name, "").strip() or default)
     except ValueError:
         return default
+
+
+def _dashboard_enabled() -> bool:
+    """Read-only HTML/JSON monitoring (default on; disable on shared hosts)."""
+    v = os.environ.get("PROMOTER_DASHBOARD_ENABLED")
+    if v is None:
+        return True
+    return str(v).strip().lower() in ("1", "true", "yes", "on")
 
 
 _DEFAULT_CANONICAL_GITHUB = "https://github.com/sbhooley/ainativelang"
@@ -205,7 +221,113 @@ class PromoterState:
                 CREATE TABLE IF NOT EXISTS active_threads (
                     conversation_id TEXT PRIMARY KEY NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS x_user_cache (
+                    user_id TEXT PRIMARY KEY NOT NULL,
+                    username TEXT NOT NULL,
+                    updated_ts REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS x_tweet_author_cache (
+                    tweet_id TEXT PRIMARY KEY NOT NULL,
+                    author_user_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    updated_ts REAL NOT NULL
+                );
                 """
+            )
+            self._ensure_analytics_views(c)
+
+    def _ensure_analytics_views(self, c: sqlite3.Connection) -> None:
+        """Human-oriented SQL views over audit (JSON1). Safe to run every startup."""
+        c.executescript(
+            """
+            CREATE VIEW IF NOT EXISTS v_audit_timeline AS
+            SELECT
+              id,
+              ts,
+              datetime(ts, 'unixepoch') AS ts_utc,
+              action,
+              json_extract(detail_json, '$.tweet_id') AS tweet_id,
+              json_extract(detail_json, '$.user_id') AS user_id,
+              json_extract(detail_json, '$.reply_id') AS reply_id,
+              json_extract(detail_json, '$.reason') AS reason,
+              json_extract(detail_json, '$.context') AS llm_context,
+              json_extract(detail_json, '$.model') AS llm_model,
+              json_extract(detail_json, '$.total_tokens') AS total_tokens,
+              detail_json
+            FROM audit;
+
+            CREATE VIEW IF NOT EXISTS v_llm_usage AS
+            SELECT
+              id,
+              ts,
+              datetime(ts, 'unixepoch') AS ts_utc,
+              json_extract(detail_json, '$.context') AS context,
+              json_extract(detail_json, '$.model') AS model,
+              json_extract(detail_json, '$.prompt_tokens') AS prompt_tokens,
+              json_extract(detail_json, '$.completion_tokens') AS completion_tokens,
+              json_extract(detail_json, '$.total_tokens') AS total_tokens,
+              detail_json
+            FROM audit
+            WHERE action = 'llm.usage';
+            """
+        )
+
+    def audit_tail(self, limit: int) -> List[Dict[str, Any]]:
+        lim = max(1, min(500, int(limit)))
+        with self._conn() as c:
+            rows = c.execute(
+                """
+                SELECT id, ts, datetime(ts, 'unixepoch') AS ts_utc, action, detail_json
+                FROM audit ORDER BY id DESC LIMIT ?
+                """,
+                (lim,),
+            ).fetchall()
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            raw = r["detail_json"]
+            try:
+                detail = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                detail = {"_unparsed_detail": raw[:500] if raw else ""}
+            if not isinstance(detail, dict):
+                detail = {"value": detail}
+            out.append(
+                {
+                    "id": r["id"],
+                    "ts": r["ts"],
+                    "ts_utc": r["ts_utc"],
+                    "action": r["action"],
+                    "detail": detail,
+                }
+            )
+        return out
+
+    def x_user_cache_put(self, user_id: str, username: str) -> None:
+        uid = str(user_id).strip()
+        un = str(username).strip()
+        if not uid or not un:
+            return
+        now = time.time()
+        with self._conn() as c:
+            c.execute(
+                "INSERT INTO x_user_cache(user_id, username, updated_ts) VALUES (?, ?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET username = excluded.username, updated_ts = excluded.updated_ts",
+                (uid, un, now),
+            )
+
+    def tweet_author_cache_put(self, tweet_id: str, author_user_id: str, username: str) -> None:
+        tid = str(tweet_id).strip()
+        aid = str(author_user_id).strip()
+        if not tid or not aid:
+            return
+        now = time.time()
+        un = str(username).strip()
+        with self._conn() as c:
+            c.execute(
+                "INSERT INTO x_tweet_author_cache(tweet_id, author_user_id, username, updated_ts) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(tweet_id) DO UPDATE SET author_user_id = excluded.author_user_id, "
+                "username = excluded.username, updated_ts = excluded.updated_ts",
+                (tid, aid, un, now),
             )
 
     def day_key(self) -> str:
@@ -378,14 +500,52 @@ def _oauth1_authorization_header(method: str, full_url: str, ck: str, cs: str, t
     return "OAuth " + ", ".join(auth_parts)
 
 
-def _openai_chat(messages: List[Dict[str, str]], *, model: Optional[str] = None) -> str:
+def _memory_db_path() -> Path:
+    raw = (os.environ.get("AINL_MEMORY_DB") or "").strip()
+    if raw:
+        return Path(raw).expanduser()
+    return Path(__file__).resolve().parent / "data" / "promoter_memory.sqlite"
+
+
+def _normalize_chat_usage(raw: Any) -> Dict[str, int]:
+    """Map provider usage blob to prompt/completion/total (OpenAI-compatible + some aliases)."""
+    if not isinstance(raw, dict):
+        return {}
+    pt = raw.get("prompt_tokens")
+    if pt is None:
+        pt = raw.get("input_tokens")
+    ct = raw.get("completion_tokens")
+    if ct is None:
+        ct = raw.get("output_tokens")
+    tt = raw.get("total_tokens")
+    try:
+        pi = int(pt or 0)
+        ci = int(ct or 0)
+        if tt is None:
+            ti = pi + ci
+        else:
+            ti = int(tt)
+    except (TypeError, ValueError):
+        return {}
+    if pi == 0 and ci == 0 and ti == 0:
+        return {}
+    return {"prompt_tokens": pi, "completion_tokens": ci, "total_tokens": ti}
+
+
+def _openai_chat(
+    messages: List[Dict[str, str]],
+    *,
+    model: Optional[str] = None,
+    state: Optional[PromoterState] = None,
+    usage_context: str = "",
+) -> str:
     key = os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
     if not key:
         raise RuntimeError("OPENAI_API_KEY or LLM_API_KEY not set")
     base = (os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
-    model = model or os.environ.get("LLM_MODEL") or "gpt-4o-mini"
+    model_used = model or os.environ.get("LLM_MODEL") or "gpt-4o-mini"
     payload = json.dumps(
-        {"model": model, "messages": messages, "temperature": 0.2},
+        {"model": model_used, "messages": messages, "temperature": 0.2},
         ensure_ascii=False,
     ).encode("utf-8")
     status, _h, data = _http_request(
@@ -398,6 +558,16 @@ def _openai_chat(messages: List[Dict[str, str]], *, model: Optional[str] = None)
     if status >= 400:
         raise RuntimeError(f"LLM HTTP {status}: {data[:500]!r}")
     obj = json.loads(data.decode("utf-8"))
+    usage_raw = _normalize_chat_usage(obj.get("usage"))
+    if state is not None and usage_context and usage_raw:
+        detail: Dict[str, Any] = {"context": usage_context, "model": model_used, **usage_raw}
+        state.audit("llm.usage", detail)
+        _gw_debug(
+            f"llm.usage context={usage_context} model={model_used} "
+            f"prompt_tokens={usage_raw.get('prompt_tokens')} "
+            f"completion_tokens={usage_raw.get('completion_tokens')} "
+            f"total_tokens={usage_raw.get('total_tokens')}"
+        )
     return str((obj.get("choices") or [{}])[0].get("message", {}).get("content") or "")
 
 
@@ -512,10 +682,19 @@ def _search_max_results() -> int:
     return max(10, min(100, n))
 
 
-def _x_recent_search(query: str, *, since_id: Optional[str] = None, max_results: int = 10) -> Dict[str, Any]:
+def _x_recent_search(
+    query: str,
+    *,
+    since_id: Optional[str] = None,
+    max_results: int = 10,
+    state: Optional[PromoterState] = None,
+) -> Dict[str, Any]:
     q = urllib.parse.quote(query, safe="")
     mr = max(10, min(100, max_results))
-    url = f"https://api.twitter.com/2/tweets/search/recent?query={q}&max_results={mr}&tweet.fields=author_id,created_at"
+    url = (
+        f"https://api.twitter.com/2/tweets/search/recent?query={q}&max_results={mr}"
+        "&tweet.fields=author_id,created_at&expansions=author_id&user.fields=username"
+    )
     sid = (since_id or "").strip()
     if sid:
         url += f"&since_id={urllib.parse.quote(sid, safe='')}"
@@ -538,13 +717,24 @@ def _x_recent_search(query: str, *, since_id: Optional[str] = None, max_results:
         return {"tweets": [], "error": f"x_search_http_{status}", "detail": data.decode("utf-8", errors="replace")[:500]}
     obj = json.loads(data.decode("utf-8"))
     raw = obj.get("data") or []
+    users_by_id: Dict[str, str] = {}
+    for u in (obj.get("includes") or {}).get("users") or []:
+        if isinstance(u, dict):
+            iid = str(u.get("id", "")).strip()
+            uu = str(u.get("username", "")).strip()
+            if iid and uu:
+                users_by_id[iid] = uu
+    _x_user_cache_warm_map(state, users_by_id)
     tweets: List[Dict[str, Any]] = []
     for tw in raw:
+        uid_str = str(tw.get("author_id", "")).strip()
+        uname = users_by_id.get(uid_str, "")
         tweets.append(
             {
                 "id": str(tw.get("id", "")),
                 "text": str(tw.get("text", "")),
-                "user_id": str(tw.get("author_id", "")),
+                "user_id": uid_str,
+                "username": uname,
                 "created_at": tw.get("created_at"),
             }
         )
@@ -733,6 +923,250 @@ def _x_users_lookup(ids: List[str]) -> List[Dict[str, Any]]:
     return out
 
 
+_X_USER_CACHE_TTL_SEC = 7 * 24 * 3600
+
+
+def _gather_numeric_user_ids(obj: Any, acc: Set[str], depth: int = 0) -> None:
+    if depth > 5:
+        return
+    if isinstance(obj, dict):
+        for k in ("user_id", "target_user_id", "author_id"):
+            v = obj.get(k)
+            if v is not None and str(v).strip().isdigit():
+                acc.add(str(v).strip())
+        for v in obj.values():
+            if isinstance(v, (dict, list)):
+                _gather_numeric_user_ids(v, acc, depth + 1)
+    elif isinstance(obj, list):
+        for it in obj[:100]:
+            _gather_numeric_user_ids(it, acc, depth + 1)
+
+
+def _looks_like_x_numeric_id(v: Any) -> bool:
+    s = str(v).strip()
+    return bool(s) and s.isdigit() and len(s) >= 15
+
+
+def _gather_tweet_ids_for_author_lookup(obj: Any, acc: Set[str], depth: int = 0) -> None:
+    """Collect tweet snowflake IDs from audit/memory JSON (tweet_id / reply_id; not since_id)."""
+    if depth > 5:
+        return
+    if isinstance(obj, dict):
+        for k in ("tweet_id", "reply_id", "in_reply_to_tweet_id"):
+            val = obj.get(k)
+            if _looks_like_x_numeric_id(val):
+                acc.add(str(val).strip())
+        for v in obj.values():
+            if isinstance(v, (dict, list)):
+                _gather_tweet_ids_for_author_lookup(v, acc, depth + 1)
+    elif isinstance(obj, list):
+        for it in obj[:100]:
+            _gather_tweet_ids_for_author_lookup(it, acc, depth + 1)
+
+
+def _x_http_tweet_id_to_author(ids: List[str]) -> Dict[str, Dict[str, str]]:
+    """GET /2/tweets — map tweet_id -> {user_id, username}. Up to 100 ids per call."""
+    ids = [str(x).strip() for x in ids if _looks_like_x_numeric_id(x)]
+    if not ids:
+        return {}
+    url = (
+        "https://api.twitter.com/2/tweets?ids="
+        + ",".join(_rfc3986(x) for x in ids)
+        + "&tweet.fields=author_id&expansions=author_id&user.fields=username"
+    )
+    bearer = _x_bearer()
+    oauth = _x_oauth1_creds()
+    if bearer:
+        status, _h, data = _http_request(
+            "GET",
+            url,
+            headers={"Authorization": f"Bearer {bearer}"},
+            timeout=60.0,
+        )
+    elif oauth:
+        ck, cs, tok, ts = oauth
+        auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
+        status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=60.0)
+    else:
+        return {}
+    if status >= 400:
+        return {}
+    try:
+        obj = json.loads(data.decode("utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    users_by_id: Dict[str, str] = {}
+    for u in (obj.get("includes") or {}).get("users") or []:
+        if isinstance(u, dict):
+            iid = str(u.get("id", "")).strip()
+            uu = str(u.get("username", "")).strip()
+            if iid and uu:
+                users_by_id[iid] = uu
+    out: Dict[str, Dict[str, str]] = {}
+    for tw in obj.get("data") or []:
+        if not isinstance(tw, dict):
+            continue
+        tid = str(tw.get("id", "")).strip()
+        aid = str(tw.get("author_id", "")).strip()
+        if not tid or not aid:
+            continue
+        un = users_by_id.get(aid, "")
+        out[tid] = {"user_id": aid, "username": un}
+    return out
+
+
+def _x_tweets_resolve_authors(state: PromoterState, tweet_ids: Set[str]) -> Dict[str, Dict[str, str]]:
+    """
+    Resolve tweet_id -> author user_id + @username for dashboard enrichment.
+    Uses SQLite cache + batched /2/tweets (same creds as search).
+    """
+    cap = max(0, _env_int("PROMOTER_DASHBOARD_TWEET_LOOKUP_MAX", 120))
+    if cap == 0 or not tweet_ids:
+        return {}
+    tids = sorted(tweet_ids)
+    if len(tids) > cap:
+        tids = tids[:cap]
+    now = time.time()
+    out: Dict[str, Dict[str, str]] = {}
+    need: List[str] = []
+    with state._conn() as c:
+        for tid in tids:
+            row = c.execute(
+                "SELECT author_user_id, username, updated_ts FROM x_tweet_author_cache WHERE tweet_id = ?",
+                (tid,),
+            ).fetchone()
+            if row and (now - float(row[2])) < _X_USER_CACHE_TTL_SEC:
+                out[tid] = {"user_id": str(row[0] or ""), "username": str(row[1] or "")}
+            else:
+                need.append(tid)
+    for i in range(0, len(need), 100):
+        chunk = need[i : i + 100]
+        batch = _x_http_tweet_id_to_author(chunk)
+        for tid, info in batch.items():
+            aid = str(info.get("user_id") or "").strip()
+            un = str(info.get("username") or "").strip()
+            if aid:
+                state.tweet_author_cache_put(tid, aid, un)
+                if un:
+                    state.x_user_cache_put(aid, un)
+            out[tid] = {"user_id": aid, "username": un}
+    return out
+
+
+def _enrich_detail_handles(
+    obj: Any,
+    resolved: Dict[str, str],
+    by_tweet: Dict[str, Dict[str, str]],
+    depth: int = 0,
+) -> Any:
+    if depth > 5:
+        return obj
+    if isinstance(obj, dict):
+        newd: Dict[str, Any] = {}
+        for k, v in obj.items():
+            newd[k] = _enrich_detail_handles(v, resolved, by_tweet, depth + 1)
+        uid = str(newd.get("user_id") or "").strip()
+        if uid in resolved and not str(newd.get("username") or "").strip():
+            newd["username"] = resolved[uid]
+        tuid = str(newd.get("target_user_id") or "").strip()
+        if tuid in resolved and not str(newd.get("target_username") or "").strip():
+            newd["target_username"] = resolved[tuid]
+        tid = str(newd.get("tweet_id") or "").strip()
+        if tid in by_tweet:
+            bt = by_tweet[tid]
+            if not str(newd.get("user_id") or "").strip() and str(bt.get("user_id") or "").strip():
+                newd["user_id"] = str(bt["user_id"])
+            if not str(newd.get("username") or "").strip() and str(bt.get("username") or "").strip():
+                newd["username"] = str(bt["username"])
+        rid = str(newd.get("reply_id") or "").strip()
+        if rid in by_tweet and not str(newd.get("reply_username") or "").strip():
+            ru = str(by_tweet[rid].get("username") or "").strip()
+            if ru:
+                newd["reply_username"] = ru
+        return newd
+    if isinstance(obj, list):
+        return [_enrich_detail_handles(x, resolved, by_tweet, depth + 1) for x in obj[:200]]
+    return obj
+
+
+def _resolve_usernames_batch(state: PromoterState, user_ids: Set[str]) -> Dict[str, str]:
+    ids = {x for x in (str(y).strip() for y in user_ids) if x.isdigit()}
+    if not ids:
+        return {}
+    now = time.time()
+    out: Dict[str, str] = {}
+    need: List[str] = []
+    with state._conn() as c:
+        for uid in ids:
+            row = c.execute(
+                "SELECT username, updated_ts FROM x_user_cache WHERE user_id = ?",
+                (uid,),
+            ).fetchone()
+            if row and (now - float(row[1])) < _X_USER_CACHE_TTL_SEC:
+                out[uid] = str(row[0])
+            else:
+                need.append(uid)
+    for i in range(0, len(need), 100):
+        chunk = need[i : i + 100]
+        for u in _x_users_lookup(chunk):
+            uid = str(u.get("user_id", "")).strip()
+            un = str(u.get("username", "")).strip()
+            if uid and un:
+                out[uid] = un
+                state.x_user_cache_put(uid, un)
+    return out
+
+
+def _x_user_cache_warm_map(state: Optional[PromoterState], id_to_username: Dict[str, str]) -> None:
+    if state is None or not id_to_username:
+        return
+    for uid, un in id_to_username.items():
+        if str(uid).strip() and str(un).strip():
+            state.x_user_cache_put(str(uid).strip(), str(un).strip())
+
+
+def audit_tail_with_handles(state: PromoterState, limit: int) -> List[Dict[str, Any]]:
+    rows = state.audit_tail(limit)
+    uid_set: Set[str] = set()
+    tid_set: Set[str] = set()
+    for r in rows:
+        d = r.get("detail")
+        _gather_numeric_user_ids(d, uid_set)
+        _gather_tweet_ids_for_author_lookup(d, tid_set)
+    by_tweet = _x_tweets_resolve_authors(state, tid_set)
+    for _tid, info in by_tweet.items():
+        u = str(info.get("user_id") or "").strip()
+        if u:
+            uid_set.add(u)
+    resolved = _resolve_usernames_batch(state, uid_set)
+    for _tid, info in list(by_tweet.items()):
+        uid = str(info.get("user_id") or "").strip()
+        if uid in resolved and not str(info.get("username") or "").strip():
+            info["username"] = resolved[uid]
+    enriched: List[Dict[str, Any]] = []
+    for r in rows:
+        nr = {str(k): v for k, v in r.items()}
+        det = nr.get("detail")
+        if isinstance(det, (dict, list)):
+            nr["detail"] = _enrich_detail_handles(det, resolved, by_tweet)
+        enriched.append(nr)
+    return enriched
+
+
+def _tweet_audit_fields(tweet: Dict[str, Any]) -> Dict[str, Any]:
+    ex: Dict[str, Any] = {}
+    tid = str(tweet.get("id") or "").strip()
+    uid = str(tweet.get("user_id") or "").strip()
+    un = str(tweet.get("username") or "").strip()
+    if tid:
+        ex["tweet_id"] = tid
+    if uid:
+        ex["user_id"] = uid
+    if un:
+        ex["username"] = un
+    return ex
+
+
 def _x_api_follow(state: PromoterState, target_user_id: str) -> Dict[str, Any]:
     me = _cached_me_id(state)
     if not me:
@@ -788,12 +1222,16 @@ def _maybe_like_monitored_author(state: PromoterState, tweet: Dict[str, Any]) ->
     if not tid:
         return
     dry = _env_bool("PROMOTER_DRY_RUN", False)
+    un = _resolve_usernames_batch(state, {uid}).get(uid, "") or str(tweet.get("username") or "").strip()
     if dry:
-        state.audit("x.like", {"dry_run": True, "tweet_id": tid, "user_id": uid})
+        state.audit(
+            "x.like",
+            {"dry_run": True, "tweet_id": tid, "user_id": uid, **({"username": un} if un else {})},
+        )
         _gw_debug("x.like dry_run=1 (monitored author)")
         return
     res = _x_api_like(state, tid)
-    state.audit("x.like", {"tweet_id": tid, "user_id": uid, "result": res})
+    state.audit("x.like", {"tweet_id": tid, "user_id": uid, **({"username": un} if un else {}), "result": res})
     _gw_debug(f"x.like monitored_author tweet_id={tid!r} ok={res.get('ok')}")
 
 
@@ -819,7 +1257,9 @@ def _discovery_llm_scores(users: List[Dict[str, Any]], state: PromoterState) -> 
             [
                 {"role": "system", "content": "You output only valid JSON arrays. No markdown."},
                 {"role": "user", "content": instr + "\n\nUsers:\n" + "\n".join(lines)},
-            ]
+            ],
+            state=state,
+            usage_context="discovery_user_score",
         )
         arr = _extract_json_array(text)
         out: Dict[str, float] = {}
@@ -880,6 +1320,7 @@ def handle_x_search(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any
                     "id": "dry1",
                     "text": "OpenClaw + ZeroClaw: orchestration, deterministic agent memory workflows.",
                     "user_id": "u1",
+                    "username": "dry_user",
                 }
             ]
             state.audit("x.search", {"dry_run": True, "query": query})
@@ -887,7 +1328,7 @@ def handle_x_search(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any
             return {"tweets": sample, "dry_run": True}
         use_since = _env_bool("PROMOTER_SEARCH_USE_SINCE_ID", True)
         since = state.kv_get("x_search_since_id") if use_since else None
-        out = _x_recent_search(query, since_id=since, max_results=_search_max_results())
+        out = _x_recent_search(query, since_id=since, max_results=_search_max_results(), state=state)
         n = 0
         extra = ""
         if isinstance(out, dict):
@@ -982,7 +1423,7 @@ def handle_llm_classify(body: Dict[str, Any], state: PromoterState) -> Any:
                 "items": [],
             }
         try:
-            text = _openai_chat(msgs)
+            text = _openai_chat(msgs, state=state, usage_context="llm.classify_envelope")
             _gw_debug(
                 f"llm.classify(envelope) llm_raw chars={len(text)} n_tweets={len(tweets)}"
             )
@@ -1005,7 +1446,7 @@ def handle_llm_classify(body: Dict[str, Any], state: PromoterState) -> Any:
     ]
 
     try:
-        text = _openai_chat(messages)
+        text = _openai_chat(messages, state=state, usage_context="llm.classify_legacy")
         parsed = _extract_json_array(text)
         if not isinstance(parsed, list):
             raise ValueError("expected JSON array")
@@ -1123,6 +1564,8 @@ def handle_promoter_gate_eval(body: Dict[str, Any], state: PromoterState) -> Dic
             "dry_run": dry,
             "daily_count": daily_count,
             "daily_cap": max_day,
+            "tweet_id": tweet_id,
+            "user_id": user_id,
         }
     if daily_count >= max_day:
         _gw_debug("gate_eval skip reason=daily_reply_cap")
@@ -1132,6 +1575,8 @@ def handle_promoter_gate_eval(body: Dict[str, Any], state: PromoterState) -> Dic
             "dry_run": dry,
             "daily_count": daily_count,
             "daily_cap": max_day,
+            "tweet_id": tweet_id,
+            "user_id": user_id,
         }
     if not state.user_cooldown_ok(user_id, cool_h):
         _gw_debug("gate_eval skip reason=user_cooldown")
@@ -1141,6 +1586,8 @@ def handle_promoter_gate_eval(body: Dict[str, Any], state: PromoterState) -> Dic
             "dry_run": dry,
             "daily_count": daily_count,
             "daily_cap": max_day,
+            "tweet_id": tweet_id,
+            "user_id": user_id,
         }
     _gw_debug("gate_eval proceed")
     return {
@@ -1149,6 +1596,8 @@ def handle_promoter_gate_eval(body: Dict[str, Any], state: PromoterState) -> Dic
         "dry_run": dry,
         "daily_count": daily_count,
         "daily_cap": max_day,
+        "tweet_id": tweet_id,
+        "user_id": user_id,
     }
 
 
@@ -1178,19 +1627,21 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
 
     _gw_debug(f"process_tweet begin tweet_id={tweet_id!r} user_id={user_id!r} dry_run={dry}")
 
+    ta = _tweet_audit_fields(tweet)
+
     if _env_bool("PROMOTER_DEDUPE_REPLIED_TWEETS", True) and state.has_replied_to_tweet(tweet_id):
-        state.audit("process_tweet_skip", {"reason": "already_replied_tweet", "tweet_id": tweet_id})
+        state.audit("process_tweet_skip", {"reason": "already_replied_tweet", "tweet_id": tweet_id, **ta})
         _gw_debug("process_tweet skip reason=already_replied_tweet (no draft LLM)")
-        return {"ok": True, "action": "skipped", "reason": "already_replied_tweet", "dry_run": dry}
+        return {"ok": True, "action": "skipped", "reason": "already_replied_tweet", "dry_run": dry, **ta}
 
     if state.count_today_replies() >= max_day:
-        state.audit("process_tweet_skip", {"reason": "daily_cap", "tweet_id": tweet_id})
+        state.audit("process_tweet_skip", {"reason": "daily_cap", "tweet_id": tweet_id, **ta})
         _gw_debug(f"process_tweet skip reason=daily_reply_cap count={state.count_today_replies()}/{max_day}")
-        return {"ok": True, "action": "skipped", "reason": "daily_reply_cap", "dry_run": dry}
+        return {"ok": True, "action": "skipped", "reason": "daily_reply_cap", "dry_run": dry, **ta}
     if not state.user_cooldown_ok(user_id, cool_h):
-        state.audit("process_tweet_skip", {"reason": "user_cooldown", "user_id": user_id})
+        state.audit("process_tweet_skip", {"reason": "user_cooldown", "user_id": user_id, **ta})
         _gw_debug(f"process_tweet skip reason=user_cooldown user_id={user_id!r} hours={cool_h}")
-        return {"ok": True, "action": "skipped", "reason": "user_cooldown", "dry_run": dry}
+        return {"ok": True, "action": "skipped", "reason": "user_cooldown", "dry_run": dry, **ta}
 
     gh = _canonical_github_repo_url()
     reply_text = (
@@ -1206,7 +1657,9 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
                         "role": "user",
                         "content": f"Tweet:\n{tweet.get('text','')}\n\nDraft a helpful, expert reply from Apollo.",
                     },
-                ]
+                ],
+                state=state,
+                usage_context="process_tweet_reply_draft",
             )
             reply_text = reply_text.strip()
     except Exception:
@@ -1214,28 +1667,31 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
     reply_text = _normalize_promoter_github_links(reply_text)[:280]
 
     if dry:
-        state.audit("process_tweet_dry", {"tweet_id": tweet_id, "reply": reply_text})
+        state.audit("process_tweet_dry", {"tweet_id": tweet_id, "reply": reply_text, **ta})
         state.incr_today_replies()
         state.touch_user(user_id)
         if _env_bool("PROMOTER_DEDUPE_REPLIED_TWEETS", True):
             state.mark_replied_tweet(tweet_id)
         _maybe_like_monitored_author(state, tweet)
         _gw_debug("process_tweet dry_run_reply (no X API post)")
-        return {"ok": True, "action": "dry_run_reply", "tweet_id": tweet_id, "text": reply_text}
+        return {"ok": True, "action": "dry_run_reply", "tweet_id": tweet_id, "text": reply_text, **ta}
 
     post = _x_post_reply(reply_text, tweet_id)
     if not post.get("ok"):
-        state.audit("process_tweet_post_fail", {"tweet_id": tweet_id, "detail": post})
+        state.audit("process_tweet_post_fail", {"tweet_id": tweet_id, "detail": post, **ta})
         _gw_debug(f"process_tweet post_failed detail={post!r}")
-        return {"ok": False, "action": "post_failed", "detail": post}
+        return {"ok": False, "action": "post_failed", "detail": post, **ta}
     state.incr_today_replies()
     state.touch_user(user_id)
     if _env_bool("PROMOTER_DEDUPE_REPLIED_TWEETS", True):
         state.mark_replied_tweet(tweet_id)
-    state.audit("process_tweet_replied", {"tweet_id": tweet_id, "reply_id": post.get("tweet_id")})
+    state.audit(
+        "process_tweet_replied",
+        {"tweet_id": tweet_id, "reply_id": post.get("tweet_id"), **ta},
+    )
     _maybe_like_monitored_author(state, tweet)
     _gw_debug(f"process_tweet replied reply_tweet_id={post.get('tweet_id')!r}")
-    return {"ok": True, "action": "replied", "reply": post}
+    return {"ok": True, "action": "replied", "reply": post, **ta}
 
 
 def handle_search_cursor_commit(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
@@ -1356,7 +1812,7 @@ def handle_x_search_users(body: Dict[str, Any], state: PromoterState) -> Dict[st
         ]
         state.audit("x.search_users", {"dry_run": True, "query": query})
         return {"users": sample, "dry_run": True, "merged_user_ids": []}
-    tw_out = _x_recent_search(query, since_id=None, max_results=_search_max_results())
+    tw_out = _x_recent_search(query, since_id=None, max_results=_search_max_results(), state=state)
     tweets = tw_out.get("tweets") if isinstance(tw_out, dict) else []
     if not isinstance(tweets, list):
         tweets = []
@@ -1445,7 +1901,7 @@ def handle_x_get_conversation(body: Dict[str, Any], state: PromoterState) -> Dic
             "conversation_id": cid,
         }
     q = f"conversation_id:{cid}"
-    out = _x_recent_search(q, since_id=None, max_results=_search_max_results())
+    out = _x_recent_search(q, since_id=None, max_results=_search_max_results(), state=state)
     tw = out.get("tweets", []) if isinstance(out, dict) else []
     if not isinstance(tw, list):
         tw = []
@@ -1491,7 +1947,9 @@ def handle_promoter_thread_continue(body: Dict[str, Any], state: PromoterState) 
                         "role": "user",
                         "content": f"Thread so far:\n{transcript}\n\nDraft one concise reply as Apollo.",
                     },
-                ]
+                ],
+                state=state,
+                usage_context="thread_continue_reply_draft",
             ).strip()
     except Exception:
         pass
@@ -1518,6 +1976,494 @@ def handle_promoter_awareness_boost(body: Dict[str, Any], state: PromoterState) 
     ]
     state.audit("awareness_boost", {"link": u})
     return {"ok": True, "cta_lines": lines, "link": u}
+
+
+_DASHBOARD_STACK_ACTIONS: List[Tuple[str, str]] = [
+    ("process_tweet_replied", "Replied"),
+    ("process_tweet_post_fail", "Post failed"),
+    ("process_tweet_skip", "Skipped"),
+    ("process_tweet_dry", "Dry run reply"),
+    ("x.search", "x.search"),
+    ("search_cursor_commit", "Cursor commit"),
+    ("llm.usage", "LLM calls"),
+    ("daily_post", "Daily post"),
+    ("llm.classify_error", "Classify error"),
+]
+
+
+def _utc_hour_keys(start_ts: float, end_ts: float) -> List[str]:
+    z = timezone.utc
+    cur = datetime.fromtimestamp(start_ts, tz=z).replace(minute=0, second=0, microsecond=0)
+    end = datetime.fromtimestamp(end_ts, tz=z).replace(minute=0, second=0, microsecond=0)
+    keys: List[str] = []
+    while cur <= end and len(keys) < 200:
+        keys.append(cur.strftime("%Y-%m-%d %H"))
+        cur = cur + timedelta(hours=1)
+    return keys
+
+
+def _promoter_charts_bundle(state: PromoterState, counts_24h: Dict[str, int]) -> Dict[str, Any]:
+    now = time.time()
+    hours = max(12, min(168, _env_int("PROMOTER_DASHBOARD_CHART_HOURS", 48)))
+    days = max(3, min(30, _env_int("PROMOTER_DASHBOARD_CHART_DAYS", 7)))
+    start = now - hours * 3600.0
+    hour_keys = _utc_hour_keys(start, now)
+    stacked_keys = {a for a, _ in _DASHBOARD_STACK_ACTIONS}
+    per_hour: Dict[str, Dict[str, int]] = {hk: {} for hk in hour_keys}
+    tokens_per_hour: Dict[str, int] = {hk: 0 for hk in hour_keys}
+    with state._conn() as c:
+        rows = c.execute(
+            """
+            SELECT strftime('%Y-%m-%d %H', datetime(ts, 'unixepoch')) AS hk,
+                   action,
+                   COUNT(*) AS n
+            FROM audit
+            WHERE ts >= ?
+            GROUP BY hk, action
+            """,
+            (start,),
+        ).fetchall()
+        for hk, action, n in rows:
+            hks = str(hk or "")
+            act = str(action or "")
+            if hks in per_hour:
+                per_hour[hks][act] = int(n)
+        tok_rows = c.execute(
+            """
+            SELECT strftime('%Y-%m-%d %H', datetime(ts, 'unixepoch')) AS hk,
+                   IFNULL(SUM(COALESCE(json_extract(detail_json, '$.total_tokens'), 0)), 0) AS t
+            FROM audit
+            WHERE ts >= ? AND action = 'llm.usage'
+            GROUP BY hk
+            """,
+            (start,),
+        ).fetchall()
+        for hk, t in tok_rows:
+            hks = str(hk or "")
+            if hks in tokens_per_hour:
+                tokens_per_hour[hks] = int(float(t or 0))
+        day_rows = c.execute(
+            """
+            SELECT day, count FROM daily_replies
+            ORDER BY day DESC
+            LIMIT ?
+            """,
+            (days,),
+        ).fetchall()
+    daily_labels = [str(r[0]) for r in reversed(day_rows)]
+    daily_counts = [int(r[1]) for r in reversed(day_rows)]
+    stacked_series: Dict[str, List[int]] = {}
+    other_per_hour: List[int] = []
+    for hk in hour_keys:
+        row = per_hour.get(hk, {})
+        known = sum(row.get(a, 0) for a in stacked_keys)
+        total = sum(row.values())
+        other_per_hour.append(max(0, total - known))
+    for action, _label in _DASHBOARD_STACK_ACTIONS:
+        stacked_series[action] = [per_hour.get(hk, {}).get(action, 0) for hk in hour_keys]
+    stacked_series["other"] = other_per_hour
+    short_labels = []
+    for hk in hour_keys:
+        try:
+            dt = datetime.strptime(hk, "%Y-%m-%d %H").replace(tzinfo=timezone.utc)
+            short_labels.append(dt.strftime("%m/%d %Hh"))
+        except ValueError:
+            short_labels.append(hk)
+    pie_labels: List[str] = []
+    pie_values: List[int] = []
+    pie_top = sorted(counts_24h.items(), key=lambda x: -x[1])[:12]
+    top_set = set()
+    for k, v in pie_top:
+        pie_labels.append(k)
+        pie_values.append(int(v))
+        top_set.add(k)
+    rest = sum(int(v) for kk, v in counts_24h.items() if kk not in top_set)
+    if rest > 0:
+        pie_labels.append("other")
+        pie_values.append(rest)
+    return {
+        "hour_keys_utc": hour_keys,
+        "hour_labels_short": short_labels,
+        "stacked_actions": [{"key": a, "label": lab} for a, lab in _DASHBOARD_STACK_ACTIONS],
+        "stacked_counts": stacked_series,
+        "llm_tokens_per_hour": [tokens_per_hour.get(hk, 0) for hk in hour_keys],
+        "daily_reply_days": daily_labels,
+        "daily_reply_counts": daily_counts,
+        "pie_24h_labels": pie_labels,
+        "pie_24h_values": pie_values,
+        "window_hours": hours,
+        "window_days": days,
+    }
+
+
+def _promoter_stats_bundle(state: PromoterState) -> Dict[str, Any]:
+    now = time.time()
+    since_24h = now - 86400.0
+    since_7d = now - 86400.0 * 7.0
+    with state._conn() as c:
+        counts_24h = {
+            str(r[0]): int(r[1])
+            for r in c.execute(
+                "SELECT action, COUNT(*) AS n FROM audit WHERE ts >= ? GROUP BY action ORDER BY n DESC",
+                (since_24h,),
+            ).fetchall()
+        }
+        counts_7d = {
+            str(r[0]): int(r[1])
+            for r in c.execute(
+                "SELECT action, COUNT(*) AS n FROM audit WHERE ts >= ? GROUP BY action ORDER BY n DESC",
+                (since_7d,),
+            ).fetchall()
+        }
+        tok_row = c.execute(
+            """
+            SELECT
+              IFNULL(SUM(COALESCE(json_extract(detail_json, '$.prompt_tokens'), 0)), 0),
+              IFNULL(SUM(COALESCE(json_extract(detail_json, '$.completion_tokens'), 0)), 0),
+              IFNULL(SUM(COALESCE(json_extract(detail_json, '$.total_tokens'), 0)), 0),
+              COUNT(*)
+            FROM audit WHERE ts >= ? AND action = 'llm.usage'
+            """,
+            (since_24h,),
+        ).fetchone()
+    day = state.day_key()
+    with state._conn() as c:
+        dr = c.execute("SELECT count FROM daily_replies WHERE day = ?", (day,)).fetchone()
+        reply_count_today = int(dr[0]) if dr else 0
+        rt = c.execute("SELECT COUNT(*) FROM replied_tweet").fetchone()
+        dedupe_size = int(rt[0]) if rt else 0
+    mem_p = _memory_db_path()
+    charts = _promoter_charts_bundle(state, counts_24h)
+    return {
+        "ok": True,
+        "generated_at_unix": now,
+        "promoter_state_db": str(state._path),
+        "memory_db_path": str(mem_p),
+        "memory_db_readable": mem_p.is_file(),
+        "utc_day": day,
+        "reply_count_today": reply_count_today,
+        "replied_tweet_dedupe_rows": dedupe_size,
+        "audit_actions_last_24h": counts_24h,
+        "audit_actions_last_7d": counts_7d,
+        "llm_usage_last_24h": {
+            "prompt_tokens": int(tok_row[0]),
+            "completion_tokens": int(tok_row[1]),
+            "total_tokens": int(tok_row[2]),
+            "api_calls_recorded": int(tok_row[3]),
+        },
+        "charts": charts,
+    }
+
+
+def _memory_decisions_tail(state: Optional[PromoterState], limit: int) -> List[Dict[str, Any]]:
+    lim = max(1, min(200, int(limit)))
+    p = _memory_db_path()
+    if not p.is_file():
+        return []
+    try:
+        c = sqlite3.connect(str(p.expanduser().resolve()), timeout=5.0)
+        c.row_factory = sqlite3.Row
+        try:
+            rows = c.execute(
+                """
+                SELECT id, record_id, created_at, updated_at, payload_json
+                FROM memory_records
+                WHERE namespace = 'ops' AND record_kind = 'promoter.decision'
+                ORDER BY id DESC LIMIT ?
+                """,
+                (lim,),
+            ).fetchall()
+        finally:
+            c.close()
+    except sqlite3.Error:
+        return []
+    parsed: List[Tuple[sqlite3.Row, Dict[str, Any], Dict[str, Any]]] = []
+    uid_set: Set[str] = set()
+    tid_set: Set[str] = set()
+    for r in rows:
+        try:
+            payload = json.loads(r["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+        detail = payload.get("detail")
+        if not isinstance(detail, dict):
+            detail = {}
+        _gather_numeric_user_ids(payload, uid_set)
+        _gather_numeric_user_ids(detail, uid_set)
+        _gather_tweet_ids_for_author_lookup(payload, tid_set)
+        _gather_tweet_ids_for_author_lookup(detail, tid_set)
+        parsed.append((r, payload, detail))
+    by_tweet: Dict[str, Dict[str, str]] = (
+        _x_tweets_resolve_authors(state, tid_set) if state is not None else {}
+    )
+    for _tid, info in by_tweet.items():
+        u = str(info.get("user_id") or "").strip()
+        if u:
+            uid_set.add(u)
+    resolved: Dict[str, str] = _resolve_usernames_batch(state, uid_set) if state is not None else {}
+    for _tid, info in list(by_tweet.items()):
+        uid = str(info.get("user_id") or "").strip()
+        if uid in resolved and not str(info.get("username") or "").strip():
+            info["username"] = resolved[uid]
+    out: List[Dict[str, Any]] = []
+    for r, payload, detail in parsed:
+        ed = (
+            _enrich_detail_handles(dict(detail), resolved, by_tweet)
+            if isinstance(detail, dict)
+            else {}
+        )
+        un = str(ed.get("username") or "").strip()
+        uid_for_row = str(ed.get("user_id") or "").strip()
+        if not un and uid_for_row.isdigit():
+            un = resolved.get(uid_for_row, "")
+        tid_top = str(payload.get("tweet_id") or "").strip()
+        if not un and tid_top in by_tweet:
+            un = str(by_tweet[tid_top].get("username") or "").strip()
+        prev_items = list(ed.items())[:10]
+        out.append(
+            {
+                "id": r["id"],
+                "record_id": r["record_id"],
+                "created_at": r["created_at"],
+                "updated_at": r["updated_at"],
+                "action": payload.get("action", ""),
+                "tweet_id": payload.get("tweet_id"),
+                "score": payload.get("score"),
+                "scope": payload.get("scope"),
+                "username": un,
+                "detail_preview": dict(prev_items),
+            }
+        )
+    return out
+
+
+# Read-only HTML monitor: Chart.js from jsDelivr CDN; all data from same-origin JSON.
+_DASHBOARD_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Apollo-X promoter — monitor</title>
+<style>
+:root { --bg:#0f1419; --card:#1a2332; --txt:#e7ecf3; --muted:#8b9cb3; --acc:#3d8bfd; }
+body { font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--txt);
+  margin:0; padding:1rem 1.25rem; line-height:1.5; }
+h1 { font-size:1.15rem; margin:0 0 0.5rem; }
+.grid { display:grid; gap:1rem; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); margin-bottom:1rem; }
+.grid-charts { display:grid; gap:1rem; grid-template-columns: 1fr; margin-bottom:1rem; }
+@media (min-width:900px){ .grid-charts.split { grid-template-columns: 1fr 1fr; } }
+.card { background:var(--card); border-radius:8px; padding:1rem; }
+.card h2 { font-size:0.85rem; color:var(--muted); margin:0 0 0.5rem; text-transform:uppercase; letter-spacing:.04em; }
+.mono { font-family: ui-monospace, monospace; font-size:0.78rem; white-space:pre-wrap; word-break:break-word; }
+table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+th, td { text-align:left; padding:0.35rem 0.5rem; border-bottom:1px solid #2a3544; vertical-align:top; }
+th { color:var(--muted); font-weight:600; }
+.badge { display:inline-block; background:#243044; padding:0.1rem 0.35rem; border-radius:4px; margin-right:0.25rem; }
+a { color: var(--acc); }
+.chart-wrap { position:relative; height:min(320px, 55vw); width:100%; }
+.chart-wrap.tall { height:min(260px, 50vw); }
+.chart-wrap.wide { height:min(240px, 45vw); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<h1>Apollo-X promoter</h1>
+<p class="mono" style="color:var(--muted);margin:0 0 1rem">Read-only · refreshes every 60s · JSON: <a href="/v1/promoter.stats">/v1/promoter.stats</a> (includes <code>charts</code>)</p>
+<div class="grid" id="cards"></div>
+<h2 style="font-size:0.95rem; margin:1.2rem 0 0.5rem">Charts</h2>
+<p class="mono" style="color:var(--muted);font-size:0.75rem;margin:0 0 0.75rem">UTC hour buckets · stacked audit actions · cursor commits show polling rhythm</p>
+<div class="grid-charts">
+<div class="card"><h2>Activity by hour (UTC)</h2><div class="chart-wrap"><canvas id="chartHourly" aria-label="Stacked audit counts by hour"></canvas></div></div>
+</div>
+<div class="grid-charts split">
+<div class="card"><h2>LLM total_tokens / hour</h2><div class="chart-wrap tall"><canvas id="chartTokens" aria-label="LLM tokens per hour"></canvas></div></div>
+<div class="card"><h2>Audit mix (last 24h)</h2><div class="chart-wrap tall"><canvas id="chartPie" aria-label="Action mix doughnut"></canvas></div></div>
+</div>
+<div class="grid-charts">
+<div class="card"><h2>Replies recorded by UTC day</h2><p class="mono" style="color:var(--muted);font-size:0.75rem;margin:0 0 0.5rem">From <code>daily_replies</code> table (promoter reply counter)</p><div class="chart-wrap wide"><canvas id="chartDaily" aria-label="Daily reply counts"></canvas></div></div>
+</div>
+<h2 style="font-size:0.95rem; margin:1.2rem 0 0.5rem">Recent audit log</h2>
+<div class="card"><table id="audit"><thead><tr><th>UTC</th><th>Action</th><th>Summary</th></tr></thead><tbody></tbody></table></div>
+<h2 style="font-size:0.95rem; margin:1.2rem 0 0.5rem">Graph decisions (memory / record_decision)</h2>
+<div class="card"><table id="mem"><thead><tr><th>Created</th><th>Action</th><th>Handle</th><th>Tweet id</th><th>Score</th></tr></thead><tbody></tbody></table></div>
+<script>
+function esc(s){ if(s==null)return ''; var d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+var _dashCharts = { hourly:null, tokens:null, pie:null, daily:null };
+function _destroyDashCharts(){
+  Object.keys(_dashCharts).forEach(function(k){ if(_dashCharts[k]){ _dashCharts[k].destroy(); _dashCharts[k]=null; } });
+}
+var _chartMuted = '#8b9cb3';
+var _chartGrid = '#2a3544';
+var _chartColors = {
+  process_tweet_replied:'rgba(61,139,253,0.88)',
+  process_tweet_post_fail:'rgba(229,83,75,0.88)',
+  process_tweet_skip:'rgba(212,167,44,0.85)',
+  process_tweet_dry:'rgba(107,142,127,0.8)',
+  'x.search':'rgba(144,97,207,0.82)',
+  search_cursor_commit:'rgba(90,101,120,0.65)',
+  'llm.usage':'rgba(56,232,198,0.55)',
+  daily_post:'rgba(255,159,64,0.75)',
+  'llm.classify_error':'rgba(255,99,132,0.75)',
+  other:'rgba(120,130,150,0.45)'
+};
+function _colorForActionKey(k){
+  var c = _chartColors[k];
+  return c || _chartColors.other;
+}
+function renderCharts(st){
+  var ch = st && st.charts;
+  if(!ch || typeof Chart === 'undefined') return;
+  _destroyDashCharts();
+  var lbl = ch.hour_labels_short || [];
+  var sc = ch.stacked_counts || {};
+  var order = (ch.stacked_actions||[]).map(function(x){ return x.key; }).concat(['other']);
+  var labelMap = { other:'Other' };
+  (ch.stacked_actions||[]).forEach(function(x){ labelMap[x.key]=x.label; });
+  var datasets = [];
+  order.forEach(function(k){
+    if(!Array.isArray(sc[k])) return;
+    datasets.push({
+      label: labelMap[k] || k,
+      data: sc[k],
+      backgroundColor: _colorForActionKey(k),
+      stack: 'ops',
+      borderWidth: 0
+    });
+  });
+  var commonLegend = { labels:{ color:_chartMuted, boxWidth:10, font:{ size:10 } } };
+  var commonScales = {
+    x:{ stacked:true, ticks:{ color:_chartMuted, maxRotation:60, minRotation:45, font:{ size:9 } }, grid:{ color:_chartGrid } },
+    y:{ stacked:true, beginAtZero:true, ticks:{ color:_chartMuted, precision:0 }, grid:{ color:_chartGrid } }
+  };
+  var elH = document.getElementById('chartHourly');
+  if(elH && lbl.length && datasets.length){
+    _dashCharts.hourly = new Chart(elH, {
+      type: 'bar',
+      data: { labels: lbl, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: Object.assign({ position:'bottom' }, commonLegend), tooltip: { itemSort: function(a,b){ return b.parsed.y - a.parsed.y; } } },
+        scales: commonScales
+      }
+    });
+  }
+  var elT = document.getElementById('chartTokens');
+  var tok = ch.llm_tokens_per_hour || [];
+  if(elT && lbl.length && tok.length === lbl.length){
+    _dashCharts.tokens = new Chart(elT, {
+      type: 'line',
+      data: {
+        labels: lbl,
+        datasets: [{
+          label: 'total_tokens (llm.usage)',
+          data: tok,
+          borderColor: 'rgba(56,232,198,0.95)',
+          backgroundColor: 'rgba(56,232,198,0.12)',
+          fill: true,
+          tension: 0.2,
+          pointRadius: 0,
+          pointHitRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: Object.assign({ position:'bottom' }, commonLegend) },
+        scales: {
+          x: { ticks:{ color:_chartMuted, maxRotation:60, minRotation:45, font:{ size:9 } }, grid:{ color:_chartGrid } },
+          y: { beginAtZero:true, ticks:{ color:_chartMuted }, grid:{ color:_chartGrid } }
+        }
+      }
+    });
+  }
+  var elP = document.getElementById('chartPie');
+  var pl = ch.pie_24h_labels || [];
+  var pv = ch.pie_24h_values || [];
+  if(elP && pl.length && pl.length === pv.length){
+    var pieColors = pl.map(function(_,i){
+      var hue = (i * 47) % 360;
+      return 'hsla('+hue+',55%,58%,0.85)';
+    });
+    _dashCharts.pie = new Chart(elP, {
+      type: 'doughnut',
+      data: { labels: pl, datasets: [{ data: pv, backgroundColor: pieColors, borderWidth: 0 }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: Object.assign({ position:'right' }, commonLegend),
+          tooltip: { callbacks: { label: function(ctx){ var t = ctx.dataset.data[ctx.dataIndex]; var s = (ctx.label||'') + ': ' + t; var sum = pv.reduce(function(a,b){ return a+b; },0); return sum ? s + ' (' + (100*t/sum).toFixed(1) + '%)' : s; } } }
+        }
+      }
+    });
+  }
+  var elD = document.getElementById('chartDaily');
+  var dl = ch.daily_reply_days || [];
+  var dc = ch.daily_reply_counts || [];
+  if(elD && dl.length && dl.length === dc.length){
+    _dashCharts.daily = new Chart(elD, {
+      type: 'bar',
+      data: {
+        labels: dl,
+        datasets: [{ label: 'replies (daily_replies.count)', data: dc, backgroundColor: 'rgba(61,139,253,0.75)', borderWidth: 0 }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: Object.assign({ position:'bottom' }, commonLegend) },
+        scales: {
+          x: { ticks:{ color:_chartMuted }, grid:{ color:_chartGrid } },
+          y: { beginAtZero:true, ticks:{ color:_chartMuted, precision:0 }, grid:{ color:_chartGrid } }
+        }
+      }
+    });
+  }
+}
+function summarize(detail){
+  if(!detail||typeof detail!=='object') return '';
+  var keys=['username','target_username','reply_username','tweet_id','user_id','reply_id','reason','context','model','total_tokens','query','n','dry_run','error','since_id'];
+  var parts=[]; for(var i=0;i<keys.length;i++){ var k=keys[i]; var v=detail[k]; if(v==null||v==='') continue;
+    if(k==='username'||k==='target_username'||k==='reply_username'){ v=String(v).replace(/^@+/,''); parts.push(k+': @'+v); }
+    else parts.push(k+': '+v);
+  }
+  return parts.slice(0,10).join(' · ') || JSON.stringify(detail).slice(0,140);
+}
+async function load(){
+  try{
+    var st = await fetch('/v1/promoter.stats').then(function(r){ return r.json(); });
+    var au = await fetch('/v1/promoter.audit_tail?limit=60').then(function(r){ return r.json(); });
+    var mem = await fetch('/v1/promoter.memory_tail?limit=30').then(function(r){ return r.json(); });
+    var u = st.llm_usage_last_24h || {};
+    var wh = (st.charts && st.charts.window_hours) ? ' · charts: last '+st.charts.window_hours+'h' : '';
+    document.getElementById('cards').innerHTML =
+      '<div class="card"><h2>LLM tokens (24h)</h2><div class="mono">total: '+esc(u.total_tokens)+'<br/>'+
+      'prompt: '+esc(u.prompt_tokens)+' · completion: '+esc(u.completion_tokens)+'<br/>'+
+      'calls logged: '+esc(u.api_calls_recorded)+'</div></div>'+
+      '<div class="card"><h2>Today (UTC)</h2><div class="mono">replies counted: '+esc(st.reply_count_today)+'<br/>'+
+      'dedupe rows: '+esc(st.replied_tweet_dedupe_rows)+'</div></div>'+
+      '<div class="card"><h2>SQLite paths</h2><div class="mono">'+esc(st.promoter_state_db)+'<br/><br/>'+esc(st.memory_db_path)+'<br/>memory readable: '+esc(st.memory_db_readable)+'</div></div>'+
+      '<div class="card"><h2>Audit actions (24h)</h2><div class="mono">'+
+      Object.keys(st.audit_actions_last_24h||{}).map(function(a){ return a+': '+(st.audit_actions_last_24h[a]); }).join('<br/>')+esc(wh)+'</div></div>';
+    renderCharts(st);
+    var tb = document.querySelector('#audit tbody');
+    tb.innerHTML = (au.rows||[]).map(function(r){
+      return '<tr><td class="mono">'+esc(r.ts_utc)+'</td><td><span class="badge">'+esc(r.action)+'</span></td><td class="mono">'+esc(summarize(r.detail))+'</td></tr>';
+    }).join('');
+    var mb = document.querySelector('#mem tbody');
+    mb.innerHTML = (mem.rows && mem.rows.length) ? mem.rows.map(function(r){
+      var h = (r.username && String(r.username).trim()) ? '@'+String(r.username).trim() : '';
+      return '<tr><td class="mono">'+esc(r.created_at)+'</td><td>'+esc(r.action)+'</td><td class="mono">'+esc(h)+'</td><td class="mono">'+esc(r.tweet_id)+'</td><td>'+esc(r.score)+'</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="color:var(--muted)">No memory DB or no rows (run polls with --enable-adapter memory)</td></tr>';
+  }catch(e){ document.getElementById('cards').innerHTML='<div class="card">Load error: '+esc(e)+'</div>'; _destroyDashCharts(); }
+}
+load(); setInterval(load, 60000);
+</script>
+</body>
+</html>"""
 
 
 # -----------------------------------------------------------------------------
@@ -1572,6 +2518,64 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self.wfile.write(data)
         except _CLIENT_DISCONNECT:
             pass
+
+    def _send_html_body(self, status: int, data: bytes) -> None:
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+        except _CLIENT_DISCONNECT:
+            pass
+
+    def do_GET(self) -> None:
+        if not _dashboard_enabled():
+            self.send_error(404, "dashboard disabled (set PROMOTER_DASHBOARD_ENABLED=1 to enable)")
+            return
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path.rstrip("/") or "/"
+        qs = urllib.parse.parse_qs(parsed.query)
+        try:
+            assert _STATE is not None
+            if path in ("/", "/v1/promoter.dashboard"):
+                self._send_html_body(200, _DASHBOARD_HTML.encode("utf-8"))
+                return
+            if path == "/v1/promoter.stats":
+                payload = json.dumps(_promoter_stats_bundle(_STATE), ensure_ascii=False).encode("utf-8")
+                self._send_json_body(200, payload)
+                return
+            if path == "/v1/promoter.audit_tail":
+                try:
+                    lim = int((qs.get("limit") or ["80"])[0] or 80)
+                except ValueError:
+                    lim = 80
+                out = json.dumps(
+                    {"ok": True, "rows": audit_tail_with_handles(_STATE, lim)},
+                    ensure_ascii=False,
+                ).encode("utf-8")
+                self._send_json_body(200, out)
+                return
+            if path == "/v1/promoter.memory_tail":
+                try:
+                    lim = int((qs.get("limit") or ["40"])[0] or 40)
+                except ValueError:
+                    lim = 40
+                blob = json.dumps(
+                    {
+                        "ok": True,
+                        "memory_db": str(_memory_db_path()),
+                        "rows": _memory_decisions_tail(_STATE, lim),
+                    },
+                    ensure_ascii=False,
+                ).encode("utf-8")
+                self._send_json_body(200, blob)
+                return
+            self.send_error(404, "unknown GET path; try /v1/promoter.dashboard")
+        except Exception as e:
+            err = json.dumps({"ok": False, "error": str(e)}).encode("utf-8")
+            self._send_json_body(500, err)
 
     def do_POST(self) -> None:
         path = urllib.parse.urlparse(self.path).path
@@ -1675,6 +2679,12 @@ def main() -> int:
             return 1
         raise
     print(f"apollo-x gateway on http://{host}:{port}/v1/… (see apollo-x-bot/README.md)", file=sys.stderr)
+    dash_ref = "127.0.0.1" if host in ("0.0.0.0", "::") else host
+    if _dashboard_enabled():
+        print(
+            f"apollo-x monitor  http://{dash_ref}:{port}/v1/promoter.dashboard",
+            file=sys.stderr,
+        )
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
