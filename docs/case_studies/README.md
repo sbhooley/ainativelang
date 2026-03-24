@@ -8,6 +8,7 @@ This is the canonical home for narrative, applied, and production-oriented AINL 
 - [`apollo_long_context_memory_original_thesis.md`](apollo_long_context_memory_original_thesis.md) — original thesis-style writeup
 - [`graph_agents_vs_prompt_agents.md`](graph_agents_vs_prompt_agents.md) — graph-native agents vs prompt-loop agents
 - [`HOW_AINL_SAVES_MONEY.md`](HOW_AINL_SAVES_MONEY.md) — runtime cost framing for routine monitoring
+- [`DESIGNING_ENERGY_CONSUMPTION_PATTERNS.md`](DESIGNING_ENERGY_CONSUMPTION_PATTERNS.md) — AINL as explicit energy budget design (pay-once design, run-many execution)
 
 ## Related sections
 
