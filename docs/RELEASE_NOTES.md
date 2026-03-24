@@ -44,6 +44,10 @@
 - **`make benchmark` / `make benchmark-ci`:** echo resolved **`PYTHON`** (prefer **`.venv-py310`** per **`Makefile`**)
 - **`BENCHMARK.md`**, **`docs/benchmarks.md`:** document CI baseline preference
 
+### Competitive & comparisons (positioning + evidence)
+
+- **`docs/competitive/`** — onboarding (**`FROM_LANGGRAPH_TO_AINL.md`**, **`AINL_AND_TEMPORAL.md`**), benchmark methodology (**`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`**), paste-in comparison tables (**`COMPARISON_TABLE.md`**), and OpenClaw savings worksheet (**`OPENCLAW_PRODUCTION_SAVINGS.md`**). Public hub: **`OVERVIEW.md`** (on **[ainativelang.com](https://ainativelang.com)** as **`/docs/competitive/OVERVIEW`** after the web repo runs **`npm run sync-content`** and a production deploy).
+
 See **`docs/CHANGELOG.md`** § **v1.2.5** for the same items in changelog form.
 
 ---

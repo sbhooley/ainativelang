@@ -4,6 +4,8 @@ order: 0
 
 # Competitive & comparisons
 
+**One line:** If you are weighing AINL against LangGraph, Temporal, CrewAI, or prompt-loop orchestration, start here — we separate **reproducible benchmark methodology** from hype, keep **`.ainl`** as the authoring source of truth, and show how **multi-target emit** (including hybrid wrappers) fits into token and runtime economics.
+
 Comparative framing and **AINL vs X** materials, grounded in shipped compiler/runtime/emitters and reproducible benchmarks.
 
 ## Guides

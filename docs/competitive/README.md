@@ -2,6 +2,8 @@
 
 **Site mirror:** [`OVERVIEW.md`](OVERVIEW.md) (synced to ainativelang.com `/docs/competitive/`; `README.md` is not synced).
 
+**Path tip:** filenames are **case-sensitive** on Linux and in URLs — the methodology doc is exactly **`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`** (not `versus_…`).
+
 Use this section for comparative framing such as “AINL vs X” and category-definition materials.
 
 Comparative docs should be grounded in **shipped** behavior (compiler, runtime, emitters, MCP) and link to **reproducible** benchmarks where numbers are claimed.
