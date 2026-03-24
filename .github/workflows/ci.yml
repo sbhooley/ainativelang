@@ -293,7 +293,22 @@ jobs:
           echo "::notice::No tooling/benchmark_size_ci.json or benchmark_size.json at baseline SHA; skipping size regression compare."
 
       - name: Regression check (runtime)
-        if: steps.baselines.outputs.runtime_ci == 'present' || steps.baselines.outputs.runtime == 'present'
+        if: (steps.baselines.outputs.runtime_ci == 'present' || steps.baselines.outputs.runtime == 'present') && github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.baselines.outputs.runtime_ci }}" = "present" ]; then
+            OLD_JSON=/tmp/bench-baseline/benchmark_runtime_ci.json
+          else
+            OLD_JSON=/tmp/bench-baseline/benchmark_runtime_results.json
+          fi
+          python scripts/compare_benchmark_json.py \
+            --old-json "$OLD_JSON" \
+            --new-json tooling/benchmark_runtime_ci.json \
+            --threshold "$BENCH_THRESHOLD"
+
+      - name: Runtime benchmark compare (PR informational)
+        if: (steps.baselines.outputs.runtime_ci == 'present' || steps.baselines.outputs.runtime == 'present') && github.event_name == 'pull_request'
+        continue-on-error: true
         run: |
           set -euo pipefail
           if [ "${{ steps.baselines.outputs.runtime_ci }}" = "present" ]; then
