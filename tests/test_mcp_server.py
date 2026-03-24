@@ -24,6 +24,8 @@ from scripts.ainl_mcp_server import (
     ainl_capabilities,
     ainl_security_report,
     ainl_run,
+    ainl_fitness_report,
+    ainl_ir_diff,
     _load_json,
     _merge_policy,
     _merge_limits,
@@ -49,6 +51,12 @@ class TestValidate:
         result = ainl_validate(INVALID_CODE, strict=True)
         assert result["ok"] is False
         assert len(result["errors"]) > 0
+
+    def test_validate_returns_llm_native_diagnostics(self):
+        result = ainl_validate(INVALID_CODE, strict=True)
+        assert "diagnostics" in result
+        for d in result["diagnostics"]:
+            assert "llm_repair_hint" in d
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +171,46 @@ class TestRun:
         )
         assert result["ok"] is False
         assert result.get("error") == "policy_violation"
+
+
+# ---------------------------------------------------------------------------
+# ainl_fitness_report / ainl_ir_diff
+# ---------------------------------------------------------------------------
+
+class TestResearchTools:
+    def test_fitness_report(self, tmp_path: Path):
+        f = tmp_path / "ok.ainl"
+        f.write_text(VALID_CODE, encoding="utf-8")
+        result = ainl_fitness_report(str(f), runs=2, strict=True)
+        assert "metrics" in result
+        assert result["metrics"]["latency_ms"]["avg"] >= 0
+        assert "adapter_calls" in result["metrics"]
+        assert result["metrics"]["memory_deltas"]["tracked"] is True
+        assert "operation_histogram" in result["metrics"]
+        assert "fitness_score" in result["metrics"]
+        assert 0.0 <= result["metrics"]["fitness_score"] <= 1.0
+        assert "fitness_components" in result["metrics"]
+
+    def test_ir_diff(self, tmp_path: Path):
+        f1 = tmp_path / "a.ainl"
+        f2 = tmp_path / "b.ainl"
+        f1.write_text(VALID_CODE, encoding="utf-8")
+        f2.write_text("S app api /api\nL1:\nR core.ADD 2 4 ->sum\nJ sum", encoding="utf-8")
+        result = ainl_ir_diff(str(f1), str(f2), strict=True)
+        assert result["ok"] is True
+        assert "diff" in result
+        assert isinstance(result["diff"]["changed_nodes"], list)
+
+    def test_fitness_score_zero_when_reliability_zero(self, tmp_path: Path):
+        # Uses db adapter so safe-profile (core-only) fitness runs reliably fail.
+        failing = tmp_path / "failing.ainl"
+        failing.write_text(
+            "S app api /api\nL1:\nR db.F User * ->rows\nJ rows\n",
+            encoding="utf-8",
+        )
+        result = ainl_fitness_report(str(failing), runs=3, strict=True)
+        assert result["metrics"]["reliability_score"] == 0.0
+        assert result["metrics"]["fitness_score"] == 0.0
 
 
 # ---------------------------------------------------------------------------

@@ -21,6 +21,10 @@ The language has been exercised in production-style OpenClaw workflows involving
 
 AINL is positioned as the **authoring and validation layer** where an LLM (or human) produces a **compact program** that **compiles** to canonical IR; the **runtime** executes that graph deterministically (**compile-once / run-many**). When a deployment needs another ecosystem’s worker model today, validate can **emit** artifacts such as **LangGraph** or **Temporal** modules while keeping **`.ainl`** as the **single source of truth** — see **`docs/HYBRID_GUIDE.md`**, **`docs/competitive/README.md`**, and **`BENCHMARK.md`** § comparative methodology. MCP integration (OpenClaw / ZeroClaw / NemoClaw) is a first-class distribution path (`docs/OPENCLAW_INTEGRATION.md`, `docs/getting_started/HOST_MCP_INTEGRATIONS.md`).
 
+### Positioning note (v1.2.6): AVM + general sandbox handoff
+
+AINL now emits optional runtime handoff metadata in compiled IR (`execution_requirements`, including `avm_policy_fragment` plus neutral isolation/capability/resource hints) so operators can pair the deterministic graph layer with AVM (`avmd`) or general sandbox runtimes (for example Firecracker, gVisor, Kubernetes Agent Sandbox, E2B-style environments) without changing language/runtime semantics.
+
 ---
 
 ## 1. Introduction
@@ -256,6 +260,8 @@ Merged IR stores most label keys as **`alias/LABEL`**. Branch and loop steps som
 ### 6.5 Optional CLI trajectory and Hyperspace agent emission
 
 The reference **CLI** can append **one JSON object per executed step** to **`<source-stem>.trajectory.jsonl`** beside the `.ainl` source when enabled (`ainl run --log-trajectory` or **`AINL_LOG_TRAJECTORY`**). This **per-step trace** is separate from the HTTP runner service’s structured audit JSON stream (`docs/operations/AUDIT_LOGGING.md`). The validate CLI can emit a **standalone Python module** with **`--emit hyperspace`**, embedding compiled IR for hosts that want a single-file agent; the emitted scaffold wires **`vector_memory`** and **`tool_registry`** (local JSON-backed adapters; **`docs/reference/ADAPTER_REGISTRY.md`** §9). See **`docs/trajectory.md`**, **`docs/emitters/README.md`**, and **`examples/hyperspace_demo.ainl`**.
+
+Optional sandbox-aware trajectory extensions are additive: when a sandbox runtime shim is connected, step rows may also include `avm_event_hash`, `sandbox_session_id`, `sandbox_provider`, and `isolation_hash`; when absent, behavior and output remain unchanged.
 
 ---
 
@@ -1073,6 +1079,8 @@ Paths are relative to the repository root.
 - `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — external orchestrator integration
 - `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` — AINL → external workers over HTTP (`http.Post` contract; optional `bridge` adapter); MCP-first for OpenClaw/NemoClaw
 - `docs/INTEGRATION_STORY.md` — integration positioning and pain-to-solution map
+- `runtime/sandbox_shim.py` — optional AVM/general sandbox runtime detector + event/session metadata hooks
+- `cli/main.py` — `ainl generate-sandbox-config` / `ainl generate-avm-policy` integration helpers
 - `services/runtime_runner/Dockerfile` — runner service container
 - `tests/emits/server/Dockerfile` — emitted server container
 

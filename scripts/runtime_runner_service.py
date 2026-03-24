@@ -34,6 +34,7 @@ from runtime.adapters.replay import RecordingAdapterRegistry, ReplayAdapterRegis
 from runtime.adapters.sqlite import SimpleSqliteAdapter
 from runtime.adapters.tools import ToolBridgeAdapter
 from runtime.adapters.wasm import WasmAdapter
+from runtime.sandbox_shim import SandboxClient
 from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
 from tooling.capability_grant import (
@@ -51,6 +52,8 @@ if not logger.handlers:
     handler.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+# Optional sandbox discovery at startup; runner behavior is unchanged when unavailable.
+_SANDBOX_CLIENT = SandboxClient.try_connect(logger=logger.info)
 
 # --- Server-level defaults (safety floor) --------------------------------
 _SERVER_DEFAULT_LIMITS: Dict[str, int] = {
@@ -366,6 +369,8 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
         execution_mode=str(req.get("execution_mode") or "graph-preferred"),
         unknown_op_policy=req.get("unknown_op_policy"),
         limits=req["limits"],
+        avm_event_hasher=_SANDBOX_CLIENT.event_hash if _SANDBOX_CLIENT.connected else None,
+        sandbox_metadata_provider=_SANDBOX_CLIENT.trajectory_metadata if _SANDBOX_CLIENT.connected else None,
     )
     label = str(req.get("label") or eng.default_entry_label())
     frame = req.get("frame") or {}

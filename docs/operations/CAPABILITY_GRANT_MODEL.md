@@ -7,6 +7,8 @@ allowed to do for a given run.
 > This is runtime/host-level tooling. It does not change AINL language
 > semantics, IR format, or per-node capabilities.
 
+Related additive metadata: compiled IR may include `execution_requirements` (for example `avm_policy_fragment`, isolation/resource hints) to simplify AVM/general sandbox integration. This metadata is advisory and does not alter grant merge semantics.
+
 ## How it fits
 
 The grant model ties together several related concepts:

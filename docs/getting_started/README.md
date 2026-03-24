@@ -40,6 +40,10 @@ ainl run examples/hello.ainl --json
 # Optional: per-step JSONL trace beside the source (see docs/trajectory.md)
 ainl run examples/hello.ainl --log-trajectory --json
 
+# Optional: generate runtime config hints for AVM/general sandboxes
+ainl generate-sandbox-config examples/hello.ainl --target general
+ainl generate-sandbox-config examples/hello.ainl --target avm
+
 # Emit a standalone Hyperspace Python agent (embedded IR); run from repo root
 python3 scripts/validate_ainl.py examples/hyperspace_demo.ainl --strict --emit hyperspace -o demo_agent.py
 ```

@@ -158,6 +158,38 @@ def test_graph_diff():
     assert "human_summary" in d
 
 
+def test_graph_diff_detects_payload_changes():
+    old_ir = {
+        "labels": {
+            "1": {
+                "nodes": [
+                    {"id": "n1", "op": "R", "data": {"op": "R", "adapter": "core.ADD", "target": "2", "args": ["3"], "out": "x"}},
+                    {"id": "n2", "op": "J", "data": {"op": "J", "var": "x"}},
+                ],
+                "edges": [{"from": "n1", "to": "n2", "port": "next"}],
+                "entry": "n1",
+                "exits": [],
+            }
+        }
+    }
+    new_ir = {
+        "labels": {
+            "1": {
+                "nodes": [
+                    {"id": "n1", "op": "R", "data": {"op": "R", "adapter": "core.ADD", "target": "2", "args": ["4"], "out": "x"}},
+                    {"id": "n2", "op": "J", "data": {"op": "J", "var": "x"}},
+                ],
+                "edges": [{"from": "n1", "to": "n2", "port": "next"}],
+                "entry": "n1",
+                "exits": [],
+            }
+        }
+    }
+    d = graph_diff(old_ir, new_ir, label_id="1")
+    assert ("1", "n1") in d["changed_nodes"]
+    assert "data" in d["changed_nodes"][("1", "n1")]
+
+
 def test_trace_annotate_graph():
     ir = {"labels": {"1": {"nodes": [{"id": "n1"}, {"id": "n2"}], "entry": "n1", "exits": []}}}
     trace = [

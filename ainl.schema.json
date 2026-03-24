@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainativelang.com/schemas/ainl-ir.schema.json",
+  "title": "AINL Canonical IR (minimal contract)",
+  "description": "Additive machine-checkable schema for compiled AINL IR documents.",
+  "type": "object",
+  "required": ["ir_version", "labels"],
+  "properties": {
+    "ir_version": { "type": "string" },
+    "labels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "entry": { "type": ["string", "null"] },
+          "nodes": { "type": "array", "items": { "type": "object" } },
+          "edges": { "type": "array", "items": { "type": "object" } },
+          "legacy": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "services": { "type": "object" },
+    "diagnostics": { "type": "array", "items": { "type": "object" } },
+    "errors": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "execution_requirements": { "type": "object" },
+    "resource_limits": { "type": "object" },
+    "capabilities": { "type": "object" }
+  },
+  "additionalProperties": true
+}

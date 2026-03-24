@@ -12,6 +12,28 @@ def _edge_key(e: Dict[str, Any]) -> Tuple[str, str, str]:
     return (e.get("from"), e.get("to"), e.get("port") or "next")
 
 
+def _node_data_signature(node: Dict[str, Any]) -> Dict[str, Any]:
+    data = node.get("data") if isinstance(node.get("data"), dict) else {}
+    return {
+        "op": data.get("op"),
+        "adapter": data.get("adapter"),
+        "target": data.get("target"),
+        "args": data.get("args"),
+        "out": data.get("out"),
+        "cond": data.get("cond"),
+        "then": data.get("then"),
+        "else": data.get("else"),
+        "var": data.get("var"),
+        "label": data.get("label"),
+        "name": data.get("name"),
+        "field": data.get("field"),
+        "cmp": data.get("cmp"),
+        "value": data.get("value"),
+        "ref": data.get("ref"),
+        "policy": data.get("policy"),
+    }
+
+
 def graph_diff(
     old_ir: Dict[str, Any],
     new_ir: Dict[str, Any],
@@ -55,6 +77,10 @@ def graph_diff(
                     ov, nv = old_nodes[nid].get(k), n.get(k)
                     if ov != nv:
                         diff[k] = (ov, nv)
+                old_sig = _node_data_signature(old_nodes[nid])
+                new_sig = _node_data_signature(n)
+                if old_sig != new_sig:
+                    diff["data"] = (old_sig, new_sig)
                 if diff:
                     changed_nodes[(lid, nid)] = diff
         for nid in old_nodes:
@@ -82,6 +108,10 @@ def graph_diff(
             for d in rewired_edges:
                 if d.get("label_id") == lid:
                     parts.append(f"rewired {d.get('from')} port={d.get('port')} to {d.get('new_to')}")
+            for (cl, cn), cdelta in changed_nodes.items():
+                if cl == lid:
+                    changed_fields = ",".join(sorted(cdelta.keys()))
+                    parts.append(f"changed node {cn} fields={changed_fields}")
             if parts:
                 per_label_summary.append(f"Label {lid}: " + "; ".join(parts))
 

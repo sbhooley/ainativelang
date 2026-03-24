@@ -1,5 +1,16 @@
 # Release notes
 
+## AINL v1.2.7 — Hyperagent Research Pack (additive) (2026-03-24)
+
+- Added `ainl inspect <file.ainl> [--strict] [--json]` to dump full canonical IR JSON.
+- Added `ainl run --trace-jsonl PATH|-` for structured JSONL execution tape output (file or stdout).
+- Structured diagnostics now expose `llm_repair_hint` for LLM-native repair loops.
+- MCP added `ainl_fitness_report` and `ainl_ir_diff` tools for selection/mutation loops.
+- `ainl_fitness_report` now includes `fitness_score` with transparent `fitness_components`/`weights`, plus adapter/operation/frame-key proxy metrics.
+- `ainl_ir_diff` now detects payload-level node data deltas (not only topology rewires/add/remove).
+- Added machine-readable schema seed `ainl.schema.json`.
+- Added research docs/prompts: `docs/EMBEDDING_RESEARCH_LOOPS.md`, `docs/operations/MCP_RESEARCH_CONTRACT.md`, `prompts/meta-agent/*`.
+
 ## AINL v1.2.6 — install hardening + wheel/release gates + doctor diagnostics (2026-03-24)
 
 **PyPI / runtime:** **`ainl-lang` 1.2.6** — **`RUNTIME_VERSION` `1.2.6`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**).
@@ -12,6 +23,10 @@
 - **Release automation:** new `Release Gates` workflow enforces wheel import smoke + `pip check` + `ainl install-mcp --host openclaw|zeroclaw --dry-run`.
 - **Runtime diagnostics:** new `ainl doctor` command verifies Python/import/PATH/MCP health in one command and reports actionable warnings/failures.
 - **Python 3.13 constraints:** add `constraints/py313-mcp.txt` as tested MCP stack pins for sandbox hosts, with a monthly `Constraints Health` workflow to catch dependency drift.
+- **Sandbox/AVM metadata (additive):** compiler now emits optional `execution_requirements` plus `avm_policy_fragment` in IR for policy/config handoff without changing runtime semantics.
+- **Unified sandbox shim (optional):** runner, MCP, and CLI `ainl run` now use `runtime/sandbox_shim.py` (`SandboxClient.try_connect`) for AVM/general sandbox detection with one-line graceful fallback.
+- **New CLI helper:** `ainl generate-sandbox-config <file.ainl> [--target avm|firecracker|gvisor|k8s|general]` outputs ready-to-merge AVM/general sandbox config fragments.
+- **Trajectory enrichment (optional):** per-step JSONL can include `avm_event_hash`, `sandbox_session_id`, `sandbox_provider`, and `isolation_hash` when a sandbox runtime is connected (no-op otherwise).
 
 ## AINL v1.2.5 — Hyperspace + hybrid interop + CI baselines (2026-03-23)
 

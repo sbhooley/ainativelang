@@ -51,6 +51,7 @@ class Diagnostic:
             v = d.get(key)
             if v is not None:
                 d[key] = list(v)
+        d["llm_repair_hint"] = self.suggested_fix or self.message
         return d
 
     @staticmethod

@@ -80,6 +80,18 @@ def test_mt5_emit_capabilities_from_runtime_steps():
     assert "mt5" in ir["required_emit_targets"]["minimal_emit"]
 
 
+def test_avm_policy_fragment_emitted_for_adapter_usage():
+    ir = _compile_source(
+        "L1: R core.ADD 2 3 ->x J x\n"
+    )
+    frag = ir.get("avm_policy_fragment")
+    assert isinstance(frag, dict)
+    assert "core" in frag.get("allowed_adapters", [])
+    req = ir.get("execution_requirements")
+    assert isinstance(req, dict)
+    assert req.get("avm_policy_fragment", {}).get("allowed_adapters", []) == frag.get("allowed_adapters", [])
+
+
 def test_s_hybrid_sets_langgraph_and_temporal_capabilities():
     ir = AICodeCompiler(strict_mode=True).compile(
         "S hybrid langgraph temporal\n"

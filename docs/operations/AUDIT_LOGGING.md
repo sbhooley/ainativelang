@@ -61,6 +61,10 @@ Includes `replay_artifact_id` for traceability.
 - **Error messages are redacted and truncated** to 200 characters.
 - **Timestamps are UTC ISO 8601** for consistent cross-system correlation.
 
+## Relation to trajectory sandbox fields
+
+When using CLI/runtime trajectory JSONL (`docs/trajectory.md`) with the optional sandbox shim connected, per-step rows may include `avm_event_hash`, `sandbox_session_id`, `sandbox_provider`, and `isolation_hash`. Those fields are additive to trajectory logging and are separate from the runner's `ainl.runner` structured audit stream documented here.
+
 ## Usage
 
 Audit logs are emitted via Python's `logging` module under the

@@ -61,7 +61,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.2.6"
+RUNTIME_VERSION = "1.2.7"
 
 # Stable, machine-readable runtime error codes for agents.
 ERROR_CODE_MAX_DEPTH = "RUNTIME_MAX_DEPTH"
@@ -95,6 +95,8 @@ class RuntimeEngine:
         unknown_op_policy: Optional[str] = None,
         trace_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
         trajectory_log_path: Optional[str] = None,
+        avm_event_hasher: Optional[Callable[[Dict[str, Any]], Optional[str]]] = None,
+        sandbox_metadata_provider: Optional[Callable[[], Dict[str, Any]]] = None,
     ):
         self.ir = ir
         self.labels = ir.get("labels", {})
@@ -110,6 +112,9 @@ class RuntimeEngine:
         self.trace_events: List[Dict[str, Any]] = []
         self.trace_sink = trace_sink
         self._trajectory_log_path: Optional[str] = trajectory_log_path
+        # Optional AVM hook: append AVM hash when an AVM daemon shim is connected.
+        self._avm_event_hasher = avm_event_hasher
+        self._sandbox_metadata_provider = sandbox_metadata_provider
         self._trajectory_seq: int = 0
         self._trace_lineno: Optional[int] = None
         self.runtime_version = RUNTIME_VERSION
@@ -141,6 +146,8 @@ class RuntimeEngine:
         trace_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
         source_path: Optional[str] = None,
         trajectory_log_path: Optional[str] = None,
+        avm_event_hasher: Optional[Callable[[Dict[str, Any]], Optional[str]]] = None,
+        sandbox_metadata_provider: Optional[Callable[[], Dict[str, Any]]] = None,
     ) -> "RuntimeEngine":
         c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
         ir = c.compile(code, emit_graph=True, source_path=source_path)
@@ -156,6 +163,8 @@ class RuntimeEngine:
             unknown_op_policy=unknown_op_policy,
             trace_sink=trace_sink,
             trajectory_log_path=trajectory_log_path,
+            avm_event_hasher=avm_event_hasher,
+            sandbox_metadata_provider=sandbox_metadata_provider,
         )
 
     @classmethod
@@ -490,6 +499,10 @@ class RuntimeEngine:
             "timestamp": ts,
             "user_reward": json_safe(frame.get("_trajectory_user_reward")),
         }
+        if self._avm_event_hasher is not None:
+            rec["avm_event_hash"] = self._avm_event_hasher(rec)
+        if self._sandbox_metadata_provider is not None:
+            rec.update(self._sandbox_metadata_provider() or {})
         try:
             with open(path, "a", encoding="utf-8") as fh:
                 fh.write(json.dumps(rec, ensure_ascii=False) + "\n")

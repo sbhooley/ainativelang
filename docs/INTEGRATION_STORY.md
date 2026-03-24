@@ -7,6 +7,14 @@ governance. It does not replace your platform, sandbox, or orchestrator — it
 sits inside them and makes agent workflows reproducible, inspectable, and
 controllable.
 
+## Recommended production stack: AINL graphs + AVM or general agent sandboxes
+
+AINL remains the deterministic graph/capability layer; isolation is provided by your runtime choice (AVM, Firecracker/gVisor/Kubernetes Agent Sandbox, or other agent VM environments). New additive hooks keep this integration low-friction:
+
+- optional `execution_requirements` metadata in compiled IR for AVM + neutral sandbox hints,
+- `ainl generate-sandbox-config` for runtime-friendly config fragments,
+- optional sandbox shim + audit fields (`sandbox_session_id`, `avm_event_hash`, `isolation_hash`) with graceful fallback.
+
 **Public article (memory tiers, MCP hosts, bridge vs adapter):** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
 
 ---

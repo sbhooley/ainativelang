@@ -38,6 +38,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -51,6 +52,7 @@ except ImportError:
 
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
+from runtime.sandbox_shim import SandboxClient
 from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
 from tooling.security_report import analyze_ir
@@ -68,6 +70,7 @@ from tooling.mcp_ecosystem_import import (
     import_markdown_mcp,
     list_ecosystem_templates,
 )
+from tooling.graph_diff import graph_diff
 
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
@@ -92,6 +95,8 @@ ALL_TOOL_NAMES: List[str] = [
     "ainl_import_agency_agent",
     "ainl_import_markdown",
     "ainl_list_ecosystem",
+    "ainl_fitness_report",
+    "ainl_ir_diff",
 ]
 
 ALL_RESOURCE_URIS: List[str] = [
@@ -194,6 +199,8 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
     }
 
 _MCP_SERVER_GRANT: Dict[str, Any] = _load_mcp_server_grant()
+# Optional sandbox discovery at startup; MCP behavior is unchanged when unavailable.
+_SANDBOX_CLIENT = SandboxClient.try_connect(logger=lambda msg: print(msg))
 
 _mcp_server: Any = None
 
@@ -215,6 +222,24 @@ if _HAS_MCP:
 def _compile(code: str, strict: bool = True) -> Dict[str, Any]:
     compiler = AICodeCompiler(strict_mode=strict)
     return compiler.compile(code)
+
+
+def _with_llm_repair_hint(diags: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for d in diags or []:
+        if not isinstance(d, dict):
+            continue
+        row = dict(d)
+        hint = row.get("llm_repair_hint") or row.get("suggested_fix") or row.get("message")
+        row["llm_repair_hint"] = hint
+        out.append(row)
+    return out
+
+
+def _file_to_ir(path: str, strict: bool = True) -> Dict[str, Any]:
+    p = Path(path).expanduser()
+    code = p.read_text(encoding="utf-8")
+    return _compile(code, strict=strict)
 
 
 def _load_json(name: str) -> Dict[str, Any]:
@@ -305,7 +330,8 @@ def ainl_validate(code: str, strict: bool = True) -> dict:
     ir = _compile(code, strict=strict)
     errors = ir.get("errors") or []
     warnings = ir.get("warnings") or []
-    return {"ok": len(errors) == 0, "errors": errors, "warnings": warnings}
+    diagnostics = _with_llm_repair_hint(list(ir.get("diagnostics") or []))
+    return {"ok": len(errors) == 0, "errors": errors, "warnings": warnings, "diagnostics": diagnostics}
 
 
 @_register_tool
@@ -394,6 +420,8 @@ def ainl_run(
             step_fallback=True,
             execution_mode="graph-preferred",
             limits=merged_limits,
+            avm_event_hasher=_SANDBOX_CLIENT.event_hash if _SANDBOX_CLIENT.connected else None,
+            sandbox_metadata_provider=_SANDBOX_CLIENT.trajectory_metadata if _SANDBOX_CLIENT.connected else None,
         )
         entry = label or eng.default_entry_label()
         out = eng.run_label(entry, frame=frame or {})
@@ -491,6 +519,166 @@ def ainl_list_ecosystem() -> dict:
     to discover slugs and ``examples/ecosystem`` folders shipped with the repo.
     """
     return list_ecosystem_templates()
+
+
+@_register_tool
+def ainl_fitness_report(file: str, runs: int = 5, strict: bool = True) -> dict:
+    """Run a workflow repeatedly with safe adapters and report fitness metrics."""
+    trace_id = str(uuid.uuid4())
+    ir = _file_to_ir(file, strict=strict)
+    errors = ir.get("errors") or []
+    if errors:
+        return {"ok": False, "trace_id": trace_id, "errors": errors}
+
+    runs = max(1, int(runs))
+    latencies_ms: List[float] = []
+    step_counts: List[int] = []
+    adapter_call_counts: List[int] = []
+    final_frame_key_counts: List[int] = []
+    op_histogram: Dict[str, int] = {}
+    successes = 0
+    last_error: Optional[str] = None
+    sample_runs: List[Dict[str, Any]] = []
+    for _ in range(runs):
+        reg = AdapterRegistry(allowed=list(_DEFAULT_ALLOWED_ADAPTERS))
+        reg.register("core", _EchoAdapter())
+        start = time.perf_counter()
+        run_summary: Dict[str, Any] = {"ok": False}
+        try:
+            eng = RuntimeEngine(
+                ir=ir,
+                adapters=reg,
+                trace=True,
+                step_fallback=True,
+                execution_mode="graph-preferred",
+                limits=dict(_DEFAULT_LIMITS),
+            )
+            entry = eng.default_entry_label()
+            eng.run_label(entry, frame={})
+            successes += 1
+            trace_events = list(eng.trace_events)
+            run_steps = len(trace_events)
+            run_adapter_calls = int(getattr(eng, "_adapter_calls", 0))
+            end_frame_keys = trace_events[-1].get("frame_keys", []) if trace_events else []
+            run_summary = {
+                "ok": True,
+                "steps": run_steps,
+                "adapter_calls": run_adapter_calls,
+                "final_frame_key_count": len(end_frame_keys),
+            }
+            step_counts.append(run_steps)
+            adapter_call_counts.append(run_adapter_calls)
+            final_frame_key_counts.append(len(end_frame_keys))
+            for ev in trace_events:
+                op = str(ev.get("op") or "")
+                if op:
+                    op_histogram[op] = op_histogram.get(op, 0) + 1
+        except Exception as e:
+            last_error = str(e)
+            step_counts.append(0)
+            adapter_call_counts.append(0)
+            final_frame_key_counts.append(0)
+            run_summary["error"] = str(e)
+        latencies_ms.append(round((time.perf_counter() - start) * 1000.0, 3))
+        if len(sample_runs) < 5:
+            run_summary["latency_ms"] = latencies_ms[-1]
+            sample_runs.append(run_summary)
+
+    reliability = round(float(successes) / float(runs), 4)
+    latency_avg = sum(latencies_ms) / len(latencies_ms)
+    steps_avg = sum(step_counts) / len(step_counts)
+    adapter_calls_avg = sum(adapter_call_counts) / len(adapter_call_counts)
+    # Bounded 0..1 components with reliability emphasized for selection.
+    latency_component = 1.0 / (1.0 + (latency_avg / 100.0))
+    step_component = 1.0 / (1.0 + (steps_avg / 20.0))
+    adapter_component = 1.0 / (1.0 + (adapter_calls_avg / 20.0))
+    raw_fitness_score = (
+        0.6 * reliability + 0.2 * latency_component + 0.1 * step_component + 0.1 * adapter_component
+    )
+    # Reliability gate: fully failing workflows should not rank above viable candidates.
+    fitness_score = 0.0 if reliability <= 0.0 else round(raw_fitness_score, 6)
+    return {
+        "ok": successes > 0,
+        "trace_id": trace_id,
+        "file": str(file),
+        "runs": runs,
+        "metrics": {
+            "latency_ms": {
+                "avg": round(sum(latencies_ms) / len(latencies_ms), 3),
+                "min": min(latencies_ms),
+                "max": max(latencies_ms),
+            },
+            "step_count": {
+                "avg": round(sum(step_counts) / len(step_counts), 3),
+                "min": min(step_counts),
+                "max": max(step_counts),
+            },
+            "adapter_calls": {
+                "avg": round(sum(adapter_call_counts) / len(adapter_call_counts), 3),
+                "min": min(adapter_call_counts),
+                "max": max(adapter_call_counts),
+            },
+            "memory_deltas": {
+                "tracked": True,
+                "proxy": "trace.frame_keys",
+                "final_frame_key_count": {
+                    "avg": round(sum(final_frame_key_counts) / len(final_frame_key_counts), 3),
+                    "min": min(final_frame_key_counts),
+                    "max": max(final_frame_key_counts),
+                },
+            },
+            "operation_histogram": dict(sorted(op_histogram.items())),
+            "token_use_estimate": {
+                "source_chars": len("\n".join((ir.get("source") or {}).get("lines", [])).encode("utf-8"))
+            },
+            "reliability_score": reliability,
+            "fitness_score": fitness_score,
+            "fitness_components": {
+                "reliability_component": round(reliability, 6),
+                "latency_component": round(latency_component, 6),
+                "step_component": round(step_component, 6),
+                "adapter_component": round(adapter_component, 6),
+                "weights": {
+                    "reliability": 0.6,
+                    "latency": 0.2,
+                    "steps": 0.1,
+                    "adapter_calls": 0.1,
+                },
+            },
+        },
+        "sample_runs": sample_runs,
+        "last_error": last_error,
+    }
+
+
+@_register_tool
+def ainl_ir_diff(file1: str, file2: str, strict: bool = True) -> dict:
+    """Return a minimal JSON diff between two canonical graph IRs."""
+    left = _file_to_ir(file1, strict=strict)
+    right = _file_to_ir(file2, strict=strict)
+    lerr = left.get("errors") or []
+    rerr = right.get("errors") or []
+    if lerr or rerr:
+        return {"ok": False, "file1_errors": lerr, "file2_errors": rerr}
+    diff = graph_diff(left, right)
+    changed_nodes_raw = diff.get("changed_nodes", {}) or {}
+    changed_nodes_serialized: List[Dict[str, Any]] = []
+    for (label_id, node_id), changes in changed_nodes_raw.items():
+        changed_nodes_serialized.append(
+            {"label_id": str(label_id), "node_id": str(node_id), "changes": dict(changes or {})}
+        )
+    return {
+        "ok": True,
+        "diff": {
+            "added_nodes": diff.get("added_nodes", []),
+            "removed_nodes": diff.get("removed_nodes", []),
+            "changed_nodes": changed_nodes_serialized,
+            "added_edges": diff.get("added_edges", []),
+            "removed_edges": diff.get("removed_edges", []),
+            "rewired_edges": diff.get("rewired_edges", []),
+            "human_summary": diff.get("human_summary", ""),
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
