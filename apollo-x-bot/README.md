@@ -111,8 +111,38 @@ You can put variables in **`apollo-x-bot/.env`** (`KEY=value` per line). The gat
 | `PROMOTER_GATEWAY_HOST` | Default `127.0.0.1`. |
 | `PROMOTER_GATEWAY_PORT` | Default `17301`. |
 | `PROMOTER_GATEWAY_DEBUG` | Set to `1` to print `[apollo-x-gateway] …` lines on **stderr** (tweet counts, `n_score_ge_8`, skip reasons). |
+| `PROMOTER_MONITOR_ENABLED` | Growth pack: `1` enables optional **`monitor-poll.sh`** / `follow_manager.ainl` (default `0`). |
+| `PROMOTER_DISCOVERY_ENABLED` | Growth pack: `1` allows **`x.search_users`** `merge_monitored: true` to append high-score authors to **`monitored_accounts`** (default `0`). |
+| `PROMOTER_LIKE_ENABLED` | Growth pack: `1` allows **`x.like`** and auto-like after **`process_tweet`** when the author is in **`monitored_accounts`** (default `0`). |
+| `PROMOTER_THREAD_ENABLED` | Growth pack: `1` enables **`promoter.thread_continue`** (default `0`). |
+| `PROMOTER_AWARENESS_BOOST` | Growth pack: `1` adds an extra GitHub CTA line to **`promoter.maybe_daily_post`** text (default `0`). |
+| `PROMOTER_DISCOVERY_MIN_SCORE` | Integer **1–10** floor for discovery merge (default `7`). |
 
 Bind the gateway to **localhost** or protect it behind a reverse proxy; the executor bridge has no built-in auth.
+
+## Optional Apollo-X Growth Pack (v1.3)
+
+**Additive only:** `ainl-x-promoter.ainl` and existing routes are unchanged. New behavior is behind env flags (default **off**) and optional graphs under [`modules/apollo/`](modules/apollo/).
+
+| Key | Path | Role |
+|-----|------|------|
+| `x.follow` | `POST /v1/x.follow` | OAuth user follows `target_user_id`; optional `add_to_monitored` (default true on success). Respects **`PROMOTER_DRY_RUN`**. |
+| `x.search_users` | `POST /v1/x.search_users` | Recent search for `query`, author lookup, heuristic + optional LLM scores (`prompts/discovery_user_instruction.txt`). With **`PROMOTER_DISCOVERY_ENABLED=1`** and body **`merge_monitored`: true**, merges users ≥ **`PROMOTER_DISCOVERY_MIN_SCORE`** into KV/table **`monitored_accounts`**. |
+| `x.like` | `POST /v1/x.like` | Like a tweet (OAuth user). Dry-run audits only. |
+| `x.get_conversation` | `POST /v1/x.get_conversation` | Recent search for `conversation_id:`; if `conversation_id` omitted, uses first id from KV **`active_threads`**. |
+| `promoter.thread_continue` | `POST /v1/promoter.thread_continue` | **`PROMOTER_THREAD_ENABLED=1`**: draft via **`reply_system.txt`** + post reply to **`reply_to_tweet_id`**; tracks **`conversation_id`** in KV **`active_threads`**. |
+| `promoter.awareness_boost` | `POST /v1/promoter.awareness_boost` | Returns CTA lines (for optional cron / audit); daily merge still happens in gateway when **`PROMOTER_AWARENESS_BOOST=1`**. |
+
+**State:** KV keys **`monitored_accounts`** and **`active_threads`** hold JSON string arrays (user ids / conversation ids). SQLite tables **`monitored_accounts`** and **`active_threads`** mirror membership for tooling. One-time: `python3 scripts/apollo_migrate_state.py` (idempotent).
+
+**Poll scripts (optional):** `monitor-poll.sh` (`_monitor_list`), `discover-poll.sh` (`_discover`), `thread-poll.sh` (`_thread_continue`). **`like_handler.ainl`** (`_like_batch`) is run manually with the same `--bridge-endpoint` list as those scripts. Example:
+
+```bash
+python3 -m cli.main check --strict apollo-x-bot/modules/apollo/follow_manager.ainl
+PROMOTER_DRY_RUN=1 PROMOTER_MONITOR_ENABLED=1 ./apollo-x-bot/monitor-poll.sh
+```
+
+**Safe rollout:** Keep **`PROMOTER_DRY_RUN=1`**, enable one flag at a time, watch gateway stderr with **`PROMOTER_GATEWAY_DEBUG=1`**, then flip dry-run off.
 
 ## Making this bot public
 

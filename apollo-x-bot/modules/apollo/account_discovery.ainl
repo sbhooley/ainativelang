@@ -1,0 +1,35 @@
+# Apollo growth pack — discover authors via x.search_users (+ heuristic + optional LLM merge in gateway).
+# Set PROMOTER_DISCOVERY_ENABLED=1 and pass merge_monitored in payload below.
+# Run: --strict --label _discover
+
+include "../../../modules/common/executor_request_builder.ainl" as exreq
+include "../../../modules/common/record_decision.ainl" as rd
+
+S core cron "15 */6 * * *"
+
+L_discover:
+  R core.env "PROMOTER_DISCOVERY_ENABLED" "0" ->dis_en_s
+  R core.parse dis_en_s ->dis_en_n
+  Set dis_on null
+  X dis_on eq dis_en_n 1
+  If dis_on ->L_dis_body ->L_dis_skip
+
+L_dis_skip:
+  J "ok"
+
+L_dis_body:
+  R core.echo "x.search_users" ->executor_req_executor
+  R core.echo "{\"query\":\"openclaw OR deterministic agent OR AINL\",\"merge_monitored\":true}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_discover" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_su
+  R bridge.POST x.search_users req_su ->su_http
+  X su_b get su_http body
+  R core.stringify su_b ->record_rd_detail_json
+  R core.echo "account_discovery" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "apollo_growth" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"

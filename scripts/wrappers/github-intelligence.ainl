@@ -4,9 +4,6 @@ D Config openrouter_api_key:S
 D Config crm_api_base:S
 
 L0:
-  # R openclaw memory keys with namespace "intel" and collection "github_seen"
-  R memory get_namespace "intel" "github_seen" ->_init_seen
-
   # Fetch recent GitHub events (last 4h) via OpenRouter
   begin:
     R core iso_ts (core.now) ->now_ts

@@ -1,0 +1,35 @@
+# Apollo growth pack — fetch CTA lines (mirrors gateway PROMOTER_AWARENESS_BOOST copy for cron/audit).
+# Daily text still merges in gateway when PROMOTER_AWARENESS_BOOST=1 (main promoter graph unchanged).
+# Run: --strict --label _boost_promo
+
+include "../../../modules/common/executor_request_builder.ainl" as exreq
+include "../../../modules/common/record_decision.ainl" as rd
+
+S core cron "0 12 * * *"
+
+L_boost_promo:
+  R core.env "PROMOTER_AWARENESS_BOOST" "0" ->ab_s
+  R core.parse ab_s ->ab_n
+  Set ab_on null
+  X ab_on eq ab_n 1
+  If ab_on ->L_ab_body ->L_ab_skip
+
+L_ab_skip:
+  J "ok"
+
+L_ab_body:
+  R core.echo "promoter.awareness_boost" ->executor_req_executor
+  R core.echo "{}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_boost" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_ab
+  R bridge.POST promoter.awareness_boost req_ab ->ab_http
+  X ab_b get ab_http body
+  R core.stringify ab_b ->record_rd_detail_json
+  R core.echo "awareness_boost" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "apollo_growth" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"

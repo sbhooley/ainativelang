@@ -1,0 +1,68 @@
+# Apollo growth pack — fetch conversation (optional head from KV active_threads) + thread_continue.
+# Run: PROMOTER_THREAD_ENABLED=1 … --strict --label _thread_continue
+
+include "../../../modules/common/executor_request_builder.ainl" as exreq
+include "../../../modules/common/record_decision.ainl" as rd
+
+S core cron "45 */2 * * *"
+
+L_thread_continue:
+  R core.env "PROMOTER_THREAD_ENABLED" "0" ->th_s
+  R core.parse th_s ->th_n
+  Set th_on null
+  X th_on eq th_n 1
+  If th_on ->L_th_body ->L_th_skip
+
+L_th_skip:
+  J "ok"
+
+L_th_body:
+  R core.echo "x.get_conversation" ->executor_req_executor
+  R core.echo "{}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_thread" ->executor_req_step_id
+  R core.add 90 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_gc
+  R bridge.POST x.get_conversation req_gc ->gc_http
+  X tws get gc_http body tweets
+  X conv_cid get gc_http body conversation_id
+  X tw_n len tws
+  Set has_tw null
+  X has_tw gt tw_n 0
+  If has_tw ->L_th_reply ->L_th_empty
+
+L_th_empty:
+  X gc_body get gc_http body
+  R core.stringify gc_body ->record_rd_detail_json
+  R core.echo "thread_no_tweets" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "apollo_growth" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"
+
+L_th_reply:
+  X last_tw get tws 0
+  X reply_tid get last_tw id
+  R core.parse "{}" ->tc_pay
+  R core.parse "\"tweets\"" ->k_tw
+  X tc_pay put tc_pay k_tw tws
+  R core.parse "\"reply_to_tweet_id\"" ->k_rid
+  X tc_pay put tc_pay k_rid reply_tid
+  R core.parse "\"conversation_id\"" ->k_cid
+  X tc_pay put tc_pay k_cid conv_cid
+  R core.stringify tc_pay ->executor_req_payload_json
+  R core.echo "promoter.thread_continue" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_thread" ->executor_req_step_id
+  R core.add 180 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_tc
+  R bridge.POST promoter.thread_continue req_tc ->tc_http
+  X tc_b get tc_http body
+  R core.stringify tc_b ->record_rd_detail_json
+  R core.echo "thread_continue" ->record_rd_action
+  X record_rd_tweet_id reply_tid
+  Set record_rd_score null
+  R core.echo "apollo_growth" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"

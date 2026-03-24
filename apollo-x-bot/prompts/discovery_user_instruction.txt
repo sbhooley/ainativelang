@@ -1,0 +1,2 @@
+For each user line, output one JSON object in a single JSON array (same order): {"user_id":"…","score":<1-10>}.
+Score higher when the profile fits AI agent frameworks, deterministic workflows, OpenClaw-style orchestration, graph-based languages, or developer tooling for LLM ops. No markdown, only the array.
