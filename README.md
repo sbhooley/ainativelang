@@ -64,7 +64,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **AINL → HTTP workers (bridge contract, secondary to MCP):** [`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md) · JSON Schema [`schemas/executor_bridge_request.schema.json`](schemas/executor_bridge_request.schema.json) · include [`modules/common/executor_bridge_request.ainl`](modules/common/executor_bridge_request.ainl)
 
 > TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
-> Positioning (v1.2.6): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md).
+> Positioning (v1.2.7): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md).
 
 **Compile-once, run-many:** you author (or import) a graph once; the runtime executes it deterministically without re-spending LLM tokens on orchestration each time. Size economics are tracked with **tiktoken cl100k_base**; the **viable subset** (e.g. **public_mixed**) shows about **~1.02×** leverage for **minimal_emit** vs unstructured baselines—see **[`BENCHMARK.md`](BENCHMARK.md)**, **[`docs/benchmarks.md`](docs/benchmarks.md)**, and **[`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](docs/architecture/COMPILE_ONCE_RUN_MANY.md)**.
 
@@ -117,6 +117,23 @@ Typical loop for AI engineers and agent builders:
 3. **Visualize** control flow as **Mermaid**:  
    `ainl visualize your.ainl --output - > graph.mmd` — paste into [mermaid.live](https://mermaid.live) or GitHub/Obsidian. Flags: **`--no-clusters`**, **`--labels-only`**, **`--output` / `-o`** (`-` = stdout). **`ainl-visualize`** is the same entry point without the `ainl` subcommand.
 4. **Run** locally: `ainl run your.ainl --json` (see [Choose Your Path](#choose-your-path)).
+5. **Inspect canonical IR** for agent loops: `ainl inspect your.ainl --strict`.
+6. **Emit JSONL execution tape** for grading/evolution: `ainl run your.ainl --trace-jsonl run.trace.jsonl`.
+
+### Research-loop quickstart (meta-agent)
+
+For self-improving loops (generate -> inspect -> mutate -> evaluate), use:
+
+1. **Inspect canonical IR**
+   - `ainl inspect candidate.ainl --strict`
+2. **Diff two candidates**
+   - MCP tool: `ainl_ir_diff(file1, file2, strict=true)`
+3. **Score fitness**
+   - MCP tool: `ainl_fitness_report(file, runs=5, strict=true)`
+4. **Repair invalid outputs**
+   - MCP `ainl_validate` diagnostics include `llm_repair_hint`
+
+Contract and stable payload fields: `docs/operations/MCP_RESEARCH_CONTRACT.md`.
 
 For the full conformance matrix in one command (tokenizer, IR canonicalization, strict validation, runtime parity, emitter stability):
 
@@ -629,6 +646,8 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 - Runtime/compiler ownership: `docs/RUNTIME_COMPILER_CONTRACT.md`
 - Grammar reference: `docs/language/grammar.md`
 - Conformance and strict policy: `docs/CONFORMANCE.md`
+- Embedding in meta-agent loops: `docs/EMBEDDING_RESEARCH_LOOPS.md`
+- MCP research payload contract: `docs/operations/MCP_RESEARCH_CONTRACT.md`
 
 ### Operations and deployment
 
@@ -656,7 +675,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainl-lang` 1.2.6** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainl-lang` 1.2.7** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`
@@ -922,7 +941,7 @@ Real output uses fully qualified IDs like `"retry/ENTRY/n1"` and clusters automa
 - **Replay tooling**: `ainl run ... --record-adapters calls.json` and `ainl run ... --replay-adapters calls.json` for deterministic adapter replay.
 - **Reference adapters**: `http`, `sqlite`, `fs` (sandboxed), and `tools` bridge with contract tests.
 - **Runner service**: `ainl-runner-service` (FastAPI) with `/run`, `/enqueue`, `/result/{id}`, `/capabilities`, `/health`, `/ready`, and `/metrics`.
-- **MCP server**: `ainl-mcp` (stdio-only) exposes `ainl_validate`, `ainl_compile`, `ainl_run`, `ainl_capabilities`, `ainl_security_report` as MCP tools for Gemini CLI, Claude Code, Codex, and other MCP-compatible agents. It is a thin workflow-level surface over the existing compiler/runtime, not a replacement for the runner service, and currently runs with safe-default restrictions (core-only adapters, hardcoded conservative limits). Requires `pip install -e ".[mcp]"`.
+- **MCP server**: `ainl-mcp` (stdio-only) exposes `ainl_validate`, `ainl_compile`, `ainl_run`, `ainl_capabilities`, `ainl_security_report`, `ainl_fitness_report`, and `ainl_ir_diff` as MCP tools for Gemini CLI, Claude Code, Codex, and other MCP-compatible agents. It is a thin workflow-level surface over the existing compiler/runtime, not a replacement for the runner service, and currently runs with safe-default restrictions (core-only adapters, hardcoded conservative limits). Requires `pip install -e ".[mcp]"`.
 - **Tool API schema**: `tooling/ainl_tool_api.schema.json` (structured compile/validate/emit loop contract).
 - **Synthetic dataset**: `python3 scripts/generate_synthetic_dataset.py --count 10000 --out data/synthetic` — writes only programs that compile.
 - **Formal prefix grammar (compiler-owned)**: `compiler_grammar.py` is the source of truth for prefix lexical/syntactic/scope admissibility.
@@ -930,6 +949,7 @@ Real output uses fully qualified IDs like `"retry/ENTRY/n1"` and clusters automa
 - **Decoder helpers**: `next_token_priors(prefix)`, `next_token_mask(prefix, raw_candidates)`, `next_valid_tokens(prefix)`.
 - **Compile-once / run-many proof pack**: see `docs/architecture/COMPILE_ONCE_RUN_MANY.md`.
 - **Program summary**: `python scripts/inspect_ainl.py examples/hello.ainl`
+- **Full canonical IR dump**: `ainl inspect examples/hello.ainl --strict`
 - **Run summary**: `python scripts/summarize_runs.py run1.json run2.json`
 - **Benchmarks (size + runtime + CI gate):** `make benchmark` (full, updates [`BENCHMARK.md`](BENCHMARK.md)); `make benchmark-ci` (JSON-only CI-style). Narrative + metrics glossary: [`docs/benchmarks.md`](docs/benchmarks.md). Optional: `pip install -e ".[benchmark]"` for `tiktoken`/`psutil`; `pip install -e ".[anthropic]"` for `ainl-ollama-benchmark --cloud-model claude-3-5-sonnet`.
 - **Corpus tools**: `python scripts/evaluate_corpus.py --mode dual`, `python scripts/validate_corpus.py --include-negatives`, `pytest tests/test_corpus_layout.py -v`

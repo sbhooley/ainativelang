@@ -266,7 +266,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     _register_enabled_adapters(reg, args)
     env_traj = os.environ.get("AINL_LOG_TRAJECTORY", "").strip().lower()
     trajectory_path: Optional[str] = None
-    if getattr(args, "log_trajectory", False) or env_traj in ("1", "true", "yes", "on"):
+    if getattr(args, "trace_jsonl", ""):
+        raw = str(args.trace_jsonl).strip()
+        trajectory_path = "/dev/stdout" if raw == "-" else str(Path(raw).expanduser())
+    elif getattr(args, "log_trajectory", False) or env_traj in ("1", "true", "yes", "on"):
         trajectory_path = str(Path(src_path).parent / (Path(src_path).stem + ".trajectory.jsonl"))
     sandbox_client = SandboxClient.try_connect(logger=lambda msg: print(msg))
     eng = RuntimeEngine.from_code(
@@ -405,6 +408,16 @@ def cmd_check(args: argparse.Namespace) -> int:
     }
     print(json.dumps(payload, indent=2))
     return 0 if ok else 1
+
+
+def cmd_inspect(args: argparse.Namespace) -> int:
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
+        code = f.read()
+    c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
+    ir = c.compile(code, emit_graph=True, source_path=src_path)
+    print(json.dumps(ir, indent=2))
+    return 0 if not ir.get("errors") else 1
 
 
 def cmd_generate_avm_policy(args: argparse.Namespace) -> int:
@@ -701,6 +714,12 @@ def main() -> None:
         action="store_true",
         help="Append one JSON object per executed step to <stem>.trajectory.jsonl next to the source file; or set AINL_LOG_TRAJECTORY=1.",
     )
+    runp.add_argument(
+        "--trace-jsonl",
+        default="",
+        metavar="PATH|-",
+        help="Append structured execution trace JSONL to file PATH or '-' for stdout.",
+    )
     runp.add_argument("--json", action="store_true")
     runp.add_argument("--no-step-fallback", action="store_true")
     runp.add_argument("--execution-mode", choices=["graph-preferred", "steps-only", "graph-only"], default="graph-preferred")
@@ -778,6 +797,12 @@ def main() -> None:
     cmp.add_argument("file")
     cmp.add_argument("--strict", action="store_true")
     cmp.set_defaults(func=cmd_check)
+
+    isp = sub.add_parser("inspect", help="Compile an .ainl file and dump full canonical IR JSON")
+    isp.add_argument("file")
+    isp.add_argument("--strict", action="store_true")
+    isp.add_argument("--json", action="store_true", help="Compatibility flag (output is always JSON)")
+    isp.set_defaults(func=cmd_inspect)
 
     avm = sub.add_parser("generate-avm-policy", help="Generate AVM policy fragment JSON from an .ainl file")
     avm.add_argument("file")
