@@ -1,0 +1,46 @@
+name: Release Gates
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build release artifacts
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check dist/*
+
+      - name: Wheel import + entrypoint smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv .venv-release
+          . .venv-release/bin/activate
+          python -m pip install --upgrade pip
+          WHEEL="$(ls dist/*.whl | head -n 1)"
+          python -m pip install --force-reinstall --constraint constraints/py313-mcp.txt "${WHEEL}[mcp]"
+          python -m pip check
+          python -c "import runtime.compat, adapters, cli.main"
+          ainl --help >/dev/null
+          ainl-mcp --help >/dev/null
+
+      - name: MCP dry-run installers must pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          . .venv-release/bin/activate
+          ainl install-mcp --host openclaw --dry-run
+          ainl install-mcp --host zeroclaw --dry-run

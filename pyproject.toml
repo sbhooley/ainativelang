@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ainl-lang"
-version = "1.2.5"
+version = "1.2.6"
 description = "AINL compiler, runtime, validator, and tooling"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -46,7 +46,7 @@ interop = [
 dev = ["pytest>=7.0.0", "hypothesis>=6.0.0", "httpx>=0.27.0", "pre-commit>=3.7.0", "rich>=13.0.0", "pytest-xdist", "syrupy", "playwright>=1.46.0"]
 web = ["fastapi", "uvicorn[standard]"]
 mcp = ["mcp[cli]>=1.0.0"]
-openclaw = ["requests>=2.28.0"]
+openclaw = ["requests>=2.28.0", "mcp[cli]>=1.0.0"]
 # Optional: Anthropic API for ainl-ollama-benchmark --cloud-model
 anthropic = ["anthropic>=0.40.0"]
 
@@ -81,7 +81,7 @@ py-modules = [
 [tool.setuptools.packages.find]
 where = ["."]
 # Explicit roots + globs so `tooling` / `adapters` are never skipped (CLI imports `tooling.*`; runtime.compat imports `adapters`).
-include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*"]
+include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

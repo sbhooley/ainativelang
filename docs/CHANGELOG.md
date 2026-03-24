@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.6 (March 24, 2026) — sandbox install hardening, wheel integrity gates, doctor command
+
+- **fix(packaging)**: include `runtime` and `runtime.*` in setuptools package discovery so wheel installs include `runtime.compat` and avoid wheel-only import regressions.
+- **fix(skill-installer)**: `skills/ainl/install.sh` hardened for restricted environments (PEP 668 fallbacks), no `eval`, and idempotent PATH hint updates across `.bashrc`/`.zshrc`/`.profile`.
+- **feat(cli)**: add `ainl doctor` for environment diagnostics (Python/import health, PATH checks, MCP config checks, `install-mcp --dry-run` checks).
+- **feat(ci)**: add Linux/macOS install smoke matrix for Python 3.10–3.13 with normal, `--user`, and `--break-system-packages` install paths, plus `pip check`, `ainl --help`, and `ainl-mcp --help`.
+- **feat(ci/release)**: add wheel-integrity CI and dedicated release gates (`twine check`, wheel import smoke for `runtime.compat/adapters/cli.main`, `pip check`, MCP dry-run installers).
+- **feat(packaging/docs)**: add tested Python 3.13 MCP constraints (`constraints/py313-mcp.txt`) and document no-root install order (venv -> `--user` -> `--break-system-packages`) across install/release/skill docs.
+
 ## v1.2.5 (March 23, 2026) — Hyperspace bridge + hybrid `S`, CI benchmark baselines, LangGraph emit
 
 - **feat(compiler)**: **`S hybrid langgraph`**, **`S hybrid temporal`**, or both on one line — opt-in hybrid wrapper targets for **`minimal_emit`** / capability planning; stored as **`services.hybrid.emit`** (de-duped); strict mode rejects unknown targets

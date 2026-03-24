@@ -319,3 +319,120 @@ jobs:
           path: |
             tooling/benchmark_size_ci.json
             tooling/benchmark_runtime_ci.json
+
+  install-smoke:
+    if: github.event_name != 'schedule'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Normal install smoke (venv)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv .venv-smoke
+          . .venv-smoke/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install ".[mcp]"
+          python -m pip check
+          ainl --help >/dev/null
+          ainl-mcp --help >/dev/null
+
+      - name: User install smoke (no sudo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PYTHONUSERBASE="${RUNNER_TEMP}/ainl-userbase"
+          mkdir -p "${PYTHONUSERBASE}"
+          python -m pip install --upgrade pip
+          python -m pip install --user --constraint constraints/py313-mcp.txt ".[mcp]"
+          python -m pip check
+          "${PYTHONUSERBASE}/bin/ainl" --help >/dev/null
+          "${PYTHONUSERBASE}/bin/ainl-mcp" --help >/dev/null
+
+      - name: Break-system-packages install smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install --break-system-packages --constraint constraints/py313-mcp.txt ".[mcp]"
+          python -m pip check
+          SCRIPT_DIR="$(python -c 'import sysconfig; print(sysconfig.get_path("scripts"))')"
+          "${SCRIPT_DIR}/ainl" --help >/dev/null
+          "${SCRIPT_DIR}/ainl-mcp" --help >/dev/null
+
+  wheel-integrity:
+    if: github.event_name != 'schedule'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Wheel install integrity + imports
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv .venv-wheel
+          . .venv-wheel/bin/activate
+          python -m pip install --upgrade pip
+          WHEEL="$(ls dist/*.whl | head -n 1)"
+          python -m pip install --force-reinstall --constraint constraints/py313-mcp.txt "${WHEEL}[mcp]"
+          python -m pip check
+          python -c "import runtime.compat, adapters, cli.main"
+          ainl --help >/dev/null
+          ainl-mcp --help >/dev/null
+
+  container-install-smoke:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["python:3.10-slim", "python:3.11-slim", "python:3.12-slim", "python:3.13-slim"]
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Non-root container install smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          useradd -m -u 1000 ainl 2>/dev/null || true
+          chown -R 1000:1000 "$GITHUB_WORKSPACE"
+          su -s /bin/bash ainl -c '
+            cd "$GITHUB_WORKSPACE" && \
+            python -m venv .venv-container && \
+            . .venv-container/bin/activate && \
+            python -m pip install --upgrade pip && \
+            python -m pip install --constraint constraints/py313-mcp.txt ".[mcp]" && \
+            python -m pip check && \
+            ainl --help >/dev/null && \
+            ainl-mcp --help >/dev/null
+          '
