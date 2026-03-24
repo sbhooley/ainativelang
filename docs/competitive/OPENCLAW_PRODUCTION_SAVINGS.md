@@ -26,10 +26,10 @@ Notable outcome: [one sentence, no customer PII]
 
 ## Pointers
 
-- **Unified monitoring guide:** [`../operations/UNIFIED_MONITORING_GUIDE.md`](../operations/UNIFIED_MONITORING_GUIDE.md)
-- **OpenClaw integration:** [`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)
-- **MCP host hub:** [`../getting_started/HOST_MCP_INTEGRATIONS.md`](../getting_started/HOST_MCP_INTEGRATIONS.md)
-- **Evidence tables:** [`../../BENCHMARK.md`](../../BENCHMARK.md), [`../benchmarks.md`](../benchmarks.md)
+- **Unified monitoring guide:** [operations guide](../operations/UNIFIED_MONITORING_GUIDE.md)
+- **OpenClaw integration:** [OPENCLAW_INTEGRATION](../OPENCLAW_INTEGRATION.md)
+- **MCP host hub:** [HOST_MCP_INTEGRATIONS](../getting_started/HOST_MCP_INTEGRATIONS.md)
+- **Evidence tables:** [BENCHMARK.md (repo root)](../../BENCHMARK.md), [benchmarks hub](../benchmarks.md)
 
 ## Related competitive docs
 

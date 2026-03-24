@@ -1,5 +1,7 @@
 # Competitive
 
+**Site mirror:** [`OVERVIEW.md`](OVERVIEW.md) (synced to ainativelang.com `/docs/competitive/`; `README.md` is not synced).
+
 Use this section for comparative framing such as “AINL vs X” and category-definition materials.
 
 Comparative docs should be grounded in **shipped** behavior (compiler, runtime, emitters, MCP) and link to **reproducible** benchmarks where numbers are claimed.
@@ -10,6 +12,7 @@ Comparative docs should be grounded in **shipped** behavior (compiler, runtime, 
 - **[`AINL_AND_TEMPORAL.md`](AINL_AND_TEMPORAL.md)** — keep AINL as source of truth; emit Temporal modules when you need durability workers.
 - **[`OPENCLAW_PRODUCTION_SAVINGS.md`](OPENCLAW_PRODUCTION_SAVINGS.md)** — template for anonymized production savings worksheets (no fabricated stats).
 - **[`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)** — commands and tables for head-to-head methodology using `BENCHMARK.md` / `benchmark_runtime`.
+- **[`COMPARISON_TABLE.md`](COMPARISON_TABLE.md)** — empty markdown tables (metrics × stack) to paste benchmark results into.
 
 ## Related sections
 

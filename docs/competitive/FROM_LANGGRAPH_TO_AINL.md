@@ -16,7 +16,7 @@ If you already think in **graphs** and **tool nodes**, AINL should feel familiar
 
 ## 15-minute path
 
-1. Read **[`../HYBRID_GUIDE.md`](../HYBRID_GUIDE.md)** — why AINL + hybrid emit exists.
+1. Read **[Hybrid guide](../HYBRID_GUIDE.md)** — why AINL + hybrid emit exists.
 2. Open **`examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl`** — small deterministic slice.
 3. Run strict validate + emit:
 
@@ -35,6 +35,6 @@ If you already think in **graphs** and **tool nodes**, AINL should feel familiar
 
 ## Related
 
-- **[`AINL_AND_TEMPORAL.md`](AINL_AND_TEMPORAL.md)** — durability without giving up AINL as source.
-- **[`../benchmarks.md`](../benchmarks.md)** / **[`../../BENCHMARK.md`](../../BENCHMARK.md)** — size and runtime evidence.
+- **[AINL + Temporal](AINL_AND_TEMPORAL.md)** — durability without giving up AINL as source.
+- **[Benchmarks hub](../benchmarks.md)** / **[Size tables (repo root)](../../BENCHMARK.md)** — size and runtime evidence.
 - Runner discovery for MCP hosts: HTTP **`GET /capabilities/langgraph`** on **`scripts/runtime_runner_service.py`**.

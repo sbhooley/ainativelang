@@ -29,6 +29,6 @@ You do not have to pick one: from **v1.2.5**, validate can emit Temporal-shaped 
 
 ## Related
 
-- **[`../HYBRID_GUIDE.md`](../HYBRID_GUIDE.md)** — full hybrid story (LangGraph + Temporal + `S hybrid` hints).
+- **[Hybrid guide](../HYBRID_GUIDE.md)** — full hybrid story (LangGraph + Temporal + `S hybrid` hints).
 - Runner discovery: **`GET /capabilities/temporal`** on the HTTP runner.
-- **[`FROM_LANGGRAPH_TO_AINL.md`](FROM_LANGGRAPH_TO_AINL.md)** — onboarding from graph-first Python frameworks.
+- **[From LangGraph to AINL](FROM_LANGGRAPH_TO_AINL.md)** — onboarding from graph-first Python frameworks.
