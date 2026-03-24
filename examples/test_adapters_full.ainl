@@ -1,0 +1,31 @@
+# examples/test_adapters_full.ainl
+# Phase 3+ consolidation: vector_memory + tool_registry (strict-safe dotted R verbs).
+#
+# Validate:
+#   python3 scripts/validate_ainl.py examples/test_adapters_full.ainl --strict
+# Run:
+#   python3 -m cli.main run examples/test_adapters_full.ainl --json \
+#     --enable-adapter vector_memory --enable-adapter tool_registry
+# Emit Hyperspace wrapper:
+#   python3 scripts/validate_ainl.py examples/test_adapters_full.ainl --emit hyperspace -o /tmp/full_agent.py
+#   cd /path/to/AI_Native_Lang && AINL_LOG_TRAJECTORY=1 python3 /tmp/full_agent.py
+#   (writes test_adapters_full.trajectory.jsonl in cwd when env set)
+
+L1:
+  R vector_memory.UPSERT "demo_ns" "chunk" "doc1" "hello semantic adapter test" "{}" ->vm_u
+  R vector_memory.SEARCH "semantic" 5 ->vm_hits
+  R tool_registry.REGISTER "demo_tool" "Demonstration tool" "{}" ->tr_reg
+  R tool_registry.LIST "." ->tr_list
+  R tool_registry.DISCOVER "." ->tr_disc
+  R tool_registry.GET "demo_tool" ->tr_get
+  R core.STRINGIFY vm_hits ->s_hits
+  R core.STRINGIFY tr_list ->s_list
+  R core.STRINGIFY tr_disc ->s_disc
+  R core.STRINGIFY tr_get ->s_get
+  R core.concat s_hits "\n" ->a1
+  R core.concat a1 s_list ->a2
+  R core.concat a2 "\n" ->a3
+  R core.concat a3 s_disc ->a4
+  R core.concat a4 "\n" ->a5
+  R core.concat a5 s_get ->summary
+  J summary

@@ -7,7 +7,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
@@ -62,6 +62,8 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "auth",
         "wasm",
         "memory",
+        "vector_memory",
+        "tool_registry",
     ]
     if args.replay_adapters:
         data = json.loads(Path(args.replay_adapters).read_text(encoding="utf-8"))
@@ -219,6 +221,14 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
                 or str(Path.home() / ".openclaw" / "ainl_memory.sqlite3")
             )
             reg.register("memory", MemoryAdapter(db_path=mem_db))
+    if "vector_memory" in enabled:
+        from adapters.vector_memory import VectorMemoryAdapter
+
+        reg.register("vector_memory", VectorMemoryAdapter())
+    if "tool_registry" in enabled:
+        from adapters.tool_registry import ToolRegistryAdapter
+
+        reg.register("tool_registry", ToolRegistryAdapter())
 
 
 def _pretty_runtime_error(err: Exception) -> str:
@@ -249,6 +259,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         code = f.read()
     reg = _adapter_registry_from_args(args)
     _register_enabled_adapters(reg, args)
+    env_traj = os.environ.get("AINL_LOG_TRAJECTORY", "").strip().lower()
+    trajectory_path: Optional[str] = None
+    if getattr(args, "log_trajectory", False) or env_traj in ("1", "true", "yes", "on"):
+        trajectory_path = str(Path(src_path).parent / (Path(src_path).stem + ".trajectory.jsonl"))
     eng = RuntimeEngine.from_code(
         code,
         strict=args.strict,
@@ -260,6 +274,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         limits=_limits_from_args(args),
         adapters=reg,
         source_path=src_path,
+        trajectory_log_path=trajectory_path,
     )
     label = args.label or eng.default_entry_label()
     try:
@@ -624,6 +639,11 @@ def main() -> None:
     runp.add_argument("--strict", action="store_true")
     runp.add_argument("--strict-reachability", action="store_true")
     runp.add_argument("--trace", action="store_true")
+    runp.add_argument(
+        "--log-trajectory",
+        action="store_true",
+        help="Append one JSON object per executed step to <stem>.trajectory.jsonl next to the source file; or set AINL_LOG_TRAJECTORY=1.",
+    )
     runp.add_argument("--json", action="store_true")
     runp.add_argument("--no-step-fallback", action="store_true")
     runp.add_argument("--execution-mode", choices=["graph-preferred", "steps-only", "graph-only"], default="graph-preferred")
@@ -634,7 +654,20 @@ def main() -> None:
     runp.add_argument(
         "--enable-adapter",
         action="append",
-        choices=["http", "bridge", "sqlite", "fs", "tools", "ext", "db", "api", "wasm", "memory"],
+        choices=[
+            "http",
+            "bridge",
+            "sqlite",
+            "fs",
+            "tools",
+            "ext",
+            "db",
+            "api",
+            "wasm",
+            "memory",
+            "vector_memory",
+            "tool_registry",
+        ],
         default=[],
     )
     runp.add_argument(

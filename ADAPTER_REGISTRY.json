@@ -585,6 +585,73 @@
         "payload must be a JSON object; ttl_seconds is an advisory hint only.",
         "append is intended for log-like records (e.g. daily_log.note) and will fail on non-log payloads."
       ]
+    },
+    "vector_memory": {
+      "description": "Local JSON chunk store with keyword overlap scoring (stub semantic search; embeddings can replace scoring later).",
+      "privilege_tier": "local_state",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
+      "targets": {
+        "search": {
+          "args": ["query", "limit?"],
+          "returns": "[{namespace, kind, id, text, score, payload, ...}]",
+          "pure": false
+        },
+        "list_similar": {
+          "args": ["query", "limit?"],
+          "returns": "[{namespace, kind, id, text, score, payload, ...}]",
+          "pure": false
+        },
+        "upsert": {
+          "args": ["namespace", "kind", "record_id", "text", "payload_json?"],
+          "returns": "{ok, updated}",
+          "pure": false
+        }
+      },
+      "config": {
+        "path_env": "AINL_VECTOR_MEMORY_PATH (default: .ainl_vector_memory.json)"
+      },
+      "notes": [
+        "Canonical dotted: R vector_memory.SEARCH \"q\" [limit] ->out; upsert uses split form R vector_memory upsert ... ->out.",
+        "No network; no extra dependencies."
+      ]
+    },
+    "tool_registry": {
+      "description": "Local JSON registry for named tools (metadata + optional JSON schema).",
+      "privilege_tier": "local_state",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
+      "targets": {
+        "register": {
+          "args": ["name", "description", "schema_json?"],
+          "returns": "{ok, name}",
+          "pure": false
+        },
+        "list": {
+          "args": [],
+          "returns": "[tool]",
+          "pure": false
+        },
+        "get": {
+          "args": ["name"],
+          "returns": "{found, tool}",
+          "pure": false
+        },
+        "discover": {
+          "args": [],
+          "returns": "{tools: [tool]}",
+          "pure": false
+        }
+      },
+      "config": {
+        "path_env": "AINL_TOOL_REGISTRY_PATH (default: .ainl_tool_registry.json)"
+      },
+      "notes": [
+        "DISCOVER returns a TOOL.discover-style envelope.",
+        "Use split form: R tool_registry list / discover / get name / register ... ->out."
+      ]
     }
   },
   "notes": [

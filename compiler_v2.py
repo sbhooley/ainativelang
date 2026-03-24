@@ -4185,25 +4185,9 @@ class AICodeCompiler:
         py += "    sys.path.insert(0, str(_ROOT))\n\n"
 
         py += "from runtime.engine import RuntimeEngine\n"
-        py += "from runtime.adapters.base import AdapterError, AdapterRegistry, RuntimeAdapter\n\n"
-        py += "try:\n"
-        py += "    from adapters.vector_memory import VectorMemoryAdapter\n"
-        py += "except ImportError:\n\n"
-        py += "    class VectorMemoryAdapter(RuntimeAdapter):\n"
-        py += "        def call(self, target, args, context):\n"
-        py += "            raise AdapterError(\n"
-        py += '                "vector_memory adapter missing: add adapters/vector_memory.py (Phase 3) "\n'
-        py += '                f"or remove R vector_memory.* steps (got {target!r})"\n'
-        py += "            )\n\n"
-        py += "try:\n"
-        py += "    from adapters.tool_registry import ToolRegistryAdapter\n"
-        py += "except ImportError:\n\n"
-        py += "    class ToolRegistryAdapter(RuntimeAdapter):\n"
-        py += "        def call(self, target, args, context):\n"
-        py += "            raise AdapterError(\n"
-        py += '                "tool_registry adapter missing: add adapters/tool_registry.py (Phase 3) "\n'
-        py += '                f"or remove R tool_registry.* steps (got {target!r})"\n'
-        py += "            )\n\n"
+        py += "from runtime.adapters.base import AdapterRegistry\n"
+        py += "from adapters.vector_memory import VectorMemoryAdapter\n"
+        py += "from adapters.tool_registry import ToolRegistryAdapter\n\n"
 
         py += "def build_registry() -> AdapterRegistry:\n"
         py += (
