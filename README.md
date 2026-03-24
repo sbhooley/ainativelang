@@ -406,11 +406,11 @@ One AINL program can describe a workflow once and emit multiple downstream artif
 
 **Emitters:** `--emit hyperspace` via `python3 scripts/validate_ainl.py …` writes `hyperspace_agent.py` (use `-o path`). It embeds the compiled IR and runs it with `RuntimeEngine`, registers `vector_memory` / `tool_registry`, optional `hyperspace_sdk` import stub, and respects `AINL_LOG_TRAJECTORY` for `SOURCE_STEM.trajectory.jsonl` in the current working directory.
 
-Hyperspace happy path (repo root; use `--enable-adapter vector_memory` and `--enable-adapter tool_registry` with `ainl run` when the graph calls those adapters):
+Hyperspace happy path (use `--enable-adapter vector_memory` and `--enable-adapter tool_registry` with `ainl run` when the graph calls those adapters). After emit, run `python3 demo_agent.py` from **repo root** (or any working tree that contains `runtime/engine.py` and `adapters/`) so imports resolve:
 
 ```bash
 ainl-validate examples/hyperspace_demo.ainl --strict --emit hyperspace -o demo_agent.py
-AINL_LOG_TRAJECTORY=1 python3 demo_agent.py
+cd /path/to/AI_Native_Lang && AINL_LOG_TRAJECTORY=1 python3 demo_agent.py
 # optional: ainl run examples/hyperspace_demo.ainl --enable-adapter vector_memory --enable-adapter tool_registry --log-trajectory --json
 ```
 
