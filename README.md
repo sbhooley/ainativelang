@@ -286,7 +286,7 @@ More patterns coming soon (approval gate, circuit breaker, RAG retrieval, etc.).
 
 ### Reference bots
 
-- **Apollo X promoter** — production-shaped **strict** graph, HTTP **executor gateway**, OpenClaw/cron entrypoints, `executor_request_builder`, `record_decision`, and KV snapshot hooks: **[`apollo-x-bot/README.md`](apollo-x-bot/README.md)**.
+- **Apollo X promoter** — production-shaped **strict** graph, HTTP **executor gateway**, OpenClaw/cron entrypoints, `executor_request_builder`, `record_decision`, and KV snapshot hooks: **[`apollo-x-bot/README.md`](apollo-x-bot/README.md)**. Optional **Growth Pack (v1.3)** (follow/discovery/like/thread/awareness, env-gated) is documented in the same README under *Optional Apollo-X Growth Pack*.
 
 ---
 

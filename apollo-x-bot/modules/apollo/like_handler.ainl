@@ -1,0 +1,62 @@
+# Apollo growth pack — sample recent tweets, like first hit (gateway enforces PROMOTER_LIKE_ENABLED + dry-run).
+# Run: PROMOTER_LIKE_ENABLED=1 … --strict --label _like_batch
+
+include "../../../modules/common/executor_request_builder.ainl" as exreq
+include "../../../modules/common/record_decision.ainl" as rd
+
+S core cron "30 */4 * * *"
+
+L_like_batch:
+  R core.env "PROMOTER_LIKE_ENABLED" "0" ->lk_s
+  R core.parse lk_s ->lk_n
+  Set lk_on null
+  X lk_on eq lk_n 1
+  If lk_on ->L_lk_body ->L_lk_skip
+
+L_lk_skip:
+  J "ok"
+
+L_lk_body:
+  R core.echo "x.search" ->executor_req_executor
+  R core.echo "{\"query\":\"openclaw -is:retweet\"}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_like_batch" ->executor_req_step_id
+  R core.add 90 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_s
+  R bridge.POST x.search req_s ->sr
+  X tws get sr body tweets
+  X tw_n len tws
+  Set has_tw null
+  X has_tw gt tw_n 0
+  If has_tw ->L_lk_one ->L_lk_done
+
+L_lk_done:
+  R core.echo "{}" ->record_rd_detail_json
+  R core.echo "like_batch_empty" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "apollo_growth" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"
+
+L_lk_one:
+  X t0 get tws 0
+  X like_tid get t0 id
+  R core.echo "x.like" ->executor_req_executor
+  R core.parse "{}" ->lk_pl
+  R core.parse "\"tweet_id\"" ->lk_k
+  X lk_pl put lk_pl lk_k like_tid
+  R core.stringify lk_pl ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_like_batch" ->executor_req_step_id
+  R core.add 60 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_lk
+  R bridge.POST x.like req_lk ->lk_http
+  X lk_b get lk_http body
+  R core.stringify lk_b ->record_rd_detail_json
+  R core.echo "like_batch" ->record_rd_action
+  X record_rd_tweet_id like_tid
+  Set record_rd_score null
+  R core.echo "apollo_growth" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"

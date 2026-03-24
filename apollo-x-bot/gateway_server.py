@@ -28,6 +28,14 @@ Environment (production):
   PROMOTER_PROMPTS_DIR       Directory with classify_system.txt, classify_instruction.txt, reply_system.txt (default: ./prompts beside gateway_server.py)
   PROMOTER_CANONICAL_GITHUB_URL  Repo URL injected into reply prompts and used as default for daily-post link (default: https://github.com/sbhooley/ainativelang)
 
+  Growth pack (v1.3, all default off):
+  PROMOTER_MONITOR_ENABLED     If 1, monitor-poll graphs / x.follow list maintenance active
+  PROMOTER_DISCOVERY_ENABLED   If 1, x.search_users may merge high-score authors into monitored_accounts
+  PROMOTER_LIKE_ENABLED        If 1, gateway may like monitored authors' tweets after process_tweet
+  PROMOTER_THREAD_ENABLED      If 1, promoter.thread_continue posts thread replies
+  PROMOTER_AWARENESS_BOOST     If 1, append extra AINL GitHub CTAs to daily post text
+  PROMOTER_DISCOVERY_MIN_SCORE Minimum heuristic score (1-10) to merge discovered users (default 7)
+
 Bind defaults to 127.0.0.1 for safety.
 
 Optional: place a `.env` file in this directory (`apollo-x-bot/.env`) with `KEY=value` lines; the gateway loads it
@@ -190,6 +198,12 @@ class PromoterState:
                 CREATE TABLE IF NOT EXISTS replied_tweet (
                     tweet_id TEXT PRIMARY KEY,
                     ts REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS monitored_accounts (
+                    user_id TEXT PRIMARY KEY NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS active_threads (
+                    conversation_id TEXT PRIMARY KEY NOT NULL
                 );
                 """
             )
@@ -613,6 +627,216 @@ def _x_post_original(text: str) -> Dict[str, Any]:
 
 
 # -----------------------------------------------------------------------------
+# Growth pack helpers (KV lists, X follow/like/me, conversation fetch)
+# -----------------------------------------------------------------------------
+
+
+def _kv_str_list_get(state: PromoterState, key: str) -> List[str]:
+    raw = state.kv_get(key)
+    if not raw:
+        return []
+    try:
+        v = json.loads(raw)
+        if not isinstance(v, list):
+            return []
+        return [str(x).strip() for x in v if str(x).strip()]
+    except json.JSONDecodeError:
+        return []
+
+
+def _kv_str_list_set(state: PromoterState, key: str, items: List[str]) -> None:
+    state.kv_set(key, json.dumps(items, ensure_ascii=False))
+
+
+def _monitored_add(state: PromoterState, user_id: str) -> None:
+    uid = str(user_id).strip()
+    if not uid:
+        return
+    xs = _kv_str_list_get(state, "monitored_accounts")
+    if uid not in xs:
+        xs.append(uid)
+        _kv_str_list_set(state, "monitored_accounts", xs)
+        with state._conn() as c:
+            c.execute("INSERT OR IGNORE INTO monitored_accounts(user_id) VALUES (?)", (uid,))
+
+
+def _thread_track(state: PromoterState, conversation_id: str) -> None:
+    cid = str(conversation_id).strip()
+    if not cid:
+        return
+    xs = _kv_str_list_get(state, "active_threads")
+    if cid not in xs:
+        xs.append(cid)
+        _kv_str_list_set(state, "active_threads", xs)
+        with state._conn() as c:
+            c.execute(
+                "INSERT OR IGNORE INTO active_threads(conversation_id) VALUES (?)",
+                (cid,),
+            )
+
+
+def _cached_me_id(state: PromoterState) -> Optional[str]:
+    cached = (state.kv_get("x_promoter_user_id") or "").strip()
+    if cached:
+        return cached
+    oauth = _x_oauth1_creds()
+    if not oauth:
+        return None
+    url = "https://api.twitter.com/2/users/me"
+    ck, cs, tok, ts = oauth
+    auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
+    status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=60.0)
+    if status >= 400:
+        return None
+    obj = json.loads(data.decode("utf-8"))
+    uid = str((obj.get("data") or {}).get("id", "") or "")
+    if uid:
+        state.kv_set("x_promoter_user_id", uid)
+    return uid or None
+
+
+def _x_users_lookup(ids: List[str]) -> List[Dict[str, Any]]:
+    ids = [str(i).strip() for i in ids if str(i).strip()]
+    if not ids:
+        return []
+    oauth = _x_oauth1_creds()
+    bearer = _x_bearer()
+    out: List[Dict[str, Any]] = []
+    for i in range(0, len(ids), 100):
+        chunk = ids[i : i + 100]
+        q = "ids=" + ",".join(_rfc3986(x) for x in chunk)
+        q += "&user.fields=description,username,name"
+        url = f"https://api.twitter.com/2/users?{q}"
+        if oauth:
+            ck, cs, tok, ts = oauth
+            auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
+            status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=60.0)
+        elif bearer:
+            status, _h, data = _http_request(
+                "GET", url, headers={"Authorization": f"Bearer {bearer}"}, timeout=60.0
+            )
+        else:
+            break
+        if status >= 400:
+            break
+        obj = json.loads(data.decode("utf-8"))
+        for u in obj.get("data") or []:
+            if isinstance(u, dict):
+                out.append(
+                    {
+                        "user_id": str(u.get("id", "")),
+                        "username": str(u.get("username", "")),
+                        "name": str(u.get("name", "")),
+                        "description": str(u.get("description", "")),
+                    }
+                )
+    return out
+
+
+def _x_api_follow(state: PromoterState, target_user_id: str) -> Dict[str, Any]:
+    me = _cached_me_id(state)
+    if not me:
+        return {"ok": False, "error": "no_me", "detail": "OAuth1 user context required for follow"}
+    url = f"https://api.twitter.com/2/users/{me}/following"
+    payload = json.dumps({"target_user_id": str(target_user_id)}, ensure_ascii=False).encode("utf-8")
+    ck, cs, tok, ts = _x_oauth1_creds() or ("", "", "", "")
+    auth = _oauth1_authorization_header("POST", url, ck, cs, tok, ts)
+    status, _h, data = _http_request(
+        "POST",
+        url,
+        headers={"Authorization": auth, "Content-Type": "application/json"},
+        body=payload,
+        timeout=60.0,
+    )
+    obj = json.loads(data.decode("utf-8")) if data else {}
+    if status >= 400:
+        return {"ok": False, "error": f"follow_http_{status}", "detail": obj}
+    return {"ok": True, "raw": obj}
+
+
+def _x_api_like(state: PromoterState, tweet_id: str) -> Dict[str, Any]:
+    me = _cached_me_id(state)
+    if not me:
+        return {"ok": False, "error": "no_me", "detail": "OAuth1 user context required for like"}
+    url = f"https://api.twitter.com/2/users/{me}/likes"
+    payload = json.dumps({"tweet_id": str(tweet_id)}, ensure_ascii=False).encode("utf-8")
+    oauth = _x_oauth1_creds()
+    if not oauth:
+        return {"ok": False, "error": "no_oauth"}
+    ck, cs, tok, ts = oauth
+    auth = _oauth1_authorization_header("POST", url, ck, cs, tok, ts)
+    status, _h, data = _http_request(
+        "POST",
+        url,
+        headers={"Authorization": auth, "Content-Type": "application/json"},
+        body=payload,
+        timeout=60.0,
+    )
+    obj = json.loads(data.decode("utf-8")) if data else {}
+    if status >= 400:
+        return {"ok": False, "error": f"like_http_{status}", "detail": obj}
+    return {"ok": True, "raw": obj}
+
+
+def _maybe_like_monitored_author(state: PromoterState, tweet: Dict[str, Any]) -> None:
+    if not _env_bool("PROMOTER_LIKE_ENABLED", False):
+        return
+    uid = str(tweet.get("user_id", "") or "")
+    if not uid or uid not in set(_kv_str_list_get(state, "monitored_accounts")):
+        return
+    tid = str(tweet.get("id", "") or "")
+    if not tid:
+        return
+    dry = _env_bool("PROMOTER_DRY_RUN", False)
+    if dry:
+        state.audit("x.like", {"dry_run": True, "tweet_id": tid, "user_id": uid})
+        _gw_debug("x.like dry_run=1 (monitored author)")
+        return
+    res = _x_api_like(state, tid)
+    state.audit("x.like", {"tweet_id": tid, "user_id": uid, "result": res})
+    _gw_debug(f"x.like monitored_author tweet_id={tid!r} ok={res.get('ok')}")
+
+
+def _awareness_cta_suffix() -> str:
+    u = _canonical_github_repo_url()
+    return f"Try AINL on GitHub: {u}"
+
+
+def _discovery_llm_scores(users: List[Dict[str, Any]], state: PromoterState) -> Dict[str, float]:
+    if not users or not (os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")):
+        return {}
+    lines = []
+    for u in users[:20]:
+        blob = f"{u.get('username','')} {u.get('name','')} {u.get('description','')}"
+        lines.append(f"- user_id={u.get('user_id','')}: {blob[:280]}")
+    instr = (_load_prompt_file("discovery_user_instruction") or "").strip() or (
+        "Score each line 1-10 for relevance to AI agent frameworks, deterministic workflows, "
+        "OpenClaw-style orchestration, or programming languages for graphs. Return ONLY a JSON array "
+        'of {"user_id":"...","score":n} in the same order as the user list (first N lines).'
+    )
+    try:
+        text = _openai_chat(
+            [
+                {"role": "system", "content": "You output only valid JSON arrays. No markdown."},
+                {"role": "user", "content": instr + "\n\nUsers:\n" + "\n".join(lines)},
+            ]
+        )
+        arr = _extract_json_array(text)
+        out: Dict[str, float] = {}
+        if isinstance(arr, list):
+            for row in arr:
+                if isinstance(row, dict):
+                    uid = str(row.get("user_id", "")).strip()
+                    try:
+                        out[uid] = float(row.get("score", 0))
+                    except (TypeError, ValueError):
+                        pass
+        return out
+    except Exception:
+        return {}
+
+
+# -----------------------------------------------------------------------------
 # Handlers
 # -----------------------------------------------------------------------------
 
@@ -995,6 +1219,7 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
         state.touch_user(user_id)
         if _env_bool("PROMOTER_DEDUPE_REPLIED_TWEETS", True):
             state.mark_replied_tweet(tweet_id)
+        _maybe_like_monitored_author(state, tweet)
         _gw_debug("process_tweet dry_run_reply (no X API post)")
         return {"ok": True, "action": "dry_run_reply", "tweet_id": tweet_id, "text": reply_text}
 
@@ -1008,6 +1233,7 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
     if _env_bool("PROMOTER_DEDUPE_REPLIED_TWEETS", True):
         state.mark_replied_tweet(tweet_id)
     state.audit("process_tweet_replied", {"tweet_id": tweet_id, "reply_id": post.get("tweet_id")})
+    _maybe_like_monitored_author(state, tweet)
     _gw_debug(f"process_tweet replied reply_tweet_id={post.get('tweet_id')!r}")
     return {"ok": True, "action": "replied", "reply": post}
 
@@ -1066,6 +1292,13 @@ def handle_maybe_daily(body: Dict[str, Any], state: PromoterState) -> Dict[str, 
     text = _normalize_promoter_github_links(
         f"{topic} — deterministic agent graphs as code. {link}"
     )[:280]
+    if _env_bool("PROMOTER_AWARENESS_BOOST", False):
+        u = _canonical_github_repo_url()
+        boosted = _normalize_promoter_github_links(
+            f"{topic} — deterministic agent graphs. {link} · Issues/PRs: {u}"
+        )[:280]
+        if boosted:
+            text = boosted
     if dry:
         state.mark_original_posted("dry_run")
         state.audit("daily_post_dry", {"text": text})
@@ -1080,6 +1313,211 @@ def handle_maybe_daily(body: Dict[str, Any], state: PromoterState) -> Dict[str, 
     state.audit("daily_post", {"tweet_id": post.get("tweet_id")})
     _gw_debug(f"maybe_daily posted tweet_id={post.get('tweet_id')!r}")
     return {"ok": True, "action": "daily_posted", "tweet_id": post.get("tweet_id")}
+
+
+def handle_x_follow(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    inner = _http_inner_dict(body)
+    tid = str(inner.get("target_user_id") or inner.get("user_id") or "").strip()
+    add_mon = inner.get("add_to_monitored", True)
+    if isinstance(add_mon, str):
+        add_mon = str(add_mon).strip().lower() in ("1", "true", "yes", "on")
+    dry = _env_bool("PROMOTER_DRY_RUN", False)
+    if not tid:
+        return {"ok": False, "error": "missing_target_user_id"}
+    if dry:
+        state.audit("x.follow", {"dry_run": True, "target_user_id": tid, "add_to_monitored": add_mon})
+        return {"ok": True, "dry_run": True, "target_user_id": tid, "followed": False, "add_to_monitored": add_mon}
+    res = _x_api_follow(state, tid)
+    if res.get("ok") and add_mon:
+        _monitored_add(state, tid)
+    return {"ok": bool(res.get("ok")), "target_user_id": tid, "detail": res}
+
+
+def handle_x_search_users(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    inner = _http_inner_dict(body)
+    query = str(inner.get("query") or "").strip()
+    merge_m = inner.get("merge_monitored", False)
+    if isinstance(merge_m, str):
+        merge_m = str(merge_m).strip().lower() in ("1", "true", "yes", "on")
+    min_sc = float(_env_int("PROMOTER_DISCOVERY_MIN_SCORE", 7))
+    dry = _env_bool("PROMOTER_DRY_RUN", False)
+    if not query:
+        return {"users": [], "error": "missing_query"}
+    if dry:
+        sample = [
+            {
+                "user_id": "dry_u1",
+                "username": "dry_user",
+                "name": "",
+                "description": "openclaw ai agent workflow",
+                "score": 8.0,
+                "why": "heuristic_keyword_match",
+            }
+        ]
+        state.audit("x.search_users", {"dry_run": True, "query": query})
+        return {"users": sample, "dry_run": True, "merged_user_ids": []}
+    tw_out = _x_recent_search(query, since_id=None, max_results=_search_max_results())
+    tweets = tw_out.get("tweets") if isinstance(tw_out, dict) else []
+    if not isinstance(tweets, list):
+        tweets = []
+    uid_order: List[str] = []
+    seen: set[str] = set()
+    for t in tweets:
+        if isinstance(t, dict):
+            uid = str(t.get("user_id") or "").strip()
+            if uid and uid not in seen:
+                seen.add(uid)
+                uid_order.append(uid)
+    users = _x_users_lookup(uid_order)
+    pseudo = [
+        {
+            "id": u["user_id"],
+            "text": f"{u.get('username', '')} {u.get('name', '')} {u.get('description', '')}",
+        }
+        for u in users
+    ]
+    heur_items = _heuristic_scores([t if isinstance(t, dict) else {} for t in pseudo])
+    heur_by_id = {str(h.get("id", "")): h for h in heur_items if isinstance(h, dict)}
+    llm_s = _discovery_llm_scores(users, state)
+    out_users: List[Dict[str, Any]] = []
+    for u in users:
+        uid = u["user_id"]
+        h = heur_by_id.get(uid, {})
+        try:
+            hs = float(h.get("score", 0))
+        except (TypeError, ValueError):
+            hs = 0.0
+        ls = llm_s.get(uid)
+        final = max(hs, ls) if ls is not None else hs
+        row = dict(u)
+        row["score"] = final
+        row["why"] = h.get("why", "heuristic_keyword_match")
+        out_users.append(row)
+    out_users.sort(key=lambda x: -float(x.get("score", 0)))
+    merged: List[str] = []
+    if merge_m and _env_bool("PROMOTER_DISCOVERY_ENABLED", False):
+        for u in out_users:
+            try:
+                sc = float(u.get("score", 0))
+            except (TypeError, ValueError):
+                sc = 0.0
+            if sc >= min_sc:
+                _monitored_add(state, str(u.get("user_id", "")))
+                merged.append(str(u.get("user_id", "")))
+    return {"users": out_users, "merged_user_ids": merged}
+
+
+def handle_x_like(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    inner = _http_inner_dict(body)
+    tweet_id = str(inner.get("tweet_id") or "").strip()
+    if not tweet_id:
+        return {"ok": False, "error": "missing_tweet_id"}
+    if _env_bool("PROMOTER_DRY_RUN", False):
+        state.audit("x.like", {"dry_run": True, "tweet_id": tweet_id})
+        return {"ok": True, "dry_run": True, "tweet_id": tweet_id}
+    res = _x_api_like(state, tweet_id)
+    out = dict(res)
+    out["tweet_id"] = tweet_id
+    return out
+
+
+def handle_x_get_conversation(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    inner = _http_inner_dict(body)
+    cid = str(inner.get("conversation_id") or "").strip()
+    if not cid:
+        heads = _kv_str_list_get(state, "active_threads")
+        if heads:
+            cid = heads[0]
+    if not cid:
+        if _env_bool("PROMOTER_DRY_RUN", False):
+            state.audit("x.get_conversation", {"dry_run": True, "conversation_id": None})
+            return {
+                "tweets": [{"id": "dryc1", "text": "thread sample", "user_id": "u1"}],
+                "dry_run": True,
+                "conversation_id": "dry_conv",
+            }
+        return {"tweets": [], "error": "missing_conversation_id"}
+    if _env_bool("PROMOTER_DRY_RUN", False):
+        state.audit("x.get_conversation", {"dry_run": True, "conversation_id": cid})
+        return {
+            "tweets": [{"id": "dryc1", "text": "thread sample", "user_id": "u1"}],
+            "dry_run": True,
+            "conversation_id": cid,
+        }
+    q = f"conversation_id:{cid}"
+    out = _x_recent_search(q, since_id=None, max_results=_search_max_results())
+    tw = out.get("tweets", []) if isinstance(out, dict) else []
+    if not isinstance(tw, list):
+        tw = []
+    meta = out.get("meta") if isinstance(out, dict) and isinstance(out.get("meta"), dict) else {}
+    return {"tweets": tw, "conversation_id": cid, "meta": meta}
+
+
+def handle_promoter_thread_continue(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    if not _env_bool("PROMOTER_THREAD_ENABLED", False):
+        return {"ok": False, "reason": "thread_pack_disabled", "action": "noop"}
+    inner = _http_inner_dict(body)
+    tweets = inner.get("tweets") or []
+    if not isinstance(tweets, list):
+        tweets = []
+    reply_to = str(inner.get("reply_to_tweet_id") or "").strip()
+    conv = str(inner.get("conversation_id") or "").strip()
+    dry = _env_bool("PROMOTER_DRY_RUN", False)
+    max_day = _env_int("PROMOTER_MAX_REPLIES_PER_DAY", 10)
+    if not reply_to:
+        return {"ok": False, "error": "missing_reply_to_tweet_id"}
+    if state.count_today_replies() >= max_day:
+        return {"ok": True, "action": "skipped", "reason": "daily_reply_cap", "dry_run": dry}
+    reply_system = (_load_prompt_file("reply_system") or "").strip()
+    if not reply_system:
+        reply_system = (
+            "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural."
+        )
+    reply_system = _reply_system_with_canonical_link(reply_system)
+    transcript_bits: List[str] = []
+    for t in tweets:
+        if isinstance(t, dict):
+            transcript_bits.append(str(t.get("text", "")))
+    transcript = "\n".join(transcript_bits)[:2000]
+    reply_text = (
+        f"Thanks for the thread — AINL graphs are deterministic and bridge-friendly. More: {_canonical_github_repo_url()}"
+    )
+    try:
+        if os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY"):
+            reply_text = _openai_chat(
+                [
+                    {"role": "system", "content": reply_system},
+                    {
+                        "role": "user",
+                        "content": f"Thread so far:\n{transcript}\n\nDraft one concise reply as Apollo.",
+                    },
+                ]
+            ).strip()
+    except Exception:
+        pass
+    reply_text = _normalize_promoter_github_links(reply_text)[:280]
+    if dry:
+        state.audit("thread_continue_dry", {"reply_to": reply_to, "text": reply_text, "conversation_id": conv})
+        if conv:
+            _thread_track(state, conv)
+        return {"ok": True, "action": "dry_run_thread", "text": reply_text}
+    post = _x_post_reply(reply_text, reply_to)
+    if post.get("ok") and conv:
+        _thread_track(state, conv)
+    if not post.get("ok"):
+        return {"ok": False, "action": "post_failed", "detail": post}
+    state.incr_today_replies()
+    return {"ok": True, "action": "thread_replied", "reply": post}
+
+
+def handle_promoter_awareness_boost(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    u = _canonical_github_repo_url()
+    lines = [
+        f"AINL: strict graphs, deterministic runtime — {u}",
+        f"Try issues/PRs on the repo: {u}",
+    ]
+    state.audit("awareness_boost", {"link": u})
+    return {"ok": True, "cta_lines": lines, "link": u}
 
 
 # -----------------------------------------------------------------------------
@@ -1106,6 +1544,12 @@ ROUTES = {
     "/v1/promoter.process_tweet": handle_process_tweet,
     "/v1/promoter.search_cursor_commit": handle_search_cursor_commit,
     "/v1/promoter.maybe_daily_post": handle_maybe_daily,
+    "/v1/x.follow": handle_x_follow,
+    "/v1/x.search_users": handle_x_search_users,
+    "/v1/x.like": handle_x_like,
+    "/v1/x.get_conversation": handle_x_get_conversation,
+    "/v1/promoter.thread_continue": handle_promoter_thread_continue,
+    "/v1/promoter.awareness_boost": handle_promoter_awareness_boost,
 }
 
 

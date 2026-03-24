@@ -1,0 +1,35 @@
+# Apollo growth pack — monitor list snapshot (KV monitored_accounts) + audit.
+# Run: PROMOTER_MONITOR_ENABLED=1 … --strict --label _monitor_list
+# Requires bridge + memory (record_decision).
+
+include "../../../modules/common/executor_request_builder.ainl" as exreq
+include "../../../modules/common/record_decision.ainl" as rd
+
+S core cron "0 */3 * * *"
+
+L_monitor_list:
+  R core.env "PROMOTER_MONITOR_ENABLED" "0" ->mon_en_s
+  R core.parse mon_en_s ->mon_en_n
+  Set mon_on null
+  X mon_on eq mon_en_n 1
+  If mon_on ->L_mon_body ->L_mon_skip
+
+L_mon_skip:
+  J "ok"
+
+L_mon_body:
+  R core.echo "kv.get" ->executor_req_executor
+  R core.echo "{\"key\":\"monitored_accounts\"}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_monitor" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_kv
+  R bridge.POST kv.get req_kv ->kv_http
+  X kv_b get kv_http body
+  R core.stringify kv_b ->record_rd_detail_json
+  R core.echo "monitor_kv_snapshot" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "apollo_growth" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"

@@ -4,8 +4,11 @@ gateway.stdout
 promoter.log
 # Local scratch / one-off patches (not source)
 gateway_patch.py
-# Optional dev symlinks to repo-root modules/ (use ../modules/ in graphs instead)
-modules/
+# Optional dev symlinks under modules/ (use ../modules/ in graphs). Versioned exception:
+modules/*
+!modules/apollo/
+!modules/apollo/**
 __pycache__/
 *.pyc
 .env
+*.log

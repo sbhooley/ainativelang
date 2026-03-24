@@ -18,7 +18,7 @@ S core cron "*/45 * * * *"
 
 L_poll:
   R core.echo "x.search" ->executor_req_executor
-  R core.echo "{\"query\":\"@ainativelang OR \\\"AINL\\\" OR \\\"AI Native Language\\\" -is:retweet lang:en\"}" ->executor_req_payload_json
+  R core.echo "{\"query\":\"from:sbhooley OR from:AINativeLang OR @ainativelang OR @sbhooley OR \\\"AINL\\\" OR \\\"AI Native Language\\\" -is:retweet lang:en\"}" ->executor_req_payload_json
   Set executor_req_run_id null
   R core.echo "_poll" ->executor_req_step_id
   R core.add 120 0 ->executor_req_timeout_s

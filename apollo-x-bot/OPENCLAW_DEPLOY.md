@@ -119,6 +119,23 @@ Notes:
 
 ---
 
+## Optional Apollo-X Growth Pack (v1.3)
+
+Optional graphs in `apollo-x-bot/modules/apollo/` add follow/discovery/like/thread/awareness features **without** changing `ainl-x-promoter.ainl`. The same supervised `gateway_server.py` serves new routes (`/v1/x.follow`, `/v1/x.search_users`, `/v1/x.like`, `/v1/x.get_conversation`, `/v1/promoter.thread_continue`, `/v1/promoter.awareness_boost`).
+
+1. **Migrate state once (idempotent):**  
+   `python3 scripts/apollo_migrate_state.py`  
+   (or pass `PROMOTER_STATE_PATH` explicitly).
+
+2. **Env flags (all default off):**  
+   `PROMOTER_MONITOR_ENABLED`, `PROMOTER_DISCOVERY_ENABLED`, `PROMOTER_LIKE_ENABLED`, `PROMOTER_THREAD_ENABLED`, `PROMOTER_AWARENESS_BOOST`, optional `PROMOTER_DISCOVERY_MIN_SCORE`. See `apollo-x-bot/.env.example` and `apollo-x-bot/README.md`.
+
+3. **Cron:** Add separate OpenClaw jobs for `apollo-x-bot/monitor-poll.sh`, `discover-poll.sh`, and/or `thread-poll.sh` if you use those paths — **after** validating with `PROMOTER_DRY_RUN=1`.
+
+4. **Main promoter cron** stays on `openclaw-poll.sh` only; no bridge registration changes required for the core mention-reply workflow.
+
+---
+
 ## See also
 
 - `docs/OPENCLAW_INTEGRATION.md` — MCP skill and `~/.openclaw/openclaw.json`
