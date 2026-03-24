@@ -243,6 +243,8 @@ For the full integration story, pain-to-solution map, and architecture diagram, 
 
 For a detailed comparison of graph-native agents vs prompt-loop agents with production evidence, see `docs/case_studies/graph_agents_vs_prompt_agents.md`.
 
+For explicit "thinking budget" framing (tokens/cost/latency/carbon) and how AINL maps to energy-pattern design, see `docs/case_studies/DESIGNING_ENERGY_CONSUMPTION_PATTERNS.md`.
+
 For an OpenClaw-specific quickstart, see `AI_AGENT_QUICKSTART_OPENCLAW.md`.
 
 ## One-sentence positioning
