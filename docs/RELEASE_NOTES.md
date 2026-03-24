@@ -46,7 +46,7 @@
 
 ### Competitive & comparisons (positioning + evidence)
 
-- **`docs/competitive/`** — onboarding (**`FROM_LANGGRAPH_TO_AINL.md`**, **`AINL_AND_TEMPORAL.md`**), benchmark methodology (**`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`**), comparison tables (**`COMPARISON_TABLE.md`** — committed figures + **TBD** rows), and OpenClaw savings worksheet (**`OPENCLAW_PRODUCTION_SAVINGS.md`**). Public hub: **`OVERVIEW.md`** (on **[ainativelang.com](https://ainativelang.com)** as **`/docs/competitive/OVERVIEW`** after the web repo runs **`npm run sync-content`** and a production deploy).
+- **`docs/competitive/`** — onboarding (**`FROM_LANGGRAPH_TO_AINL.md`**, **`AINL_AND_TEMPORAL.md`**), benchmark methodology (**`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`**), comparison tables (**`COMPARISON_TABLE.md`** — committed figures + **TBD** rows), and OpenClaw savings worksheet (**`OPENCLAW_PRODUCTION_SAVINGS.md`**). Public hub: **`OVERVIEW.md`** (on **[ainativelang.com](https://ainativelang.com)** as **`/docs/competitive/OVERVIEW`** after the web repo runs **`npm run sync-content`** and a production deploy). **Live comparison tables:** **[ainativelang.com/docs/competitive/COMPARISON_TABLE](https://ainativelang.com/docs/competitive/COMPARISON_TABLE)**.
 
 See **`docs/CHANGELOG.md`** § **v1.2.5** for the same items in changelog form.
 

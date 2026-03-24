@@ -6,7 +6,9 @@ Figures below are copied from **committed** artifacts only — **`BENCHMARK.md`*
 
 **Benchmark refresh (UTC, from JSON):** `tooling/benchmark_size.json` → `generated_at_utc` **2026-03-24T03:24:27.395076+00:00**; `tooling/benchmark_runtime_results.json` → `generated_at_utc` **2026-03-24T03:24:29.102226+00:00**.
 
-**Takeaways** (figures already in this page — not new runs):
+### Takeaways
+
+*Figures already in this page — not new runs.*
 
 - **Authoring:** Hybrid monitor `.ainl` slices stay at **85–99** tk (cl100k_base) while **`full_multitarget`** emit on those paths is **~12.2k–12.5k** tk per LangGraph/Temporal bundle — **~125–144×** downstream vs source (§B).
 - **Runtime bench (orchestration):** **`llm_tokens_estimated` = 0** and **`llm_calls` = 0** on the cited deterministic runs (§C); the benchmark does not log tokens inside your tools/models.
