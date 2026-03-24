@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ainl-lang"
-version = "1.2.4"
+version = "1.2.5"
 description = "AINL compiler, runtime, validator, and tooling"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,6 +34,14 @@ benchmark = [
   # Handwritten baseline runtime (--compare-baselines): pure_async + LangGraph shims
   "aiohttp>=3.9.0",
   "langgraph>=0.2.0",
+  # Temporal worker types in emitted hybrid modules (optional until you run a worker)
+  "temporalio>=1.8.0",
+]
+# LangGraph / Temporal / HTTP helpers for hybrid examples and baseline comparisons.
+interop = [
+  "aiohttp>=3.9.0",
+  "langgraph>=0.2.0",
+  "temporalio>=1.8.0",
 ]
 dev = ["pytest>=7.0.0", "hypothesis>=6.0.0", "httpx>=0.27.0", "pre-commit>=3.7.0", "rich>=13.0.0", "pytest-xdist", "syrupy", "playwright>=1.46.0"]
 web = ["fastapi", "uvicorn[standard]"]

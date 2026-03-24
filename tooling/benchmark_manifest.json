@@ -20,7 +20,10 @@
   },
   "modes": {
     "full_multitarget": {
-      "description": "Measure AINL source size vs aggregate generated output across all benchmark targets."
+      "description": "Measure AINL source size vs aggregate generated output across all benchmark targets (including hybrid langgraph/temporal wrappers)."
+    },
+    "full_multitarget_core": {
+      "description": "Same as full_multitarget but only the six compiler-backed emitters (excludes standalone langgraph/temporal wrapper scripts). Comparable to pre-hybrid headline ratios."
     },
     "minimal_emit": {
       "description": "Count only generated targets required by artifact capabilities for fairer practical comparison.",
@@ -42,6 +45,12 @@
         },
         "mt5": {
           "requires_capability": "needs_mt5"
+        },
+        "langgraph": {
+          "requires_capability": "needs_langgraph"
+        },
+        "temporal": {
+          "requires_capability": "needs_temporal"
         }
       },
       "fallback_targets": ["python_api"]

@@ -1,6 +1,6 @@
 {
   "schema_version": "3.5",
-  "generated_at_utc": "2026-03-21T20:12:53.260646+00:00",
+  "generated_at_utc": "2026-03-24T03:32:18.991698+00:00",
   "metric": "tiktoken",
   "mode_request": "minimal_emit",
   "profile_request": "canonical_strict_valid",
@@ -11,7 +11,9 @@
     "prisma",
     "mt5",
     "scraper",
-    "cron"
+    "cron",
+    "langgraph",
+    "temporal"
   ],
   "modes": {
     "minimal_emit": {
@@ -24,14 +26,14 @@
             "classes": [
               "strict-valid"
             ],
-            "artifact_count": 12
+            "artifact_count": 19
           },
           "artifacts": [
             {
               "artifact": "examples/crud_api.ainl",
               "class": "strict-valid",
               "ainl_source_size": 37,
-              "compile_time_ms_mean": 0.5918613266355047,
+              "compile_time_ms_mean": 0.5370556415679554,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -42,7 +44,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -74,6 +78,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -99,7 +113,7 @@
               "artifact": "examples/hello.ainl",
               "class": "strict-valid",
               "ainl_source_size": 18,
-              "compile_time_ms_mean": 0.20662499203657111,
+              "compile_time_ms_mean": 0.2477083277578155,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -110,7 +124,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -142,6 +158,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -164,10 +190,10 @@
               "viable_for_aggregate": true
             },
             {
-              "artifact": "examples/if_call_workflow.ainl",
+              "artifact": "examples/hybrid/langchain_tool_demo.ainl",
               "class": "strict-valid",
-              "ainl_source_size": 83,
-              "compile_time_ms_mean": 0.8139029960148036,
+              "ainl_source_size": 231,
+              "compile_time_ms_mean": 0.3579863502333562,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -178,7 +204,329 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.41125541125541126
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.41125541125541126,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 19,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 99,
+              "compile_time_ms_mean": 0.4103890193315844,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.9595959595959596
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.9595959595959596,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 9,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 85,
+              "compile_time_ms_mean": 0.40505568419272703,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 1.1176470588235294
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 1.1176470588235294,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 9,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/hyperspace_demo.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 516,
+              "compile_time_ms_mean": 14.612472344500324,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.18410852713178294
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.18410852713178294,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 43,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/if_call_workflow.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 83,
+              "compile_time_ms_mean": 0.8779443451203406,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -210,6 +558,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -235,7 +593,7 @@
               "artifact": "examples/monitor_escalation.ainl",
               "class": "strict-valid",
               "ainl_source_size": 72,
-              "compile_time_ms_mean": 0.5882913343763599,
+              "compile_time_ms_mean": 0.5558609846048057,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -246,7 +604,9 @@
                 "python_api",
                 "prisma",
                 "mt5",
-                "scraper"
+                "scraper",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -278,6 +638,16 @@
                   "size": 98,
                   "included": true,
                   "ratio_vs_source": 1.3611111111111112
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 98,
@@ -302,7 +672,7 @@
               "artifact": "examples/rag_pipeline.ainl",
               "class": "strict-valid",
               "ainl_source_size": 29,
-              "compile_time_ms_mean": 0.357763337281843,
+              "compile_time_ms_mean": 0.3712920006364584,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -313,7 +683,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -345,6 +717,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -370,7 +752,7 @@
               "artifact": "examples/retry_error_resilience.ainl",
               "class": "strict-valid",
               "ainl_source_size": 54,
-              "compile_time_ms_mean": 0.5038750047485033,
+              "compile_time_ms_mean": 0.497249672965457,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -381,7 +763,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -413,6 +797,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -438,7 +832,7 @@
               "artifact": "examples/scraper/basic_scraper.ainl",
               "class": "strict-valid",
               "ainl_source_size": 67,
-              "compile_time_ms_mean": 0.3278056877510001,
+              "compile_time_ms_mean": 0.3511803612733881,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -449,7 +843,9 @@
                 "react_ts",
                 "python_api",
                 "prisma",
-                "mt5"
+                "mt5",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -481,6 +877,16 @@
                   "size": 99,
                   "included": true,
                   "ratio_vs_source": 1.4776119402985075
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 253,
@@ -513,7 +919,7 @@
               "artifact": "examples/status_branching.ainl",
               "class": "strict-valid",
               "ainl_source_size": 48,
-              "compile_time_ms_mean": 0.5424443321923414,
+              "compile_time_ms_mean": 0.5079026838454107,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -524,7 +930,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -556,6 +964,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -578,10 +996,10 @@
               "viable_for_aggregate": true
             },
             {
-              "artifact": "examples/timeout_demo.ainl",
+              "artifact": "examples/test_adapters_full.ainl",
               "class": "strict-valid",
-              "ainl_source_size": 49,
-              "compile_time_ms_mean": 2.0977636643995843,
+              "ainl_source_size": 404,
+              "compile_time_ms_mean": 1.5499583484294515,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -592,7 +1010,249 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.23514851485148514
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.23514851485148514,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 30,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/test_nested.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 20,
+              "compile_time_ms_mean": 0.24329166626557708,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 4.75
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 4.75,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 1,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/test_phase2_common_modules.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 424,
+              "compile_time_ms_mean": 20.321847347076982,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.2240566037735849
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.2240566037735849,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 44,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/timeout_demo.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 49,
+              "compile_time_ms_mean": 2.122403006069362,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -624,6 +1284,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -649,7 +1319,7 @@
               "artifact": "examples/timeout_memory_prune_demo.ainl",
               "class": "strict-valid",
               "ainl_source_size": 256,
-              "compile_time_ms_mean": 2.7624583356858543,
+              "compile_time_ms_mean": 2.5917780003510416,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -660,7 +1330,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -692,6 +1364,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -717,7 +1399,7 @@
               "artifact": "examples/web/basic_web_api.ainl",
               "class": "strict-valid",
               "ainl_source_size": 32,
-              "compile_time_ms_mean": 0.23173632992741963,
+              "compile_time_ms_mean": 0.26073634702091414,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -728,7 +1410,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -760,6 +1444,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 106,
@@ -785,7 +1479,7 @@
               "artifact": "examples/webhook_automation.ainl",
               "class": "strict-valid",
               "ainl_source_size": 66,
-              "compile_time_ms_mean": 0.6242916764070591,
+              "compile_time_ms_mean": 0.6080553284846246,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -796,7 +1490,9 @@
                 "prisma",
                 "mt5",
                 "scraper",
-                "cron"
+                "cron",
+                "langgraph",
+                "temporal"
               ],
               "targets": {
                 "react_ts": {
@@ -828,6 +1524,16 @@
                   "size": null,
                   "included": false,
                   "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
                 }
               },
               "aggregate_generated_output_size": 95,
@@ -851,25 +1557,27 @@
             }
           ],
           "summary": {
-            "artifact_count": 12,
-            "ainl_source_total": 811,
+            "artifact_count": 19,
+            "ainl_source_total": 2590,
             "targets_total": {
               "react_ts": 0,
-              "python_api": 961,
+              "python_api": 1626,
               "prisma": 0,
               "mt5": 0,
               "scraper": 154,
-              "cron": 197
+              "cron": 197,
+              "langgraph": 0,
+              "temporal": 0
             },
-            "aggregate_generated_output_total": 1312,
-            "aggregate_ratio_vs_source": 1.6177558569667079,
+            "aggregate_generated_output_total": 1977,
+            "aggregate_ratio_vs_source": 0.7633204633204633,
             "target_structure_totals": {
               "python_api": {
-                "imports_chunks": 70,
+                "imports_chunks": 119,
                 "decorator_chunks": 5,
                 "function_def_chunks": 6,
                 "return_chunks": 6,
-                "total_chunks": 961
+                "total_chunks": 1626
               },
               "cron": {
                 "function_def_chunks": 11,
@@ -888,25 +1596,27 @@
             }
           },
           "viable_aggregate": {
-            "artifact_count": 12,
-            "ainl_source_total": 811,
+            "artifact_count": 19,
+            "ainl_source_total": 2590,
             "targets_total": {
               "react_ts": 0,
-              "python_api": 961,
+              "python_api": 1626,
               "prisma": 0,
               "mt5": 0,
               "scraper": 154,
-              "cron": 197
+              "cron": 197,
+              "langgraph": 0,
+              "temporal": 0
             },
-            "aggregate_generated_output_total": 1312,
-            "aggregate_ratio_vs_source": 1.6177558569667079,
+            "aggregate_generated_output_total": 1977,
+            "aggregate_ratio_vs_source": 0.7633204633204633,
             "target_structure_totals": {
               "python_api": {
-                "imports_chunks": 70,
+                "imports_chunks": 119,
                 "decorator_chunks": 5,
                 "function_def_chunks": 6,
                 "return_chunks": 6,
-                "total_chunks": 961
+                "total_chunks": 1626
               },
               "cron": {
                 "function_def_chunks": 11,
@@ -929,18 +1639,18 @@
             "top_targets": [
               {
                 "target": "python_api",
-                "size": 961,
-                "share_of_aggregate": 0.7324695121951219
+                "size": 1626,
+                "share_of_aggregate": 0.8224582701062215
               },
               {
                 "target": "cron",
                 "size": 197,
-                "share_of_aggregate": 0.15015243902439024
+                "share_of_aggregate": 0.09964592817400102
               },
               {
                 "target": "scraper",
                 "size": 154,
-                "share_of_aggregate": 0.1173780487804878
+                "share_of_aggregate": 0.07789580171977745
               }
             ],
             "top_artifacts": [
@@ -973,13 +1683,13 @@
             "residual_overhead_by_target": [
               {
                 "target": "python_api",
-                "total_size": 961,
+                "total_size": 1626,
                 "structure": {
-                  "imports_chunks": 70,
+                  "imports_chunks": 119,
                   "decorator_chunks": 5,
                   "function_def_chunks": 6,
                   "return_chunks": 6,
-                  "total_chunks": 961
+                  "total_chunks": 1626
                 }
               },
               {
@@ -1035,18 +1745,18 @@
             "top_minimal_emitted_targets": [
               {
                 "target": "python_api",
-                "size": 961,
-                "share_of_aggregate": 0.7324695121951219
+                "size": 1626,
+                "share_of_aggregate": 0.8224582701062215
               },
               {
                 "target": "cron",
                 "size": 197,
-                "share_of_aggregate": 0.15015243902439024
+                "share_of_aggregate": 0.09964592817400102
               },
               {
                 "target": "scraper",
                 "size": 154,
-                "share_of_aggregate": 0.1173780487804878
+                "share_of_aggregate": 0.07789580171977745
               }
             ]
           }
@@ -1100,7 +1810,7 @@
               "gpt-4o": 0.01146
             }
           },
-          "full_multitarget": {
+          "full_multitarget_core": {
             "ainl_aggregate_emit_active_metric": 591,
             "active_metric": "tiktoken",
             "ainl_aggregate_emit_tiktoken": 591,
@@ -1110,6 +1820,21 @@
             "ratio_ainl_active_over_lang_tiktoken": 0.8008130081300813,
             "estimated_cost_usd_ainl_emit_tiktoken": {
               "gpt-4o": 0.00421
+            },
+            "estimated_cost_usd_handwritten_sources_tiktoken": {
+              "gpt-4o": 0.01146
+            }
+          },
+          "full_multitarget": {
+            "ainl_aggregate_emit_active_metric": 21800,
+            "active_metric": "tiktoken",
+            "ainl_aggregate_emit_tiktoken": 21800,
+            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 25.057471264367816,
+            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 29.539295392953928,
+            "ratio_ainl_active_over_pure_tiktoken": 25.057471264367816,
+            "ratio_ainl_active_over_lang_tiktoken": 29.539295392953928,
+            "estimated_cost_usd_ainl_emit_tiktoken": {
+              "gpt-4o": 0.155325
             },
             "estimated_cost_usd_handwritten_sources_tiktoken": {
               "gpt-4o": 0.01146
@@ -1144,7 +1869,7 @@
               "gpt-4o": 0.010365
             }
           },
-          "full_multitarget": {
+          "full_multitarget_core": {
             "ainl_aggregate_emit_active_metric": 423,
             "active_metric": "tiktoken",
             "ainl_aggregate_emit_tiktoken": 423,
@@ -1154,6 +1879,21 @@
             "ratio_ainl_active_over_lang_tiktoken": 0.5610079575596817,
             "estimated_cost_usd_ainl_emit_tiktoken": {
               "gpt-4o": 0.0030175
+            },
+            "estimated_cost_usd_handwritten_sources_tiktoken": {
+              "gpt-4o": 0.010365
+            }
+          },
+          "full_multitarget": {
+            "ainl_aggregate_emit_active_metric": 21168,
+            "active_metric": "tiktoken",
+            "ainl_aggregate_emit_tiktoken": 21168,
+            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 30.24,
+            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 28.074270557029177,
+            "ratio_ainl_active_over_pure_tiktoken": 30.24,
+            "ratio_ainl_active_over_lang_tiktoken": 28.074270557029177,
+            "estimated_cost_usd_ainl_emit_tiktoken": {
+              "gpt-4o": 0.150825
             },
             "estimated_cost_usd_handwritten_sources_tiktoken": {
               "gpt-4o": 0.010365
@@ -1188,7 +1928,7 @@
               "gpt-4o": 0.02286
             }
           },
-          "full_multitarget": {
+          "full_multitarget_core": {
             "ainl_aggregate_emit_active_metric": 423,
             "active_metric": "tiktoken",
             "ainl_aggregate_emit_tiktoken": 423,
@@ -1198,6 +1938,21 @@
             "ratio_ainl_active_over_lang_tiktoken": 0.2604679802955665,
             "estimated_cost_usd_ainl_emit_tiktoken": {
               "gpt-4o": 0.0030175
+            },
+            "estimated_cost_usd_handwritten_sources_tiktoken": {
+              "gpt-4o": 0.02286
+            }
+          },
+          "full_multitarget": {
+            "ainl_aggregate_emit_active_metric": 293896,
+            "active_metric": "tiktoken",
+            "ainl_aggregate_emit_tiktoken": 293896,
+            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 185.54040404040404,
+            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 180.9704433497537,
+            "ratio_ainl_active_over_pure_tiktoken": 185.54040404040404,
+            "ratio_ainl_active_over_lang_tiktoken": 180.9704433497537,
+            "estimated_cost_usd_ainl_emit_tiktoken": {
+              "gpt-4o": 2.094015
             },
             "estimated_cost_usd_handwritten_sources_tiktoken": {
               "gpt-4o": 0.02286

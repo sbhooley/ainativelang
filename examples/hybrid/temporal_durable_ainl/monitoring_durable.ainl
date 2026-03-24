@@ -1,0 +1,10 @@
+# examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl
+# Compact deterministic slice: metric vs threshold → summary string.
+# Compiled IR is embedded in emitted *_activities.py for Temporal workers.
+
+L1:
+  Set metric_value 42
+  Set threshold 40
+  R core.sub metric_value threshold ->diff
+  R core.stringify diff ->summary
+  J summary

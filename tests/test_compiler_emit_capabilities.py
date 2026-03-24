@@ -22,7 +22,16 @@ def test_web_api_emit_capabilities():
     assert caps["needs_python_api"] is True
     assert caps["needs_cron"] is False
     assert caps["needs_scraper"] is False
+    assert caps["needs_langgraph"] is False
+    assert caps["needs_temporal"] is False
     assert "python_api" in ir["required_emit_targets"]["minimal_emit"]
+
+
+def test_full_multitarget_list_matches_tooling_full_order():
+    ir = _compile_file("examples/hello.ainl")
+    full = ir["required_emit_targets"]["full_multitarget"]
+    assert full[-2:] == ["langgraph", "temporal"]
+    assert len(full) == 8
 
 
 def test_crud_emit_capabilities():
@@ -69,6 +78,52 @@ def test_mt5_emit_capabilities_from_runtime_steps():
     caps = ir["emit_capabilities"]
     assert caps["needs_mt5"] is True
     assert "mt5" in ir["required_emit_targets"]["minimal_emit"]
+
+
+def test_s_hybrid_sets_langgraph_and_temporal_capabilities():
+    ir = AICodeCompiler(strict_mode=True).compile(
+        "S hybrid langgraph temporal\n"
+        "L1:\n"
+        "  R core.ADD 1 2 ->x\n"
+        "  J x\n"
+    )
+    assert not ir.get("errors")
+    caps = ir["emit_capabilities"]
+    assert caps["needs_langgraph"] is True
+    assert caps["needs_temporal"] is True
+    me = ir["required_emit_targets"]["minimal_emit"]
+    assert "langgraph" in me and "temporal" in me
+
+
+def test_s_hybrid_dedupes_targets_order_preserved():
+    ir = AICodeCompiler(strict_mode=True).compile(
+        "S hybrid temporal langgraph temporal\n"
+        "L1:\n"
+        "  R core.ADD 0 0 ->x\n"
+        "  J x\n"
+    )
+    assert not ir.get("errors")
+    hy = (ir.get("services") or {}).get("hybrid") or {}
+    assert hy.get("emit") == ["temporal", "langgraph"]
+
+
+def test_s_hybrid_unknown_target_errors_in_strict_mode():
+    ir = AICodeCompiler(strict_mode=True).compile("S hybrid crewai\nL1: J x\n")
+    assert ir.get("errors")
+
+
+def test_s_hybrid_langgraph_only_strict():
+    ir = AICodeCompiler(strict_mode=True).compile(
+        "S hybrid langgraph\n"
+        "L1:\n"
+        "  R core.ADD 2 3 ->x\n"
+        "  J x\n"
+    )
+    assert not ir.get("errors")
+    assert ir["emit_capabilities"]["needs_langgraph"] is True
+    assert ir["emit_capabilities"]["needs_temporal"] is False
+    assert "langgraph" in ir["required_emit_targets"]["minimal_emit"]
+    assert "temporal" not in ir["required_emit_targets"]["minimal_emit"]
 
 
 def test_core_cron_without_cr_entries_adds_minimal_python_api_fallback():

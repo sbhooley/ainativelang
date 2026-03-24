@@ -65,6 +65,7 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "memory",
         "vector_memory",
         "tool_registry",
+        "langchain_tool",
     ]
     if args.replay_adapters:
         data = json.loads(Path(args.replay_adapters).read_text(encoding="utf-8"))
@@ -228,6 +229,10 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
         from adapters.tool_registry import ToolRegistryAdapter
 
         reg.register("tool_registry", ToolRegistryAdapter())
+    if "langchain_tool" in enabled:
+        from adapters.langchain_tool import LangchainToolAdapter
+
+        reg.register("langchain_tool", LangchainToolAdapter())
 
 
 def _pretty_runtime_error(err: Exception) -> str:
@@ -666,6 +671,7 @@ def main() -> None:
             "memory",
             "vector_memory",
             "tool_registry",
+            "langchain_tool",
         ],
         default=[],
     )

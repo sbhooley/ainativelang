@@ -1,6 +1,6 @@
 {
   "schema_version": "1.2",
-  "generated_at_utc": "2026-03-21T20:12:54.220440+00:00",
+  "generated_at_utc": "2026-03-24T03:32:20.186302+00:00",
   "kind": "runtime",
   "execution_mode_graph": "graph-preferred",
   "warmup_runs": 1,
@@ -21,7 +21,7 @@
             "classes": [
               "strict-valid"
             ],
-            "artifact_count": 12
+            "artifact_count": 19
           },
           "artifacts": [
             {
@@ -29,13 +29,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.5855279935834309,
+              "compile_time_ms_mean": 0.6124443413379291,
               "latency_ms": {
-                "mean_ms": 0.025832996470853686,
-                "p50_ms": 0.025832996470853686,
-                "p95_ms": 0.028757992549799383,
-                "min_ms": 0.02258300082758069,
-                "max_ms": 0.029082992114126682,
+                "mean_ms": 0.044854008592665195,
+                "p50_ms": 0.044854008592665195,
+                "p95_ms": 0.06073541007936001,
+                "min_ms": 0.02720800694078207,
+                "max_ms": 0.06250001024454832,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -60,7 +60,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.004789062989586399,
+                "latency_ms_stddev": 0.006607974292473003,
                 "failure_samples": []
               }
             },
@@ -69,17 +69,17 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.2256806765217334,
+              "compile_time_ms_mean": 0.23887500477333865,
               "latency_ms": {
-                "mean_ms": 0.012333504855632782,
-                "p50_ms": 0.012333504855632782,
-                "p95_ms": 0.013121456140652299,
-                "min_ms": 0.011458003427833319,
-                "max_ms": 0.013209006283432245,
+                "mean_ms": 0.014917022781446576,
+                "p50_ms": 0.014917022781446576,
+                "p95_ms": 0.0171292427694425,
+                "min_ms": 0.012459000572562218,
+                "max_ms": 0.017375044990330935,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
-              "peak_rss_delta_mb": 0.015625,
+              "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 1,
               "trace_events_last_run": 6,
               "llm_tokens_estimated": 0,
@@ -100,8 +100,234 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0017587363958427244,
+                "latency_ms_stddev": 0.006723316830524103,
                 "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/hybrid/langchain_tool_demo.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]",
+              "compile_time_ms_mean": 0.40113902650773525,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 231,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.001645
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 0.4679166595451534,
+              "latency_ms": {
+                "mean_ms": 0.028646027203649282,
+                "p50_ms": 0.028646027203649282,
+                "p95_ms": 0.029677420388907194,
+                "min_ms": 0.027500034775584936,
+                "max_ms": 0.02979201963171363,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 2,
+              "trace_events_last_run": 15,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 99,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0007075
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.002904842591007255,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 0.4386663204059005,
+              "latency_ms": {
+                "mean_ms": 0.02585398033261299,
+                "p50_ms": 0.02585398033261299,
+                "p95_ms": 0.026922306278720498,
+                "min_ms": 0.02466695150360465,
+                "max_ms": 0.027041009161621332,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 2,
+              "trace_events_last_run": 15,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 85,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.00061
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.002670142245703889,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/hyperspace_demo.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]",
+              "compile_time_ms_mean": 15.964416651210437,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 516,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0036825
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  }
+                ]
               }
             },
             {
@@ -109,13 +335,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.9531246614642441,
+              "compile_time_ms_mean": 0.9249859916356703,
               "latency_ms": {
-                "mean_ms": 0.04520850779954344,
-                "p50_ms": 0.04520850779954344,
-                "p95_ms": 0.0461836505564861,
-                "min_ms": 0.04412501584738493,
-                "max_ms": 0.04629199975170195,
+                "mean_ms": 0.0475000124424696,
+                "p50_ms": 0.0475000124424696,
+                "p95_ms": 0.04997503128834069,
+                "min_ms": 0.04474999150261283,
+                "max_ms": 0.050250033382326365,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -140,20 +366,28 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0041072499795464,
+                "latency_ms_stddev": 0.004410897919999799,
                 "failure_samples": []
               }
             },
             {
               "artifact": "examples/monitor_escalation.ainl",
               "class": "strict-valid",
-              "ok": false,
-              "error": "warmup run: '>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]",
-              "compile_time_ms_mean": 0.5782359997586658,
-              "latency_ms": {},
-              "peak_rss_delta_mb": null,
-              "adapter_calls_last_run": null,
-              "trace_events_last_run": null,
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 0.5777636736941835,
+              "latency_ms": {
+                "mean_ms": 0.02495851367712021,
+                "p50_ms": 0.02495851367712021,
+                "p95_ms": 0.02634587581269443,
+                "min_ms": 0.02341700019314885,
+                "max_ms": 0.026500027161091566,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 1,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 72,
@@ -167,54 +401,13 @@
               },
               "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
               "execution_reliability": {
-                "ok": false,
+                "ok": true,
                 "runs_requested": 10,
-                "execution_successes": 0,
-                "execution_failures": 10,
-                "success_rate": 0.0,
-                "latency_ms_stddev": 0.0,
-                "failure_samples": [
-                  {
-                    "run": 0,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 1,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 2,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 3,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 4,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 5,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 6,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 7,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 8,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 9,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  }
-                ]
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.00299252721073498,
+                "failure_samples": []
               }
             },
             {
@@ -222,13 +415,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.44523632580724853,
+              "compile_time_ms_mean": 0.3796390180165569,
               "latency_ms": {
-                "mean_ms": 0.021458501578308642,
-                "p50_ms": 0.021458501578308642,
-                "p95_ms": 0.022733349760528654,
-                "min_ms": 0.020042003598064184,
-                "max_ms": 0.0228749995585531,
+                "mean_ms": 0.020875479094684124,
+                "p50_ms": 0.020875479094684124,
+                "p95_ms": 0.021963135804980993,
+                "min_ms": 0.019666971638798714,
+                "max_ms": 0.022083986550569534,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -253,7 +446,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0026043953978163014,
+                "latency_ms_stddev": 0.008171791648881405,
                 "failure_samples": []
               }
             },
@@ -262,17 +455,17 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.5679859993203232,
+              "compile_time_ms_mean": 0.6130693363957107,
               "latency_ms": {
-                "mean_ms": 0.032625001040287316,
-                "p50_ms": 0.032625001040287316,
-                "p95_ms": 0.03708811564138159,
-                "min_ms": 0.02766598481684923,
-                "max_ms": 0.0375840172637254,
+                "mean_ms": 0.03535402356646955,
+                "p50_ms": 0.03535402356646955,
+                "p95_ms": 0.03912323445547372,
+                "min_ms": 0.031166011467576027,
+                "max_ms": 0.03954203566536307,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
-              "peak_rss_delta_mb": 0.015625,
+              "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 3,
               "trace_events_last_run": 15,
               "llm_tokens_estimated": 0,
@@ -293,7 +486,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.003423590156673631,
+                "latency_ms_stddev": 0.003910630238367209,
                 "failure_samples": []
               }
             },
@@ -302,7 +495,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=6 source='  R http.GET \"https://example.com/products\" ->resp'] [label=_scrape step=0 op=R stack=_scrape]",
-              "compile_time_ms_mean": 0.3539723305342098,
+              "compile_time_ms_mean": 0.35740231396630406,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -375,13 +568,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.5471943295560777,
+              "compile_time_ms_mean": 0.5283889865192274,
               "latency_ms": {
-                "mean_ms": 0.02416700590401888,
-                "p50_ms": 0.02416700590401888,
-                "p95_ms": 0.02585451875347644,
-                "min_ms": 0.02229199162684381,
-                "max_ms": 0.026042020181193948,
+                "mean_ms": 0.023895991034805775,
+                "p50_ms": 0.023895991034805775,
+                "p95_ms": 0.024702382506802678,
+                "min_ms": 0.02300000051036477,
+                "max_ms": 0.02479198155924678,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -406,7 +599,193 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.004662880176667423,
+                "latency_ms_stddev": 0.002816956217327263,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/test_adapters_full.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]",
+              "compile_time_ms_mean": 1.6829860008632143,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 404,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.00288
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": "examples/test_nested.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]",
+              "compile_time_ms_mean": 0.2637919969856739,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 20,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0001425
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": "examples/test_phase2_common_modules.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 22.408194665331393,
+              "latency_ms": {
+                "mean_ms": 0.6090005044825375,
+                "p50_ms": 0.6090005044825375,
+                "p95_ms": 0.6233631575014442,
+                "min_ms": 0.5930420011281967,
+                "max_ms": 0.6249590078368783,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 38,
+              "trace_events_last_run": 279,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 424,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0030225
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.013487733707436281,
                 "failure_samples": []
               }
             },
@@ -415,13 +794,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 2.095082988186429,
+              "compile_time_ms_mean": 2.37205564432467,
               "latency_ms": {
-                "mean_ms": 1.3020414917264134,
-                "p50_ms": 1.3020414917264134,
-                "p95_ms": 1.3045538362348452,
-                "min_ms": 1.2992499978281558,
-                "max_ms": 1.304832985624671,
+                "mean_ms": 1.325666467892006,
+                "p50_ms": 1.325666467892006,
+                "p95_ms": 1.330991307622753,
+                "min_ms": 1.319749979302287,
+                "max_ms": 1.331582956481725,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -446,7 +825,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.006276212060486037,
+                "latency_ms_stddev": 0.009523218721784871,
                 "failure_samples": []
               }
             },
@@ -455,7 +834,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]",
-              "compile_time_ms_mean": 2.936374997564902,
+              "compile_time_ms_mean": 3.023097349796444,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -528,7 +907,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: db [line=5 source='  R db.F User * ->users'] [label=_users step=0 op=R stack=_users]",
-              "compile_time_ms_mean": 0.27194433884384733,
+              "compile_time_ms_mean": 0.27252797735854983,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -601,7 +980,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=3 source='  R http.POST \"https://example.com/automation\" \"event_webhook\" ->resp'] [label=1 step=1 op=R stack=1]",
-              "compile_time_ms_mean": 0.6291663351779183,
+              "compile_time_ms_mean": 0.6673053333846232,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -671,10 +1050,10 @@
             }
           ],
           "summary": {
-            "artifact_count": 12,
-            "ok_count": 7,
-            "fail_count": 5,
-            "mean_latency_mean_ms_across_ok": 0.20909528705357974
+            "artifact_count": 19,
+            "ok_count": 11,
+            "fail_count": 8,
+            "mean_latency_mean_ms_across_ok": 0.2001383664636788
           }
         }
       ]
@@ -689,7 +1068,7 @@
             "classes": [
               "strict-valid"
             ],
-            "artifact_count": 12
+            "artifact_count": 19
           },
           "artifacts": [
             {
@@ -697,13 +1076,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.5220139961844931,
+              "compile_time_ms_mean": 0.5315693366962174,
               "latency_ms": {
-                "mean_ms": 0.02154200046788901,
-                "p50_ms": 0.02154200046788901,
-                "p95_ms": 0.02304229565197602,
-                "min_ms": 0.019875005818903446,
-                "max_ms": 0.023208995116874576,
+                "mean_ms": 0.02327151014469564,
+                "p50_ms": 0.02327151014469564,
+                "p95_ms": 0.02422775432933122,
+                "min_ms": 0.022209016606211662,
+                "max_ms": 0.024334003683179617,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -728,7 +1107,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.002517038840045602,
+                "latency_ms_stddev": 0.00233483260137037,
                 "failure_samples": []
               }
             },
@@ -737,13 +1116,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.21395799315844974,
+              "compile_time_ms_mean": 0.22486135518799225,
               "latency_ms": {
-                "mean_ms": 0.012208489351905882,
-                "p50_ms": 0.012208489351905882,
-                "p95_ms": 0.012920833250973374,
-                "min_ms": 0.011416996130719781,
-                "max_ms": 0.012999982573091984,
+                "mean_ms": 0.011666474165394902,
+                "p50_ms": 0.011666474165394902,
+                "p95_ms": 0.012453508679755032,
+                "min_ms": 0.010791991371661425,
+                "max_ms": 0.01254095695912838,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -768,8 +1147,234 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0017023134459824114,
+                "latency_ms_stddev": 0.0016290993948457442,
                 "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/hybrid/langchain_tool_demo.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]",
+              "compile_time_ms_mean": 0.35229137089724344,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 231,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.001645
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: langchain_tool [line=19 source='  R langchain_tool.my_search_tool q ->result'] [label=1 step=1 op=R stack=1]"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 0.47961102488140267,
+              "latency_ms": {
+                "mean_ms": 0.025104469386860728,
+                "p50_ms": 0.025104469386860728,
+                "p95_ms": 0.025986009859479964,
+                "min_ms": 0.024124979972839355,
+                "max_ms": 0.0260839588008821,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 2,
+              "trace_events_last_run": 15,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 99,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0007075
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.0025735137479941813,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 0.4284583458987375,
+              "latency_ms": {
+                "mean_ms": 0.025479006581008434,
+                "p50_ms": 0.025479006581008434,
+                "p95_ms": 0.026172923389822245,
+                "min_ms": 0.024707987904548645,
+                "max_ms": 0.026250025257468224,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 2,
+              "trace_events_last_run": 15,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 85,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.00061
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.002474288112997117,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/hyperspace_demo.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]",
+              "compile_time_ms_mean": 15.42430567011858,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 516,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0036825
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: vector_memory [line=29 source='  R vector_memory.UPSERT \"demo\" \"note\" \"n1\" \"hyperspace demo vector text\" \"{}\" ->vm_u'] [label=1 step=16 op=R stack=1]"
+                  }
+                ]
               }
             },
             {
@@ -777,17 +1382,17 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.8775140061819305,
+              "compile_time_ms_mean": 0.9166943491436541,
               "latency_ms": {
-                "mean_ms": 0.04654150689020753,
-                "p50_ms": 0.04654150689020753,
-                "p95_ms": 0.052991355187259614,
-                "min_ms": 0.03937500878237188,
-                "max_ms": 0.05370800499804318,
+                "mean_ms": 0.04208346945233643,
+                "p50_ms": 0.04208346945233643,
+                "p95_ms": 0.04377140139695257,
+                "min_ms": 0.040207989513874054,
+                "max_ms": 0.04395894939079881,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
-              "peak_rss_delta_mb": 0.015625,
+              "peak_rss_delta_mb": 0.0,
               "adapter_calls_last_run": 1,
               "trace_events_last_run": 24,
               "llm_tokens_estimated": 0,
@@ -808,20 +1413,28 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.005426463143953725,
+                "latency_ms_stddev": 0.004171447974414548,
                 "failure_samples": []
               }
             },
             {
               "artifact": "examples/monitor_escalation.ainl",
               "class": "strict-valid",
-              "ok": false,
-              "error": "warmup run: '>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]",
-              "compile_time_ms_mean": 0.5577913349649558,
-              "latency_ms": {},
-              "peak_rss_delta_mb": null,
-              "adapter_calls_last_run": null,
-              "trace_events_last_run": null,
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 0.6546110186415414,
+              "latency_ms": {
+                "mean_ms": 0.024749984731897712,
+                "p50_ms": 0.024749984731897712,
+                "p95_ms": 0.026437497581355274,
+                "min_ms": 0.022874970454722643,
+                "max_ms": 0.02662499900907278,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.0,
+              "adapter_calls_last_run": 1,
+              "trace_events_last_run": 12,
               "llm_tokens_estimated": 0,
               "llm_calls": 0,
               "ainl_source_tiktoken": 72,
@@ -835,54 +1448,13 @@
               },
               "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
               "execution_reliability": {
-                "ok": false,
+                "ok": true,
                 "runs_requested": 10,
-                "execution_successes": 0,
-                "execution_failures": 10,
-                "success_rate": 0.0,
-                "latency_ms_stddev": 0.0,
-                "failure_samples": [
-                  {
-                    "run": 0,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 1,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 2,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 3,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 4,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 5,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 6,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 7,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 8,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  },
-                  {
-                    "run": 9,
-                    "error": "'>' not supported between instances of 'int' and 'str' [line=5 source='  R core.MAX 7 3 ->metric'] [label=_tick step=0 op=R stack=_tick]"
-                  }
-                ]
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.004932609496925543,
+                "failure_samples": []
               }
             },
             {
@@ -890,13 +1462,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.3679026655542354,
+              "compile_time_ms_mean": 0.3753333003260195,
               "latency_ms": {
-                "mean_ms": 0.01989598968066275,
-                "p50_ms": 0.01989598968066275,
-                "p95_ms": 0.02115238457918167,
-                "min_ms": 0.018499995348975062,
-                "max_ms": 0.02129198401235044,
+                "mean_ms": 0.020187493646517396,
+                "p50_ms": 0.020187493646517396,
+                "p95_ms": 0.021593741257674992,
+                "min_ms": 0.018624996300786734,
+                "max_ms": 0.02174999099224806,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -921,7 +1493,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.002044996485033763,
+                "latency_ms_stddev": 0.0023155260186850154,
                 "failure_samples": []
               }
             },
@@ -930,13 +1502,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.5111666687298566,
+              "compile_time_ms_mean": 0.5268750052588681,
               "latency_ms": {
-                "mean_ms": 0.027833011699840426,
-                "p50_ms": 0.027833011699840426,
-                "p95_ms": 0.029108318267390132,
-                "min_ms": 0.026416004402562976,
-                "max_ms": 0.029250018997117877,
+                "mean_ms": 0.06833398947492242,
+                "p50_ms": 0.06833398947492242,
+                "p95_ms": 0.10017149616032839,
+                "min_ms": 0.03295898204669356,
+                "max_ms": 0.10370899690315127,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -961,7 +1533,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0031348233524534862,
+                "latency_ms_stddev": 0.005047166224338275,
                 "failure_samples": []
               }
             },
@@ -970,7 +1542,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=6 source='  R http.GET \"https://example.com/products\" ->resp'] [label=_scrape step=0 op=R stack=_scrape]",
-              "compile_time_ms_mean": 0.3935553249903023,
+              "compile_time_ms_mean": 0.3807359995941321,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -1043,13 +1615,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 0.5530830045851568,
+              "compile_time_ms_mean": 0.538194338635852,
               "latency_ms": {
-                "mean_ms": 0.023895991034805775,
-                "p50_ms": 0.023895991034805775,
-                "p95_ms": 0.025190183077938855,
-                "min_ms": 0.02245799987576902,
-                "max_ms": 0.02533398219384253,
+                "mean_ms": 0.023187516489997506,
+                "p50_ms": 0.023187516489997506,
+                "p95_ms": 0.024519060389138758,
+                "min_ms": 0.02170802326872945,
+                "max_ms": 0.024667009711265564,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -1074,7 +1646,193 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.0029344826124424214,
+                "latency_ms_stddev": 0.002637707795973537,
+                "failure_samples": []
+              }
+            },
+            {
+              "artifact": "examples/test_adapters_full.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]",
+              "compile_time_ms_mean": 1.6072083186979096,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 404,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.00288
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "adapter blocked by capability gate: vector_memory [line=15 source='  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u'] [label=1 step=0 op=R stack=1]"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": "examples/test_nested.ainl",
+              "class": "strict-valid",
+              "ok": false,
+              "error": "warmup run: could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]",
+              "compile_time_ms_mean": 0.24701400737588605,
+              "latency_ms": {},
+              "peak_rss_delta_mb": null,
+              "adapter_calls_last_run": null,
+              "trace_events_last_run": null,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 20,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0001425
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": false,
+                "runs_requested": 10,
+                "execution_successes": 0,
+                "execution_failures": 10,
+                "success_rate": 0.0,
+                "latency_ms_stddev": 0.0,
+                "failure_samples": [
+                  {
+                    "run": 0,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 1,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 2,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 3,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 4,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 5,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 6,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 7,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 8,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  },
+                  {
+                    "run": 9,
+                    "error": "could not convert string to float: '(core.sub' [line=1 source='L0: R core.mul (core.sub 100 85) 2 ->y J y'] [label=0 step=0 op=R stack=0]"
+                  }
+                ]
+              }
+            },
+            {
+              "artifact": "examples/test_phase2_common_modules.ainl",
+              "class": "strict-valid",
+              "ok": true,
+              "error": null,
+              "compile_time_ms_mean": 20.510513995153207,
+              "latency_ms": {
+                "mean_ms": 0.6845835014246404,
+                "p50_ms": 0.6845835014246404,
+                "p95_ms": 0.7109458441846073,
+                "min_ms": 0.6552920094691217,
+                "max_ms": 0.7138749933801591,
+                "warmup_runs": 1,
+                "timed_runs": 2
+              },
+              "peak_rss_delta_mb": 0.015625,
+              "adapter_calls_last_run": 38,
+              "trace_events_last_run": 279,
+              "llm_tokens_estimated": 0,
+              "llm_calls": 0,
+              "ainl_source_tiktoken": 424,
+              "llm_token_usage": {
+                "adapter_reported_input_tokens": null,
+                "adapter_reported_output_tokens": null,
+                "note": "N/A \u2014 runtime does not log LLM adapter tokens in this benchmark."
+              },
+              "estimated_cost_usd_per_run": {
+                "gpt-4o": 0.0030225
+              },
+              "runtime_cost_basis": "ainl_source_tiktoken_with_economics_assumptions",
+              "execution_reliability": {
+                "ok": true,
+                "runs_requested": 10,
+                "execution_successes": 10,
+                "execution_failures": 0,
+                "success_rate": 1.0,
+                "latency_ms_stddev": 0.052440895975308675,
                 "failure_samples": []
               }
             },
@@ -1083,13 +1841,13 @@
               "class": "strict-valid",
               "ok": true,
               "error": null,
-              "compile_time_ms_mean": 2.3177223338279873,
+              "compile_time_ms_mean": 2.181152638513595,
               "latency_ms": {
-                "mean_ms": 1.311520507442765,
-                "p50_ms": 1.311520507442765,
-                "p95_ms": 1.3164520656573586,
-                "min_ms": 1.3060409983154386,
-                "max_ms": 1.3170000165700912,
+                "mean_ms": 1.3159374939277768,
+                "p50_ms": 1.3159374939277768,
+                "p95_ms": 1.332493481459096,
+                "min_ms": 1.297541952226311,
+                "max_ms": 1.3343330356292427,
                 "warmup_runs": 1,
                 "timed_runs": 2
               },
@@ -1114,7 +1872,7 @@
                 "execution_successes": 10,
                 "execution_failures": 0,
                 "success_rate": 1.0,
-                "latency_ms_stddev": 0.005153132464722899,
+                "latency_ms_stddev": 0.010656935003806794,
                 "failure_samples": []
               }
             },
@@ -1123,7 +1881,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: memory [line=13 source='  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w'] [label=1 step=4 op=R stack=1]",
-              "compile_time_ms_mean": 2.826833660947159,
+              "compile_time_ms_mean": 2.9052919902217886,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -1196,7 +1954,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: db [line=5 source='  R db.F User * ->users'] [label=_users step=0 op=R stack=_users]",
-              "compile_time_ms_mean": 0.3396526735741645,
+              "compile_time_ms_mean": 0.3314303078999122,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -1269,7 +2027,7 @@
               "class": "strict-valid",
               "ok": false,
               "error": "warmup run: adapter blocked by capability gate: http [line=3 source='  R http.POST \"https://example.com/automation\" \"event_webhook\" ->resp'] [label=1 step=1 op=R stack=1]",
-              "compile_time_ms_mean": 0.5928473353075484,
+              "compile_time_ms_mean": 0.5973749794065952,
               "latency_ms": {},
               "peak_rss_delta_mb": null,
               "adapter_calls_last_run": null,
@@ -1339,10 +2097,10 @@
             }
           ],
           "summary": {
-            "artifact_count": 12,
-            "ok_count": 7,
-            "fail_count": 5,
-            "mean_latency_mean_ms_across_ok": 0.2090624995097252
+            "artifact_count": 19,
+            "ok_count": 11,
+            "fail_count": 8,
+            "mean_latency_mean_ms_across_ok": 0.20587135540236803
           }
         }
       ]
@@ -1388,11 +2146,11 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 0.04908350820187479,
-            "p50_ms": 0.04908350820187479,
-            "p95_ms": 0.05995864776195958,
-            "min_ms": 0.03700001980178058,
-            "max_ms": 0.061166996601969004,
+            "mean_ms": 0.03604148514568806,
+            "p50_ms": 0.03604148514568806,
+            "p95_ms": 0.037091318517923355,
+            "min_ms": 0.03487500362098217,
+            "max_ms": 0.037207966670393944,
             "warmup_runs": 1,
             "timed_runs": 2
           },
@@ -1405,7 +2163,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.0021669712626182073,
+            "latency_ms_stddev": 0.0017792238670203638,
             "failure_samples": [],
             "label": "basic_scraper/pure"
           }
@@ -1414,15 +2172,15 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 2.057645993772894,
-            "p50_ms": 2.057645993772894,
-            "p95_ms": 2.1921024075709283,
-            "min_ms": 1.908249978441745,
-            "max_ms": 2.2070420091040432,
+            "mean_ms": 1.7237710126210004,
+            "p50_ms": 1.7237710126210004,
+            "p95_ms": 1.7794027255149558,
+            "min_ms": 1.6619579982943833,
+            "max_ms": 1.7855840269476175,
             "warmup_runs": 1,
             "timed_runs": 2
           },
-          "peak_rss_delta_mb": 0.03125,
+          "peak_rss_delta_mb": 0.046875,
           "adapter_calls_last_run": null,
           "notes": "No RuntimeEngine; adapter_calls N/A for handwritten baselines.",
           "execution_reliability": {
@@ -1431,7 +2189,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.2930277420984257,
+            "latency_ms_stddev": 0.15298314872612526,
             "failure_samples": [],
             "label": "basic_scraper/langgraph"
           }
@@ -1506,11 +2264,11 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 1.301957992836833,
-            "p50_ms": 1.301957992836833,
-            "p95_ms": 1.3259582890896127,
-            "min_ms": 1.2752909970004112,
-            "max_ms": 1.3286249886732548,
+            "mean_ms": 1.2965415080543607,
+            "p50_ms": 1.2965415080543607,
+            "p95_ms": 1.3148794620065019,
+            "min_ms": 1.2761660036630929,
+            "max_ms": 1.3169170124456286,
             "warmup_runs": 1,
             "timed_runs": 2
           },
@@ -1523,7 +2281,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.18658215846190998,
+            "latency_ms_stddev": 0.026923753734748174,
             "failure_samples": [],
             "label": "retry_timeout_wrapper/pure"
           }
@@ -1532,11 +2290,11 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 4.095688011148013,
-            "p50_ms": 4.095688011148013,
-            "p95_ms": 4.136844111781102,
-            "min_ms": 4.0499590104445815,
-            "max_ms": 4.141417011851445,
+            "mean_ms": 4.129604029003531,
+            "p50_ms": 4.129604029003531,
+            "p95_ms": 4.157522943569347,
+            "min_ms": 4.09858301281929,
+            "max_ms": 4.160625045187771,
             "warmup_runs": 1,
             "timed_runs": 2
           },
@@ -1549,7 +2307,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.3920559222064931,
+            "latency_ms_stddev": 0.16602492131641405,
             "failure_samples": [],
             "label": "retry_timeout_wrapper/langgraph"
           }
@@ -1562,11 +2320,11 @@
           "execution_successes": 10,
           "execution_failures": 0,
           "success_rate": 1.0,
-          "latency_ms_stddev": 0.003423590156673631,
+          "latency_ms_stddev": 0.003910630238367209,
           "failure_samples": []
         },
-        "ainl_latency_mean_ms": 0.032625001040287316,
-        "ainl_peak_rss_delta_mb": 0.015625,
+        "ainl_latency_mean_ms": 0.03535402356646955,
+        "ainl_peak_rss_delta_mb": 0.0,
         "ainl_ok": true,
         "handwritten_sources_tiktoken": 1454,
         "estimated_cost_usd_per_run_handwritten_stack": {
@@ -1582,11 +2340,11 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 0.3216454933863133,
-            "p50_ms": 0.3216454933863133,
-            "p95_ms": 0.32560143736191094,
-            "min_ms": 0.31725000008009374,
-            "max_ms": 0.3260409866925329,
+            "mean_ms": 0.21075000404380262,
+            "p50_ms": 0.21075000404380262,
+            "p95_ms": 0.21142498299013823,
+            "min_ms": 0.21000002743676305,
+            "max_ms": 0.2114999806508422,
             "warmup_runs": 1,
             "timed_runs": 2
           },
@@ -1599,7 +2357,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 0.02168768493474796,
+            "latency_ms_stddev": 0.005565993509358784,
             "failure_samples": [],
             "label": "token_budget_monitor/pure"
           }
@@ -1608,15 +2366,15 @@
           "ok": true,
           "error": null,
           "latency_ms": {
-            "mean_ms": 4.746958496980369,
-            "p50_ms": 4.746958496980369,
-            "p95_ms": 4.936295552761294,
-            "min_ms": 4.536583990557119,
-            "max_ms": 4.957333003403619,
+            "mean_ms": 4.316791513701901,
+            "p50_ms": 4.316791513701901,
+            "p95_ms": 4.48737888073083,
+            "min_ms": 4.127249994780868,
+            "max_ms": 4.506333032622933,
             "warmup_runs": 1,
             "timed_runs": 2
           },
-          "peak_rss_delta_mb": 0.03125,
+          "peak_rss_delta_mb": 0.015625,
           "adapter_calls_last_run": null,
           "notes": "No RuntimeEngine; adapter_calls N/A for handwritten baselines.",
           "execution_reliability": {
@@ -1625,7 +2383,7 @@
             "execution_successes": 10,
             "execution_failures": 0,
             "success_rate": 1.0,
-            "latency_ms_stddev": 4.389607571166692,
+            "latency_ms_stddev": 0.14132344018535048,
             "failure_samples": [],
             "label": "token_budget_monitor/langgraph"
           }

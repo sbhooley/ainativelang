@@ -73,6 +73,48 @@
       "path": "examples/timeout_memory_prune_demo.ainl",
       "primary_pattern": "timeout_memory_workflow",
       "secondary_pattern": "memory_put_list_prune"
+    },
+    {
+      "order": 13,
+      "path": "examples/hybrid/langchain_tool_demo.ainl",
+      "primary_pattern": "langchain_tool_adapter",
+      "secondary_pattern": "dotted_adapter_call"
+    },
+    {
+      "order": 14,
+      "path": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+      "primary_pattern": "langgraph_ainl_core_slice",
+      "secondary_pattern": "metric_threshold_summary"
+    },
+    {
+      "order": 15,
+      "path": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+      "primary_pattern": "temporal_ainl_activity_slice",
+      "secondary_pattern": "metric_threshold_summary"
+    },
+    {
+      "order": 16,
+      "path": "examples/hyperspace_demo.ainl",
+      "primary_pattern": "hyperspace_multi_adapter_modules",
+      "secondary_pattern": "includes_vector_tool_registry"
+    },
+    {
+      "order": 17,
+      "path": "examples/test_adapters_full.ainl",
+      "primary_pattern": "vector_tool_registry_adapters",
+      "secondary_pattern": "stringify_concat_summary"
+    },
+    {
+      "order": 18,
+      "path": "examples/test_nested.ainl",
+      "primary_pattern": "nested_expr_arithmetic",
+      "secondary_pattern": "core_mul_sub"
+    },
+    {
+      "order": 19,
+      "path": "examples/test_phase2_common_modules.ainl",
+      "primary_pattern": "common_modules_guard_budget_reflect",
+      "secondary_pattern": "sequential_module_calls"
     }
   ]
 }

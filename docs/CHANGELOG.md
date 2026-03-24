@@ -1,6 +1,15 @@
 # Changelog
 
-## March 23, 2026 — Hyperspace bridge (trajectory, common modules, local adapters, emitter)
+## v1.2.5 (March 23, 2026) — Hyperspace bridge + hybrid `S`, CI benchmark baselines, LangGraph emit
+
+- **feat(compiler)**: **`S hybrid langgraph`**, **`S hybrid temporal`**, or both on one line — opt-in hybrid wrapper targets for **`minimal_emit`** / capability planning; stored as **`services.hybrid.emit`** (de-duped); strict mode rejects unknown targets
+- **feat(tooling)**: legacy **`infer_artifact_capabilities`** (IRs without **`emit_capabilities`**) derives **`needs_langgraph`** / **`needs_temporal`** from **`services.hybrid.emit`**
+- **feat(ci)**: **`benchmark-regression`** prefers committed **`tooling/benchmark_size_ci.json`** / **`tooling/benchmark_runtime_ci.json`** on the baseline SHA when present; falls back to full JSON reports; several jobs pinned to **Python 3.10**; **`make benchmark-ci`** prints resolved **`PYTHON`**
+- **fix(emit/langgraph)**: emitted **`AinlHybridState`** uses plain **`dict`** fields so **LangGraph**’s **`get_type_hints`** path works on **Python 3.10**
+- **test**: hybrid e2e (**`StateGraph.invoke`**, Temporal **`ActivityEnvironment`**), **`S hybrid`** and emission-planner legacy IR coverage
+- **docs**: **`BENCHMARK.md`** (CI baseline rules), **`docs/AINL_SPEC.md`** / **`docs/language/grammar.md`** (**`S hybrid`**), **`docs/RELEASING.md`** (benchmark-ci commit step); cross-links in **`README.md`**, **`WHITEPAPERDRAFT.md`**, **`docs/RELEASE_NOTES.md`**
+
+### Hyperspace bridge (trajectory, common modules, local adapters, emitter)
 
 - **feat(runtime)**: optional per-step **trajectory JSONL** (`--log-trajectory` / `AINL_LOG_TRAJECTORY`) — `docs/trajectory.md`
 - **feat(modules)**: `modules/common/guard.ainl`, `session_budget.ainl`, `reflect.ainl` — token/time ceilings, budget accounting, reflect gates; `modules/common/README.md` updated
@@ -33,7 +42,8 @@
 - **tooling**: **`scripts/validate_s_cron_schedules.py`** and console script **`ainl-validate-s-cron`** (`pyproject.toml`) — fail CI/local runs on malformed **`S`+`cron`** lines; **`tests/test_s_cron_schedule_lines.py`** keeps the rule green.
 - **docs**: **`docs/CRON_ORCHESTRATION.md`** — new § **`S` line shape (cron schedules)** and § **Security: queues, notifications, and secrets**; **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/DOCS_INDEX.md`**; web mirror **`ainativelangweb/content/docs/RUNTIME_COMPILER_CONTRACT.mdx`**.
 - **docs(intelligence)**: **`intelligence/token_aware_startup_context2.lang`** — explicit **legacy** header; prefer **`token_aware_startup_context.lang`** for production (budget gate + structured memory + access-aware reads).
-- **bench**: regenerate **`BENCHMARK.md`**, **`tooling/benchmark_size.json`**, **`tooling/benchmark_runtime_results.json`**, and CI twins **`tooling/benchmark_size_ci.json`** / **`tooling/benchmark_runtime_ci.json`** via **`make benchmark`** / **`make benchmark-ci`**; refresh **`README.md`** and **`docs/benchmarks.md`** headline table (e.g. **12** strict-valid, **75** `public_mixed` paths, updated viable ratios).
+- **bench**: regenerate **`BENCHMARK.md`**, **`tooling/benchmark_size.json`**, **`tooling/benchmark_runtime_results.json`**, and CI twins **`tooling/benchmark_size_ci.json`** / **`tooling/benchmark_runtime_ci.json`** via **`make benchmark`** / **`make benchmark-ci`**; refresh **`README.md`** and **`docs/benchmarks.md`** headline table (e.g. **19** strict-valid, **`public_mixed`** path counts + viable ratios; **`make benchmark`** uses **`--mode wide`**: **`full_multitarget_core`** + **`full_multitarget`** + **`minimal_emit`**).
+- **interop**: optional **`[interop]`** extra in **`pyproject.toml`** (**langgraph**, **temporalio**, **aiohttp**); **`[benchmark]`** also lists **`temporalio`** for hybrid smoke tests — see **`docs/PACKAGING_AND_INTEROP.md`**.
 
 ## v1.2.3 (March 20, 2026)
 

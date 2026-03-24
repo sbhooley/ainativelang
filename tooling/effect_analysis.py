@@ -119,6 +119,9 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "tool_registry.DISCOVER": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "tool_registry.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "tool_registry.REGISTER": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    # LangChain / CrewAI-style external tools; dynamic side effects depend on the registered tool.
+    "langchain_tool.CALL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
+    "langchain_tool.MY_SEARCH_TOOL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
     "tools.CALL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
     # wasm compute calls are treated as pure compute effects.
     "wasm.CALL": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),

@@ -1,0 +1,10 @@
+# examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl
+# Deterministic "monitoring slice": compare metric vs threshold and stringify for handoff.
+# Wrapped by monitoring_escalation_langgraph.py (emit with validate_ainl --emit langgraph).
+
+L1:
+  Set metric_value 42
+  Set threshold 40
+  R core.sub metric_value threshold ->diff
+  R core.stringify diff ->summary
+  J summary

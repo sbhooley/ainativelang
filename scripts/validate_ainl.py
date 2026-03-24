@@ -4,6 +4,8 @@ AINL Validator / REPL: compile .lang from file or stdin, print IR or errors.
 Usage:
   python scripts/validate_ainl.py [file.lang]
   python scripts/validate_ainl.py --emit server [file.lang]
+  python scripts/validate_ainl.py --emit langgraph workflow.ainl -o workflow_langgraph.py
+  python scripts/validate_ainl.py --emit temporal workflow.ainl -o ./out/prefix
   echo "S core web /api" | python scripts/validate_ainl.py
 """
 from __future__ import annotations
@@ -277,15 +279,23 @@ def main() -> None:
     ap.add_argument("file", nargs="?", help="Path to .lang file (default: stdin)")
     ap.add_argument(
         "--emit",
-        choices=["ir", "server", "react", "openapi", "prisma", "sql", "hyperspace"],
+        choices=["ir", "server", "react", "openapi", "prisma", "sql", "hyperspace", "langgraph", "temporal"],
         default="ir",
-        help="Emit this artifact instead of IR JSON",
+        help=(
+            "Emit artifact instead of IR JSON. "
+            "Hybrid interop: langgraph (StateGraph wrapper → docs/hybrid_langgraph.md), "
+            "temporal (*_activities.py + *_workflow.py → docs/hybrid_temporal.md). "
+            "Overview: docs/HYBRID_GUIDE.md"
+        ),
     )
     ap.add_argument(
         "-o",
         "--output",
         default=None,
-        help="Write path for --emit hyperspace (default: hyperspace_agent.py in cwd)",
+        help=(
+            "Output path: hyperspace (default hyperspace_agent.py), langgraph (default <stem>_langgraph.py), "
+            "temporal (dir or .py prefix — docs/hybrid_temporal.md). See docs/HYBRID_GUIDE.md"
+        ),
     )
     ap.add_argument(
         "--lint-canonical",
@@ -402,6 +412,44 @@ def main() -> None:
         print(
             json.dumps(
                 {"ok": True, "emit": "hyperspace", "path": str(out.resolve()), "source_stem": stem},
+                indent=2,
+            )
+        )
+    elif args.emit == "langgraph":
+        _scripts_dir = Path(__file__).resolve().parent
+        if str(_scripts_dir) not in sys.path:
+            sys.path.insert(0, str(_scripts_dir))
+        import emit_langgraph  # type: ignore
+
+        stem = Path(args.file).stem if args.file else "ainl_graph"
+        out = Path(args.output).expanduser() if args.output else Path.cwd() / f"{stem}_langgraph.py"
+        emit_langgraph.emit_langgraph_to_path(ir, out, source_stem=stem)
+        print(
+            json.dumps(
+                {"ok": True, "emit": "langgraph", "path": str(out.resolve()), "source_stem": stem},
+                indent=2,
+            )
+        )
+    elif args.emit == "temporal":
+        _scripts_dir = Path(__file__).resolve().parent
+        if str(_scripts_dir) not in sys.path:
+            sys.path.insert(0, str(_scripts_dir))
+        import emit_temporal  # type: ignore
+
+        stem = Path(args.file).stem if args.file else "ainl_graph"
+        out_dir, file_base = emit_temporal.resolve_temporal_output_dir_and_base(args.output, stem)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        act_p, wf_p = emit_temporal.emit_temporal_pair(ir, output_dir=out_dir, source_stem=file_base)
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "emit": "temporal",
+                    "activities_path": str(act_p.resolve()),
+                    "workflow_path": str(wf_p.resolve()),
+                    "source_stem": stem,
+                    "file_base": file_base,
+                },
                 indent=2,
             )
         )

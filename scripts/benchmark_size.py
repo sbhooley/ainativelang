@@ -43,6 +43,9 @@ BASELINE_AINL_REFERENCE: Dict[str, str] = {
     "retry_timeout_wrapper": "examples/retry_error_resilience.ainl",
 }
 
+# Modes that run every selected emitter (no minimal capability gating).
+_FULL_MULTITARGET_MODES = frozenset({"full_multitarget", "full_multitarget_core"})
+
 TARGET_EMITTERS: Dict[str, str] = {
     "react_ts": "emit_react",
     "python_api": "emit_python_api",
@@ -51,6 +54,9 @@ TARGET_EMITTERS: Dict[str, str] = {
     "scraper": "emit_python_scraper",
     "cron": "emit_cron_stub",
 }
+
+# Hybrid emitters live in standalone scripts (not on ``AICodeCompiler``); see ``_emit_selected_targets``.
+STANDALONE_BENCH_EMIT_TARGETS = frozenset({"langgraph", "temporal"})
 
 
 @dataclass
@@ -441,7 +447,7 @@ def safe_ainl_aggregate_emit_size(
         )
         if not included:
             return None
-        if mode_name == "full_multitarget":
+        if mode_name in _FULL_MULTITARGET_MODES:
             ir.pop("emit_python_api_fallback_stub", None)
         sizes, _ = _emit_selected_targets(compiler, ir, count_fn, rel, list(included))
         return int(sum(sizes[t] for t in included))
@@ -488,7 +494,7 @@ def build_handwritten_baseline_size_comparison(
             "baseline_source": src_stats,
             "modes": {},
         }
-        for mode_name in ("minimal_emit", "full_multitarget"):
+        for mode_name in ("minimal_emit", "full_multitarget_core", "full_multitarget"):
             ainl_active: Optional[int] = None
             ainl_tik: Optional[int] = None
             if rel:
@@ -567,6 +573,25 @@ def resolve_profile_selection(
     return selected, {k: all_map[k] for k in selected}, cfg
 
 
+def _emit_standalone_bench_target(target: str, ir: Dict, artifact: str) -> str:
+    """LangGraph / Temporal wrappers are emitted by ``scripts/emit_*.py``, not ``compiler_v2``."""
+    stem = Path(artifact).stem
+    if target == "langgraph":
+        from scripts.emit_langgraph import emit_langgraph_source
+
+        return emit_langgraph_source(ir, source_stem=stem)
+    if target == "temporal":
+        import tempfile
+
+        from scripts.emit_temporal import emit_temporal_pair
+
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td)
+            act_path, wf_path = emit_temporal_pair(ir, output_dir=out_dir, source_stem=stem)
+            return act_path.read_text(encoding="utf-8") + "\n" + wf_path.read_text(encoding="utf-8")
+    raise BenchmarkError([BenchmarkFailure(artifact, f"emit:{target}", "unknown standalone emitter")])
+
+
 def _emit_selected_targets(
     compiler,
     ir: Dict,
@@ -577,14 +602,22 @@ def _emit_selected_targets(
     out: Dict[str, int] = {}
     rendered_out: Dict[str, str] = {}
     for target in selected_targets:
-        emitter_name = TARGET_EMITTERS[target]
-        emitter = getattr(compiler, emitter_name, None)
-        if emitter is None:
-            raise BenchmarkError([BenchmarkFailure(artifact, f"emit:{target}", f"missing emitter {emitter_name}")])
-        try:
-            rendered = emitter(ir)
-        except Exception as exc:
-            raise BenchmarkError([BenchmarkFailure(artifact, f"emit:{target}", str(exc))]) from exc
+        if target in STANDALONE_BENCH_EMIT_TARGETS:
+            try:
+                rendered = _emit_standalone_bench_target(target, ir, artifact)
+            except BenchmarkError:
+                raise
+            except Exception as exc:
+                raise BenchmarkError([BenchmarkFailure(artifact, f"emit:{target}", str(exc))]) from exc
+        else:
+            emitter_name = TARGET_EMITTERS[target]
+            emitter = getattr(compiler, emitter_name, None)
+            if emitter is None:
+                raise BenchmarkError([BenchmarkFailure(artifact, f"emit:{target}", f"missing emitter {emitter_name}")])
+            try:
+                rendered = emitter(ir)
+            except Exception as exc:
+                raise BenchmarkError([BenchmarkFailure(artifact, f"emit:{target}", str(exc))]) from exc
         out[target] = count_fn(rendered)
         rendered_out[target] = rendered
     return out, rendered_out
@@ -743,7 +776,7 @@ def run_profile_benchmark(
         if not included:
             failures.append(BenchmarkFailure(rel, "planning", "no targets selected"))
             continue
-        if mode_name == "full_multitarget":
+        if mode_name in _FULL_MULTITARGET_MODES:
             # compile() may set emit_python_api_fallback_stub for minimal_emit; full mode must use real API emit.
             ir.pop("emit_python_api_fallback_stub", None)
         excluded = [t for t in TARGET_ORDER if t not in included]
@@ -1078,7 +1111,10 @@ def render_markdown(report: Dict, benchmark_manifest: Dict) -> str:
     lines.append("")
     lines.append("## Benchmark Modes")
     lines.append("")
-    lines.append("- `full_multitarget`: includes all benchmark targets for each artifact.")
+    lines.append("- `full_multitarget`: includes all benchmark targets for each artifact (compiler emitters + hybrid wrappers).")
+    lines.append(
+        "- `full_multitarget_core`: six compiler-backed emitters only (matches historical multitarget headline before hybrid wrappers)."
+    )
     lines.append("- `minimal_emit`: includes only capability-required targets for each artifact.")
     lines.append("")
     lines.append("## Compiler IR Capability Contract")
@@ -1089,6 +1125,9 @@ def render_markdown(report: Dict, benchmark_manifest: Dict) -> str:
     lines.append("- `emit_capabilities.needs_mt5`: MT5 strategy output is required.")
     lines.append("- `emit_capabilities.needs_scraper`: scraper output is required.")
     lines.append("- `emit_capabilities.needs_cron`: cron/scheduler output is required.")
+    lines.append(
+        "- `emit_capabilities.needs_langgraph` / `needs_temporal`: opt-in hybrid wrapper targets (default **false** in the compiler)."
+    )
     lines.append("- `required_emit_targets.minimal_emit`: compiler-planned minimal target set (planner primary source).")
     lines.append("")
     lines.append("## Metrics")
@@ -1164,6 +1203,7 @@ def render_markdown(report: Dict, benchmark_manifest: Dict) -> str:
     headline = report["headline_profile"]
     modes = report["modes"]
     full_mode = modes.get("full_multitarget")
+    core_mode = modes.get("full_multitarget_core")
     mini_mode = modes.get("minimal_emit")
 
     def _md_viable_aggregate(prof: Dict[str, Any]) -> Dict[str, Any]:
@@ -1171,12 +1211,17 @@ def render_markdown(report: Dict, benchmark_manifest: Dict) -> str:
 
     lines.append("## Mode Comparison (Headline + Mixed)")
     lines.append("")
-    lines.append("| Profile | Full ratio (viable, tk) | Minimal ratio (viable, tk) | Viable artifacts |")
-    lines.append("|---|---:|---:|---|")
+    lines.append(
+        "| Profile | Full core ratio (viable, tk) | Full+hybrid ratio (viable, tk) | Minimal ratio (viable, tk) | Viable artifacts |"
+    )
+    lines.append("|---|---:|---:|---:|---|")
     rm = report["metric"]
     for pname in (headline, "public_mixed", "compatibility_only"):
         full = (
             next((p for p in full_mode["profiles"] if p["name"] == pname), None) if full_mode else None
+        )
+        core = (
+            next((p for p in core_mode["profiles"] if p["name"] == pname), None) if core_mode else None
         )
         mini = (
             next((p for p in mini_mode["profiles"] if p["name"] == pname), None) if mini_mode else None
@@ -1189,10 +1234,16 @@ def render_markdown(report: Dict, benchmark_manifest: Dict) -> str:
             mr = mtk.get("aggregate_ratio_vs_source") if mtk else None
             fr_s = f"{float(fr):.2f}x" if fr is not None else "—"
             mr_s = f"{float(mr):.2f}x" if mr is not None else "—"
+            cr_s = "—"
+            if core:
+                ctk = _md_profile_markdown_tk_summary(core, rm, viable_only=True)
+                cr = ctk.get("aggregate_ratio_vs_source") if ctk else None
+                if cr is not None:
+                    cr_s = f"{float(cr):.2f}x"
             n_full = int(fs.get("artifact_count") or 0)
             n_all = len(full.get("artifacts") or [])
             via = f"{n_full}/{n_all}" if n_all else str(n_full)
-            lines.append(f"| {pname} | {fr_s} | {mr_s} | {via} |")
+            lines.append(f"| {pname} | {cr_s} | {fr_s} | {mr_s} | {via} |")
     lines.append("")
     lines.append(
         "Compatibility/non-strict artifacts are segmented and not used as the primary benchmark headline."
@@ -1359,7 +1410,7 @@ def _render_handwritten_baseline_size_markdown(hb: Dict[str, Any], report: Dict[
         lines.append("")
     econ = report.get("economics") or {}
     cm = list(econ.get("cost_models_reported") or [])
-    for mode in ("minimal_emit", "full_multitarget"):
+    for mode in ("minimal_emit", "full_multitarget_core", "full_multitarget"):
         lines.append(f"### Emit mode `{mode}`")
         lines.append("")
         hdr = (
@@ -1421,7 +1472,16 @@ def parse_args() -> argparse.Namespace:
         default="tiktoken",
         help="Token/size metric for emitted artifacts (default: tiktoken cl100k_base).",
     )
-    ap.add_argument("--mode", choices=["full_multitarget", "minimal_emit", "both"], default="both")
+    ap.add_argument(
+        "--mode",
+        choices=["full_multitarget", "full_multitarget_core", "minimal_emit", "both", "wide"],
+        default="both",
+        help=(
+            "Benchmark emit planning mode. "
+            "`wide` = full_multitarget_core + full_multitarget + minimal_emit (recommended for `BENCHMARK.md`). "
+            "`both` = full_multitarget + minimal_emit only."
+        ),
+    )
     ap.add_argument("--profile-name", default="all", help="profile name or 'all'")
     ap.add_argument("--artifact-profiles", default=str(DEFAULT_ARTIFACT_PROFILES))
     ap.add_argument("--benchmark-manifest", default=str(DEFAULT_BENCHMARK_MANIFEST))
@@ -1476,6 +1536,8 @@ def _selected_profile_names(profile_request: str, benchmark_manifest: Dict) -> L
 def _selected_modes(mode_request: str) -> List[str]:
     if mode_request == "both":
         return ["full_multitarget", "minimal_emit"]
+    if mode_request == "wide":
+        return ["full_multitarget_core", "full_multitarget", "minimal_emit"]
     return [mode_request]
 
 

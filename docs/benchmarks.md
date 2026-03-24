@@ -10,10 +10,12 @@ Quick **size** snapshot:
 
 | Lens | What it means | Headline ratios (tk) | Artifact coverage |
 |------|----------------|----------------------|---------------------|
-| **Strict-valid** | `canonical_strict_valid` | **6.60×** full_multitarget / **1.62×** minimal_emit | 12/12 (all viable) |
-| **Public mixed, viable subset** | Representative **required-target** workloads; excludes curated low-emit / legacy rows | **~0.95×** full / **~0.80×** minimal_emit | **62/75** viable |
-| **Compatibility only, viable** | Non-strict headline companion profile | **~0.80×** full / **~0.67×** minimal_emit | **50/63** viable |
-| **Legacy-inclusive** | **All** paths in profile (honest aggregate drag from tiny shells) | e.g. `public_mixed` **minimal_emit ~0.22×**; **full_multitarget ~1.00×** | 75/75 |
+| **Strict-valid** | `canonical_strict_valid` | **~3.2×** full_multitarget_core / **~362×** full_multitarget / **~0.76×** minimal_emit | **19/19** (all viable) |
+| **Public mixed, viable subset** | Representative **required-target** workloads; excludes curated low-emit / legacy rows | **~1.0×** core / **~322×** full / **~0.73×** minimal | **72/85** viable |
+| **Compatibility only, viable** | Non-strict headline companion profile | **~0.84×** core / **~318×** full / **~0.71×** minimal | **53/66** viable |
+| **Legacy-inclusive** | **All** paths in profile (honest aggregate drag from tiny shells) | See **legacy-inclusive** block in [`BENCHMARK.md`](../BENCHMARK.md) | **85/85** (`public_mixed`) |
+
+**Note:** **`full_multitarget_core`** (six compiler-backed emitters) is the line comparable to pre-hybrid headline ratios. **`full_multitarget`** adds **langgraph** + **temporal** wrappers (`tooling/emit_targets.py`); they embed the IR, so that column is much larger. **minimal_emit** stays practical for typical artifacts (hybrid targets need `needs_langgraph` / `needs_temporal` in IR, default **false**).
 
 **Transparency (mirrors `BENCHMARK.md` blockquotes):**
 
@@ -21,6 +23,7 @@ Quick **size** snapshot:
 - **Viable subset** — for `public_mixed` / `compatibility_only`, rules in `tooling/artifact_profiles.json` + emit heuristics; **legacy-inclusive** tables are always below the fold.
 - **minimal_emit fallback stub** — tiny **python_api** async stub (~20–30 tk) when no selected target emits code.
 - **Emitter compaction (Mar 2026)** — **`prisma`** and **`react_ts`** benchmark stubs shortened (~50–70% tk reduction on those lines in examples).
+- **Hybrid wrapper emitters in full_multitarget** — **`langgraph`** / **`temporal`** sizes come from `scripts/emit_langgraph.py` and `scripts/emit_temporal.py`; not part of **`minimal_emit`** unless `emit_capabilities` gains matching flags later.
 - **`--strict-mode`** — `scripts/benchmark_size.py` with **`--profile-name=canonical_strict_valid`** runs the compiler in strict reachability mode; see the strict callout in `BENCHMARK.md` when enabled.
 
 ## Why these benchmarks matter
@@ -56,7 +59,9 @@ pip install -e ".[dev,benchmark]"
 make benchmark
 ```
 
-The **`[benchmark]`** extra includes **`aiohttp`** and **`langgraph`** so runtime benchmarks with **`--compare-baselines`** can execute handwritten `pure_async_python.py` / `langgraph_version.py` stacks (without them, those groups are skipped with a warning).
+The **`[benchmark]`** extra includes **`aiohttp`**, **`langgraph`**, and **`temporalio`** so hybrid emit smoke tests and baseline comparisons can run without skip warnings when those stacks are used.
+
+**`make benchmark`** invokes **`scripts/benchmark_size.py --mode wide`**, which measures **`full_multitarget_core`** (six compiler emitters), **`full_multitarget`** (+ langgraph/temporal wrappers), and **`minimal_emit`**. Use **`--mode both`** for the older two-mode slice only.
 
 If you use **`.venv-py310`** but still have a **`.venv`** directory, **`make`** prefers **`.venv`** first—either remove the unused env or run **`make benchmark-ci PYTHON=./.venv-py310/bin/python`** (after **`pip install -e ".[benchmark]"`** in that venv).
 
@@ -84,7 +89,7 @@ python scripts/compare_benchmark_json.py \
 
 ## CI
 
-Pull requests and pushes run **`benchmark-regression`** (see `.github/workflows/ci.yml`): benchmarks execute on Ubuntu, JSON artifacts upload, and `compare_benchmark_json.py` gates regressions against the baseline commit when baseline files exist in git.
+Pull requests and pushes run **`benchmark-regression`** (see `.github/workflows/ci.yml`): benchmarks execute on Ubuntu (Python **3.10**), JSON artifacts upload, and `compare_benchmark_json.py` gates regressions against the baseline commit when baseline files exist in git. **If `tooling/benchmark_size_ci.json` / `tooling/benchmark_runtime_ci.json` are present on the baseline SHA, the workflow compares against those** (CI slice vs CI slice); otherwise it falls back to the full **`tooling/benchmark_size.json`** / **`tooling/benchmark_runtime_results.json`** when present. Details: **`BENCHMARK.md`** § *CI regression baselines*.
 
 ## See also
 

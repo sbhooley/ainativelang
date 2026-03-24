@@ -33,7 +33,7 @@ class _FakeCompiler:
                 "needs_cron": False,
             },
             "required_emit_targets": {
-                "full_multitarget": ["react_ts", "python_api", "prisma", "mt5", "scraper", "cron"],
+                "full_multitarget": list(benchmark_size.TARGET_ORDER),
                 "minimal_emit": ["python_api", "prisma"],
             },
         }
@@ -91,6 +91,7 @@ def _fake_manifests(tmp_path: Path):
         },
         "modes": {
             "full_multitarget": {"description": "all"},
+            "full_multitarget_core": {"description": "compiler emitters only"},
             "minimal_emit": {
                 "description": "needed",
                 "relevance_rules": {
@@ -100,6 +101,8 @@ def _fake_manifests(tmp_path: Path):
                     "cron": {"requires_capability": "needs_cron"},
                     "scraper": {"requires_capability": "needs_scraper"},
                     "mt5": {"requires_capability": "needs_mt5"},
+                    "langgraph": {"requires_capability": "needs_langgraph"},
+                    "temporal": {"requires_capability": "needs_temporal"},
                 },
                 "fallback_targets": ["python_api"],
             },
@@ -127,10 +130,20 @@ def test_profile_selection_from_manifest(tmp_path: Path):
 
 def test_mode_selection_helper():
     assert benchmark_size._selected_modes("both") == ["full_multitarget", "minimal_emit"]
+    assert benchmark_size._selected_modes("wide") == [
+        "full_multitarget_core",
+        "full_multitarget",
+        "minimal_emit",
+    ]
     assert benchmark_size._selected_modes("full_multitarget") == ["full_multitarget"]
 
 
-def test_full_vs_minimal_mode_behavior(tmp_path: Path):
+def test_full_vs_minimal_mode_behavior(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        benchmark_size,
+        "_emit_standalone_bench_target",
+        lambda target, ir, artifact: "",
+    )
     src = tmp_path / "sample.ainl"
     src.write_text("api-only", encoding="utf-8")
     rel = src.relative_to(tmp_path).as_posix()
@@ -219,7 +232,12 @@ def test_minimal_mode_excludes_irrelevant_targets(tmp_path: Path):
     assert compiler.called_emitters == ["cron"]
 
 
-def test_machine_output_shape_and_math(tmp_path: Path):
+def test_machine_output_shape_and_math(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        benchmark_size,
+        "_emit_standalone_bench_target",
+        lambda target, ir, artifact: "",
+    )
     src = tmp_path / "x.ainl"
     src.write_text("x y z", encoding="utf-8")
     rel = src.relative_to(tmp_path).as_posix()

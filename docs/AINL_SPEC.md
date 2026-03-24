@@ -149,7 +149,7 @@ id            := [A-Za-z_][A-Za-z0-9_]*
 
 | Op | Required slots | Optional / rest | Notes |
 |----|----------------|-----------------|------|
-| **S** | name, mode | path | path = service base path (e.g. `/api`) |
+| **S** | name, mode | path | path = service base path (e.g. `/api`). **Exception:** **`S hybrid …`** — see §2.3.1. |
 | **D** | type_name | field:type … | type_name = entity; field:type = key:shorthand |
 | **E** | path, method | ->label_id, ->return_var | **Strict:** Endpoint label must have exactly one exit `J`. If `E` includes `->return_var`, it must match that `J` var. If omitted, infer from that `J`. |
 | **L** | (op = L number :) | inline executable steps | Label id is numeric (L1, L2). Executable ops within a label block: `R J If Err Retry Call Set X Loop While ForEach Filt Sort CacheGet CacheSet QueuePut Tx Enf`. |
@@ -172,7 +172,21 @@ id            := [A-Za-z_][A-Za-z0-9_]*
 | **Tbl** | table_name, type_name | column … | |
 | **Ev** | component, event, target | | target = path (e.g. /checkout) or label |
 
-### 2.3.1 Canonical op registry contract (compiler validation)
+### 2.3.1 **S hybrid** (deployment hint / emit planning)
+
+A top-level line of the form:
+
+```text
+S hybrid <target> [<target> …]
+```
+
+where each **`<target>`** is one of **`langgraph`**, **`temporal`**, is a **compiler-recognized deployment hint** (not a network service). It does **not** use the usual **`S name mode [path]`** shape.
+
+- **Semantics:** each valid target is recorded under **`services.hybrid.emit`** (order-free; duplicates removed; first-seen order preserved).
+- **IR effects:** the compiler sets **`emit_capabilities.needs_langgraph`** / **`needs_temporal`** accordingly and may include **`langgraph`** / **`temporal`** in **`required_emit_targets.minimal_emit`** so benchmarks and emission planners treat hybrid wrapper emitters as required when you opt in. **`full_multitarget`** mode still includes hybrid wrappers regardless.
+- **Strict mode:** unknown target tokens are errors (allowed tokens: **`langgraph`**, **`temporal`**).
+
+### 2.3.2 Canonical op registry contract (compiler validation)
 
 To keep parsing/validation deterministic across implementations, compilers should maintain a canonical op registry entry per op:
 
@@ -190,7 +204,7 @@ Recommended compile behavior (strict and non-strict):
 
 This registry-backed validation is the source of truth for arity/scope checks and avoids hard-coded per-op drift.
 
-### 2.3.2 Registry reference table (op -> scope, min_slots)
+### 2.3.3 Registry reference table (op -> scope, min_slots)
 
 This table mirrors the compiler registry and is intended as a machine-readable human reference.
 
@@ -268,7 +282,7 @@ This table mirrors the compiler registry and is intended as a machine-readable h
 
 ### 3.1 IR (intermediate representation)
 
-- **services**: map service name → { mode, path, eps, ui, … }. **eps** = path → { method, tgt, label_id, return_var }.
+- **services**: map service name → { mode, path, eps, ui, … }. **eps** = path → { method, tgt, label_id, return_var }. The reserved pseudo-service **`hybrid`** holds **`{ "emit": ["langgraph", "temporal", …] }`** (subset) when the source contains **`S hybrid …`** lines; it drives **`emit_capabilities.needs_langgraph`** / **`needs_temporal`** and **`required_emit_targets.minimal_emit`** for tooling.
 - **types**: map type_name → { fields: { key: type_shorthand } }.
 - **labels**: map `label_key` → { **nodes**, **edges**, **legacy**?: { steps } }, where `label_key` is the numeric id (`1`, `2`, …). IR may also store the raw source token (e.g. `"L1"`) as metadata. In IR examples and prose, `labels[id]` means `labels[label_key]` where label_key is the numeric id. **nodes** and **edges** are canonical; **steps** are optional compatibility serialization that must round-trip to the same graph. Current implementation emits canonical graph and executes graph by default (`graph-preferred` runtime mode), with `legacy.steps` kept for compatibility and explicit `steps-only` operation. **Recommended schema (for tooling and diffs):** `labels[id].entry` = root node id (e.g. `"n1"`); `labels[id].exits` = list of `{ node, var }` for each J node; nodes as `[{ id, op, effect?, slots?, data? }]`, edges as `[{ from, to, port? }]`.
 - **crons**: list of { label, expr }.

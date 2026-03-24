@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install deps
         run: |
@@ -80,7 +80,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install deps
         run: |
@@ -108,7 +108,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install deps
         run: |
@@ -127,7 +127,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install deps
         run: |
@@ -160,7 +160,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install deps
         run: |
@@ -170,8 +170,9 @@ jobs:
       - name: Run full profile
         run: python scripts/run_test_profiles.py --profile full
 
-  # Benchmarks + JSON regression gate (size vs tooling/benchmark_size.json on base commit;
-  # runtime vs tooling/benchmark_runtime_results.json when that file exists on the base).
+  # Benchmarks + JSON regression gate: prefers committed CI baselines (tooling/benchmark_*_ci.json)
+  # when present on the base SHA; otherwise falls back to full reports (benchmark_size.json,
+  # benchmark_runtime_results.json).
   benchmark-regression:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -185,7 +186,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -221,15 +222,29 @@ jobs:
           SHA="${{ steps.baseline.outputs.sha }}"
           mkdir -p /tmp/bench-baseline
           if [ -z "$SHA" ]; then
+            echo "size_ci=missing" >> "$GITHUB_OUTPUT"
             echo "size=missing" >> "$GITHUB_OUTPUT"
+            echo "runtime_ci=missing" >> "$GITHUB_OUTPUT"
             echo "runtime=missing" >> "$GITHUB_OUTPUT"
             exit 0
+          fi
+          if git cat-file -e "${SHA}:tooling/benchmark_size_ci.json" 2>/dev/null; then
+            git show "${SHA}:tooling/benchmark_size_ci.json" > /tmp/bench-baseline/benchmark_size_ci.json
+            echo "size_ci=present" >> "$GITHUB_OUTPUT"
+          else
+            echo "size_ci=missing" >> "$GITHUB_OUTPUT"
           fi
           if git cat-file -e "${SHA}:tooling/benchmark_size.json" 2>/dev/null; then
             git show "${SHA}:tooling/benchmark_size.json" > /tmp/bench-baseline/benchmark_size.json
             echo "size=present" >> "$GITHUB_OUTPUT"
           else
             echo "size=missing" >> "$GITHUB_OUTPUT"
+          fi
+          if git cat-file -e "${SHA}:tooling/benchmark_runtime_ci.json" 2>/dev/null; then
+            git show "${SHA}:tooling/benchmark_runtime_ci.json" > /tmp/bench-baseline/benchmark_runtime_ci.json
+            echo "runtime_ci=present" >> "$GITHUB_OUTPUT"
+          else
+            echo "runtime_ci=missing" >> "$GITHUB_OUTPUT"
           fi
           if git cat-file -e "${SHA}:tooling/benchmark_runtime_results.json" 2>/dev/null; then
             git show "${SHA}:tooling/benchmark_runtime_results.json" > /tmp/bench-baseline/benchmark_runtime_results.json
@@ -259,30 +274,42 @@ jobs:
             --skip-markdown-inject
 
       - name: Regression check (size)
-        if: steps.baselines.outputs.size == 'present'
+        if: steps.baselines.outputs.size_ci == 'present' || steps.baselines.outputs.size == 'present'
         run: |
+          set -euo pipefail
+          if [ "${{ steps.baselines.outputs.size_ci }}" = "present" ]; then
+            OLD_JSON=/tmp/bench-baseline/benchmark_size_ci.json
+          else
+            OLD_JSON=/tmp/bench-baseline/benchmark_size.json
+          fi
           python scripts/compare_benchmark_json.py \
-            --old-json /tmp/bench-baseline/benchmark_size.json \
+            --old-json "$OLD_JSON" \
             --new-json tooling/benchmark_size_ci.json \
             --threshold "$BENCH_THRESHOLD"
 
       - name: Regression check (size baseline missing)
-        if: steps.baselines.outputs.size != 'present'
+        if: steps.baselines.outputs.size_ci != 'present' && steps.baselines.outputs.size != 'present'
         run: |
-          echo "::notice::No tooling/benchmark_size.json at baseline SHA; skipping size regression compare."
+          echo "::notice::No tooling/benchmark_size_ci.json or benchmark_size.json at baseline SHA; skipping size regression compare."
 
       - name: Regression check (runtime)
-        if: steps.baselines.outputs.runtime == 'present'
+        if: steps.baselines.outputs.runtime_ci == 'present' || steps.baselines.outputs.runtime == 'present'
         run: |
+          set -euo pipefail
+          if [ "${{ steps.baselines.outputs.runtime_ci }}" = "present" ]; then
+            OLD_JSON=/tmp/bench-baseline/benchmark_runtime_ci.json
+          else
+            OLD_JSON=/tmp/bench-baseline/benchmark_runtime_results.json
+          fi
           python scripts/compare_benchmark_json.py \
-            --old-json /tmp/bench-baseline/benchmark_runtime_results.json \
+            --old-json "$OLD_JSON" \
             --new-json tooling/benchmark_runtime_ci.json \
             --threshold "$BENCH_THRESHOLD"
 
       - name: Runtime baseline missing (informational)
-        if: steps.baselines.outputs.runtime != 'present'
+        if: steps.baselines.outputs.runtime_ci != 'present' && steps.baselines.outputs.runtime != 'present'
         run: |
-          echo "::notice::No tooling/benchmark_runtime_results.json at baseline SHA; commit that file on main to enable runtime regression checks."
+          echo "::notice::No tooling/benchmark_runtime_ci.json or benchmark_runtime_results.json at baseline SHA; commit those files on main to enable runtime regression checks."
 
       - name: Upload benchmark JSON artifacts
         uses: actions/upload-artifact@v4

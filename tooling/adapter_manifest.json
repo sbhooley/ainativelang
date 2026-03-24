@@ -356,6 +356,18 @@
       "sandbox_safe": true,
       "notes": "Local JSON tool catalog; REGISTER writes, LIST/GET/DISCOVER read. Optional; enable via host --enable-adapter tool_registry."
     },
+    "langchain_tool": {
+      "support_tier": "compatibility",
+      "strict_contract": true,
+      "recommended_lane": "noncanonical",
+      "verbs": ["CALL", "MY_SEARCH_TOOL"],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "Invokes LangChain-compatible tools by name; optional langchain-core. Use R langchain_tool.CALL \"tool_name\" args... or R langchain_tool.<registered_verb> ...; enable via --enable-adapter langchain_tool. Additional dotted verbs for strict mode must be listed in ADAPTER_EFFECT and this manifest."
+    },
     "openclaw_memory": {
       "support_tier": "extension_openclaw",
       "strict_contract": false,

@@ -1250,11 +1250,13 @@
     ]),
     'emit_capabilities': dict({
       'needs_cron': False,
+      'needs_langgraph': False,
       'needs_mt5': False,
       'needs_prisma': False,
       'needs_python_api': True,
       'needs_react_ts': False,
       'needs_scraper': False,
+      'needs_temporal': False,
     }),
     'errors': list([
     ]),
@@ -1421,6 +1423,8 @@
         'mt5',
         'scraper',
         'cron',
+        'langgraph',
+        'temporal',
       ]),
       'minimal_emit': list([
         'python_api',
@@ -2588,11 +2592,13 @@
     ]),
     'emit_capabilities': dict({
       'needs_cron': False,
+      'needs_langgraph': False,
       'needs_mt5': False,
       'needs_prisma': False,
       'needs_python_api': True,
       'needs_react_ts': False,
       'needs_scraper': False,
+      'needs_temporal': False,
     }),
     'errors': list([
     ]),
@@ -3100,6 +3106,8 @@
         'mt5',
         'scraper',
         'cron',
+        'langgraph',
+        'temporal',
       ]),
       'minimal_emit': list([
         'python_api',

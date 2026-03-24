@@ -1,0 +1,20 @@
+# examples/hybrid/langchain_tool_demo.ainl
+# Hybrid LangChain interop: call a tool by name through the langchain_tool adapter.
+#
+# Run (from repo root):
+#   python3 -m cli.main run examples/hybrid/langchain_tool_demo.ainl --json \
+#     --enable-adapter langchain_tool
+#
+# Strict validate:
+#   python3 scripts/validate_ainl.py examples/hybrid/langchain_tool_demo.ainl --strict
+#
+# The bundled demo registers a stub for tool name "my_search_tool" inside the adapter.
+# For real LangChain tools, use register_langchain_tool("name", tool) in Python before run.
+
+L1:
+  # Dotted verb = tool name (strict allowlist includes MY_SEARCH_TOOL for this demo).
+  # Use a frame var for multi-word text (spaces break R-slot tokenization).
+  Set q "example query"
+  # Tokenization: use `->result` (no space) so the output slot is not parsed as extra args.
+  R langchain_tool.my_search_tool q ->result
+  J result

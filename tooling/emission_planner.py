@@ -13,8 +13,10 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
+from tooling.emit_targets import CORE_EMIT_TARGET_ORDER, FULL_EMIT_TARGET_ORDER
 
-TARGET_ORDER = ["react_ts", "python_api", "prisma", "mt5", "scraper", "cron"]
+# Benchmark / planner default: all emitters including hybrid wrappers.
+TARGET_ORDER = list(FULL_EMIT_TARGET_ORDER)
 
 
 def _target_emits_nonempty_code(ir: Dict, target: str) -> bool:
@@ -66,6 +68,8 @@ def infer_artifact_capabilities(source_text: str, ir: Dict) -> Dict[str, bool]:
             "needs_mt5": bool(emit_caps.get("needs_mt5")),
             "needs_scraper": bool(emit_caps.get("needs_scraper")),
             "needs_cron": bool(emit_caps.get("needs_cron")),
+            "needs_langgraph": bool(emit_caps.get("needs_langgraph")),
+            "needs_temporal": bool(emit_caps.get("needs_temporal")),
         }
 
     services = ir.get("services", {}) or {}
@@ -92,6 +96,10 @@ def infer_artifact_capabilities(source_text: str, ir: Dict) -> Dict[str, bool]:
         or "crawl" in lowered
         or "\nsc " in f"\n{lowered}"
     )
+    hybrid_svc = services.get("hybrid") or {}
+    hy_list = hybrid_svc.get("emit") if isinstance(hybrid_svc.get("emit"), list) else []
+    needs_langgraph = "langgraph" in hy_list
+    needs_temporal = "temporal" in hy_list
     return {
         "needs_react_ts": bool(services.get("fe")),
         "needs_python_api": bool(has_core_web or has_rag or (has_labels and not (has_scraper or has_mt5 or has_cron))),
@@ -99,6 +107,8 @@ def infer_artifact_capabilities(source_text: str, ir: Dict) -> Dict[str, bool]:
         "needs_mt5": has_mt5,
         "needs_scraper": has_scraper,
         "needs_cron": has_cron,
+        "needs_langgraph": needs_langgraph,
+        "needs_temporal": needs_temporal,
     }
 
 
@@ -137,7 +147,9 @@ def required_emit_targets(
     benchmark_manifest: Dict,
 ) -> List[str]:
     if mode == "full_multitarget":
-        return list(TARGET_ORDER)
+        return list(FULL_EMIT_TARGET_ORDER)
+    if mode == "full_multitarget_core":
+        return list(CORE_EMIT_TARGET_ORDER)
     if mode != "minimal_emit":
         raise ValueError(f"unsupported emission planning mode: {mode}")
 

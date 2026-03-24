@@ -519,21 +519,24 @@ Bottom line: AINL lowers overall token usage while increasing capability, predic
 
 **Current benchmark framing:**
 
-- **`canonical_strict_valid`** is the primary headline profile (12/12 viable).
+- **`canonical_strict_valid`** is the primary headline profile (**19/19** viable example programs in `tooling/artifact_profiles.json`).
 - Default sizing is **tiktoken cl100k_base** in markdown tables; JSON still records the CLI `--metric` (default `tiktoken`). Legacy `--metric=approx_chunks` is optional and **deprecated** for billing claims.
-- **Highlights (from [`BENCHMARK.md`](BENCHMARK.md), Mar 2026):** strict-valid **~6.60×** full_multitarget / **~1.62×** minimal_emit (tk); **`public_mixed` viable subset** **~0.80×** minimal (**62/75** artifacts—representative required-target workloads); **`compatibility_only` viable** **~0.67×** minimal (**50/63**); **legacy-inclusive** `public_mixed` minimal **~0.22×** (all 75 artifacts) reported separately. Full detail: **[`docs/benchmarks.md#benchmark-highlights-march-2026`](docs/benchmarks.md#benchmark-highlights-march-2026)**.
+- **Highlights (from [`BENCHMARK.md`](BENCHMARK.md), Mar 2026):** `make benchmark` uses **`--mode wide`**: strict-valid **~3.2×** `full_multitarget_core` (six compiler emitters) / **~362×** `full_multitarget` (+ hybrid **langgraph**/**temporal** wrappers with embedded IR) / **~0.76×** `minimal_emit` (tk). **`public_mixed` viable** **72/85**; **`compatibility_only` viable** **53/66**. Full detail: **[`docs/benchmarks.md#benchmark-highlights-march-2026`](docs/benchmarks.md#benchmark-highlights-march-2026)**.
 - **Transparency:** **`prisma` / `react_ts`** benchmark stubs **compacted Mar 2026** (~50–70% tk reduction on those emit lines); **minimal_emit** may add a small **python_api fallback stub** (~20–30 tk) when no selected target emits code—both are documented in `BENCHMARK.md`.
 - In `full_multitarget`, canonical strict examples show strong expansion leverage; runtime traces on the tracked benchmark JSON typically show **100%** success on optional reliability batches for strict-valid workloads with **sub-millisecond** measured latency (machine-dependent).
 - In `minimal_emit`, mixed compatibility examples can be smaller or larger depending on artifact class and required targets
 - **Evidence pack:** reproducible **size** + **runtime** benchmarks (tiktoken sizing, compile-time column, latency/RSS, cost estimates, reliability batches, handwritten baselines) live in [`BENCHMARK.md`](BENCHMARK.md) with automation in `make benchmark` / `make benchmark-ci` and CI regression gating—see **[`docs/benchmarks.md`](docs/benchmarks.md)** for the full map.
 
 ```bash
-# Refresh size markdown + JSON and runtime JSON (local)
+# Refresh size markdown + JSON and runtime JSON (local).
+# Uses `scripts/benchmark_size.py --mode wide` (core + full hybrid + minimal_emit).
 make benchmark
 
 # CI-style JSON only (does not rewrite BENCHMARK.md)
 make benchmark-ci
 ```
+
+Hybrid / LangGraph / Temporal optional deps: **`pip install -e ".[interop]"`** or **`".[benchmark]"`** — see **[`docs/PACKAGING_AND_INTEROP.md`](docs/PACKAGING_AND_INTEROP.md)**.
 
 > AINL provides a compact, reproducible, profile-segmented way to express graph workflows and multi-target systems, while often reducing repeated AI generation effort and avoiding repeated orchestration token burn during runtime.
 
@@ -632,10 +635,12 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
+- **Current PyPI / runtime package version:** **`ainl-lang` 1.2.5** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`
 - Maintainer release execution guide: `docs/RELEASING.md`
+- Hybrid deployment runbook: `docs/hybrid/OPERATOR_RUNBOOK.md`
 - Immediate post-release roadmap: `docs/POST_RELEASE_ROADMAP.md`
 - Docs maintenance contract: `docs/DOCS_MAINTENANCE.md`
 - Contributor guide: `CONTRIBUTING.md`
@@ -749,6 +754,24 @@ The emitted server includes **structured logging** (request_id, method, path, st
 ### Requirements
 
 See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Python 3.10+, pip and virtual environment support, Docker for container-based deployment flows. **Match CI:** use a 3.10 venv at `.venv-py310` (`PYTHON_BIN=python3.10 VENV_DIR=.venv-py310 bash scripts/bootstrap.sh`) and run tools as `./.venv-py310/bin/python`.
+
+---
+
+## Hybrid Deployments
+
+> **Validator:** `scripts/validate_ainl.py` supports **`--emit langgraph`** (single `StateGraph` wrapper module) and **`--emit temporal`** (paired `*_activities.py` + `*_workflow.py`). These are additive CLI options; default `IR` / server / hyperspace behavior is unchanged. See **[`docs/HYBRID_GUIDE.md`](docs/HYBRID_GUIDE.md)** and **[`examples/hybrid/README.md`](examples/hybrid/README.md)**. To include hybrid wrappers in benchmark **`minimal_emit`** / planner slices, declare **`S hybrid langgraph`**, **`S hybrid temporal`**, or both (see the guide). Ops checklist: **[`docs/hybrid/OPERATOR_RUNBOOK.md`](docs/hybrid/OPERATOR_RUNBOOK.md)**.
+
+| Mode | When to use | AINL role | Host / extras |
+|------|-------------|-----------|----------------|
+| **Pure AINL** | You want CLI, MCP, or emitted HTTP worker only | Full program | None required |
+| **LangGraph hybrid** | Cyclic LLM/tool graphs, LangGraph checkpoints, ecosystem interop | Deterministic core inside one (or more) nodes | `pip install langgraph` for generated runner |
+| **Temporal hybrid** | Durable long-running workflows, retries, Temporal visibility | Same, inside an activity | `pip install temporalio` on worker / workflow import |
+
+**LangGraph:** emit a ready-made `StateGraph` with `python3 scripts/validate_ainl.py your.ainl --emit langgraph -o your_langgraph.py`. The module calls `run_ainl_graph()` from `runtime/wrappers/langgraph_wrapper.py` (`RuntimeEngine`, `{"ok", "result", "error"}`-style payload). Example: [`examples/hybrid/langgraph_outer_ainl_core/`](examples/hybrid/langgraph_outer_ainl_core/) · [`docs/hybrid_langgraph.md`](docs/hybrid_langgraph.md).
+
+**Temporal:** `python3 scripts/validate_ainl.py your.ainl --emit temporal` writes `<stem>_activities.py` and `<stem>_workflow.py` (use `-o` for directory or `.py` prefix; see [`docs/hybrid_temporal.md`](docs/hybrid_temporal.md)). Activities use `execute_ainl_activity()` from `runtime/wrappers/temporal_wrapper.py`. Example: [`examples/hybrid/temporal_durable_ainl/`](examples/hybrid/temporal_durable_ainl/).
+
+**LangChain / CrewAI (tools):** optional **`langchain_tool`** adapter — `python3 -m cli.main run ... --enable-adapter langchain_tool`. Demo: [`examples/hybrid/langchain_tool_demo.ainl`](examples/hybrid/langchain_tool_demo.ainl).
 
 ---
 

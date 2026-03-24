@@ -2,7 +2,7 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.2.4
+**Version:** 1.2.5
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `scripts/runtime_runner_service.py`
 **Reference ecosystem:** OpenClaw/NemoClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters, sandboxed operator deployments
@@ -533,8 +533,8 @@ Modes:
 ### 12.5 CI, Regression Gate, and Local Targets
 
 - **`make benchmark`** — full local refresh (default JSON + markdown for size; runtime as configured in the Makefile).
-- **`make benchmark-ci`** — CI-style JSON outputs (`tooling/benchmark_size_ci.json`, `tooling/benchmark_runtime_ci.json`) without editing `BENCHMARK.md` in automation.
-- **GitHub Actions** `benchmark-regression` runs the CI slice, uploads JSON artifacts, and **`scripts/compare_benchmark_json.py`** fails the build on regressions beyond a tolerance (default 10%) against the baseline commit when baseline JSON exists in git.
+- **`make benchmark-ci`** — CI-style JSON outputs (`tooling/benchmark_size_ci.json`, `tooling/benchmark_runtime_ci.json`) without editing `BENCHMARK.md` in automation; echoes the resolved interpreter (override with **`PYTHON=...`**).
+- **GitHub Actions** `benchmark-regression` runs the CI slice, uploads JSON artifacts, and **`scripts/compare_benchmark_json.py`** fails the build on regressions beyond a tolerance (default 10%) against the baseline commit. **When `tooling/benchmark_size_ci.json` / `tooling/benchmark_runtime_ci.json` exist on that baseline SHA, the workflow prefers them** (same slice as the job output); otherwise it falls back to the full **`tooling/benchmark_size.json`** / **`tooling/benchmark_runtime_results.json`** when present. See **`BENCHMARK.md`** (§ *CI regression baselines*).
 
 ### 12.6 Truthful Headline
 
@@ -818,7 +818,7 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Starter include demo artifact** — `examples/timeout_demo.ainl` provides a strict-safe timeout include example for docs and social/demo usage.
 - **Memory v1.1 deterministic contract upgrade** — extension-level memory now supports additive deterministic metadata (`source`, `confidence`, `tags`, `valid_at`), bounded list filters (`tags_any`/`tags_all`, created/updated windows, `limit`/`offset`), namespace TTL/prune policy hooks, response operational counters, and capability-advertised memory profile metadata (`memory_profile`) without introducing semantic retrieval or policy cognition into core runtime semantics.
 - **External executor bridge (HTTP)** — documented contract in `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` for calling non-MCP workers via `http.Post` (and optional host-mapped **`bridge`** adapter for executor keys → URLs). **MCP (`ainl-mcp`) remains primary** for OpenClaw/NemoClaw; the HTTP bridge is the secondary pattern for generic gateways and plugins.
-- **Reproducible benchmark suite** — `tiktoken` **cl100k_base** default sizing with **`BENCHMARK.md`** transparency (viable subset, legacy-inclusive tables, **minimal_emit fallback stub**, Mar 2026 **prisma/react_ts** compaction notes), **Compile ms (mean×3)** in size tables, runtime benchmark (latency/RSS, optional reliability and scalability probe), shared **economics** helpers (`tooling/bench_metrics.py`), handwritten **baseline** comparison, **CI regression** gating (`scripts/compare_benchmark_json.py`, `make benchmark` / `make benchmark-ci`, workflow `benchmark-regression`), hub **`docs/benchmarks.md`**, and **`ainl-ollama-benchmark --cloud-model`** for an optional **Anthropic Claude** baseline (`temperature=0`, graceful skip without key/SDK).
+- **Reproducible benchmark suite** — `tiktoken` **cl100k_base** default sizing with **`BENCHMARK.md`** transparency (viable subset, legacy-inclusive tables, **minimal_emit fallback stub**, Mar 2026 **prisma/react_ts** compaction notes), **Compile ms (mean×3)** in size tables, runtime benchmark (latency/RSS, optional reliability and scalability probe), shared **economics** helpers (`tooling/bench_metrics.py`), handwritten **baseline** comparison, **CI regression** gating (`scripts/compare_benchmark_json.py`, `make benchmark` / `make benchmark-ci`, workflow `benchmark-regression` — **preferring committed `*_ci.json` baselines on the baseline git SHA when present**), hub **`docs/benchmarks.md`**, and **`ainl-ollama-benchmark --cloud-model`** for an optional **Anthropic Claude** baseline (`temperature=0`, graceful skip without key/SDK).
 
 ### 17.2 Remaining Future Work
 
@@ -852,6 +852,8 @@ No single existing system fully combines these concerns. Instead, the current ec
 Frameworks such as LangChain, LangGraph, and CrewAI introduce various models for AI agent orchestration.
 
 **LangChain / LangGraph** validate the importance of explicit workflow structure and stateful execution. LangGraph adds graph-based execution on top of LangChain's chain abstraction.
+
+AINL can embed the same IR inside emitted **LangGraph** (`--emit langgraph`) or **Temporal** (`--emit temporal`) wrappers; optional surface syntax **`S hybrid langgraph`** / **`S hybrid temporal`** opts those wrapper targets into **`minimal_emit`** for benchmarks and emission planners without changing **`full_multitarget`** (see **`docs/HYBRID_GUIDE.md`**, **`docs/AINL_SPEC.md`** §2.3.1).
 
 However, they typically:
 - operate as runtime frameworks rather than compiled languages
@@ -1040,7 +1042,8 @@ Paths are relative to the repository root.
 - `BENCHMARK.md` — human-readable **size** benchmark (generated; **tiktoken cl100k_base** tables, transparency notes, **Compile ms (mean×3)**)
 - `scripts/benchmark_size.py`, `scripts/benchmark_runtime.py` — size and runtime generators
 - `tooling/benchmark_size.json` — machine-readable size report (schema `3.5+`; viable subset + parallel fields as documented)
-- `tooling/benchmark_runtime_results.json` — machine-readable runtime report (CI baseline when committed)
+- `tooling/benchmark_runtime_results.json` — machine-readable runtime report (full baseline when committed)
+- `tooling/benchmark_size_ci.json`, `tooling/benchmark_runtime_ci.json` — CI slice JSON (preferred baseline for **`benchmark-regression`** when committed on the baseline SHA)
 - `tooling/bench_metrics.py` — shared `tiktoken` counting and pricing helpers
 - `scripts/compare_benchmark_json.py` — regression checker for CI
 - `scripts/benchmark_ollama.py` / `ainl-ollama-benchmark` — multi-model LLM bench; optional **`--cloud-model`** (Anthropic)

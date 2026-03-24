@@ -8,8 +8,8 @@
 #   make conformance PYTHON=./.venv-py310/bin/python
 CONFORMANCE_DIR ?= tests/conformance
 
-# Prefer repo .venv, then .venv-py310, so make matches common activate layouts.
-PYTHON ?= $(if $(wildcard $(CURDIR)/.venv/bin/python),$(CURDIR)/.venv/bin/python,$(if $(wildcard $(CURDIR)/.venv-py310/bin/python),$(CURDIR)/.venv-py310/bin/python,python3))
+# Prefer .venv-py310 (documented CI/dev interpreter), then .venv, then system python3.
+PYTHON ?= $(if $(wildcard $(CURDIR)/.venv-py310/bin/python),$(CURDIR)/.venv-py310/bin/python,$(if $(wildcard $(CURDIR)/.venv/bin/python),$(CURDIR)/.venv/bin/python,python3))
 PYTEST ?= $(PYTHON) -m pytest
 SNAPSHOT_UPDATE ?= 0
 CONFORMANCE_LOG ?= tests/snapshots/conformance/last_run.log
@@ -35,13 +35,15 @@ benchmark-deps: ## Install [benchmark] extra if tiktoken/psutil missing in $(PYT
 	   $(PYTHON) -m pip install -q -e ".[benchmark]")
 
 benchmark: benchmark-deps ## Run all benchmarks locally (updates default JSON + markdown)
+	@echo "==> PYTHON for benchmarks: $(PYTHON) (override with make benchmark PYTHON=...)"
 	@echo "==> benchmark_size (compare baselines, gpt-4o cost)"
-	@$(PYTHON) scripts/benchmark_size.py --compare-baselines --cost-model gpt-4o
+	@$(PYTHON) scripts/benchmark_size.py --compare-baselines --cost-model gpt-4o --mode wide
 	@echo "==> benchmark_runtime (compare baselines, reliability 5, gpt-4o)"
 	@$(PYTHON) scripts/benchmark_runtime.py --compare-baselines --reliability-runs 5 --cost-model gpt-4o
 
 # CI-style: JSON only, smaller runtime sampling, headline profile + minimal_emit size slice
 benchmark-ci: benchmark-deps ## Run benchmarks like CI (JSON only, tooling/*_ci.json)
+	@echo "==> PYTHON for benchmark-ci: $(PYTHON) (override with make benchmark-ci PYTHON=...)"
 	@echo "==> benchmark_size (CI slice, json only)"
 	@$(PYTHON) scripts/benchmark_size.py --mode minimal_emit --profile-name canonical_strict_valid \
 		--compare-baselines --cost-model gpt-4o \

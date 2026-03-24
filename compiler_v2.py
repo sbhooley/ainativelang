@@ -23,6 +23,7 @@ from tooling.graph_normalize import (
     VALID_PORTS as GRAPH_VALID_PORTS,
     normalize_labels,
 )
+from tooling.emit_targets import FULL_EMIT_TARGET_ORDER
 from tooling.effect_analysis import (
     ADAPTER_EFFECT,
     annotate_labels_effect_analysis,
@@ -2373,6 +2374,10 @@ class AICodeCompiler:
             or rag_active
             or (has_user_labels and not (has_scraper or has_mt5 or has_cron))
         )
+        hybrid = services.get("hybrid") or {}
+        hy_emit = hybrid.get("emit") if isinstance(hybrid.get("emit"), list) else []
+        needs_langgraph = "langgraph" in hy_emit
+        needs_temporal = "temporal" in hy_emit
         return {
             "needs_react_ts": has_fe_surface,
             "needs_python_api": needs_python_api,
@@ -2380,13 +2385,14 @@ class AICodeCompiler:
             "needs_mt5": has_mt5,
             "needs_scraper": has_scraper,
             "needs_cron": has_cron,
+            "needs_langgraph": needs_langgraph,
+            "needs_temporal": needs_temporal,
         }
 
     def _compute_required_emit_targets(self, emit_capabilities: Dict[str, bool]) -> Dict[str, List[str]]:
-        target_order = ["react_ts", "python_api", "prisma", "mt5", "scraper", "cron"]
-        minimal_emit = [t for t in target_order if emit_capabilities.get(f"needs_{t}", False)]
+        minimal_emit = [t for t in FULL_EMIT_TARGET_ORDER if emit_capabilities.get(f"needs_{t}", False)]
         return {
-            "full_multitarget": list(target_order),
+            "full_multitarget": list(FULL_EMIT_TARGET_ORDER),
             "minimal_emit": minimal_emit or ["python_api"],
         }
 
@@ -2555,6 +2561,23 @@ class AICodeCompiler:
                 continue
 
             if op == "S":
+                # Deployment hint: opt hybrid benchmark/planner targets into minimal_emit (see _compute_emit_capabilities).
+                # Usage: S hybrid langgraph | temporal | langgraph temporal (order-free, de-duped).
+                if len(slots) >= 2 and slots[0] == "hybrid":
+                    hy = self.services.setdefault("hybrid", {"emit": []})
+                    if not isinstance(hy.get("emit"), list):
+                        hy["emit"] = []
+                    seen = set(hy["emit"])
+                    for tok in slots[1:]:
+                        if tok in ("langgraph", "temporal"):
+                            if tok not in seen:
+                                hy["emit"].append(tok)
+                                seen.add(tok)
+                        elif getattr(self, "strict_mode", False):
+                            self._errors.append(
+                                f"Line {lineno}: S hybrid unknown target {tok!r}; allowed: langgraph, temporal"
+                            )
+                    continue
                 if len(slots) >= 2:
                     name, mode = slots[0], slots[1]
                     path = slots[2] if len(slots) > 2 else ""

@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from tooling.emission_planner import TARGET_ORDER, required_emit_targets
+from tooling.emit_targets import CORE_EMIT_TARGET_ORDER, FULL_EMIT_TARGET_ORDER
+from tooling.emission_planner import TARGET_ORDER, infer_artifact_capabilities, required_emit_targets
 
 
 def _manifest() -> dict:
@@ -14,6 +15,8 @@ def _manifest() -> dict:
                     "cron": {"requires_capability": "needs_cron"},
                     "scraper": {"requires_capability": "needs_scraper"},
                     "mt5": {"requires_capability": "needs_mt5"},
+                    "langgraph": {"requires_capability": "needs_langgraph"},
+                    "temporal": {"requires_capability": "needs_temporal"},
                 },
                 "fallback_targets": ["python_api"],
             }
@@ -129,3 +132,33 @@ def test_full_multitarget_includes_every_target():
     ir = {"services": {}, "types": {}, "crons": []}
     got = required_emit_targets("hello", ir, mode="full_multitarget", benchmark_manifest=_manifest())
     assert got == TARGET_ORDER
+    assert got == list(FULL_EMIT_TARGET_ORDER)
+
+
+def test_full_multitarget_core_is_compiler_emitters_only():
+    ir = {"services": {}, "types": {}, "crons": []}
+    got = required_emit_targets("hello", ir, mode="full_multitarget_core", benchmark_manifest=_manifest())
+    assert got == list(CORE_EMIT_TARGET_ORDER)
+
+
+def test_infer_capabilities_hybrid_from_services_when_no_emit_capabilities():
+    ir = {
+        "services": {"hybrid": {"emit": ["langgraph", "temporal"]}},
+        "labels": {"_anon": {}},
+        "types": {},
+        "crons": [],
+    }
+    cap = infer_artifact_capabilities("", ir)
+    assert cap["needs_langgraph"] is True
+    assert cap["needs_temporal"] is True
+
+
+def test_minimal_emit_includes_hybrid_from_legacy_ir_services():
+    ir = {
+        "services": {"hybrid": {"emit": ["langgraph"]}},
+        "labels": {"_anon": {}},
+        "types": {},
+        "crons": [],
+    }
+    got = required_emit_targets("", ir, mode="minimal_emit", benchmark_manifest=_manifest())
+    assert got == ["langgraph"]

@@ -1,5 +1,17 @@
 # Release notes
 
+## AINL v1.2.5 — Hyperspace + hybrid `S hybrid`, CI benchmark baselines, LangGraph emit (2026-03-23)
+
+This release ships the **March 23, 2026** hyperspace/trajectory/common-modules work **plus** hybrid authoring and CI/tooling hardening:
+
+- **`S hybrid langgraph` / `temporal`:** top-level DSL opt-in so **`minimal_emit`** and emission planners include LangGraph and/or Temporal wrapper targets when you want benchmark slices to match hybrid deployments (see **`docs/HYBRID_GUIDE.md`**, **`docs/AINL_SPEC.md`** §2.3.1, **`docs/language/grammar.md`**).
+- **CI benchmark regression:** GitHub Actions **`benchmark-regression`** compares the CI JSON outputs against **`tooling/benchmark_*_ci.json`** on the baseline commit when those files exist (otherwise full **`benchmark_size.json`** / **`benchmark_runtime_results.json`**). Regenerate with **`make benchmark-ci`** and commit to keep **`main`** as a meaningful anchor.
+- **LangGraph emitter:** generated **`TypedDict`** state fields are plain **`dict`** so **`StateGraph(AinlHybridState)`** introspection succeeds on **Python 3.10** with current **langgraph** releases.
+- **Tests:** real **`invoke`** for emitted LangGraph modules (optional dep); Temporal **`ActivityEnvironment`** for emitted activities; compiler/planner coverage for **`S hybrid`**.
+- **Packaging / version surfaces:** **`pyproject.toml` / PyPI `ainl-lang` 1.2.5**; **`RUNTIME_VERSION` 1.2.5** in **`runtime/engine.py`** (mirrored under **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** updated; see **`docs/CHANGELOG.md`** for the full bullet list (hyperspace bridge, adapters, docs hub).
+
+---
+
 ## AINL v1.2.4 — Access-aware memory helpers, graph label resolution, docs (2026-03-21)
 
 Follow-up to v1.2.3 focused on **opt-in access metadata** on top of Memory Contract v1.1, **runtime correctness for included subgraphs** in graph mode, and **documentation** so hosts can choose graph-safe list paths.

@@ -1,52 +1,56 @@
-# Releasing AINL (Maintainers)
+# Releasing `ainl-lang`
 
-Use this for the actual GitHub release execution flow.
+This document describes how to cut a **PyPI-ready** release of the **`ainl-lang`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-## 1) Preflight
+## Public API surface (for downstream apps)
 
-Run from repo root:
+Downstream code should depend on stable **behavior**, not private scripts:
+
+| Area | Intended use |
+|------|----------------|
+| **Compiler** | `compiler_v2.AICodeCompiler` — compile `.ainl` / fragments to IR. |
+| **Runtime** | `runtime.engine.RuntimeEngine` — execute IR. |
+| **Hybrid wrappers** | `runtime.wrappers.langgraph_wrapper.run_ainl_graph`, `runtime.wrappers.temporal_wrapper.execute_ainl_activity`. |
+| **Emitters (optional)** | `scripts.emit_langgraph`, `scripts.emit_temporal` when used as libraries from a checkout. |
+
+CLI entry points are listed under **`[project.scripts]`** in `pyproject.toml` (`ainl`, `ainl-validate`, …).
+
+**Generated file templates** (LangGraph / Temporal output) may evolve between minors; consumers should **re-emit from source** when upgrading.
+
+## Version bump
+
+1. Update **`version`** in **`pyproject.toml`** (semantic versioning).  
+2. Update **`docs/CHANGELOG.md`** (or root changelog policy) with user-facing notes.  
+3. Ensure **`make conformance`** and **`pytest`** pass on **Python 3.10** (minimum supported).  
+4. Optional: run **`make benchmark PYTHON=./.venv-py310/bin/python`** and commit refreshed **`BENCHMARK.md`** / **`tooling/benchmark_size.json`** / **`tooling/benchmark_runtime_results.json`** if you track **full** baselines on `main`.
+5. For **CI regression parity**, run **`make benchmark-ci PYTHON=./.venv-py310/bin/python`** and commit **`tooling/benchmark_size_ci.json`** and **`tooling/benchmark_runtime_ci.json`** when they drift. GitHub Actions **`benchmark-regression`** **prefers** those `*_ci.json` files on the baseline commit when present (see **`BENCHMARK.md`** § *CI regression baselines*).
+
+## Build and upload
 
 ```bash
-python scripts/run_test_profiles.py --profile core
-python scripts/check_all_strict.py
-python scripts/check_all_nonstrict.py
-python -m pytest -q tests/test_artifact_profiles.py
-python scripts/check_docs_contracts.py --scope all
+python -m pip install --upgrade build twine
+python -m build
+twine check dist/*
+twine upload dist/*
 ```
 
-Note: `--profile core` includes `tests/test_artifact_policy_manifest.py`, so artifact policy enforcement is part of the release preflight path.
+Use **TestPyPI** first if desired: `twine upload --repository testpypi dist/*`.
 
-If any command fails, resolve before tagging.
+## Git tag
 
-## 2) Finalize release text and version
+After upload:
 
-- Use `docs/RELEASE_NOTES.md` as the GitHub Releases body.
-- Confirm release-scoped docs are current:
-  - `README.md`
-  - `CONTRIBUTING.md`
-  - `docs/RELEASE_READINESS.md`
-  - `docs/POST_RELEASE_ROADMAP.md`
-- Confirm intended tag/version is consistent in release notes draft.
+```bash
+git tag -a vX.Y.Z -m "ainl-lang X.Y.Z"
+git push origin vX.Y.Z
+```
 
-## 3) Create and publish GitHub release
+Tags should match **`pyproject.toml`** `version` (with or without `v` prefix — pick one convention and stick to it).
 
-GitHub-native flow:
+## Optional extras (document for users)
 
-1. Open **Releases** in the repository.
-2. Click **Draft a new release**.
-3. Create/select the tag (for this release, recommended: `v1.1.0`).
-4. Set title (recommended from release notes draft).
-5. Paste body from `docs/RELEASE_NOTES.md`.
-6. Mark as latest release (if appropriate).
-7. Publish release.
+- **`[dev]`** — tests, linters.  
+- **`[benchmark]`** — size/runtime benches + handwritten baselines + **`temporalio`**.  
+- **`[interop]`** — **`langgraph`**, **`temporalio`**, **`aiohttp`** for hybrid local runs.
 
-## 4) Immediate post-release actions
-
-- Open/track first-wave follow-up issues from `docs/issues/`.
-- Use `docs/POST_RELEASE_ROADMAP.md` as the short-term priority guide.
-- If needed, post a short public summary based on the release notes highlights.
-
-## 5) Notes
-
-- Do not reopen semantics during release execution unless a concrete blocker appears.
-- Keep release claims conservative and aligned with current conformance/readiness docs.
+See **[`docs/PACKAGING_AND_INTEROP.md`](PACKAGING_AND_INTEROP.md)**.

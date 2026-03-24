@@ -57,6 +57,7 @@
 ### S (Service)
 - `S core web /api` → backend `core`, mode `web`, path `/api`
 - `S fe web /` → frontend service
+- **`S hybrid`** (deployment hint, not a network service): `S hybrid langgraph`, `S hybrid temporal`, or `S hybrid langgraph temporal` — records targets under IR **`services.hybrid.emit`** (de-duped), sets **`emit_capabilities.needs_langgraph`** / **`needs_temporal`**, and can add **`langgraph`** / **`temporal`** to **`required_emit_targets.minimal_emit`** for benchmarks/planners. Strict mode: only **`langgraph`** and **`temporal`** are valid target tokens. Normative spec: **[`docs/AINL_SPEC.md`](../AINL_SPEC.md) §2.3.1**.
 
 ### D (Data / Type)
 - Field types: `I` int, `S` string, `E[Ad,Us]` enum, `A[User]` array of type.

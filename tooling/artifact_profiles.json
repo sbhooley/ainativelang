@@ -34,7 +34,14 @@
       "examples/monitor_escalation.ainl",
       "examples/status_branching.ainl",
       "examples/timeout_demo.ainl",
-      "examples/timeout_memory_prune_demo.ainl"
+      "examples/timeout_memory_prune_demo.ainl",
+      "examples/hybrid/langchain_tool_demo.ainl",
+      "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+      "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+      "examples/hyperspace_demo.ainl",
+      "examples/test_adapters_full.ainl",
+      "examples/test_nested.ainl",
+      "examples/test_phase2_common_modules.ainl"
     ],
     "non-strict-only": [
       "examples/api_only.lang",
@@ -99,7 +106,10 @@
       "examples/ecosystem/clawflows/morning-journal/converted.ainl",
       "examples/ecosystem/clawflows/plan-week/converted.ainl",
       "examples/ecosystem/clawflows/prep-tomorrow/converted.ainl",
-      "examples/openclaw_full_unification.ainl"
+      "examples/openclaw_full_unification.ainl",
+      "examples/test_if_var.ainl",
+      "examples/test_mul.ainl",
+      "examples/test_X_sub.ainl"
     ],
     "legacy-compat": []
   },

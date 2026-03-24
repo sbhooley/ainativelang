@@ -2,14 +2,14 @@
 platform darwin -- Python 3.10.20, pytest-9.0.2, pluggy-1.6.0
 rootdir: /Users/clawdbot/.openclaw/workspace/AI_Native_Lang
 configfile: pyproject.toml
-plugins: anyio-4.12.1, syrupy-5.1.0, xdist-3.8.0, hypothesis-6.151.9
+plugins: anyio-4.12.1, syrupy-5.1.0, xdist-3.8.0, hypothesis-6.151.9, langsmith-0.7.22
 created: 12/12 workers
 12 workers [13 items]
 
-.......s..s..                                                            [100%]
+.....s......s                                                            [100%]
 =============================== warnings summary ===============================
-.venv/lib/python3.10/site-packages/_hypothesis_pytestplugin.py:481: 12 warnings
-  /Users/clawdbot/.openclaw/workspace/AI_Native_Lang/.venv/lib/python3.10/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
+.venv-py310/lib/python3.10/site-packages/_hypothesis_pytestplugin.py:481: 12 warnings
+  /Users/clawdbot/.openclaw/workspace/AI_Native_Lang/.venv-py310/lib/python3.10/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
     warnings.warn(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
@@ -18,4 +18,4 @@ SKIPPED [1] tests/conformance/test_full_matrix.py:189: strict-mode validation fa
 Label '3': node 'n1' reads 'v' which may be undefined on this path (if this is a string literal in strict mode, quote it explicitly)
 SKIPPED [1] tests/conformance/test_full_matrix.py:233: strict-mode validation failed (skipping runtime parity): /Users/clawdbot/.openclaw/workspace/AI_Native_Lang/tests/data/conformance/include_heavy.ainl
 Label '3': node 'n1' reads 'v' which may be undefined on this path (if this is a string literal in strict mode, quote it explicitly)
-================== 11 passed, 2 skipped, 12 warnings in 1.03s ==================
+================== 11 passed, 2 skipped, 12 warnings in 1.60s ==================
