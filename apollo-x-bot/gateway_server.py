@@ -26,6 +26,7 @@ Environment (production):
   PROMOTER_SEARCH_MAX_RESULTS    Recent search page size 10–100 (default 10). Lower reduces payload and classify tokens when you do not need the full page.
   PROMOTER_DEDUPE_REPLIED_TWEETS If 1 (default), skip reply-draft LLM + post for tweet IDs already replied (or dry-run consumed); avoids repeat spend if the same id reappears.
   PROMOTER_PROMPTS_DIR       Directory with classify_system.txt, classify_instruction.txt, reply_system.txt (default: ./prompts beside gateway_server.py)
+  PROMOTER_CANONICAL_GITHUB_URL  Repo URL injected into reply prompts and used as default for daily-post link (default: https://github.com/sbhooley/ainativelang)
 
 Bind defaults to 127.0.0.1 for safety.
 
@@ -84,6 +85,38 @@ def _env_int(name: str, default: int) -> int:
         return int(os.environ.get(name, "").strip() or default)
     except ValueError:
         return default
+
+
+_DEFAULT_CANONICAL_GITHUB = "https://github.com/sbhooley/ainativelang"
+
+
+def _canonical_github_repo_url() -> str:
+    raw = (os.environ.get("PROMOTER_CANONICAL_GITHUB_URL") or "").strip()
+    return raw if raw else _DEFAULT_CANONICAL_GITHUB
+
+
+# Known wrong / legacy URLs the reply LLM sometimes emits; rewrite before posting.
+_WRONG_GITHUB_URL_PATTERNS = (
+    re.compile(r"https?://(?:www\.)?github\.com/ainativelang/ainl\b", re.IGNORECASE),
+)
+
+
+def _normalize_promoter_github_links(text: str) -> str:
+    canonical = _canonical_github_repo_url()
+    out = text
+    for pat in _WRONG_GITHUB_URL_PATTERNS:
+        out = pat.sub(canonical, out)
+    return out
+
+
+def _reply_system_with_canonical_link(base: str) -> str:
+    base = base.strip()
+    url = _canonical_github_repo_url()
+    suffix = (
+        f"\n\nWhen you mention the GitHub repository, use this exact URL only (https): {url}. "
+        "Do not use github.com/ainativelang/ainl or any other path."
+    )
+    return f"{base}{suffix}" if base else suffix.strip()
 
 
 def _classify_score_floor() -> float:
@@ -909,6 +942,7 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
             "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural. "
             "Max ~260 chars of guidance for the reply text itself."
         )
+    reply_system = _reply_system_with_canonical_link(reply_system)
     tweet_id = str(tweet.get("id", ""))
     user_id = str(tweet.get("user_id", ""))
     dry = _env_bool("PROMOTER_DRY_RUN", False)
@@ -934,9 +968,10 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
         _gw_debug(f"process_tweet skip reason=user_cooldown user_id={user_id!r} hours={cool_h}")
         return {"ok": True, "action": "skipped", "reason": "user_cooldown", "dry_run": dry}
 
+    gh = _canonical_github_repo_url()
     reply_text = (
         "If you are standardizing agent workflows, AINL compiles graphs to a deterministic runtime "
-        "(open graphs on GitHub: https://github.com/sbhooley/ainativelang). Happy to compare notes on OpenClaw-style orchestration."
+        f"(open graphs on GitHub: {gh}). Happy to compare notes on OpenClaw-style orchestration."
     )
     try:
         if os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY"):
@@ -949,9 +984,10 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
                     },
                 ]
             )
-            reply_text = reply_text.strip()[:280]
+            reply_text = reply_text.strip()
     except Exception:
         pass
+    reply_text = _normalize_promoter_github_links(reply_text)[:280]
 
     if dry:
         state.audit("process_tweet_dry", {"tweet_id": tweet_id, "reply": reply_text})
@@ -1020,14 +1056,16 @@ def handle_kv_set(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
 def handle_maybe_daily(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
     payload = body.get("payload") or {}
     topic = str(payload.get("topic", "AINL"))
-    link = str(payload.get("link", "https://github.com/sbhooley/ainativelang"))
+    link = str(payload.get("link") or _canonical_github_repo_url())
     dry = _env_bool("PROMOTER_DRY_RUN", False)
 
     if state.posted_original_today():
         _gw_debug("maybe_daily noop reason=already_posted_today")
         return {"ok": True, "action": "noop", "reason": "already_posted_today"}
 
-    text = f"{topic} — deterministic agent graphs as code. {link}"
+    text = _normalize_promoter_github_links(
+        f"{topic} — deterministic agent graphs as code. {link}"
+    )[:280]
     if dry:
         state.mark_original_posted("dry_run")
         state.audit("daily_post_dry", {"text": text})
