@@ -7,7 +7,7 @@
 - **feat(ci)**: **`benchmark-regression`** prefers committed **`tooling/benchmark_size_ci.json`** / **`tooling/benchmark_runtime_ci.json`** on the baseline SHA when present; falls back to full JSON reports; several jobs pinned to **Python 3.10**; **`make benchmark-ci`** prints resolved **`PYTHON`**
 - **fix(emit/langgraph)**: emitted **`AinlHybridState`** uses plain **`dict`** fields so **LangGraph**’s **`get_type_hints`** path works on **Python 3.10**
 - **test**: hybrid e2e (**`StateGraph.invoke`**, Temporal **`ActivityEnvironment`**), **`S hybrid`** and emission-planner legacy IR coverage
-- **docs**: **`BENCHMARK.md`** (CI baseline rules), **`docs/AINL_SPEC.md`** / **`docs/language/grammar.md`** (**`S hybrid`**), **`docs/RELEASING.md`** (benchmark-ci commit step); cross-links in **`README.md`**, **`WHITEPAPERDRAFT.md`**, **`docs/RELEASE_NOTES.md`**
+- **docs**: **`BENCHMARK.md`** (CI baseline rules), **`docs/AINL_SPEC.md`** / **`docs/language/grammar.md`** (**`S hybrid`**), **`docs/RELEASING.md`** (benchmark-ci commit step); expanded narrative **`docs/RELEASE_NOTES.md`** § **v1.2.5**; cross-links in **`README.md`**, **`docs/README.md`**, **`CONTRIBUTING.md`**, **`WHITEPAPERDRAFT.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/DOCS_INDEX.md`**, **`docs/WHAT_IS_AINL.md`**, **`WHAT_IS_AINL.md`**, **`docs/overview/README.md`**
 
 ### Hyperspace bridge (trajectory, common modules, local adapters, emitter)
 

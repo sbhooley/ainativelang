@@ -11,6 +11,7 @@ Please read the relevant project materials before making substantial changes.
 Start with:
 
 - `README.md`
+- **`docs/CHANGELOG.md`** / **`docs/RELEASE_NOTES.md`** — **current release v1.2.5** (see also **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**)
 - `docs/DOCS_INDEX.md`
 - `docs/AINL_SPEC.md`
 - `SEMANTICS.md`

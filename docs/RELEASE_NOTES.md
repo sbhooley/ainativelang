@@ -1,14 +1,32 @@
 # Release notes
 
-## AINL v1.2.5 — Hyperspace + hybrid `S hybrid`, CI benchmark baselines, LangGraph emit (2026-03-23)
+## AINL v1.2.5 — Hyperspace + hybrid interop + CI baselines (2026-03-23)
 
-This release ships the **March 23, 2026** hyperspace/trajectory/common-modules work **plus** hybrid authoring and CI/tooling hardening:
+**PyPI / runtime:** **`ainl-lang` 1.2.5** — **`RUNTIME_VERSION` `1.2.5`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** **`version` / `date-released`** aligned. Oversight / schema fixtures (e.g. **`tests/test_oversight.py`**, **`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`** samples) use **`1.2.5`**.
 
-- **`S hybrid langgraph` / `temporal`:** top-level DSL opt-in so **`minimal_emit`** and emission planners include LangGraph and/or Temporal wrapper targets when you want benchmark slices to match hybrid deployments (see **`docs/HYBRID_GUIDE.md`**, **`docs/AINL_SPEC.md`** §2.3.1, **`docs/language/grammar.md`**).
-- **CI benchmark regression:** GitHub Actions **`benchmark-regression`** compares the CI JSON outputs against **`tooling/benchmark_*_ci.json`** on the baseline commit when those files exist (otherwise full **`benchmark_size.json`** / **`benchmark_runtime_results.json`**). Regenerate with **`make benchmark-ci`** and commit to keep **`main`** as a meaningful anchor.
-- **LangGraph emitter:** generated **`TypedDict`** state fields are plain **`dict`** so **`StateGraph(AinlHybridState)`** introspection succeeds on **Python 3.10** with current **langgraph** releases.
-- **Tests:** real **`invoke`** for emitted LangGraph modules (optional dep); Temporal **`ActivityEnvironment`** for emitted activities; compiler/planner coverage for **`S hybrid`**.
-- **Packaging / version surfaces:** **`pyproject.toml` / PyPI `ainl-lang` 1.2.5**; **`RUNTIME_VERSION` 1.2.5** in **`runtime/engine.py`** (mirrored under **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** updated; see **`docs/CHANGELOG.md`** for the full bullet list (hyperspace bridge, adapters, docs hub).
+### Trajectory, modules, local adapters, Hyperspace emit
+
+- **Runtime:** optional per-step **trajectory JSONL** (`--log-trajectory` / **`AINL_LOG_TRAJECTORY`**) — **`docs/trajectory.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**
+- **Modules:** **`modules/common/guard.ainl`**, **`session_budget.ainl`**, **`reflect.ainl`** (ceilings, budget, reflect gates); **`modules/common/README.md`**
+- **Adapters:** **`vector_memory`**, **`tool_registry`** (local JSON stores); CLI **`--enable-adapter`**; **`docs/reference/ADAPTER_REGISTRY.md`**, **`docs/adapters/README.md`**
+- **Emitter:** **`scripts/validate_ainl.py --emit hyperspace`** — standalone agent module with embedded IR; **`docs/emitters/README.md`**, **`examples/hyperspace_demo.ainl`**
+- **Docs / ops:** hub updates (**`docs/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/runtime/README.md`**, **`docs/examples/README.md`**); **`docs/language/AINL_CORE_AND_MODULES.md`** §8; intelligence / briefing examples; **`docs/WHAT_IS_AINL.md`** as canonical primer (**`WHAT_IS_AINL.md`** stub); **`WHITEPAPERDRAFT.md`** (trajectory / Hyperspace)
+
+### LangGraph / Temporal hybrid
+
+- **`langchain_tool`** adapter (tools bridge) — **`adapters/langchain_tool.py`**, **`examples/hybrid/langchain_tool_demo.ainl`**, tests
+- **Wrappers:** **`runtime/wrappers/langgraph_wrapper.py`** (`run_ainl_graph`), **`temporal_wrapper.py`** (`execute_ainl_activity`); **`scripts/emit_langgraph.py`**, **`scripts/emit_temporal.py`**; **`validate_ainl.py --emit langgraph|temporal`**
+- **`S hybrid langgraph` / `temporal`:** DSL opt-in for **`minimal_emit`** / planners; IR **`services.hybrid.emit`**; spec **`docs/AINL_SPEC.md`** §2.3.1, **`docs/language/grammar.md`**, **`docs/HYBRID_GUIDE.md`**, **`examples/hybrid/`**, **`docs/hybrid/OPERATOR_RUNBOOK.md`**, **`docs/PACKAGING_AND_INTEROP.md`**, **`docs/RELEASING.md`**
+- **LangGraph emit fix:** **`AinlHybridState`** uses plain **`dict`** fields for **Python 3.10** + **langgraph** **`get_type_hints`**
+- **Tests:** **`StateGraph.invoke`** e2e (optional **langgraph**); Temporal **`ActivityEnvironment`** e2e (optional **temporalio**); **`S hybrid`** + emission-planner coverage
+
+### CI, benchmarks, Makefile
+
+- **`benchmark-regression`:** prefers **`tooling/benchmark_size_ci.json`** / **`tooling/benchmark_runtime_ci.json`** on the baseline SHA when committed; else full **`benchmark_size.json`** / **`benchmark_runtime_results.json`**; **Python 3.10** on listed jobs
+- **`make benchmark` / `make benchmark-ci`:** echo resolved **`PYTHON`** (prefer **`.venv-py310`** per **`Makefile`**)
+- **`BENCHMARK.md`**, **`docs/benchmarks.md`:** document CI baseline preference
+
+See **`docs/CHANGELOG.md`** § **v1.2.5** for the same items in changelog form.
 
 ---
 
