@@ -51,6 +51,7 @@ except ImportError:
 
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
+from runtime.sandbox_shim import SandboxClient
 from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
 from tooling.security_report import analyze_ir
@@ -194,6 +195,8 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
     }
 
 _MCP_SERVER_GRANT: Dict[str, Any] = _load_mcp_server_grant()
+# Optional sandbox discovery at startup; MCP behavior is unchanged when unavailable.
+_SANDBOX_CLIENT = SandboxClient.try_connect(logger=lambda msg: print(msg))
 
 _mcp_server: Any = None
 
@@ -394,6 +397,8 @@ def ainl_run(
             step_fallback=True,
             execution_mode="graph-preferred",
             limits=merged_limits,
+            avm_event_hasher=_SANDBOX_CLIENT.event_hash if _SANDBOX_CLIENT.connected else None,
+            sandbox_metadata_provider=_SANDBOX_CLIENT.trajectory_metadata if _SANDBOX_CLIENT.connected else None,
         )
         entry = label or eng.default_entry_label()
         out = eng.run_label(entry, frame=frame or {})

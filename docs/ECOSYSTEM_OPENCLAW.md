@@ -2,6 +2,10 @@
 
 **Examples in `examples/ecosystem/` are kept fresh via weekly auto-sync from upstream Clawflows & Agency-Agents repos** (GitHub Actions: [`.github/workflows/sync-ecosystem.yml`](../.github/workflows/sync-ecosystem.yml), Monday 04:00 UTC, plus manual **workflow_dispatch**). The job runs `ainl import clawflows` / `ainl import agency-agents` and opens a PR when conversions under `examples/ecosystem/**` change.
 
+## Recommended production stack: AINL graphs + AVM or general agent sandboxes
+
+AINL provides deterministic graphs and declared capabilities; pair with AVM or other sandbox runtimes (microVM/container/agent-sandbox) for isolation. Integration remains additive and optional via `execution_requirements`, `ainl generate-sandbox-config`, and unified sandbox shim hooks.
+
 ### Sync workflow & upstream ownership
 
 We **do not** need admin access to [Clawflows](https://github.com/nikilster/clawflows) or [Agency-Agents](https://github.com/msitarzewski/agency-agents). The job only **downloads public raw Markdown** (same URLs as the CLI importer) and commits changes **in this repository**.

@@ -8,6 +8,11 @@
 - **feat(ci)**: add Linux/macOS install smoke matrix for Python 3.10–3.13 with normal, `--user`, and `--break-system-packages` install paths, plus `pip check`, `ainl --help`, and `ainl-mcp --help`.
 - **feat(ci/release)**: add wheel-integrity CI and dedicated release gates (`twine check`, wheel import smoke for `runtime.compat/adapters/cli.main`, `pip check`, MCP dry-run installers).
 - **feat(packaging/docs)**: add tested Python 3.13 MCP constraints (`constraints/py313-mcp.txt`) and document no-root install order (venv -> `--user` -> `--break-system-packages`) across install/release/skill docs.
+- **feat(compiler/ir)**: add optional `execution_requirements` metadata (including `avm_policy_fragment`, isolation/capability/resource hints) for AVM/general sandbox handoff.
+- **feat(runtime/sandbox)**: add unified optional sandbox shim (`runtime/sandbox_shim.py`) and light wiring in runner, MCP, and CLI runtime path with graceful fallback when no sandbox runtime is detected.
+- **feat(cli)**: add `ainl generate-sandbox-config <file.ainl> [--target avm|firecracker|gvisor|k8s|general]`.
+- **feat(trajectory)**: add optional trajectory JSONL fields when sandbox shim is connected (`avm_event_hash`, `sandbox_session_id`, `sandbox_provider`, `isolation_hash`).
+- **docs(integration)**: update integration/ops/getting-started docs and whitepaper references for AVM + general sandbox deployment posture.
 
 ## v1.2.5 (March 23, 2026) — Hyperspace bridge + hybrid `S`, CI benchmark baselines, LangGraph emit
 

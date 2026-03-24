@@ -19,6 +19,7 @@ from runtime.adapters.sqlite import SimpleSqliteAdapter
 from runtime.adapters.tools import ToolBridgeAdapter
 from runtime.adapters.wasm import WasmAdapter
 from runtime.adapters.memory import MemoryAdapter
+from runtime.sandbox_shim import SandboxClient
 from runtime.engine import RuntimeEngine
 
 
@@ -267,6 +268,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     trajectory_path: Optional[str] = None
     if getattr(args, "log_trajectory", False) or env_traj in ("1", "true", "yes", "on"):
         trajectory_path = str(Path(src_path).parent / (Path(src_path).stem + ".trajectory.jsonl"))
+    sandbox_client = SandboxClient.try_connect(logger=lambda msg: print(msg))
     eng = RuntimeEngine.from_code(
         code,
         strict=args.strict,
@@ -279,6 +281,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         adapters=reg,
         source_path=src_path,
         trajectory_log_path=trajectory_path,
+        avm_event_hasher=sandbox_client.event_hash if sandbox_client.connected else None,
+        sandbox_metadata_provider=sandbox_client.trajectory_metadata if sandbox_client.connected else None,
     )
     label = args.label or eng.default_entry_label()
     try:
@@ -401,6 +405,55 @@ def cmd_check(args: argparse.Namespace) -> int:
     }
     print(json.dumps(payload, indent=2))
     return 0 if ok else 1
+
+
+def cmd_generate_avm_policy(args: argparse.Namespace) -> int:
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
+        code = f.read()
+    ir = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False))).compile(code, emit_graph=True, source_path=src_path)
+    if ir.get("errors"):
+        print(json.dumps({"ok": False, "errors": ir.get("errors", [])}, indent=2))
+        return 1
+    fragment = ir.get("avm_policy_fragment") or {"allowed_adapters": ["core"], "capability_policy_names": []}
+    print(f"# Generated AVM policy fragment from {Path(src_path).name}")
+    print("# Paste or merge this object into ~/.hyperspace/avm-policy.json")
+    if args.output:
+        Path(args.output).write_text(json.dumps(fragment, indent=2), encoding="utf-8")
+        print(f"# Wrote JSON fragment to {args.output}")
+    print(json.dumps(fragment, indent=2))
+    return 0
+
+
+def cmd_generate_sandbox_config(args: argparse.Namespace) -> int:
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
+        code = f.read()
+    ir = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False))).compile(code, emit_graph=True, source_path=src_path)
+    if ir.get("errors"):
+        print(json.dumps({"ok": False, "errors": ir.get("errors", [])}, indent=2))
+        return 1
+    req = ir.get("execution_requirements") or {}
+    avm_fragment = req.get("avm_policy_fragment") or ir.get("avm_policy_fragment") or {}
+    target = str(args.target or "general")
+    out: Dict[str, Any] = {
+        "target": target,
+        "execution_requirements": req,
+        "avm_policy_fragment": avm_fragment,
+        # Tiny, neutral sandbox hints for non-AVM runtimes.
+        "sandbox_hints": {
+            "isolation_level": req.get("isolation_level", "none"),
+            "required_capabilities": req.get("required_capabilities", []),
+            "ephemeral": req.get("ephemeral", True),
+        },
+    }
+    print(f"# Generated sandbox config from {Path(src_path).name} (target={target})")
+    print("# Paste/merge into your AVM policy, microVM wrapper, or sandbox runtime config.")
+    if args.output:
+        Path(args.output).write_text(json.dumps(out, indent=2), encoding="utf-8")
+        print(f"# Wrote JSON config to {args.output}")
+    print(json.dumps(out, indent=2))
+    return 0
 
 
 def _repo_root() -> Path:
@@ -725,6 +778,19 @@ def main() -> None:
     cmp.add_argument("file")
     cmp.add_argument("--strict", action="store_true")
     cmp.set_defaults(func=cmd_check)
+
+    avm = sub.add_parser("generate-avm-policy", help="Generate AVM policy fragment JSON from an .ainl file")
+    avm.add_argument("file")
+    avm.add_argument("--strict", action="store_true")
+    avm.add_argument("--output", "-o", default="")
+    avm.set_defaults(func=cmd_generate_avm_policy)
+
+    sbx = sub.add_parser("generate-sandbox-config", help="Generate sandbox/AVM config fragments from an .ainl file")
+    sbx.add_argument("file")
+    sbx.add_argument("--strict", action="store_true")
+    sbx.add_argument("--output", "-o", default="")
+    sbx.add_argument("--target", choices=["avm", "firecracker", "gvisor", "k8s", "general"], default="general")
+    sbx.set_defaults(func=cmd_generate_sandbox_config)
 
     from tooling.mcp_host_install import list_mcp_host_ids, run_install_mcp_host
 

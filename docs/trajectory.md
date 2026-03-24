@@ -9,6 +9,17 @@ Optional **structured step traces** for `ainl run`: each executed step appends o
 
 Works with **`--json`** and other normal `ainl run` flags.
 
+## Optional sandbox metadata
+
+When the optional sandbox shim is connected, trajectory rows can include additive fields:
+
+- `avm_event_hash` - hash-chained event digest for AVM-style integrity linking.
+- `sandbox_session_id` - per-session runtime identifier.
+- `sandbox_provider` - detected runtime class (`avm` or `general`).
+- `isolation_hash` - rolling sandbox-side chain state when available.
+
+If no sandbox runtime is detected, these fields are omitted and behavior is unchanged.
+
 ## Examples
 
 ```bash

@@ -2404,6 +2404,32 @@ class AICodeCompiler:
             "minimal_emit": minimal_emit or ["python_api"],
         }
 
+    def _compute_avm_policy_fragment(self) -> Optional[Dict[str, Any]]:
+        adapters: Set[str] = set()
+        for step in self._iter_all_steps():
+            adapter = str((step or {}).get("adapter") or "").strip()
+            if not adapter:
+                continue
+            adapters.add(adapter.split(".", 1)[0].lower())
+        if not adapters:
+            return None
+        return {
+            "allowed_adapters": sorted(adapters),
+            "capability_policy_names": sorted((self.capabilities.get("policy") or {}).keys()),
+        }
+
+    def _compute_execution_requirements(self) -> Optional[Dict[str, Any]]:
+        avm_fragment = self._compute_avm_policy_fragment()
+        if avm_fragment is None:
+            return None
+        return {
+            "isolation_level": "none",
+            "required_capabilities": list(avm_fragment.get("allowed_adapters") or []),
+            "resource_profile": "default",
+            "ephemeral": True,
+            "avm_policy_fragment": avm_fragment,
+        }
+
     def compile(
         self,
         code: str,
@@ -3784,6 +3810,10 @@ class AICodeCompiler:
         }
         if context is not None:
             ir["structured_diagnostics"] = [d.to_dict() for d in context.diagnostics]
+        if (exec_req := self._compute_execution_requirements()) is not None:
+            ir["execution_requirements"] = exec_req
+        if (avm_fragment := self._compute_avm_policy_fragment()) is not None:
+            ir["avm_policy_fragment"] = avm_fragment
         ir["required_emit_targets"] = self._compute_required_emit_targets(ir["emit_capabilities"])
         _req = ir["required_emit_targets"]
         _req["minimal_emit"] = apply_minimal_emit_python_api_stub_fallback(

@@ -35,6 +35,14 @@
 
 **Positioning (v1.2.6):** AINL is the system that lets you **author with an LLM once**, **validate with a compiler** (strict mode, reachability, single-exit discipline), and **emit production artifacts** for **LangGraph**, **Temporal**, **FastAPI**, **React**, **Hyperspace**, **Prisma**, **cron**, and more — while **deterministic execution**, **policy**, and **audit** (runner service, trajectory JSONL) stay on the AINL side. **Write in AINL → emit LangGraph or Temporal when you need their ecosystem today**; keep the `.ainl` source as the single source of truth ([`docs/HYBRID_GUIDE.md`](docs/HYBRID_GUIDE.md), [`docs/competitive/README.md`](docs/competitive/README.md)).
 
+### Recommended production stack: AINL graphs + AVM or general agent sandboxes
+
+AINL provides the deterministic, capability-declared graph layer. Pair it with Hyperspace AVM (`avmd`) or general runtimes (Firecracker microVMs, gVisor, Kubernetes Agent Sandbox, E2B-style runtimes, AVM Codes platform) for stronger isolation.
+
+- New metadata: optional `execution_requirements` in compiled IR (`avm_policy_fragment`, isolation/resource hints).
+- New CLI: `ainl generate-sandbox-config <file.ainl> [--target avm|firecracker|gvisor|k8s|general]`.
+- New unified shim: optional `runtime/sandbox_shim.py` auto-detects AVM/general sandbox endpoints and falls back cleanly.
+
 It is designed for teams building AI workflows that need multiple steps, state and memory, tool use, repeatable execution, validation and control, and lower dependence on long prompt loops.
 
 > [!TIP]

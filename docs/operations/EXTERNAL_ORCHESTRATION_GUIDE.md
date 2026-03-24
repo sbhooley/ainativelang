@@ -12,6 +12,14 @@ This guide explains how an **external orchestrator** — a container platform,
 sandbox controller, managed agent host, CI/CD system, or custom workflow
 engine — can integrate with the AINL runtime.
 
+### Recommended production stack: AINL graphs + AVM or general agent sandboxes
+
+AINL supplies deterministic graph semantics and capability-declared execution intent. For runtime isolation, pair it with AVM (`avmd`) or general agent sandbox runtimes (Firecracker, gVisor, Kubernetes Agent Sandbox, E2B-style runtimes, etc.).
+
+- `execution_requirements` in IR provides portable isolation/capability/resource hints.
+- `ainl generate-sandbox-config` emits ready-to-merge AVM/general sandbox fragments.
+- Optional sandbox shim + audit metadata keeps behavior unchanged when no sandbox runtime is available.
+
 It covers:
 
 - capability discovery,
