@@ -9,7 +9,20 @@
 - **Runtime:** optional per-step **trajectory JSONL** (`--log-trajectory` / **`AINL_LOG_TRAJECTORY`**) — **`docs/trajectory.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**
 - **Modules:** **`modules/common/guard.ainl`**, **`session_budget.ainl`**, **`reflect.ainl`** (ceilings, budget, reflect gates); **`modules/common/README.md`**
 - **Adapters:** **`vector_memory`**, **`tool_registry`** (local JSON stores); CLI **`--enable-adapter`**; **`docs/reference/ADAPTER_REGISTRY.md`**, **`docs/adapters/README.md`**
-- **Emitter:** **`scripts/validate_ainl.py --emit hyperspace`** — standalone agent module with embedded IR; **`docs/emitters/README.md`**, **`examples/hyperspace_demo.ainl`**
+
+#### Hyperspace agent emitter (`--emit hyperspace`)
+
+- **CLI:** **`python3 scripts/validate_ainl.py <file.ainl> --strict --emit hyperspace -o <agent.py>`** (same flag on **`ainl-validate`**). **`docs/emitters/README.md`**, root **`README.md`** happy path.
+- **Implementation:** **`compiler_v2.AICodeCompiler.emit_hyperspace_agent`** generates a **single-file Python module** that:
+  - Embeds the compiled IR as **base64-encoded JSON** (`_IR_B64`) so the artifact is self-contained.
+  - Walks up from the script / cwd to find a checkout with **`runtime/engine.py`** and **`adapters/`**, then prepends that **repo root** to **`sys.path`** (run from repo root is still the supported default).
+  - Builds an **`AdapterRegistry`** allowing **`core`**, **`vector_memory`**, and **`tool_registry`**, registers the local **`VectorMemoryAdapter`** / **`ToolRegistryAdapter`**, and constructs **`RuntimeEngine`** in **`graph-preferred`** mode with **`step_fallback=True`**.
+  - Exposes **`run_ainl(label=None, frame=None)`** (default label from **`default_entry_label()`**) and a **`__main__`** that logs and prints the result.
+  - Honors **`AINL_LOG_TRAJECTORY`** (`1` / `true` / `yes` / `on`) → **`<source-stem>.trajectory.jsonl`** in the current working directory (stem derived from **`-o`** / source path).
+- **Optional SDK hook:** tries **`import hyperspace_sdk`**; if missing, emits a **`RuntimeWarning`** and runs **AINL-only** (scaffold **`TODO`** for future Agent/Session bridge). When the SDK is present, **`__main__`** logs that the native bridge is not wired yet and still executes the graph directly.
+- **Examples / teaching:** **`examples/hyperspace_demo.ainl`** (guard + session_budget + dotted **`vector_memory`** / **`tool_registry`** verbs); **`examples/test_adapters_full.ainl`** for adapter consolidation; both are **strict-valid** and appear in **`tooling/canonical_curriculum.json`** / rebuilt **`tooling/canonical_training_pack.json`** and **`tooling/training_packs/`** exports.
+- **Tests:** emitter snapshots in **`tests/test_snapshot_emitters.py`** (where applicable).
+
 - **Docs / ops:** hub updates (**`docs/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/runtime/README.md`**, **`docs/examples/README.md`**); **`docs/language/AINL_CORE_AND_MODULES.md`** §8; intelligence / briefing examples; **`docs/WHAT_IS_AINL.md`** as canonical primer (**`WHAT_IS_AINL.md`** stub); **`WHITEPAPERDRAFT.md`** (trajectory / Hyperspace)
 
 ### LangGraph / Temporal hybrid
@@ -18,7 +31,12 @@
 - **Wrappers:** **`runtime/wrappers/langgraph_wrapper.py`** (`run_ainl_graph`), **`temporal_wrapper.py`** (`execute_ainl_activity`); **`scripts/emit_langgraph.py`**, **`scripts/emit_temporal.py`**; **`validate_ainl.py --emit langgraph|temporal`**
 - **`S hybrid langgraph` / `temporal`:** DSL opt-in for **`minimal_emit`** / planners; IR **`services.hybrid.emit`**; spec **`docs/AINL_SPEC.md`** §2.3.1, **`docs/language/grammar.md`**, **`docs/HYBRID_GUIDE.md`**, **`examples/hybrid/`**, **`docs/hybrid/OPERATOR_RUNBOOK.md`**, **`docs/PACKAGING_AND_INTEROP.md`**, **`docs/RELEASING.md`**
 - **LangGraph emit fix:** **`AinlHybridState`** uses plain **`dict`** fields for **Python 3.10** + **langgraph** **`get_type_hints`**
-- **Tests:** **`StateGraph.invoke`** e2e (optional **langgraph**); Temporal **`ActivityEnvironment`** e2e (optional **temporalio**); **`S hybrid`** + emission-planner coverage
+- **Tests:** **`StateGraph.invoke`** e2e (optional **langgraph**); Temporal **`ActivityEnvironment`** e2e (optional **temporalio**); **`WorkflowEnvironment.execute_workflow`** e2e with a **`Worker`** and sync activities (**`tests/test_hybrid_emit_integration.py`**); **`S hybrid`** + emission-planner coverage
+
+### Strict compiler and conformance (label dataflow)
+
+- **Strict dataflow:** inter-label edges (**If** / **Loop** / **While** / **Call** → target labels) now merge **live variable** sets at label entry ( **`tooling/effect_analysis.py`**: forward fixpoint + **`propagate_inter_label_entry_defs`**; **`compiler_v2._validate_graphs`** seeds HTTP endpoint entry defs). Reduces false **undefined at use** reports when a variable is defined on all paths into a jumped-to label (e.g. monitor **`J metrics`** on the “ok” branch).
+- **Tests / artifacts:** **`tests/test_inter_label_dataflow.py`**; **`tooling/artifact_profiles.json`** and **`tooling/canonical_curriculum.json`** updated for newly strict-clean examples (**`examples/cron/monitor_and_alert.ainl`**, **`corpus/example_monitor_alert/program.ainl`**, etc.); conformance snapshots refreshed under **`tests/snapshots/conformance/`**.
 
 ### CI, benchmarks, Makefile
 
