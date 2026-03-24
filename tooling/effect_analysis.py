@@ -3,7 +3,7 @@ Effect analysis: per-node effect_tier, per-label effect_summary, and capability/
 Provides a stable contract for agents (io-read vs io-write, control, meta) and enables
 strict checks (defined-before-use, call effect inclusion, adapter contracts).
 """
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 # Effect tiers: finer than effect (io|pure|meta) for planning and safety.
 EFFECT_TIER_PURE = "pure"
@@ -290,22 +290,23 @@ def annotate_labels_effect_analysis(labels: Dict[str, Any]) -> None:
 # Vars that are defined by runtime/convention before label runs (no defined-before-use violation).
 PREDEFINED_VARS = frozenset({"_auth_present", "_role", "_error", "_call_result", "_loop_last", "_while_last", "_txid"})
 
+_SUCCESS_PORTS = frozenset({"next", "then", "else", "body", "after"})
 
-def dataflow_defined_before_use(
+
+def forward_dataflow_defs(
     nodes: List[Dict[str, Any]],
     edges: List[Dict[str, Any]],
     entry: Any,
     entry_defined: Optional[Set[str]] = None,
-) -> List[Tuple[str, str]]:
+) -> Dict[str, Set[str]]:
     """
-    Defined-before-use: forward fixpoint. defined_at[n] = vars defined on at least one path to n.
-    Returns (node_id, var) where node reads var and var not in defined_at[node].
+    Intra-label forward fixpoint: defined_at[n] = vars defined on at least one path to n.
+    Only follows edges with to_kind == \"node\" (not cross-label jumps).
     """
-    SUCCESS_PORTS = frozenset({"next", "then", "else", "body", "after"})
     node_by_id = {n.get("id"): n for n in nodes if n.get("id")}
     in_edges: Dict[str, List[str]] = {}
     for e in edges:
-        if (e.get("port") or "next") not in SUCCESS_PORTS:
+        if (e.get("port") or "next") not in _SUCCESS_PORTS:
             continue
         fr, to = e.get("from"), e.get("to")
         if e.get("to_kind") == "node" and fr and to:
@@ -333,6 +334,71 @@ def dataflow_defined_before_use(
             if nid not in defined_at or defined_at[nid] != new_defs:
                 defined_at[nid] = new_defs
                 changed = True
+    return defined_at
+
+
+def propagate_inter_label_entry_defs(
+    labels: Dict[str, Any],
+    *,
+    norm_lid: Callable[[Any], Optional[str]],
+    endpoint_entry_defs: Optional[Dict[str, Set[str]]] = None,
+) -> Dict[str, Set[str]]:
+    """
+    Fixpoint over cross-label edges (If/Loop/While/Call → label): each target label's entry
+    inherits vars live at the source branch node. Seeds merge ``endpoint_entry_defs`` (HTTP
+    entry payloads). ``norm_lid`` must match compiler label keying (e.g. numeric \"1\" or
+    ``alias/ENTRY``).
+    """
+    entry_vars: Dict[str, Set[str]] = {str(lid): set() for lid in labels}
+    for lid, s in (endpoint_entry_defs or {}).items():
+        key = norm_lid(lid) or str(lid)
+        if key in entry_vars:
+            entry_vars[key] |= set(s)
+
+    cap = max(len(labels) * 6 + 12, 12)
+    for _ in range(cap):
+        changed = False
+        new_ev = {k: set(v) for k, v in entry_vars.items()}
+        for lid, body in labels.items():
+            lid_s = str(lid)
+            nodes = body.get("nodes") or []
+            edges = body.get("edges") or []
+            entry = body.get("entry")
+            if not nodes or not isinstance(entry, str) or entry not in {n.get("id") for n in nodes}:
+                continue
+            defined_at = forward_dataflow_defs(nodes, edges, entry, new_ev.get(lid_s))
+            for e in edges:
+                if e.get("to_kind") != "label":
+                    continue
+                raw_tgt = e.get("to")
+                tgt = norm_lid(raw_tgt) if raw_tgt is not None else None
+                if not tgt or tgt not in entry_vars:
+                    continue
+                fr = e.get("from")
+                if not isinstance(fr, str) or fr not in defined_at:
+                    continue
+                live = defined_at[fr]
+                if not live <= new_ev[tgt]:
+                    new_ev[tgt] |= live
+                    changed = True
+        entry_vars = new_ev
+        if not changed:
+            break
+    return entry_vars
+
+
+def dataflow_defined_before_use(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+    entry: Any,
+    entry_defined: Optional[Set[str]] = None,
+) -> List[Tuple[str, str]]:
+    """
+    Defined-before-use: forward fixpoint. defined_at[n] = vars defined on at least one path to n.
+    Returns (node_id, var) where node reads var and var not in defined_at[node].
+    """
+    node_by_id = {n.get("id"): n for n in nodes if n.get("id")}
+    defined_at = forward_dataflow_defs(nodes, edges, entry, entry_defined)
     violations: List[Tuple[str, str]] = []
     for nid, n in node_by_id.items():
         reads = set(n.get("reads") or [])

@@ -253,738 +253,6 @@
     ]),
   })
 # ---
-# name: test_full_matrix[emitter_stability-golden_path8]
-  dict({
-    'emitters': list([
-      dict({
-        'emitter': 'fastapi',
-        'output': '''
-          """Web server from AI-Native Lang: real runtime (R/P/Sc via adapters) + static + logging + rate limit."""
-          # AINL emitted runtime-backed web server
-          # Source project: AI Native Lang (AINL)
-          # Human initiator: Steven Hooley
-          # Public references: https://x.com/sbhooley | https://stevenhooley.com | https://linkedin.com/in/sbhooley
-          # Provenance docs: docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md | tooling/project_provenance.json
-          import json
-          import sys
-          import time
-          import uuid
-          import os
-          from pathlib import Path
-          from collections import defaultdict
-          
-          # Allow importing runtime + adapters (same dir in Docker, else repo root)
-          _dir = Path(__file__).resolve().parent
-          _root = _dir
-          for _ in range(6):
-              if (_root / 'runtime.py').exists() and (_root / 'adapters').exists():
-                  break
-              _root = _root.parent
-          if str(_root) not in sys.path:
-              sys.path.insert(0, str(_root))
-          
-          from fastapi import FastAPI, Request
-          from fastapi.middleware.cors import CORSMiddleware
-          from fastapi.staticfiles import StaticFiles
-          from starlette.middleware.base import BaseHTTPMiddleware
-          from starlette.responses import FileResponse
-          
-          from runtime.engine import RuntimeEngine
-          from adapters.mock import mock_registry
-          
-          # Load IR (emitted with server); use real adapters by replacing mock_registry
-          _ir_path = Path(__file__).resolve().parent / "ir.json"
-          with open(_ir_path) as f:
-              _ir = json.load(f)
-          _registry = mock_registry(_ir.get("types"))
-          _engine = RuntimeEngine(ir=_ir, adapters=_registry, trace=False, step_fallback=True, execution_mode='graph-preferred')
-          
-          _metrics = defaultdict(int)
-          _trace_enabled = False
-          
-          class LoggingMiddleware(BaseHTTPMiddleware):
-              async def dispatch(self, request: Request, call_next):
-                  req_id = str(uuid.uuid4())[:8]
-                  trace_id = req_id if _trace_enabled else None
-                  start = time.perf_counter()
-                  response = await call_next(request)
-                  duration_ms = (time.perf_counter() - start) * 1000
-                  # Never log Authorization or other secret headers (fix #11).
-                  log = {"request_id": req_id, "method": request.method, "path": request.url.path, "status": response.status_code, "duration_ms": round(duration_ms, 2)}
-                  if trace_id:
-                      log["trace_id"] = trace_id
-                  _metrics["requests_total"] += 1
-                  print(json.dumps(log))
-                  return response
-          
-          class RateLimitMiddleware(BaseHTTPMiddleware):
-              def __init__(self, app, requests_per_minute: int = 0):
-                  super().__init__(app)
-                  self.rpm = requests_per_minute
-                  self.window_start = defaultdict(float)
-                  self.count = defaultdict(int)
-          
-              async def dispatch(self, request: Request, call_next):
-                  if self.rpm <= 0:
-                      return await call_next(request)
-                  client = request.client.host if request.client else "unknown"
-                  now = time.time()
-                  if now - self.window_start[client] > 60:
-                      self.window_start[client] = now
-                      self.count[client] = 0
-                  self.count[client] += 1
-                  if self.count[client] > self.rpm:
-                      from starlette.responses import JSONResponse
-                      return JSONResponse(status_code=429, content={"error": "rate limit exceeded"})
-                  return await call_next(request)
-          
-          app = FastAPI(title="Lang Server")
-          _rate_limit = int(os.environ.get("RATE_LIMIT", "0"))
-          app.add_middleware(RateLimitMiddleware, requests_per_minute=_rate_limit)
-          app.add_middleware(LoggingMiddleware)
-          app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-          
-          def _run_label(lid, request: Request):
-              ctx = {
-                  "_role": request.headers.get("X-Role"),
-                  "_auth_header": request.headers.get("Authorization") or request.headers.get("X-Auth"),
-                  "_auth_present": bool(request.headers.get("Authorization") or request.headers.get("X-Auth")),
-              }
-              r = _engine.run_label(lid, frame=ctx)
-              return {"data": r if r is not None else []}
-          
-          api = FastAPI()
-          
-          def _iter_eps(eps):
-              out = []
-              for path, val in eps.items():
-                  if not isinstance(val, dict): continue
-                  if "label_id" in val or "method" in val:
-                      out.append((path, val.get("method", "G"), val))
-                  else:
-                      for method, ep in val.items():
-                          if isinstance(ep, dict):
-                              out.append((path, method, ep))
-              return out
-          
-          @api.get("/health")
-          def health():
-              return {"status": "ok"}
-          
-          @api.get("/ready")
-          def ready():
-              return {"ready": True}
-          
-          app.mount("/api", api)
-          
-          # Static: serve index.html at / when present; else simple API-only landing
-          static_dir = Path(__file__).resolve().parent / "static"
-          static_dir.mkdir(exist_ok=True)
-          _index_html = static_dir / "index.html" if static_dir.exists() else None
-          if _index_html and _index_html.is_file():
-              @app.get("/")
-              def _serve_index():
-                  return FileResponse(_index_html)
-          else:
-              @app.get("/")
-              def _root():
-                  from starlette.responses import HTMLResponse
-                  return HTMLResponse("<html><body><h1>API</h1><p><a href=\"/api\">/api</a></p></body></html>")
-          if static_dir.exists():
-              app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
-          
-          if __name__ == "__main__":
-              import uvicorn
-              uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8765")))
-  
-        ''',
-      }),
-      dict({
-        'emitter': 'openapi',
-        'output': '''
-          {
-            "openapi": "3.0.0",
-            "info": {
-              "title": "AINL API",
-              "version": "1.0.0",
-              "x-ainl-provenance": {
-                "project": "AI Native Lang",
-                "initiator": "Steven Hooley",
-                "public_references": {
-                  "x": "https://x.com/sbhooley",
-                  "website": "https://stevenhooley.com",
-                  "linkedin": "https://linkedin.com/in/sbhooley"
-                },
-                "provenance_docs": {
-                  "repo": "docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md",
-                  "machine": "tooling/project_provenance.json"
-                }
-              }
-            },
-            "paths": {
-              "/api/health": {
-                "get": {
-                  "summary": "Health",
-                  "responses": {
-                    "200": {
-                      "description": "OK",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "type": "object",
-                            "properties": {
-                              "status": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "/api/ready": {
-                "get": {
-                  "summary": "Readiness",
-                  "responses": {
-                    "200": {
-                      "description": "OK",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "type": "object",
-                            "properties": {
-                              "ready": {
-                                "type": "boolean"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "components": {
-              "schemas": {
-                "DataResponse": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "oneOf": [
-                        {
-                          "type": "array",
-                          "items": {
-                            "type": "object"
-                          }
-                        },
-                        {
-                          "type": "object"
-                        }
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        ''',
-      }),
-      dict({
-        'emitter': 'sql_postgres',
-        'output': '''
-          -- AINL emitted SQL migration
-          -- Source project: AI Native Lang (AINL)
-          -- Human initiator: Steven Hooley
-          -- Public references: https://x.com/sbhooley | https://stevenhooley.com | https://linkedin.com/in/sbhooley
-          -- Provenance docs: docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md | tooling/project_provenance.json
-          -- dialect: postgres
-  
-        ''',
-      }),
-    ]),
-  })
-# ---
-# name: test_full_matrix[ir_canonicalization-golden_path3]
-  dict({
-    'admin': dict({
-    }),
-    'allow': list([
-    ]),
-    'api': dict({
-      'deprecate': list([
-      ]),
-      'sla': dict({
-      }),
-      'style': 'rest',
-      'version_prefix': '',
-    }),
-    'audit': dict({
-    }),
-    'capabilities': dict({
-      'auth': dict({
-      }),
-      'cache': dict({
-      }),
-      'policy': dict({
-      }),
-      'queue': dict({
-      }),
-      'txn': dict({
-      }),
-    }),
-    'compat': None,
-    'config': dict({
-      'env': list([
-      ]),
-      'secrets': list([
-      ]),
-    }),
-    'crons': list([
-    ]),
-    'cst': dict({
-      'lines': list([
-        dict({
-          'lineno': 1,
-          'op_canonical': 'L1:',
-          'op_value': 'L1:',
-          'original_line': 'L1:',
-          'slot_kinds': list([
-          ]),
-          'slot_values': list([
-          ]),
-          'tokens': list([
-            dict({
-              'kind': 'bare',
-              'raw': 'L1:',
-              'span': dict({
-                'col_end': 3,
-                'col_start': 0,
-                'line': 1,
-              }),
-              'value': 'L1:',
-            }),
-          ]),
-        }),
-        dict({
-          'lineno': 2,
-          'op_canonical': 'R',
-          'op_value': 'R',
-          'original_line': '  R core.ADD 2 3 ->x',
-          'slot_kinds': list([
-            'bare',
-            'bare',
-            'bare',
-            'bare',
-          ]),
-          'slot_values': list([
-            'core.ADD',
-            '2',
-            '3',
-            '->x',
-          ]),
-          'tokens': list([
-            dict({
-              'kind': 'ws',
-              'raw': '  ',
-              'span': dict({
-                'col_end': 2,
-                'col_start': 0,
-                'line': 2,
-              }),
-              'value': '  ',
-            }),
-            dict({
-              'kind': 'bare',
-              'raw': 'R',
-              'span': dict({
-                'col_end': 3,
-                'col_start': 2,
-                'line': 2,
-              }),
-              'value': 'R',
-            }),
-            dict({
-              'kind': 'ws',
-              'raw': ' ',
-              'span': dict({
-                'col_end': 4,
-                'col_start': 3,
-                'line': 2,
-              }),
-              'value': ' ',
-            }),
-            dict({
-              'kind': 'bare',
-              'raw': 'core.ADD',
-              'span': dict({
-                'col_end': 12,
-                'col_start': 4,
-                'line': 2,
-              }),
-              'value': 'core.ADD',
-            }),
-            dict({
-              'kind': 'ws',
-              'raw': ' ',
-              'span': dict({
-                'col_end': 13,
-                'col_start': 12,
-                'line': 2,
-              }),
-              'value': ' ',
-            }),
-            dict({
-              'kind': 'bare',
-              'raw': '2',
-              'span': dict({
-                'col_end': 14,
-                'col_start': 13,
-                'line': 2,
-              }),
-              'value': '2',
-            }),
-            dict({
-              'kind': 'ws',
-              'raw': ' ',
-              'span': dict({
-                'col_end': 15,
-                'col_start': 14,
-                'line': 2,
-              }),
-              'value': ' ',
-            }),
-            dict({
-              'kind': 'bare',
-              'raw': '3',
-              'span': dict({
-                'col_end': 16,
-                'col_start': 15,
-                'line': 2,
-              }),
-              'value': '3',
-            }),
-            dict({
-              'kind': 'ws',
-              'raw': ' ',
-              'span': dict({
-                'col_end': 17,
-                'col_start': 16,
-                'line': 2,
-              }),
-              'value': ' ',
-            }),
-            dict({
-              'kind': 'bare',
-              'raw': '->x',
-              'span': dict({
-                'col_end': 20,
-                'col_start': 17,
-                'line': 2,
-              }),
-              'value': '->x',
-            }),
-          ]),
-        }),
-        dict({
-          'lineno': 3,
-          'op_canonical': 'J',
-          'op_value': 'J',
-          'original_line': '  J x',
-          'slot_kinds': list([
-            'bare',
-          ]),
-          'slot_values': list([
-            'x',
-          ]),
-          'tokens': list([
-            dict({
-              'kind': 'ws',
-              'raw': '  ',
-              'span': dict({
-                'col_end': 2,
-                'col_start': 0,
-                'line': 3,
-              }),
-              'value': '  ',
-            }),
-            dict({
-              'kind': 'bare',
-              'raw': 'J',
-              'span': dict({
-                'col_end': 3,
-                'col_start': 2,
-                'line': 3,
-              }),
-              'value': 'J',
-            }),
-            dict({
-              'kind': 'ws',
-              'raw': ' ',
-              'span': dict({
-                'col_end': 4,
-                'col_start': 3,
-                'line': 3,
-              }),
-              'value': ' ',
-            }),
-            dict({
-              'kind': 'bare',
-              'raw': 'x',
-              'span': dict({
-                'col_end': 5,
-                'col_start': 4,
-                'line': 3,
-              }),
-              'value': 'x',
-            }),
-          ]),
-        }),
-        dict({
-          'lineno': 4,
-          'op_canonical': '',
-          'op_value': '',
-          'original_line': '',
-          'slot_kinds': list([
-          ]),
-          'slot_values': list([
-          ]),
-          'tokens': list([
-          ]),
-        }),
-      ]),
-    }),
-    'deploy': dict({
-      'env_target': '',
-      'flags': list([
-      ]),
-      'strategy': 'rolling',
-    }),
-    'desc': dict({
-      'endpoints': dict({
-      }),
-      'types': dict({
-      }),
-    }),
-    'diagnostics': list([
-    ]),
-    'emit_capabilities': dict({
-      'needs_cron': False,
-      'needs_mt5': False,
-      'needs_prisma': False,
-      'needs_python_api': True,
-      'needs_react_ts': False,
-      'needs_scraper': False,
-    }),
-    'errors': list([
-    ]),
-    'graph_schema_version': '1.0',
-    'graph_semantic_checksum': 'sha256:ac24d8ec024ec14632baa412e9b416fe853baac49b5e7868b8c556da3b737164',
-    'ir_version': '1.0.0',
-    'labels': dict({
-      '1': dict({
-        'edges': list([
-          dict({
-            'from': 'n1',
-            'port': 'next',
-            'to': 'n2',
-            'to_kind': 'node',
-          }),
-        ]),
-        'effect_summary': dict({
-          'effects': list([
-            'compute',
-          ]),
-          'reads': list([
-            'x',
-          ]),
-          'writes': list([
-            'x',
-          ]),
-        }),
-        'entry': 'n1',
-        'exits': list([
-          dict({
-            'node': 'n2',
-            'var': 'x',
-          }),
-        ]),
-        'id_hash': 'sha256:ac5da716ae4ca767b9793311e1c3361c5b5b7cf306b692b1e7220d4140f39919',
-        'legacy': dict({
-          'steps': list([
-            dict({
-              'adapter': 'core.ADD',
-              'args': list([
-                '3',
-              ]),
-              'entity': '2',
-              'fields': '3',
-              'lineno': 2,
-              'op': 'R',
-              'out': 'x',
-              'raw': list([
-                'core.ADD',
-                '2',
-                '3',
-                '->x',
-              ]),
-              'req_op': 'ADD',
-              'src': 'core',
-              'target': '2',
-            }),
-            dict({
-              'lineno': 3,
-              'op': 'J',
-              'var': 'x',
-            }),
-          ]),
-        }),
-        'nodes': list([
-          dict({
-            'data': dict({
-              'adapter': 'core.ADD',
-              'args': list([
-                '3',
-              ]),
-              'entity': '2',
-              'fields': '3',
-              'lineno': 2,
-              'op': 'R',
-              'out': 'x',
-              'raw': list([
-                'core.ADD',
-                '2',
-                '3',
-                '->x',
-              ]),
-              'req_op': 'ADD',
-              'src': 'core',
-              'target': '2',
-            }),
-            'effect': 'io',
-            'effect_kinds': list([
-              'compute',
-            ]),
-            'effect_tier': 'pure',
-            'hash': 'sha256:766c09c07d0766c10fbe16e121ba4cfe17fe40245c1c06b9ad6a4d1aca3096a0',
-            'id': 'n1',
-            'lineno': 2,
-            'op': 'R',
-            'reads': list([
-            ]),
-            'writes': list([
-              'x',
-            ]),
-          }),
-          dict({
-            'data': dict({
-              'lineno': 3,
-              'op': 'J',
-              'var': 'x',
-            }),
-            'effect': 'pure',
-            'effect_kinds': list([
-            ]),
-            'effect_tier': 'pure',
-            'hash': 'sha256:9b2efcf55706446442b27d904bb34b4f06ff95609a0b0f997d689c9ac84606b6',
-            'id': 'n2',
-            'lineno': 3,
-            'op': 'J',
-            'reads': list([
-              'x',
-            ]),
-            'writes': list([
-            ]),
-          }),
-        ]),
-        'slots': list([
-        ]),
-      }),
-    }),
-    'limits': dict({
-      'per_path': dict({
-      }),
-      'per_tenant': 0,
-    }),
-    'meta': list([
-    ]),
-    'observability': dict({
-      'metrics': list([
-      ]),
-      'trace': False,
-    }),
-    'rag': dict({
-      'augment': dict({
-      }),
-      'chunking': dict({
-      }),
-      'embeddings': dict({
-      }),
-      'generate': dict({
-      }),
-      'indexes': dict({
-      }),
-      'pipelines': dict({
-      }),
-      'retrievers': dict({
-      }),
-      'sources': dict({
-      }),
-      'stores': dict({
-      }),
-    }),
-    'required_emit_targets': dict({
-      'full_multitarget': list([
-        'react_ts',
-        'python_api',
-        'prisma',
-        'mt5',
-        'scraper',
-        'cron',
-      ]),
-      'minimal_emit': list([
-        'python_api',
-      ]),
-    }),
-    'roles': list([
-    ]),
-    'runbooks': dict({
-    }),
-    'runtime_policy': dict({
-      'execution_mode': 'graph-preferred',
-      'unknown_op_policy': 'skip',
-    }),
-    'services': dict({
-    }),
-    'source': dict({
-      'lines': list([
-        'L1:',
-        '  R core.ADD 2 3 ->x',
-        '  J x',
-        '',
-      ]),
-      'text': '''
-        L1:
-          R core.ADD 2 3 ->x
-          J x
-  
-      ''',
-    }),
-    'stats': dict({
-      'lines': 3,
-      'ops': 3,
-    }),
-    'tests': list([
-    ]),
-    'types': dict({
-    }),
-    'ver': None,
-    'warnings': list([
-    ]),
-  })
-# ---
 # name: test_full_matrix[ir_canonicalization-golden_path4]
   dict({
     'admin': dict({
@@ -1457,6 +725,1870 @@
     'stats': dict({
       'lines': 3,
       'ops': 3,
+    }),
+    'tests': list([
+    ]),
+    'types': dict({
+    }),
+    'ver': None,
+    'warnings': list([
+    ]),
+  })
+# ---
+# name: test_full_matrix[ir_canonicalization-golden_path5]
+  dict({
+    'admin': dict({
+    }),
+    'allow': list([
+    ]),
+    'api': dict({
+      'deprecate': list([
+      ]),
+      'sla': dict({
+      }),
+      'style': 'rest',
+      'version_prefix': '',
+    }),
+    'audit': dict({
+    }),
+    'capabilities': dict({
+      'auth': dict({
+      }),
+      'cache': dict({
+      }),
+      'policy': dict({
+      }),
+      'queue': dict({
+      }),
+      'txn': dict({
+      }),
+    }),
+    'compat': None,
+    'config': dict({
+      'env': list([
+      ]),
+      'secrets': list([
+      ]),
+    }),
+    'crons': list([
+    ]),
+    'cst': dict({
+      'lines': list([
+        dict({
+          'lineno': 1,
+          'op_canonical': 'include',
+          'op_value': 'include',
+          'original_line': 'include "modules/common/retry.ainl" as retry',
+          'slot_kinds': list([
+            'string',
+            'bare',
+            'bare',
+          ]),
+          'slot_values': list([
+            'modules/common/retry.ainl',
+            'as',
+            'retry',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'bare',
+              'raw': 'include',
+              'span': dict({
+                'col_end': 7,
+                'col_start': 0,
+                'line': 1,
+              }),
+              'value': 'include',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 8,
+                'col_start': 7,
+                'line': 1,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'string',
+              'raw': '"modules/common/retry.ainl"',
+              'span': dict({
+                'col_end': 35,
+                'col_start': 8,
+                'line': 1,
+              }),
+              'value': 'modules/common/retry.ainl',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 36,
+                'col_start': 35,
+                'line': 1,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'as',
+              'span': dict({
+                'col_end': 38,
+                'col_start': 36,
+                'line': 1,
+              }),
+              'value': 'as',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 39,
+                'col_start': 38,
+                'line': 1,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'retry',
+              'span': dict({
+                'col_end': 44,
+                'col_start': 39,
+                'line': 1,
+              }),
+              'value': 'retry',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 2,
+          'op_canonical': 'include',
+          'op_value': 'include',
+          'original_line': 'include "modules/common/timeout.ainl" as timeout',
+          'slot_kinds': list([
+            'string',
+            'bare',
+            'bare',
+          ]),
+          'slot_values': list([
+            'modules/common/timeout.ainl',
+            'as',
+            'timeout',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'bare',
+              'raw': 'include',
+              'span': dict({
+                'col_end': 7,
+                'col_start': 0,
+                'line': 2,
+              }),
+              'value': 'include',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 8,
+                'col_start': 7,
+                'line': 2,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'string',
+              'raw': '"modules/common/timeout.ainl"',
+              'span': dict({
+                'col_end': 37,
+                'col_start': 8,
+                'line': 2,
+              }),
+              'value': 'modules/common/timeout.ainl',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 38,
+                'col_start': 37,
+                'line': 2,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'as',
+              'span': dict({
+                'col_end': 40,
+                'col_start': 38,
+                'line': 2,
+              }),
+              'value': 'as',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 41,
+                'col_start': 40,
+                'line': 2,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'timeout',
+              'span': dict({
+                'col_end': 48,
+                'col_start': 41,
+                'line': 2,
+              }),
+              'value': 'timeout',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 3,
+          'op_canonical': '',
+          'op_value': '',
+          'original_line': '',
+          'slot_kinds': list([
+          ]),
+          'slot_values': list([
+          ]),
+          'tokens': list([
+          ]),
+        }),
+        dict({
+          'lineno': 4,
+          'op_canonical': 'L1:',
+          'op_value': 'L1:',
+          'original_line': 'L1:',
+          'slot_kinds': list([
+          ]),
+          'slot_values': list([
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'bare',
+              'raw': 'L1:',
+              'span': dict({
+                'col_end': 3,
+                'col_start': 0,
+                'line': 4,
+              }),
+              'value': 'L1:',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 5,
+          'op_canonical': 'Call',
+          'op_value': 'Call',
+          'original_line': '  Call retry/ENTRY ->v',
+          'slot_kinds': list([
+            'bare',
+            'bare',
+          ]),
+          'slot_values': list([
+            'retry/ENTRY',
+            '->v',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'ws',
+              'raw': '  ',
+              'span': dict({
+                'col_end': 2,
+                'col_start': 0,
+                'line': 5,
+              }),
+              'value': '  ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'Call',
+              'span': dict({
+                'col_end': 6,
+                'col_start': 2,
+                'line': 5,
+              }),
+              'value': 'Call',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 7,
+                'col_start': 6,
+                'line': 5,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'retry/ENTRY',
+              'span': dict({
+                'col_end': 18,
+                'col_start': 7,
+                'line': 5,
+              }),
+              'value': 'retry/ENTRY',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 19,
+                'col_start': 18,
+                'line': 5,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': '->v',
+              'span': dict({
+                'col_end': 22,
+                'col_start': 19,
+                'line': 5,
+              }),
+              'value': '->v',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 6,
+          'op_canonical': 'Set',
+          'op_value': 'Set',
+          'original_line': '  Set cond true',
+          'slot_kinds': list([
+            'bare',
+            'bare',
+          ]),
+          'slot_values': list([
+            'cond',
+            'true',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'ws',
+              'raw': '  ',
+              'span': dict({
+                'col_end': 2,
+                'col_start': 0,
+                'line': 6,
+              }),
+              'value': '  ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'Set',
+              'span': dict({
+                'col_end': 5,
+                'col_start': 2,
+                'line': 6,
+              }),
+              'value': 'Set',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 6,
+                'col_start': 5,
+                'line': 6,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'cond',
+              'span': dict({
+                'col_end': 10,
+                'col_start': 6,
+                'line': 6,
+              }),
+              'value': 'cond',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 11,
+                'col_start': 10,
+                'line': 6,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'true',
+              'span': dict({
+                'col_end': 15,
+                'col_start': 11,
+                'line': 6,
+              }),
+              'value': 'true',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 7,
+          'op_canonical': 'If',
+          'op_value': 'If',
+          'original_line': '  If cond ->L2 ->L3',
+          'slot_kinds': list([
+            'bare',
+            'bare',
+            'bare',
+          ]),
+          'slot_values': list([
+            'cond',
+            '->L2',
+            '->L3',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'ws',
+              'raw': '  ',
+              'span': dict({
+                'col_end': 2,
+                'col_start': 0,
+                'line': 7,
+              }),
+              'value': '  ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'If',
+              'span': dict({
+                'col_end': 4,
+                'col_start': 2,
+                'line': 7,
+              }),
+              'value': 'If',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 5,
+                'col_start': 4,
+                'line': 7,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'cond',
+              'span': dict({
+                'col_end': 9,
+                'col_start': 5,
+                'line': 7,
+              }),
+              'value': 'cond',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 10,
+                'col_start': 9,
+                'line': 7,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': '->L2',
+              'span': dict({
+                'col_end': 14,
+                'col_start': 10,
+                'line': 7,
+              }),
+              'value': '->L2',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 15,
+                'col_start': 14,
+                'line': 7,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': '->L3',
+              'span': dict({
+                'col_end': 19,
+                'col_start': 15,
+                'line': 7,
+              }),
+              'value': '->L3',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 8,
+          'op_canonical': 'L2:',
+          'op_value': 'L2:',
+          'original_line': 'L2:',
+          'slot_kinds': list([
+          ]),
+          'slot_values': list([
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'bare',
+              'raw': 'L2:',
+              'span': dict({
+                'col_end': 3,
+                'col_start': 0,
+                'line': 8,
+              }),
+              'value': 'L2:',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 9,
+          'op_canonical': 'Call',
+          'op_value': 'Call',
+          'original_line': '  Call timeout/ENTRY ->t',
+          'slot_kinds': list([
+            'bare',
+            'bare',
+          ]),
+          'slot_values': list([
+            'timeout/ENTRY',
+            '->t',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'ws',
+              'raw': '  ',
+              'span': dict({
+                'col_end': 2,
+                'col_start': 0,
+                'line': 9,
+              }),
+              'value': '  ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'Call',
+              'span': dict({
+                'col_end': 6,
+                'col_start': 2,
+                'line': 9,
+              }),
+              'value': 'Call',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 7,
+                'col_start': 6,
+                'line': 9,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'timeout/ENTRY',
+              'span': dict({
+                'col_end': 20,
+                'col_start': 7,
+                'line': 9,
+              }),
+              'value': 'timeout/ENTRY',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 21,
+                'col_start': 20,
+                'line': 9,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': '->t',
+              'span': dict({
+                'col_end': 24,
+                'col_start': 21,
+                'line': 9,
+              }),
+              'value': '->t',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 10,
+          'op_canonical': 'J',
+          'op_value': 'J',
+          'original_line': '  J t',
+          'slot_kinds': list([
+            'bare',
+          ]),
+          'slot_values': list([
+            't',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'ws',
+              'raw': '  ',
+              'span': dict({
+                'col_end': 2,
+                'col_start': 0,
+                'line': 10,
+              }),
+              'value': '  ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'J',
+              'span': dict({
+                'col_end': 3,
+                'col_start': 2,
+                'line': 10,
+              }),
+              'value': 'J',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 4,
+                'col_start': 3,
+                'line': 10,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 't',
+              'span': dict({
+                'col_end': 5,
+                'col_start': 4,
+                'line': 10,
+              }),
+              'value': 't',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 11,
+          'op_canonical': 'L3:',
+          'op_value': 'L3:',
+          'original_line': 'L3:',
+          'slot_kinds': list([
+          ]),
+          'slot_values': list([
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'bare',
+              'raw': 'L3:',
+              'span': dict({
+                'col_end': 3,
+                'col_start': 0,
+                'line': 11,
+              }),
+              'value': 'L3:',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 12,
+          'op_canonical': 'J',
+          'op_value': 'J',
+          'original_line': '  J v',
+          'slot_kinds': list([
+            'bare',
+          ]),
+          'slot_values': list([
+            'v',
+          ]),
+          'tokens': list([
+            dict({
+              'kind': 'ws',
+              'raw': '  ',
+              'span': dict({
+                'col_end': 2,
+                'col_start': 0,
+                'line': 12,
+              }),
+              'value': '  ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'J',
+              'span': dict({
+                'col_end': 3,
+                'col_start': 2,
+                'line': 12,
+              }),
+              'value': 'J',
+            }),
+            dict({
+              'kind': 'ws',
+              'raw': ' ',
+              'span': dict({
+                'col_end': 4,
+                'col_start': 3,
+                'line': 12,
+              }),
+              'value': ' ',
+            }),
+            dict({
+              'kind': 'bare',
+              'raw': 'v',
+              'span': dict({
+                'col_end': 5,
+                'col_start': 4,
+                'line': 12,
+              }),
+              'value': 'v',
+            }),
+          ]),
+        }),
+        dict({
+          'lineno': 13,
+          'op_canonical': '',
+          'op_value': '',
+          'original_line': '',
+          'slot_kinds': list([
+          ]),
+          'slot_values': list([
+          ]),
+          'tokens': list([
+          ]),
+        }),
+      ]),
+    }),
+    'deploy': dict({
+      'env_target': '',
+      'flags': list([
+      ]),
+      'strategy': 'rolling',
+    }),
+    'desc': dict({
+      'endpoints': dict({
+      }),
+      'types': dict({
+      }),
+    }),
+    'diagnostics': list([
+    ]),
+    'emit_capabilities': dict({
+      'needs_cron': False,
+      'needs_langgraph': False,
+      'needs_mt5': False,
+      'needs_prisma': False,
+      'needs_python_api': True,
+      'needs_react_ts': False,
+      'needs_scraper': False,
+      'needs_temporal': False,
+    }),
+    'errors': list([
+    ]),
+    'graph_schema_version': '1.0',
+    'graph_semantic_checksum': 'sha256:2d5729c189251dc777847203cda58b02e101b0b25b53355a1f037aab3431e29e',
+    'ir_version': '1.0.0',
+    'labels': dict({
+      '1': dict({
+        'edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'next',
+            'to': 'n2',
+            'to_kind': 'node',
+          }),
+          dict({
+            'from': 'n2',
+            'port': 'next',
+            'to': 'n3',
+            'to_kind': 'node',
+          }),
+          dict({
+            'from': 'n3',
+            'port': 'then',
+            'to': '2',
+            'to_kind': 'label',
+          }),
+          dict({
+            'from': 'n3',
+            'port': 'else',
+            'to': '3',
+            'to_kind': 'label',
+          }),
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+            'call',
+            'control',
+          ]),
+          'reads': list([
+            'cond',
+          ]),
+          'writes': list([
+            'cond',
+            'v',
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+        ]),
+        'id_hash': 'sha256:5104476ecf9a8138be070fb97e9b59928384abce0538c749c183c351b818de09',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'label': 'retry/ENTRY',
+              'lineno': 5,
+              'op': 'Call',
+              'out': 'v',
+            }),
+            dict({
+              'lineno': 6,
+              'name': 'cond',
+              'op': 'Set',
+              'ref': 'true',
+            }),
+            dict({
+              'cond': 'cond',
+              'else': '3',
+              'lineno': 7,
+              'op': 'If',
+              'then': '2',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'label': 'retry/ENTRY',
+              'lineno': 5,
+              'op': 'Call',
+              'out': 'v',
+            }),
+            'effect': 'io',
+            'effect_kinds': list([
+              'call',
+            ]),
+            'effect_tier': 'io-write',
+            'hash': 'sha256:7e507398b727b98ffc314f6ca0425d64829e85b5871910e2ff0407788f64e2f7',
+            'id': 'n1',
+            'lineno': 5,
+            'op': 'Call',
+            'reads': list([
+            ]),
+            'writes': list([
+              'v',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'lineno': 6,
+              'name': 'cond',
+              'op': 'Set',
+              'ref': 'true',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:83ffbc6eb0f2c301c6d9a40c1591b9ebae50752353e39e7461b1ed59a0518191',
+            'id': 'n2',
+            'lineno': 6,
+            'op': 'Set',
+            'reads': list([
+            ]),
+            'writes': list([
+              'cond',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'cond': 'cond',
+              'else': '3',
+              'lineno': 7,
+              'op': 'If',
+              'then': '2',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+              'control',
+            ]),
+            'effect_tier': 'control',
+            'hash': 'sha256:fbb260c3c671e989be72e7aa2075030ae6f0ca7fac91756de1eec25ce25e9532',
+            'id': 'n3',
+            'lineno': 7,
+            'op': 'If',
+            'reads': list([
+              'cond',
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      '2': dict({
+        'edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'next',
+            'to': 'n2',
+            'to_kind': 'node',
+          }),
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+            'call',
+          ]),
+          'reads': list([
+            't',
+          ]),
+          'writes': list([
+            't',
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n2',
+            'var': 't',
+          }),
+        ]),
+        'id_hash': 'sha256:b4a49254b75f85723608905561adfee86855bbd6429cea9d8cc9d67fb432009d',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'label': 'timeout/ENTRY',
+              'lineno': 9,
+              'op': 'Call',
+              'out': 't',
+            }),
+            dict({
+              'lineno': 10,
+              'op': 'J',
+              'var': 't',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'label': 'timeout/ENTRY',
+              'lineno': 9,
+              'op': 'Call',
+              'out': 't',
+            }),
+            'effect': 'io',
+            'effect_kinds': list([
+              'call',
+            ]),
+            'effect_tier': 'io-write',
+            'hash': 'sha256:be004c3f25f6b80f56f0c43949614e0499867c5a93bcfce6e8ab14672ea03aae',
+            'id': 'n1',
+            'lineno': 9,
+            'op': 'Call',
+            'reads': list([
+            ]),
+            'writes': list([
+              't',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'lineno': 10,
+              'op': 'J',
+              'var': 't',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:f0e94ac41c6c368c99b5e06224990ce248f7522a0cf5ac0f640b064db062f918',
+            'id': 'n2',
+            'lineno': 10,
+            'op': 'J',
+            'reads': list([
+              't',
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      '3': dict({
+        'edges': list([
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+          ]),
+          'reads': list([
+            'v',
+          ]),
+          'writes': list([
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n1',
+            'var': 'v',
+          }),
+        ]),
+        'id_hash': 'sha256:57440861f9fb3b6b67176e5823e91e073eb2c1041cb94750d46fc18160f46546',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'lineno': 12,
+              'op': 'J',
+              'var': 'v',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'lineno': 12,
+              'op': 'J',
+              'var': 'v',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:4d4c1c7e1aefc1d0834386138d2a52ad8f2d0c568fdbd4c4e59289917695f294',
+            'id': 'n1',
+            'lineno': 12,
+            'op': 'J',
+            'reads': list([
+              'v',
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'retry/ENTRY': dict({
+        'edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'next',
+            'to': 'n2',
+            'to_kind': 'node',
+          }),
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+            'compute',
+          ]),
+          'reads': list([
+            'x',
+          ]),
+          'writes': list([
+            'x',
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n2',
+            'var': 'x',
+          }),
+        ]),
+        'id_hash': 'sha256:c26d1ac2a791c64132d16d541083713047c37dd917a484c9cf85a6f614d034e0',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'adapter': 'core.ADD',
+              'args': list([
+                '1',
+              ]),
+              'entity': '1',
+              'fields': '1',
+              'lineno': 4,
+              'op': 'R',
+              'out': 'x',
+              'raw': list([
+                'core.ADD',
+                '1',
+                '1',
+                '->x',
+              ]),
+              'req_op': 'ADD',
+              'src': 'core',
+              'target': '1',
+            }),
+            dict({
+              'lineno': 5,
+              'op': 'J',
+              'var': 'x',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'adapter': 'core.ADD',
+              'args': list([
+                '1',
+              ]),
+              'entity': '1',
+              'fields': '1',
+              'lineno': 4,
+              'op': 'R',
+              'out': 'x',
+              'raw': list([
+                'core.ADD',
+                '1',
+                '1',
+                '->x',
+              ]),
+              'req_op': 'ADD',
+              'src': 'core',
+              'target': '1',
+            }),
+            'effect': 'io',
+            'effect_kinds': list([
+              'compute',
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:baa88cc63b2eaa08479978f7e9c22dd55838947243a5444058e8b6ae6a04b302',
+            'id': 'n1',
+            'lineno': 4,
+            'op': 'R',
+            'reads': list([
+            ]),
+            'writes': list([
+              'x',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'lineno': 5,
+              'op': 'J',
+              'var': 'x',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:062d0cf16df20aa05611b0dba7a76a8075edb76343e7da8b055baa3d572f81c0',
+            'id': 'n2',
+            'lineno': 5,
+            'op': 'J',
+            'reads': list([
+              'x',
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'retry/EXIT_FAIL': dict({
+        'edges': list([
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+          ]),
+          'reads': list([
+          ]),
+          'writes': list([
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n1',
+            'var': 'err',
+          }),
+        ]),
+        'id_hash': 'sha256:d855ba2a958c6f009e82856a1ed58340e86e05dd2c5aa7ae371d6d2232744f96',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'lineno': 9,
+              'op': 'J',
+              'var': 'err',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'lineno': 9,
+              'op': 'J',
+              'var': 'err',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:c8bd593b1e64bb13004e6531aa72a074851cbe495e191e7028185b8a87782335',
+            'id': 'n1',
+            'lineno': 9,
+            'op': 'J',
+            'reads': list([
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'retry/EXIT_OK': dict({
+        'edges': list([
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+          ]),
+          'reads': list([
+          ]),
+          'writes': list([
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n1',
+            'var': 'ok',
+          }),
+        ]),
+        'id_hash': 'sha256:3dcd054a2acf9fb57d79155ac93631705ce3be23877a70e516eb7fe6b8fd3a43',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'lineno': 7,
+              'op': 'J',
+              'var': 'ok',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'lineno': 7,
+              'op': 'J',
+              'var': 'ok',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:1b1552f99f60997246676657fc128f27de602b9fc730ee5083de27e727b1a636',
+            'id': 'n1',
+            'lineno': 7,
+            'op': 'J',
+            'reads': list([
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'timeout/ENTRY': dict({
+        'edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'next',
+            'to': 'n2',
+            'to_kind': 'node',
+          }),
+          dict({
+            'from': 'n2',
+            'port': 'next',
+            'to': 'n3',
+            'to_kind': 'node',
+          }),
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+            'call',
+            'control',
+          ]),
+          'reads': list([
+            'work_out',
+          ]),
+          'writes': list([
+            'slept',
+            'work_out',
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n3',
+            'var': 'work_out',
+          }),
+        ]),
+        'id_hash': 'sha256:09ea496da61c1dea4ff9d8cece0680573e1b9a3c20c5b494897cdcf2c59dc529',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'adapter': 'core.SLEEP',
+              'args': list([
+              ]),
+              'entity': '1',
+              'fields': '*',
+              'lineno': 21,
+              'op': 'R',
+              'out': 'slept',
+              'raw': list([
+                'core.SLEEP',
+                '1',
+                '->slept',
+              ]),
+              'req_op': 'SLEEP',
+              'src': 'core',
+              'target': '1',
+            }),
+            dict({
+              'label': 'timeout/WORK',
+              'lineno': 22,
+              'op': 'Call',
+              'out': 'work_out',
+            }),
+            dict({
+              'lineno': 23,
+              'op': 'J',
+              'var': 'work_out',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'adapter': 'core.SLEEP',
+              'args': list([
+              ]),
+              'entity': '1',
+              'fields': '*',
+              'lineno': 21,
+              'op': 'R',
+              'out': 'slept',
+              'raw': list([
+                'core.SLEEP',
+                '1',
+                '->slept',
+              ]),
+              'req_op': 'SLEEP',
+              'src': 'core',
+              'target': '1',
+            }),
+            'effect': 'io',
+            'effect_kinds': list([
+              'control',
+            ]),
+            'effect_tier': 'control',
+            'hash': 'sha256:2ee76f4af94625f160784dac885c3aa66db7b186a6eb60c79d34d2309add924d',
+            'id': 'n1',
+            'lineno': 21,
+            'op': 'R',
+            'reads': list([
+            ]),
+            'writes': list([
+              'slept',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'label': 'timeout/WORK',
+              'lineno': 22,
+              'op': 'Call',
+              'out': 'work_out',
+            }),
+            'effect': 'io',
+            'effect_kinds': list([
+              'call',
+            ]),
+            'effect_tier': 'io-write',
+            'hash': 'sha256:fd02cdedd7eb1efb7d5d8d57fb6357f582c687da4784481179cc071d8bae07e4',
+            'id': 'n2',
+            'lineno': 22,
+            'op': 'Call',
+            'reads': list([
+            ]),
+            'writes': list([
+              'work_out',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'lineno': 23,
+              'op': 'J',
+              'var': 'work_out',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:7e717789bb2e75745bfa989032618ccd666682f1b98c618b5a5cf1fc597f14fe',
+            'id': 'n3',
+            'lineno': 23,
+            'op': 'J',
+            'reads': list([
+              'work_out',
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'timeout/EXIT_OK': dict({
+        'edges': list([
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+          ]),
+          'reads': list([
+          ]),
+          'writes': list([
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n1',
+            'var': 'ok',
+          }),
+        ]),
+        'id_hash': 'sha256:89f7fe1747802cb1553d0ccd10aaa5fe7604a130e092f5b50215464dc008b457',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'lineno': 34,
+              'op': 'J',
+              'var': 'ok',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'lineno': 34,
+              'op': 'J',
+              'var': 'ok',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:4c5fb2e663383d9cd712b5907d805f29cb3c674a7126c89250c428eaf184fcae',
+            'id': 'n1',
+            'lineno': 34,
+            'op': 'J',
+            'reads': list([
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'timeout/EXIT_TIMEOUT': dict({
+        'edges': list([
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+          ]),
+          'reads': list([
+          ]),
+          'writes': list([
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n1',
+            'var': 'timeout',
+          }),
+        ]),
+        'id_hash': 'sha256:62d7c81ebd941bd31b2c70f136a77fcec21d74192f18bd5440755895430dd0d8',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'lineno': 37,
+              'op': 'J',
+              'var': 'timeout',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'lineno': 37,
+              'op': 'J',
+              'var': 'timeout',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:41285d402f9cbe448baab1850de80b19314acaf69d7fc78f400ea4b8fddbd6e0',
+            'id': 'n1',
+            'lineno': 37,
+            'op': 'J',
+            'reads': list([
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'timeout/TIMEOUT': dict({
+        'edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'next',
+            'to': 'n2',
+            'to_kind': 'node',
+          }),
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+            'compute',
+          ]),
+          'reads': list([
+            'error',
+          ]),
+          'writes': list([
+            'error',
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n2',
+            'var': 'error',
+          }),
+        ]),
+        'id_hash': 'sha256:8cc8dccdfacc9e6b44c05d49792de25d22b48d0f51e819d89c914e4c38e8f9af',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'adapter': 'core.ECHO',
+              'args': list([
+              ]),
+              'entity': 'timeout',
+              'fields': '*',
+              'lineno': 30,
+              'op': 'R',
+              'out': 'error',
+              'raw': list([
+                'core.ECHO',
+                'timeout',
+                '->error',
+              ]),
+              'req_op': 'ECHO',
+              'src': 'core',
+              'target': 'timeout',
+            }),
+            dict({
+              'lineno': 31,
+              'op': 'J',
+              'var': 'error',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'adapter': 'core.ECHO',
+              'args': list([
+              ]),
+              'entity': 'timeout',
+              'fields': '*',
+              'lineno': 30,
+              'op': 'R',
+              'out': 'error',
+              'raw': list([
+                'core.ECHO',
+                'timeout',
+                '->error',
+              ]),
+              'req_op': 'ECHO',
+              'src': 'core',
+              'target': 'timeout',
+            }),
+            'effect': 'io',
+            'effect_kinds': list([
+              'compute',
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:5e55f7b3aa15be77db1c32a47a0cca64e0ebb769ddfc10161e180dec48b93927',
+            'id': 'n1',
+            'lineno': 30,
+            'op': 'R',
+            'reads': list([
+            ]),
+            'writes': list([
+              'error',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'lineno': 31,
+              'op': 'J',
+              'var': 'error',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:e40567edf654a0ab8dd9a258786b01f7ff5cfd325e4c5a908c53145e42a9c33e',
+            'id': 'n2',
+            'lineno': 31,
+            'op': 'J',
+            'reads': list([
+              'error',
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+      'timeout/WORK': dict({
+        'edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'next',
+            'to': 'n2',
+            'to_kind': 'node',
+          }),
+        ]),
+        'effect_summary': dict({
+          'effects': list([
+            'compute',
+          ]),
+          'reads': list([
+            'placeholder',
+          ]),
+          'writes': list([
+            'placeholder',
+          ]),
+        }),
+        'entry': 'n1',
+        'exits': list([
+          dict({
+            'node': 'n2',
+            'var': 'placeholder',
+          }),
+        ]),
+        'id_hash': 'sha256:e5b632a7276127d773a8fcbf635ca5560c184fd83ee1bf72e5f931248c7a349c',
+        'legacy': dict({
+          'steps': list([
+            dict({
+              'adapter': 'core.ADD',
+              'args': list([
+                '0',
+              ]),
+              'entity': '0',
+              'fields': '0',
+              'lineno': 26,
+              'op': 'R',
+              'out': 'placeholder',
+              'raw': list([
+                'core.ADD',
+                '0',
+                '0',
+                '->placeholder',
+              ]),
+              'req_op': 'ADD',
+              'src': 'core',
+              'target': '0',
+            }),
+            dict({
+              'lineno': 27,
+              'op': 'J',
+              'var': 'placeholder',
+            }),
+          ]),
+        }),
+        'nodes': list([
+          dict({
+            'data': dict({
+              'adapter': 'core.ADD',
+              'args': list([
+                '0',
+              ]),
+              'entity': '0',
+              'fields': '0',
+              'lineno': 26,
+              'op': 'R',
+              'out': 'placeholder',
+              'raw': list([
+                'core.ADD',
+                '0',
+                '0',
+                '->placeholder',
+              ]),
+              'req_op': 'ADD',
+              'src': 'core',
+              'target': '0',
+            }),
+            'effect': 'io',
+            'effect_kinds': list([
+              'compute',
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:7840b46c2d75b3dd2e38d35ee59b08dde6cdc80b1508bb4ad77118e1b53555bf',
+            'id': 'n1',
+            'lineno': 26,
+            'op': 'R',
+            'reads': list([
+            ]),
+            'writes': list([
+              'placeholder',
+            ]),
+          }),
+          dict({
+            'data': dict({
+              'lineno': 27,
+              'op': 'J',
+              'var': 'placeholder',
+            }),
+            'effect': 'pure',
+            'effect_kinds': list([
+            ]),
+            'effect_tier': 'pure',
+            'hash': 'sha256:19ab86d84a130265092bc3139e239d7585083985148f9c0ccc8d3bc9615c3408',
+            'id': 'n2',
+            'lineno': 27,
+            'op': 'J',
+            'reads': list([
+              'placeholder',
+            ]),
+            'writes': list([
+            ]),
+          }),
+        ]),
+        'slots': list([
+        ]),
+      }),
+    }),
+    'limits': dict({
+      'per_path': dict({
+      }),
+      'per_tenant': 0,
+    }),
+    'meta': list([
+    ]),
+    'observability': dict({
+      'metrics': list([
+      ]),
+      'trace': False,
+    }),
+    'rag': dict({
+      'augment': dict({
+      }),
+      'chunking': dict({
+      }),
+      'embeddings': dict({
+      }),
+      'generate': dict({
+      }),
+      'indexes': dict({
+      }),
+      'pipelines': dict({
+      }),
+      'retrievers': dict({
+      }),
+      'sources': dict({
+      }),
+      'stores': dict({
+      }),
+    }),
+    'required_emit_targets': dict({
+      'full_multitarget': list([
+        'react_ts',
+        'python_api',
+        'prisma',
+        'mt5',
+        'scraper',
+        'cron',
+        'langgraph',
+        'temporal',
+      ]),
+      'minimal_emit': list([
+        'python_api',
+      ]),
+    }),
+    'roles': list([
+    ]),
+    'runbooks': dict({
+    }),
+    'runtime_policy': dict({
+      'execution_mode': 'graph-preferred',
+      'unknown_op_policy': 'skip',
+    }),
+    'services': dict({
+    }),
+    'source': dict({
+      'lines': list([
+        'include "modules/common/retry.ainl" as retry',
+        'include "modules/common/timeout.ainl" as timeout',
+        '',
+        'L1:',
+        '  Call retry/ENTRY ->v',
+        '  Set cond true',
+        '  If cond ->L2 ->L3',
+        'L2:',
+        '  Call timeout/ENTRY ->t',
+        '  J t',
+        'L3:',
+        '  J v',
+        '',
+      ]),
+      'text': '''
+        include "modules/common/retry.ainl" as retry
+        include "modules/common/timeout.ainl" as timeout
+        
+        L1:
+          Call retry/ENTRY ->v
+          Set cond true
+          If cond ->L2 ->L3
+        L2:
+          Call timeout/ENTRY ->t
+          J t
+        L3:
+          J v
+  
+      ''',
+    }),
+    'stats': dict({
+      'lines': 11,
+      'ops': 9,
     }),
     'tests': list([
     ]),
@@ -3447,167 +4579,6 @@
     ]),
   })
 # ---
-# name: test_full_matrix[runtime_parity-golden_path6]
-  dict({
-    'adapters': list([
-      dict({
-        'adapter': 'core',
-        'trace': list([
-          dict({
-            'edge_taken': dict({
-              'port': 'next',
-              'to': 'n2',
-              'to_kind': 'node',
-            }),
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n1',
-            'op': 'R',
-            'out': 5,
-            'port_taken': 'next',
-            'step': 0,
-          }),
-          dict({
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n2',
-            'op': 'J',
-            'out': 5,
-            'step': 1,
-          }),
-        ]),
-      }),
-      dict({
-        'adapter': 'memory',
-        'trace': list([
-          dict({
-            'edge_taken': dict({
-              'port': 'next',
-              'to': 'n2',
-              'to_kind': 'node',
-            }),
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n1',
-            'op': 'R',
-            'out': 5,
-            'port_taken': 'next',
-            'step': 0,
-          }),
-          dict({
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n2',
-            'op': 'J',
-            'out': 5,
-            'step': 1,
-          }),
-        ]),
-      }),
-      dict({
-        'adapter': 'sqlite',
-        'trace': list([
-          dict({
-            'edge_taken': dict({
-              'port': 'next',
-              'to': 'n2',
-              'to_kind': 'node',
-            }),
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n1',
-            'op': 'R',
-            'out': 5,
-            'port_taken': 'next',
-            'step': 0,
-          }),
-          dict({
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n2',
-            'op': 'J',
-            'out': 5,
-            'step': 1,
-          }),
-        ]),
-      }),
-      dict({
-        'adapter': 'fs',
-        'trace': list([
-          dict({
-            'edge_taken': dict({
-              'port': 'next',
-              'to': 'n2',
-              'to_kind': 'node',
-            }),
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n1',
-            'op': 'R',
-            'out': 5,
-            'port_taken': 'next',
-            'step': 0,
-          }),
-          dict({
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n2',
-            'op': 'J',
-            'out': 5,
-            'step': 1,
-          }),
-        ]),
-      }),
-      dict({
-        'adapter': 'tools',
-        'trace': list([
-          dict({
-            'edge_taken': dict({
-              'port': 'next',
-              'to': 'n2',
-              'to_kind': 'node',
-            }),
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n1',
-            'op': 'R',
-            'out': 5,
-            'port_taken': 'next',
-            'step': 0,
-          }),
-          dict({
-            'frame_keys': list([
-              'x',
-            ]),
-            'label': '1',
-            'node_id': 'n2',
-            'op': 'J',
-            'out': 5,
-            'step': 1,
-          }),
-        ]),
-      }),
-    ]),
-  })
-# ---
 # name: test_full_matrix[runtime_parity-golden_path8]
   dict({
     'adapters': list([
@@ -3769,16 +4740,1124 @@
     ]),
   })
 # ---
-# name: test_full_matrix[strict_validation-golden_path5]
+# name: test_full_matrix[runtime_parity-golden_path9]
   dict({
-    'errors': list([
-      'Endpoint /x G label 1: must have exactly one J (has 2)',
-      "Targeted label '1' must contain exactly one J (has 2)",
-      "Label '1': edge from='n1' port='next' invalid for op 'J' (allowed: [])",
-      "Label '1': node 'n1' reads 'a' which may be undefined on this path (if this is a string literal in strict mode, quote it explicitly)",
-      "Label '1': node 'n2' reads 'b' which may be undefined on this path (if this is a string literal in strict mode, quote it explicitly)",
-    ]),
-    'structured_diagnostics': list([
+    'adapters': list([
+      dict({
+        'adapter': 'core',
+        'trace': list([
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 2,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n2',
+            'op': 'Set',
+            'out': True,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': None,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n2',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n3',
+            'op': 'J',
+            'out': 0,
+            'step': 2,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'branch': dict({
+              'condition': True,
+              'port': 'then',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n3',
+            'op': 'If',
+            'out': 0,
+            'step': 2,
+          }),
+        ]),
+      }),
+      dict({
+        'adapter': 'memory',
+        'trace': list([
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 2,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n2',
+            'op': 'Set',
+            'out': True,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': None,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n2',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n3',
+            'op': 'J',
+            'out': 0,
+            'step': 2,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'branch': dict({
+              'condition': True,
+              'port': 'then',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n3',
+            'op': 'If',
+            'out': 0,
+            'step': 2,
+          }),
+        ]),
+      }),
+      dict({
+        'adapter': 'sqlite',
+        'trace': list([
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 2,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n2',
+            'op': 'Set',
+            'out': True,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': None,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n2',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n3',
+            'op': 'J',
+            'out': 0,
+            'step': 2,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'branch': dict({
+              'condition': True,
+              'port': 'then',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n3',
+            'op': 'If',
+            'out': 0,
+            'step': 2,
+          }),
+        ]),
+      }),
+      dict({
+        'adapter': 'fs',
+        'trace': list([
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 2,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n2',
+            'op': 'Set',
+            'out': True,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': None,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n2',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n3',
+            'op': 'J',
+            'out': 0,
+            'step': 2,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'branch': dict({
+              'condition': True,
+              'port': 'then',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n3',
+            'op': 'If',
+            'out': 0,
+            'step': 2,
+          }),
+        ]),
+      }),
+      dict({
+        'adapter': 'tools',
+        'trace': list([
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              'x',
+            ]),
+            'label': 'retry/ENTRY',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 2,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 2,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'v',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n2',
+            'op': 'Set',
+            'out': True,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': None,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n1',
+            'op': 'R',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'x',
+            ]),
+            'label': 'timeout/WORK',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n3',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n2',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 1,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': 'timeout/ENTRY',
+            'node_id': 'n3',
+            'op': 'J',
+            'out': 0,
+            'step': 2,
+          }),
+          dict({
+            'edge_taken': dict({
+              'port': 'next',
+              'to': 'n2',
+              'to_kind': 'node',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n1',
+            'op': 'Call',
+            'out': 0,
+            'port_taken': 'next',
+            'step': 0,
+          }),
+          dict({
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '2',
+            'node_id': 'n2',
+            'op': 'J',
+            'out': 0,
+            'step': 1,
+          }),
+          dict({
+            'branch': dict({
+              'condition': True,
+              'port': 'then',
+            }),
+            'frame_keys': list([
+              '_call_result',
+              'cond',
+              'placeholder',
+              'slept',
+              't',
+              'v',
+              'work_out',
+              'x',
+            ]),
+            'label': '1',
+            'node_id': 'n3',
+            'op': 'If',
+            'out': 0,
+            'step': 2,
+          }),
+        ]),
+      }),
     ]),
   })
 # ---

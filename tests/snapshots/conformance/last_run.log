@@ -6,16 +6,11 @@ plugins: anyio-4.12.1, syrupy-5.1.0, xdist-3.8.0, hypothesis-6.151.9, langsmith-
 created: 12/12 workers
 12 workers [13 items]
 
-.....s......s                                                            [100%]
+.............                                                            [100%]
 =============================== warnings summary ===============================
 .venv-py310/lib/python3.10/site-packages/_hypothesis_pytestplugin.py:481: 12 warnings
   /Users/clawdbot/.openclaw/workspace/AI_Native_Lang/.venv-py310/lib/python3.10/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
     warnings.warn(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-SKIPPED [1] tests/conformance/test_full_matrix.py:189: strict-mode validation failed (skipping IR snapshot): /Users/clawdbot/.openclaw/workspace/AI_Native_Lang/tests/data/conformance/include_heavy.ainl
-Label '3': node 'n1' reads 'v' which may be undefined on this path (if this is a string literal in strict mode, quote it explicitly)
-SKIPPED [1] tests/conformance/test_full_matrix.py:233: strict-mode validation failed (skipping runtime parity): /Users/clawdbot/.openclaw/workspace/AI_Native_Lang/tests/data/conformance/include_heavy.ainl
-Label '3': node 'n1' reads 'v' which may be undefined on this path (if this is a string literal in strict mode, quote it explicitly)
-================== 11 passed, 2 skipped, 12 warnings in 1.60s ==================
+======================= 13 passed, 12 warnings in 2.15s ========================

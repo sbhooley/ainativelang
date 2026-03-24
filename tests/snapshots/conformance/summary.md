@@ -1,6 +1,6 @@
 # Conformance Summary
 
-- Passed: 11
-- Skipped: 2
+- Passed: 13
+- Skipped: 0
 - Failed: 0
 - Status: passing

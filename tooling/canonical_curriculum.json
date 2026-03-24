@@ -58,60 +58,66 @@
     },
     {
       "order": 10,
+      "path": "examples/cron/monitor_and_alert.ainl",
+      "primary_pattern": "cron_db_metric_branch",
+      "secondary_pattern": "scheduled_branch"
+    },
+    {
+      "order": 11,
       "path": "examples/status_branching.ainl",
       "primary_pattern": "status_branching",
       "secondary_pattern": "if_branching"
     },
     {
-      "order": 11,
+      "order": 12,
       "path": "examples/timeout_demo.ainl",
       "primary_pattern": "include_timeout_call",
       "secondary_pattern": "subgraph_entry"
     },
     {
-      "order": 12,
+      "order": 13,
       "path": "examples/timeout_memory_prune_demo.ainl",
       "primary_pattern": "timeout_memory_workflow",
       "secondary_pattern": "memory_put_list_prune"
     },
     {
-      "order": 13,
+      "order": 14,
       "path": "examples/hybrid/langchain_tool_demo.ainl",
       "primary_pattern": "langchain_tool_adapter",
       "secondary_pattern": "dotted_adapter_call"
     },
     {
-      "order": 14,
+      "order": 15,
       "path": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
       "primary_pattern": "langgraph_ainl_core_slice",
       "secondary_pattern": "metric_threshold_summary"
     },
     {
-      "order": 15,
+      "order": 16,
       "path": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
       "primary_pattern": "temporal_ainl_activity_slice",
       "secondary_pattern": "metric_threshold_summary"
     },
     {
-      "order": 16,
+      "order": 17,
       "path": "examples/hyperspace_demo.ainl",
       "primary_pattern": "hyperspace_multi_adapter_modules",
       "secondary_pattern": "includes_vector_tool_registry"
     },
     {
-      "order": 17,
+      "order": 18,
       "path": "examples/test_adapters_full.ainl",
       "primary_pattern": "vector_tool_registry_adapters",
       "secondary_pattern": "stringify_concat_summary"
     },
     {
-      "order": 18,
+      "order": 19,
       "path": "examples/test_nested.ainl",
       "primary_pattern": "nested_expr_arithmetic",
       "secondary_pattern": "core_mul_sub"
     },
     {
-      "order": 19,
+      "order": 20,
       "path": "examples/test_phase2_common_modules.ainl",
       "primary_pattern": "common_modules_guard_budget_reflect",
       "secondary_pattern": "sequential_module_calls"

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+import asyncio
+import concurrent.futures
 import importlib.util
 import sys
 from pathlib import Path
@@ -99,3 +101,54 @@ def test_temporal_activity_environment_runs_emitted_impl(tmp_path: Path):
     out = env.run(mod.run_ainl_core_activity_impl, {})
     assert out.get("ok") is True
     assert out.get("result") == 5
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("temporalio") is None,
+    reason="temporalio not installed (pip install -e '.[interop]' or '.[benchmark]')",
+)
+def test_temporal_emitted_workflow_execute_workflow_e2e(tmp_path: Path):
+    """Time-skipping env: run emitted workflow class (activity on thread pool)."""
+    from temporalio.testing import WorkflowEnvironment
+    from temporalio.worker import Worker
+
+    from scripts.emit_temporal import emit_temporal_pair
+
+    ir = _compile_hello_ir()
+    act_path, wf_path = emit_temporal_pair(ir, output_dir=tmp_path, source_stem="hello_twf_e2e")
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    tp = str(tmp_path.resolve())
+    if tp not in sys.path:
+        sys.path.insert(0, tp)
+
+    act_spec = importlib.util.spec_from_file_location("hello_twf_e2e_activities", act_path)
+    assert act_spec and act_spec.loader
+    act_mod = importlib.util.module_from_spec(act_spec)
+    act_spec.loader.exec_module(act_mod)  # type: ignore[union-attr]
+    wf_spec = importlib.util.spec_from_file_location("hello_twf_e2e_workflow", wf_path)
+    assert wf_spec and wf_spec.loader
+    wf_mod = importlib.util.module_from_spec(wf_spec)
+    wf_spec.loader.exec_module(wf_mod)  # type: ignore[union-attr]
+    wf_cls = getattr(wf_mod, "AinlHelloTwfE2eWorkflow")
+
+    async def _run() -> dict:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+            async with await WorkflowEnvironment.start_time_skipping() as env:
+                async with Worker(
+                    env.client,
+                    task_queue="test-ainl-hybrid-e2e",
+                    workflows=[wf_cls],
+                    activities=[act_mod.run_ainl_core_activity],
+                    activity_executor=ex,
+                ):
+                    return await env.client.execute_workflow(
+                        wf_cls.run,
+                        {},
+                        id="ainl-hybrid-wf-e2e",
+                        task_queue="test-ainl-hybrid-e2e",
+                    )
+
+    result = asyncio.run(_run())
+    assert result.get("ok") is True
+    assert result.get("result") == 5

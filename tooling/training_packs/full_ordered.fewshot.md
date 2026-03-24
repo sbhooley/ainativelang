@@ -131,3 +131,294 @@ L_noop:
   Set out "noop"
   J out
 ```
+
+## 10. `examples/cron/monitor_and_alert.ainl`
+- Primary: `cron_db_metric_branch`
+- Secondary: `scheduled_branch`
+
+```ainl
+S core cron
+Cr L_monitor "*/5 * * * *"   # every 5 minutes
+
+L_monitor:
+  R db.F Metric * ->metrics
+  If metrics ->L_alert ->L_ok
+
+L_alert:
+  R http.Post "https://hook.example.com/alert" metrics ->ack
+  J ack
+
+L_ok:
+  J metrics
+```
+
+## 11. `examples/status_branching.ainl`
+- Primary: `status_branching`
+- Secondary: `if_branching`
+
+```ainl
+L1:
+  Set status "ok"
+  If status=ok ->L2 ->L3
+L2:
+  Set out "ok"
+  J out
+L3:
+  Set out "alerted"
+  J out
+```
+
+## 12. `examples/timeout_demo.ainl`
+- Primary: `include_timeout_call`
+- Secondary: `subgraph_entry`
+
+```ainl
+# timeout_demo.ainl
+# Minimal include-based timeout demo using the strict-safe timeout starter module.
+
+include "modules/common/timeout.ainl" as timeout
+
+L1:
+  Call timeout/ENTRY ->out
+  J out
+```
+
+## 13. `examples/timeout_memory_prune_demo.ainl`
+- Primary: `timeout_memory_workflow`
+- Secondary: `memory_put_list_prune`
+
+```ainl
+# examples/timeout_memory_prune_demo.ainl
+# Strict-safe demo: timeout starter + workflow memory put/list/prune.
+# Good graph for visualizer PNG export, e.g.:
+#   ainl visualize examples/timeout_memory_prune_demo.ainl --png docs/assets/timeout_memory_prune_flow.png
+
+include "modules/common/timeout.ainl" as timeout
+
+L1:
+  Call timeout/ENTRY ->out
+  R core.parse "{\"source\":\"timeout_memory_demo\",\"confidence\":1.0,\"tags\":[\"demo\"],\"valid_at\":\"2026-01-01T00:00:00Z\"}" ->memory_meta
+  R core.parse "{\"tags_any\":[\"demo\"],\"source\":\"timeout_memory_demo\",\"limit\":10}" ->memory_filters
+  R core.parse "{\"step\":\"timeout_demo\"}" ->record_payload
+  R memory put "workflow" "demo_flow" "after_timeout" record_payload 3600 memory_meta ->_w
+  R memory list "workflow" "demo_flow" "after" "1970-01-01T00:00:00Z" memory_filters ->hist
+  R memory prune "workflow" ->_pr
+  J out
+```
+
+## 14. `examples/hybrid/langchain_tool_demo.ainl`
+- Primary: `langchain_tool_adapter`
+- Secondary: `dotted_adapter_call`
+
+```ainl
+# examples/hybrid/langchain_tool_demo.ainl
+# Hybrid LangChain interop: call a tool by name through the langchain_tool adapter.
+#
+# Run (from repo root):
+#   python3 -m cli.main run examples/hybrid/langchain_tool_demo.ainl --json \
+#     --enable-adapter langchain_tool
+#
+# Strict validate:
+#   python3 scripts/validate_ainl.py examples/hybrid/langchain_tool_demo.ainl --strict
+#
+# The bundled demo registers a stub for tool name "my_search_tool" inside the adapter.
+# For real LangChain tools, use register_langchain_tool("name", tool) in Python before run.
+
+L1:
+  # Dotted verb = tool name (strict allowlist includes MY_SEARCH_TOOL for this demo).
+  # Use a frame var for multi-word text (spaces break R-slot tokenization).
+  Set q "example query"
+  # Tokenization: use `->result` (no space) so the output slot is not parsed as extra args.
+  R langchain_tool.my_search_tool q ->result
+  J result
+```
+
+## 15. `examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl`
+- Primary: `langgraph_ainl_core_slice`
+- Secondary: `metric_threshold_summary`
+
+```ainl
+# examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl
+# Deterministic "monitoring slice": compare metric vs threshold and stringify for handoff.
+# Wrapped by monitoring_escalation_langgraph.py (emit with validate_ainl --emit langgraph).
+
+L1:
+  Set metric_value 42
+  Set threshold 40
+  R core.sub metric_value threshold ->diff
+  R core.stringify diff ->summary
+  J summary
+```
+
+## 16. `examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl`
+- Primary: `temporal_ainl_activity_slice`
+- Secondary: `metric_threshold_summary`
+
+```ainl
+# examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl
+# Compact deterministic slice: metric vs threshold → summary string.
+# Compiled IR is embedded in emitted *_activities.py for Temporal workers.
+
+L1:
+  Set metric_value 42
+  Set threshold 40
+  R core.sub metric_value threshold ->diff
+  R core.stringify diff ->summary
+  J summary
+```
+
+## 17. `examples/hyperspace_demo.ainl`
+- Primary: `hyperspace_multi_adapter_modules`
+- Secondary: `includes_vector_tool_registry`
+
+```ainl
+# examples/hyperspace_demo.ainl
+# Demo: common modules + local vector_memory / tool_registry (strict-safe dotted verbs).
+#
+# ainl-validate examples/hyperspace_demo.ainl --strict
+# ainl run examples/hyperspace_demo.ainl --enable-adapter vector_memory --enable-adapter tool_registry --log-trajectory --json
+# ainl-validate examples/hyperspace_demo.ainl --strict --emit hyperspace -o demo_agent.py
+# cd /path/to/AI_Native_Lang && AINL_LOG_TRAJECTORY=1 python3 demo_agent.py
+
+include "modules/common/guard.ainl" as guard
+include "modules/common/session_budget.ainl" as sb
+
+L1:
+  Set guard_skip false
+  Set guard_tokens_used 0
+  Set guard_max_tokens 500
+  Set guard_elapsed_sec 0
+  Set guard_max_duration_sec 3600
+  Set guard_condition_ok true
+  Set guard_audit false
+  Call guard/ENTRY ->g_out
+  Set budget_tokens_start 0
+  Set budget_tokens_delta 1
+  Set budget_max_tokens 10000
+  Set budget_time_start 0
+  Set budget_time_delta_sec 0
+  Set budget_max_duration_sec 86400
+  Set budget_log_memory false
+  Call sb/ENTRY ->b_out
+  R vector_memory.UPSERT "demo" "note" "n1" "hyperspace demo vector text" "{}" ->vm_u
+  R vector_memory.SEARCH "vector" 3 ->vm_hits
+  R tool_registry.REGISTER "demo_tool" "Hyperspace demo capability" "{}" ->tr_reg
+  R tool_registry.LIST "." ->tr_list
+  R tool_registry.DISCOVER "." ->tr_disc
+  R core.STRINGIFY vm_hits ->s_hits
+  R core.STRINGIFY tr_list ->s_list
+  R core.STRINGIFY tr_disc ->s_disc
+  R core.concat g_out " | " ->p1
+  R core.concat p1 b_out ->p2
+  R core.concat p2 " | " ->p3
+  R core.concat p3 s_hits ->p4
+  R core.concat p4 " | " ->p5
+  R core.concat p5 s_list ->p6
+  R core.concat p6 " | " ->p7
+  R core.concat p7 s_disc ->out
+  J out
+```
+
+## 18. `examples/test_adapters_full.ainl`
+- Primary: `vector_tool_registry_adapters`
+- Secondary: `stringify_concat_summary`
+
+```ainl
+# examples/test_adapters_full.ainl
+# Phase 3+ consolidation: vector_memory + tool_registry (strict-safe dotted R verbs).
+#
+# Validate:
+#   python3 scripts/validate_ainl.py examples/test_adapters_full.ainl --strict
+# Run:
+#   python3 -m cli.main run examples/test_adapters_full.ainl --json \
+#     --enable-adapter vector_memory --enable-adapter tool_registry
+# Emit Hyperspace wrapper:
+#   python3 scripts/validate_ainl.py examples/test_adapters_full.ainl --emit hyperspace -o /tmp/full_agent.py
+#   cd /path/to/AI_Native_Lang && AINL_LOG_TRAJECTORY=1 python3 /tmp/full_agent.py
+#   (writes test_adapters_full.trajectory.jsonl in cwd when env set)
+
+L1:
+  R vector_memory.UPSERT "demo_ns" "chunk" "doc1" "hello semantic adapter test" "{}" ->vm_u
+  R vector_memory.SEARCH "semantic" 5 ->vm_hits
+  R tool_registry.REGISTER "demo_tool" "Demonstration tool" "{}" ->tr_reg
+  R tool_registry.LIST "." ->tr_list
+  R tool_registry.DISCOVER "." ->tr_disc
+  R tool_registry.GET "demo_tool" ->tr_get
+  R core.STRINGIFY vm_hits ->s_hits
+  R core.STRINGIFY tr_list ->s_list
+  R core.STRINGIFY tr_disc ->s_disc
+  R core.STRINGIFY tr_get ->s_get
+  R core.concat s_hits "\n" ->a1
+  R core.concat a1 s_list ->a2
+  R core.concat a2 "\n" ->a3
+  R core.concat a3 s_disc ->a4
+  R core.concat a4 "\n" ->a5
+  R core.concat a5 s_get ->summary
+  J summary
+```
+
+## 19. `examples/test_nested.ainl`
+- Primary: `nested_expr_arithmetic`
+- Secondary: `core_mul_sub`
+
+```ainl
+L0: R core.mul (core.sub 100 85) 2 ->y J y
+```
+
+## 20. `examples/test_phase2_common_modules.ainl`
+- Primary: `common_modules_guard_budget_reflect`
+- Secondary: `sequential_module_calls`
+
+```ainl
+# examples/test_phase2_common_modules.ainl
+# Phase 2 smoke: guard, session_budget, reflect (strict-safe frame bindings).
+# Run: python3 scripts/validate_ainl.py --strict --strict-reachability examples/test_phase2_common_modules.ainl
+#      python3 -m cli.main run examples/test_phase2_common_modules.ainl --log-trajectory --json --enable-adapter api --enable-adapter memory
+
+include "modules/common/guard.ainl" as guard
+include "modules/common/session_budget.ainl" as sb
+include "modules/common/reflect.ainl" as reflect
+
+L1:
+  Set guard_skip false
+  Set guard_tokens_used 5
+  Set guard_max_tokens 100
+  Set guard_elapsed_sec 1
+  Set guard_max_duration_sec 3600
+  Set guard_condition_ok true
+  Set guard_audit false
+  Call guard/ENTRY ->g_out
+
+  Set budget_tokens_start 10
+  Set budget_tokens_delta 5
+  Set budget_max_tokens 100
+  Set budget_time_start 0
+  Set budget_time_delta_sec 1
+  Set budget_max_duration_sec 9999
+  Set budget_log_memory false
+  Call sb/ENTRY ->b_out
+
+  Set reflect_trajectory_text ""
+  Set reflect_traj_nonempty 0
+  Set reflect_has_fail_pattern false
+  Set reflect_abort false
+  Call reflect/ENTRY ->r_ok
+
+  Set reflect_trajectory_text "{\"outcome\": \"fail\"}"
+  Set reflect_traj_nonempty 1
+  Set reflect_has_fail_pattern true
+  Set reflect_abort false
+  Call reflect/ENTRY ->r_adj
+
+  Set guard_skip false
+  Set guard_tokens_used 500
+  Set guard_max_tokens 10
+  Set guard_elapsed_sec 1
+  Set guard_max_duration_sec 3600
+  Set guard_condition_ok true
+  Set guard_audit false
+  Call guard/ENTRY ->g_viol
+
+  R core.ECHO "done" ->done
+  J done
+```

@@ -28,6 +28,7 @@ from tooling.effect_analysis import (
     ADAPTER_EFFECT,
     annotate_labels_effect_analysis,
     dataflow_defined_before_use,
+    propagate_inter_label_entry_defs,
     strict_adapter_is_allowed,
     strict_adapter_key_for_step,
 )
@@ -2111,6 +2112,17 @@ class AICodeCompiler:
         These checks assume graphs were produced by _steps_to_graph_all() and are intended
         to enforce the spec's canonical graph invariants in strict mode (§3.5).
         """
+        endpoint_entry_defs: Dict[str, Set[str]] = {}
+        core0 = self.services.get("core") or {}
+        for _path, _method, ep in _iter_eps(core0.get("eps") or {}):
+            nl = self._norm_lid(ep.get("label_id", ""))
+            if nl and ep.get("return_var"):
+                endpoint_entry_defs.setdefault(nl, set()).add(ep["return_var"])
+        entry_var_map = propagate_inter_label_entry_defs(
+            self.labels,
+            norm_lid=self._norm_lid,
+            endpoint_entry_defs=endpoint_entry_defs or None,
+        )
         for lid, body in self.labels.items():
             nodes: List[Dict[str, Any]] = body.get("nodes") or []
             edges: List[Dict[str, Any]] = body.get("edges") or []
@@ -2242,16 +2254,12 @@ class AICodeCompiler:
                             f"Label {lid!r}: graph node {nid!r} is unreachable from entry {entry!r}"
                         )
 
-            # Optional strict: defined-before-use along success paths.
+            # Optional strict: defined-before-use along success paths (intra- + inter-label).
             if isinstance(entry, str) and entry in node_id_set:
-                entry_defined = None
-                if lid:
-                    core = self.services.get("core") or {}
-                    for _path, _method, ep in _iter_eps(core.get("eps") or {}):
-                        if self._norm_lid(ep.get("label_id", "")) == lid and ep.get("return_var"):
-                            entry_defined = entry_defined or set()
-                            entry_defined.add(ep["return_var"])
-                violations = dataflow_defined_before_use(nodes, edges, entry, entry_defined)
+                merged_entry = set(entry_var_map.get(str(lid), set()))
+                violations = dataflow_defined_before_use(
+                    nodes, edges, entry, merged_entry if merged_entry else None
+                )
                 for nid, var in violations:
                     msg = (
                         f"Label {lid!r}: node {nid!r} reads {var!r} which may be undefined on this path"
