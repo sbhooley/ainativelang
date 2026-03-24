@@ -5,7 +5,7 @@ Use this section to answer: what is AINL, what kind of system is it, and where s
 ## Best starting points
 
 - [`../WHAT_IS_AINL.md`](../WHAT_IS_AINL.md) — **canonical** primer (narrative + includes, visualizer, trajectory, Hyperspace, adapters). Root [`../../WHAT_IS_AINL.md`](../../WHAT_IS_AINL.md) is a stub pointing here.
-- [`../CHANGELOG.md`](../CHANGELOG.md) / [`../RELEASE_NOTES.md`](../RELEASE_NOTES.md) — **current release v1.2.5** (`pyproject.toml`, **`RUNTIME_VERSION`**)
+- [`../CHANGELOG.md`](../CHANGELOG.md) / [`../RELEASE_NOTES.md`](../RELEASE_NOTES.md) — **current release v1.2.6** (`pyproject.toml`, **`RUNTIME_VERSION`**)
 - [`../AUDIENCE_GUIDE.md`](../AUDIENCE_GUIDE.md) — choose the right entry path by audience
 - [`../architecture/ARCHITECTURE_OVERVIEW.md`](../architecture/ARCHITECTURE_OVERVIEW.md) — publication-ready system overview
 - [`../reference/GLOSSARY.md`](../reference/GLOSSARY.md) — shared terminology

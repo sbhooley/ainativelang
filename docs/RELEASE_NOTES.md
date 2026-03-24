@@ -1,5 +1,18 @@
 # Release notes
 
+## AINL v1.2.6 — install hardening + wheel/release gates + doctor diagnostics (2026-03-24)
+
+**PyPI / runtime:** **`ainl-lang` 1.2.6** — **`RUNTIME_VERSION` `1.2.6`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**).
+
+- **Wheel packaging fix:** setuptools package discovery now includes `runtime` and `runtime.*` so wheel installs ship `runtime.compat` and avoid wheel-only import failures.
+- **Sandbox/no-root install hardening:** `skills/ainl/install.sh` now uses safe pip fallback modes for restricted hosts (venv/default, then `--user`, then `--break-system-packages`), avoids `eval`, and applies idempotent PATH hints across common shell rc files.
+- **CI hardening:** new install smoke matrix (Linux + macOS, Python 3.10–3.13) validates default install, `--user`, and `--break-system-packages`, then runs `ainl --help`, `ainl-mcp --help`, and `python -m pip check`.
+- **Container smoke coverage:** CI now runs non-root install smoke inside `python:3.10/3.11/3.12/3.13-slim` containers to better match hosted Docker environments.
+- **Wheel integrity gate:** CI now builds wheel, installs wheel (non-editable), and verifies `import runtime.compat, adapters, cli.main`.
+- **Release automation:** new `Release Gates` workflow enforces wheel import smoke + `pip check` + `ainl install-mcp --host openclaw|zeroclaw --dry-run`.
+- **Runtime diagnostics:** new `ainl doctor` command verifies Python/import/PATH/MCP health in one command and reports actionable warnings/failures.
+- **Python 3.13 constraints:** add `constraints/py313-mcp.txt` as tested MCP stack pins for sandbox hosts, with a monthly `Constraints Health` workflow to catch dependency drift.
+
 ## AINL v1.2.5 — Hyperspace + hybrid interop + CI baselines (2026-03-23)
 
 **PyPI / runtime:** **`ainl-lang` 1.2.5** — **`RUNTIME_VERSION` `1.2.5`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** **`version` / `date-released`** aligned. Oversight / schema fixtures (e.g. **`tests/test_oversight.py`**, **`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`** samples) use **`1.2.5`**.

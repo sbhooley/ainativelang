@@ -33,7 +33,7 @@
 
 **AINL helps turn AI from "a smart conversation" into "a structured worker."**
 
-**Positioning (v1.2.5):** AINL is the system that lets you **author with an LLM once**, **validate with a compiler** (strict mode, reachability, single-exit discipline), and **emit production artifacts** for **LangGraph**, **Temporal**, **FastAPI**, **React**, **Hyperspace**, **Prisma**, **cron**, and more — while **deterministic execution**, **policy**, and **audit** (runner service, trajectory JSONL) stay on the AINL side. **Write in AINL → emit LangGraph or Temporal when you need their ecosystem today**; keep the `.ainl` source as the single source of truth ([`docs/HYBRID_GUIDE.md`](docs/HYBRID_GUIDE.md), [`docs/competitive/README.md`](docs/competitive/README.md)).
+**Positioning (v1.2.6):** AINL is the system that lets you **author with an LLM once**, **validate with a compiler** (strict mode, reachability, single-exit discipline), and **emit production artifacts** for **LangGraph**, **Temporal**, **FastAPI**, **React**, **Hyperspace**, **Prisma**, **cron**, and more — while **deterministic execution**, **policy**, and **audit** (runner service, trajectory JSONL) stay on the AINL side. **Write in AINL → emit LangGraph or Temporal when you need their ecosystem today**; keep the `.ainl` source as the single source of truth ([`docs/HYBRID_GUIDE.md`](docs/HYBRID_GUIDE.md), [`docs/competitive/README.md`](docs/competitive/README.md)).
 
 It is designed for teams building AI workflows that need multiple steps, state and memory, tool use, repeatable execution, validation and control, and lower dependence on long prompt loops.
 
@@ -90,7 +90,10 @@ ainl-validate examples/hello.ainl --strict --emit ir
 # 5. Run the core test suite
 python scripts/run_test_profiles.py --profile core
 
-# 6. Start the runner service (optional — for API/orchestrator integration)
+# 6. Run environment diagnostics (optional but recommended)
+ainl doctor
+
+# 7. Start the runner service (optional — for API/orchestrator integration)
 python scripts/runtime_runner_service.py
 # Then (in another shell): GET http://localhost:8770/capabilities
 #                          POST http://localhost:8770/run  {"code": "S app api /api\nL1:\nR core.ADD 2 3 ->sum\nJ sum"}
@@ -172,6 +175,15 @@ Details: **[`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md)** · s
 [OpenClaw](https://openclaw.ai/) uses **npm** + **`openclaw onboard`** for the host CLI. AINL is added as a **skill folder** (not via **`zeroclaw skills install`**): copy **[`skills/openclaw/`](skills/openclaw/)** to **`~/.openclaw/skills/`** or **`<workspace>/skills/`**, or install from **ClawHub** when the skill is listed there.
 
 **Bootstrap** (PyPI self-upgrade, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-mcp --host openclaw`** (use **`--dry-run`** / **`--verbose`** as needed). **`install.sh`** may run **`npm install -g openclaw@latest`** when npm is on PATH; set **`OPENCLAW_SKIP_NPM=1`** to skip.
+
+For restricted Python sandboxes (PEP 668 externally-managed environments, common on OpenClaw/Clawbot hosts), no-root install order is: **venv first**, then **`--user`**, then **`--break-system-packages`** only as a last resort. `skills/ainl/install.sh` runs a compatible fallback sequence automatically and continues with MCP setup once `ainl` is available.
+
+If you need a clean uninstall in managed sandboxes:
+
+```bash
+pip3 uninstall -y ainl-lang mcp aiohttp langgraph temporalio
+rm -rf /tmp/ainl-repo /data/.openclaw/workspace/skills/ainl /data/.local/lib/python3.13/site-packages/*ainl*
+```
 
 **Try in chat:** *“Import the morning briefing using AINL.”*
 
@@ -637,7 +649,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainl-lang` 1.2.5** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainl-lang` 1.2.6** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

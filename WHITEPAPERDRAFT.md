@@ -2,7 +2,7 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.2.5
+**Version:** 1.2.6
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `scripts/runtime_runner_service.py`
 **Reference ecosystem:** OpenClaw/NemoClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters, sandboxed operator deployments
@@ -17,7 +17,7 @@ AINL addresses an emerging systems problem in modern AI engineering: as large la
 
 The language has been exercised in production-style OpenClaw workflows involving email, calendar, social monitoring, database access, infrastructure checks, queues, WebAssembly modules, cache, memory, and autonomous operational monitors. This whitepaper describes AINL's architecture, semantics, strict-mode guarantees, operational role, benchmark posture, and relevance to AI-native systems design.
 
-### Positioning note (v1.2.5): portable authoring layer
+### Positioning note (v1.2.6): portable authoring layer
 
 AINL is positioned as the **authoring and validation layer** where an LLM (or human) produces a **compact program** that **compiles** to canonical IR; the **runtime** executes that graph deterministically (**compile-once / run-many**). When a deployment needs another ecosystem’s worker model today, validate can **emit** artifacts such as **LangGraph** or **Temporal** modules while keeping **`.ainl`** as the **single source of truth** — see **`docs/HYBRID_GUIDE.md`**, **`docs/competitive/README.md`**, and **`BENCHMARK.md`** § comparative methodology. MCP integration (OpenClaw / ZeroClaw / NemoClaw) is a first-class distribution path (`docs/OPENCLAW_INTEGRATION.md`, `docs/getting_started/HOST_MCP_INTEGRATIONS.md`).
 
@@ -301,7 +301,7 @@ deployment environments.
 
 See `docs/architecture/STATE_DISCIPLINE.md` for the full specification.
 
-**Optional access metadata (opt-in module):** `modules/common/access_aware_memory.ainl` provides **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and **`LACCESS_LIST_SAFE`** helpers that bump **`metadata.last_accessed`** (ISO timestamp) and **`metadata.access_count`** on selected **`memory.get`** / **`memory.list`** / **`memory.put`** paths. Plain adapter calls remain unchanged if you do not use the module. **`LACCESS_LIST_SAFE`** uses a **While** + index loop for graph-reliable list snapshots; **`LACCESS_LIST`** uses a **`ForEach`** surface form whose IR may not yet fully match **Loop** lowering—hosts that rely on **graph-preferred** execution should prefer **`LACCESS_LIST_SAFE`** until the compiler emits an equivalent **Loop**. Details: module header, `modules/common/README.md`, **`docs/RELEASE_NOTES.md`** (feature described under **v1.2.4**; **current release v1.2.5**).
+**Optional access metadata (opt-in module):** `modules/common/access_aware_memory.ainl` provides **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and **`LACCESS_LIST_SAFE`** helpers that bump **`metadata.last_accessed`** (ISO timestamp) and **`metadata.access_count`** on selected **`memory.get`** / **`memory.list`** / **`memory.put`** paths. Plain adapter calls remain unchanged if you do not use the module. **`LACCESS_LIST_SAFE`** uses a **While** + index loop for graph-reliable list snapshots; **`LACCESS_LIST`** uses a **`ForEach`** surface form whose IR may not yet fully match **Loop** lowering—hosts that rely on **graph-preferred** execution should prefer **`LACCESS_LIST_SAFE`** until the compiler emits an equivalent **Loop**. Details: module header, `modules/common/README.md`, **`docs/RELEASE_NOTES.md`** (feature described under **v1.2.4**; **current release v1.2.6**).
 
 ### 7.4 Narrative and integration references
 
