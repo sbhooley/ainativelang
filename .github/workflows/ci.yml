@@ -308,7 +308,6 @@ jobs:
 
       - name: Runtime benchmark compare (PR informational)
         if: (steps.baselines.outputs.runtime_ci == 'present' || steps.baselines.outputs.runtime == 'present') && github.event_name == 'pull_request'
-        continue-on-error: true
         run: |
           set -euo pipefail
           if [ "${{ steps.baselines.outputs.runtime_ci }}" = "present" ]; then
@@ -319,7 +318,7 @@ jobs:
           python scripts/compare_benchmark_json.py \
             --old-json "$OLD_JSON" \
             --new-json tooling/benchmark_runtime_ci.json \
-            --threshold "$BENCH_THRESHOLD"
+            --threshold "$BENCH_THRESHOLD" || true
 
       - name: Runtime baseline missing (informational)
         if: steps.baselines.outputs.runtime_ci != 'present' && steps.baselines.outputs.runtime != 'present'
