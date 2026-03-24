@@ -18,6 +18,7 @@ from runtime.adapters.replay import RecordingAdapterRegistry, ReplayAdapterRegis
 from runtime.adapters.sqlite import SimpleSqliteAdapter
 from runtime.adapters.tools import ToolBridgeAdapter
 from runtime.adapters.wasm import WasmAdapter
+from runtime.adapters.memory import MemoryAdapter
 from runtime.engine import RuntimeEngine
 
 
@@ -212,15 +213,13 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
             if not modules:
                 raise SystemExit("--enable-adapter wasm requires at least one --wasm-module name=path")
             reg.register("wasm", WasmAdapter(modules=modules, allowed_modules=(getattr(args, "wasm_allow_module", None) or None)))
-        if "memory" in enabled:
-            from runtime.adapters.memory import MemoryAdapter
-
-            mem_db = (
-                str(getattr(args, "memory_db", "") or "").strip()
-                or os.environ.get("AINL_MEMORY_DB")
-                or str(Path.home() / ".openclaw" / "ainl_memory.sqlite3")
-            )
-            reg.register("memory", MemoryAdapter(db_path=mem_db))
+    # Always register memory (used by record_decision includes)
+    mem_db = (
+        str(getattr(args, "memory_db", "") or "").strip()
+        or os.environ.get("AINL_MEMORY_DB")
+        or str(Path.home() / ".openclaw" / "ainl_memory.sqlite3")
+    )
+    reg.register("memory", MemoryAdapter(db_path=mem_db))
     if "vector_memory" in enabled:
         from adapters.vector_memory import VectorMemoryAdapter
 
