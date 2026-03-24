@@ -33,8 +33,6 @@
 
 **AINL helps turn AI from "a smart conversation" into "a structured worker."**
 
-**Positioning (v1.2.6):** AINL is the system that lets you **author with an LLM once**, **validate with a compiler** (strict mode, reachability, single-exit discipline), and **emit production artifacts** for **LangGraph**, **Temporal**, **FastAPI**, **React**, **Hyperspace**, **Prisma**, **cron**, and more — while **deterministic execution**, **policy**, and **audit** (runner service, trajectory JSONL) stay on the AINL side. **Write in AINL → emit LangGraph or Temporal when you need their ecosystem today**; keep the `.ainl` source as the single source of truth ([`docs/HYBRID_GUIDE.md`](docs/HYBRID_GUIDE.md), [`docs/competitive/README.md`](docs/competitive/README.md)).
-
 ### Recommended production stack: AINL graphs + AVM or general agent sandboxes
 
 AINL provides the deterministic, capability-declared graph layer. Pair it with Hyperspace AVM (`avmd`) or general runtimes (Firecracker microVMs, gVisor, Kubernetes Agent Sandbox, E2B-style runtimes, AVM Codes platform) for stronger isolation.
@@ -66,6 +64,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **AINL → HTTP workers (bridge contract, secondary to MCP):** [`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md) · JSON Schema [`schemas/executor_bridge_request.schema.json`](schemas/executor_bridge_request.schema.json) · include [`modules/common/executor_bridge_request.ainl`](modules/common/executor_bridge_request.ainl)
 
 > TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
+> Positioning (v1.2.6): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md).
 
 **Compile-once, run-many:** you author (or import) a graph once; the runtime executes it deterministically without re-spending LLM tokens on orchestration each time. Size economics are tracked with **tiktoken cl100k_base**; the **viable subset** (e.g. **public_mixed**) shows about **~1.02×** leverage for **minimal_emit** vs unstructured baselines—see **[`BENCHMARK.md`](BENCHMARK.md)**, **[`docs/benchmarks.md`](docs/benchmarks.md)**, and **[`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](docs/architecture/COMPILE_ONCE_RUN_MANY.md)**.
 
