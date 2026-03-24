@@ -1,0 +1,71 @@
+S core cron "0 6 * * *"  # 6 AM daily (adjustable via Config.timezone)
+
+D Config repo_owner:S
+D Config repo_name:S
+D Config telegram_target:S
+D Config timezone:S
+
+L0:
+  R core iso ->today_iso
+  R core now ->ts
+
+  # Fetch repo metadata
+  begin:
+    X repo_full (core.concat Config.repo_owner "/" Config.repo_name)
+    R github get_repo repo_full ->repo_info
+
+    X stars (get repo_info "stargazers_count") || 0
+    X forks (get repo_info "forks_count") || 0
+    X watchers (get repo_info "watchers_count") || 0
+    X open_issues (get repo_info "open_issues_count") || 0
+
+    R self_improve log_success { "program": "morning-briefing", "notes": core.concat "Fetched repo stats: S" stars " F" forks " W" watchers " I" open_issues } ->_
+  rescue:
+    R self_improve log_failure { "program": "morning-briefing", "error": get err "message", "context": "Failed to fetch GitHub repo info" } ->_
+    # Use defaults
+    X stars 0; X forks 0; X watchers 0; X open_issues 0
+
+  # Fetch recent events (last 24h)
+  begin:
+    X now_ts ts
+    X cutoff (core.sub now_ts 86400)
+    R github events repo_full ->events
+    Filter events where (core.gte event.created_at_ts cutoff) ->recent_events
+    X event_count (core.len recent_events)
+    R self_improve log_success { "program": "morning-briefing", "notes": core.concat "Fetched " event_count " recent events" } ->_
+  rescue:
+    R self_improve log_failure { "program": "morning-briefing", "error": get err "message", "context": "Failed to fetch GitHub events" } ->_
+    X event_count 0
+
+  # Build briefing text
+  R core.concat [
+    "📊 AINL Morning Briefing — " today_iso "\n\n"
+    "Repo: " repo_full "\n"
+    "• Stars: " stars "\n"
+    "• Forks: " forks "\n"
+    "• Watchers: " watchers "\n"
+    "• Open Issues: " open_issues "\n"
+    "• Events (24h): " event_count "\n\n"
+    "Focus today: [add prioritization]\n"
+    "Yesterday's progress: [add git log summary]\n"
+  ] ->briefing
+
+  # Save to memory
+  begin:
+    R openclaw_memory append_today briefing ->_
+    R self_improve log_success { "program": "morning-briefing", "notes": "Saved briefing to daily memory" } ->_
+  rescue:
+    R self_improve log_failure { "program": "morning-briefing", "error": get err "message", "context": "Failed to save briefing to memory" } ->_
+
+  # Send Telegram notification if configured
+  X chat_id Config.telegram_target
+  If (core.ne chat_id "") ->L_notify ->L_done
+L_notify:
+  begin:
+    X payload { "text": briefing, "module": "morning_briefing", "ts": ts }
+    R queue Put "notify" payload ->sent_status
+    R self_improve log_success { "program": "morning-briefing", "notes": "Queued Telegram notification" } ->_
+  rescue:
+    R self_improve log_failure { "program": "morning-briefing", "error": get err "message", "context": "Failed to queue Telegram message" } ->_
+L_done:
+  Ret briefing

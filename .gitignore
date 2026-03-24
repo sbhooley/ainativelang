@@ -37,3 +37,6 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# Local runtime logs
+runtime_runner.log

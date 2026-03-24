@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 from compiler_v2 import (
@@ -93,6 +94,7 @@ class RuntimeEngine:
         execution_mode: str = "graph-preferred",
         unknown_op_policy: Optional[str] = None,
         trace_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
+        trajectory_log_path: Optional[str] = None,
     ):
         self.ir = ir
         self.labels = ir.get("labels", {})
@@ -107,6 +109,8 @@ class RuntimeEngine:
         )
         self.trace_events: List[Dict[str, Any]] = []
         self.trace_sink = trace_sink
+        self._trajectory_log_path: Optional[str] = trajectory_log_path
+        self._trajectory_seq: int = 0
         self._trace_lineno: Optional[int] = None
         self.runtime_version = RUNTIME_VERSION
         self.limits = limits or {}
@@ -136,6 +140,7 @@ class RuntimeEngine:
         unknown_op_policy: Optional[str] = None,
         trace_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
         source_path: Optional[str] = None,
+        trajectory_log_path: Optional[str] = None,
     ) -> "RuntimeEngine":
         c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
         ir = c.compile(code, emit_graph=True, source_path=source_path)
@@ -150,6 +155,7 @@ class RuntimeEngine:
             execution_mode=execution_mode,
             unknown_op_policy=unknown_op_policy,
             trace_sink=trace_sink,
+            trajectory_log_path=trajectory_log_path,
         )
 
     @classmethod
@@ -207,6 +213,7 @@ class RuntimeEngine:
         self._run_started_at = time.perf_counter()
         self._steps_executed = 0
         self._adapter_calls = 0
+        self._trajectory_seq = 0
 
     def _guard_depth(self, stack: List[str]) -> None:
         lim = self._limit_int("max_depth")
@@ -445,6 +452,72 @@ class RuntimeEngine:
             raise AinlRuntimeError(f"unknown X fn: {fn}", lid, idx, "X", stack, code=ERROR_CODE_X_UNKNOWN_FN)
         return frame.get(dst)
 
+    def _trajectory_inputs_payload(
+        self, trajectory_step: Optional[Dict[str, Any]], node_id: Optional[str]
+    ) -> Any:
+        if trajectory_step is not None and node_id is not None:
+            return json_safe({"node_id": node_id, "step": dict(trajectory_step)})
+        if trajectory_step is not None:
+            return json_safe(trajectory_step)
+        if node_id is not None:
+            return json_safe({"node_id": node_id})
+        return None
+
+    def _emit_trajectory(
+        self,
+        *,
+        label: str,
+        operation: str,
+        frame: Dict[str, Any],
+        output: Any,
+        outcome: str,
+        trajectory_step: Optional[Dict[str, Any]] = None,
+        node_id: Optional[str] = None,
+    ) -> None:
+        path = self._trajectory_log_path
+        if not path:
+            return
+        sid = self._trajectory_seq
+        self._trajectory_seq += 1
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        rec = {
+            "step_id": sid,
+            "label": label,
+            "operation": operation,
+            "inputs": self._trajectory_inputs_payload(trajectory_step, node_id),
+            "output": json_safe(output),
+            "outcome": outcome,
+            "timestamp": ts,
+            "user_reward": json_safe(frame.get("_trajectory_user_reward")),
+        }
+        try:
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+
+    def _emit_trajectory_fail(
+        self,
+        lid: str,
+        op: str,
+        frame: Dict[str, Any],
+        step: Dict[str, Any],
+        err: Exception,
+        *,
+        node_id: Optional[str] = None,
+    ) -> None:
+        if not self._trajectory_log_path:
+            return
+        self._emit_trajectory(
+            label=lid,
+            operation=op,
+            frame=frame,
+            output={"error": str(err), "type": type(err).__name__},
+            outcome="fail",
+            trajectory_step=step,
+            node_id=node_id,
+        )
+
     def _emit_trace(
         self,
         label: str,
@@ -460,33 +533,43 @@ class RuntimeEngine:
         branch: Optional[Dict[str, Any]] = None,
         err_routed: Optional[bool] = None,
         retry_attempt: Optional[Dict[str, Any]] = None,
+        trajectory_step: Optional[Dict[str, Any]] = None,
     ) -> None:
-        if not self.trace_enabled:
-            return
-        event = {
-            "label": label,
-            "op": op,
-            "step": idx,
-            "lineno": self._trace_lineno,
-            "duration_ms": round((time.perf_counter() - start) * 1000, 3),
-            "out": json_safe(out),
-            "frame_keys": sorted(list(frame.keys())),
-        }
-        if node_id is not None:
-            event["node_id"] = node_id
-        if port_taken is not None:
-            event["port_taken"] = port_taken
-        if edge_taken is not None:
-            event["edge_taken"] = dict(edge_taken)
-        if branch is not None:
-            event["branch"] = dict(branch)
-        if err_routed is not None:
-            event["err_routed"] = err_routed
-        if retry_attempt is not None:
-            event["retry_attempt"] = dict(retry_attempt)
-        self.trace_events.append(event)
-        if self.trace_sink is not None:
-            self.trace_sink(event)
+        if self.trace_enabled:
+            event = {
+                "label": label,
+                "op": op,
+                "step": idx,
+                "lineno": self._trace_lineno,
+                "duration_ms": round((time.perf_counter() - start) * 1000, 3),
+                "out": json_safe(out),
+                "frame_keys": sorted(list(frame.keys())),
+            }
+            if node_id is not None:
+                event["node_id"] = node_id
+            if port_taken is not None:
+                event["port_taken"] = port_taken
+            if edge_taken is not None:
+                event["edge_taken"] = dict(edge_taken)
+            if branch is not None:
+                event["branch"] = dict(branch)
+            if err_routed is not None:
+                event["err_routed"] = err_routed
+            if retry_attempt is not None:
+                event["retry_attempt"] = dict(retry_attempt)
+            self.trace_events.append(event)
+            if self.trace_sink is not None:
+                self.trace_sink(event)
+        if self._trajectory_log_path:
+            self._emit_trajectory(
+                label=label,
+                operation=op,
+                frame=frame,
+                output=out,
+                outcome="success",
+                trajectory_step=trajectory_step,
+                node_id=node_id,
+            )
 
     def _validate_ir_version(self) -> None:
         v = str(self.ir.get("ir_version") or "1.0")
@@ -694,7 +777,19 @@ class RuntimeEngine:
                 break
         return {"lineno": lineno, "line": line, "op_span": op_tok.get("span") if isinstance(op_tok, dict) else None}
 
-    def _raise_runtime_error(self, err: Exception, lid: str, idx: int, op: str, stack: List[str], step: Dict[str, Any]) -> None:
+    def _raise_runtime_error(
+        self,
+        err: Exception,
+        lid: str,
+        idx: int,
+        op: str,
+        stack: List[str],
+        frame: Dict[str, Any],
+        step: Dict[str, Any],
+        *,
+        node_id: Optional[str] = None,
+    ) -> None:
+        self._emit_trajectory_fail(lid, op, frame, step, err, node_id=node_id)
         public_lid = stack[-2] if lid == "__tmp__" and len(stack) >= 2 else lid
         ctx = self._source_context(step.get("lineno"))
         msg = str(err)
@@ -789,6 +884,11 @@ class RuntimeEngine:
                 code=ERROR_CODE_ERR_HANDLER_RECURSION,
             )
         frame["_error"] = str(err)
+        step_data = (node_by_id.get(cur or "") or {}).get("data")
+        if not isinstance(step_data, dict):
+            step_data = {"op": op}
+        if self._trajectory_log_path:
+            self._emit_trajectory_fail(lid, op, frame, step_data, err, node_id=cur)
         if self.trace_enabled:
             self.trace_events.append(
                 {"err_routed": True, "from_node": cur, "handler": handler, "label": lid}
@@ -969,7 +1069,7 @@ class RuntimeEngine:
             self._guard_tick(lid, i, op, stack, frame)
             try:
                 if op == "Err":
-                    self._emit_trace(lid, op, i, t0, frame, None)
+                    self._emit_trace(lid, op, i, t0, frame, None, trajectory_step=s)
                     i += 1
                     continue
 
@@ -985,7 +1085,7 @@ class RuntimeEngine:
                     if_none_action="continue",
                 )
                 if shared is not None:
-                    self._emit_trace(lid, op, i, t0, frame, shared.get("out"))
+                    self._emit_trace(lid, op, i, t0, frame, shared.get("out"), trajectory_step=s)
                     if shared.get("action") == "return":
                         return shared.get("out")
                     i += 1
@@ -994,7 +1094,7 @@ class RuntimeEngine:
                 if op == "Retry":
                     # Retry is compiler-lowered metadata; actual retries happen when
                     # the source step fails and routes to this Retry policy.
-                    self._emit_trace(lid, op, i, t0, frame, None)
+                    self._emit_trace(lid, op, i, t0, frame, None, trajectory_step=s)
                     i += 1
                     continue
 
@@ -1022,7 +1122,7 @@ class RuntimeEngine:
                         out = self._run_label(after, frame, stack)
                         if out is not None:
                             return out
-                    self._emit_trace(lid, op, i, t0, frame, frame.get("_loop_last"))
+                    self._emit_trace(lid, op, i, t0, frame, frame.get("_loop_last"), trajectory_step=s)
                     i += 1
                     continue
 
@@ -1053,13 +1153,13 @@ class RuntimeEngine:
                         out = self._run_label(after, frame, stack)
                         if out is not None:
                             return out
-                    self._emit_trace(lid, op, i, t0, frame, frame.get("_while_last"))
+                    self._emit_trace(lid, op, i, t0, frame, frame.get("_while_last"), trajectory_step=s)
                     i += 1
                     continue
 
                 # Unknown runtime op in label: skip for backward compatibility.
                 self._handle_unknown_op(lid, i, op, stack, frame, mode="steps")
-                self._emit_trace(lid, op, i, t0, frame, None)
+                self._emit_trace(lid, op, i, t0, frame, None, trajectory_step=s)
                 i += 1
             except AdapterError as e:
                 retry_cfg = retry_routes.get(i)
@@ -1078,7 +1178,15 @@ class RuntimeEngine:
                             if delay > 0:
                                 time.sleep(delay / 1000.0)
                     if last_err is None:
-                        self._emit_trace(lid, op, i, t0, frame, frame.get(s.get("out", "res")))
+                        self._emit_trace(
+                            lid,
+                            op,
+                            i,
+                            t0,
+                            frame,
+                            frame.get(s.get("out", "res")),
+                            trajectory_step=s,
+                        )
                         i += 1
                         continue
                     e = last_err  # type: ignore[assignment]
@@ -1094,8 +1202,9 @@ class RuntimeEngine:
                             code=ERROR_CODE_ERR_HANDLER_RECURSION,
                         )
                     frame["_error"] = str(e)
+                    self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
                     return self._run_label(err_handler, frame, stack)
-                self._raise_runtime_error(e, lid, i, op, stack, s)
+                self._raise_runtime_error(e, lid, i, op, stack, frame, s)
             except AinlRuntimeError as e:
                 retry_cfg = retry_routes.get(i)
                 if retry_cfg:
@@ -1113,7 +1222,15 @@ class RuntimeEngine:
                             if delay > 0:
                                 time.sleep(delay / 1000.0)
                     if last_err is None:
-                        self._emit_trace(lid, op, i, t0, frame, frame.get(s.get("out", "res")))
+                        self._emit_trace(
+                            lid,
+                            op,
+                            i,
+                            t0,
+                            frame,
+                            frame.get(s.get("out", "res")),
+                            trajectory_step=s,
+                        )
                         i += 1
                         continue
                     e = last_err if isinstance(last_err, AinlRuntimeError) else e
@@ -1129,7 +1246,9 @@ class RuntimeEngine:
                             code=ERROR_CODE_ERR_HANDLER_RECURSION,
                         )
                     frame["_error"] = str(e)
+                    self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
                     return self._run_label(err_handler, frame, stack)
+                self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
                 raise
             except Exception as e:
                 retry_cfg = retry_routes.get(i)
@@ -1148,7 +1267,15 @@ class RuntimeEngine:
                             if delay > 0:
                                 time.sleep(delay / 1000.0)
                     if last_err is None:
-                        self._emit_trace(lid, op, i, t0, frame, frame.get(s.get("out", "res")))
+                        self._emit_trace(
+                            lid,
+                            op,
+                            i,
+                            t0,
+                            frame,
+                            frame.get(s.get("out", "res")),
+                            trajectory_step=s,
+                        )
                         i += 1
                         continue
                     e = last_err  # type: ignore[assignment]
@@ -1164,8 +1291,9 @@ class RuntimeEngine:
                             code=ERROR_CODE_ERR_HANDLER_RECURSION,
                         )
                     frame["_error"] = str(e)
+                    self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
                     return self._run_label(err_handler, frame, stack)
-                self._raise_runtime_error(e, lid, i, op, stack, s)
+                self._raise_runtime_error(e, lid, i, op, stack, frame, s)
         return None
 
     def _run_label_graph(self, lid: str, frame: Dict[str, Any], stack: List[str]) -> Any:
@@ -1210,6 +1338,16 @@ class RuntimeEngine:
             try:
                 if op == "Err":
                     active_err_handler = _norm_lid(step.get("handler"))
+                    if self._trajectory_log_path:
+                        self._emit_trajectory(
+                            label=lid,
+                            operation=op,
+                            frame=frame,
+                            output=None,
+                            outcome="success",
+                            trajectory_step=step,
+                            node_id=cur,
+                        )
                     nxt = self._next_linear_node_edge(out_by_from.get(cur, []), lid, idx, op, stack)
                     cur = nxt.get("to") if nxt else None
                     continue
@@ -1236,6 +1374,7 @@ class RuntimeEngine:
                         frame,
                         shared.get("out") if shared else frame.get(out_var),
                         node_id=cur,
+                        trajectory_step=step,
                     )
 
                 elif op == "If":
@@ -1262,6 +1401,7 @@ class RuntimeEngine:
                         shared.get("out") if shared else None,
                         node_id=cur,
                         branch={"port": "then" if cond else "else", "condition": cond},
+                        trajectory_step=step,
                     )
                     if shared and shared.get("action") == "return":
                         return shared.get("out")
@@ -1271,7 +1411,16 @@ class RuntimeEngine:
 
                 elif op in ("J", "Call", "Set", "Filt", "Sort", "X"):
                     shared = self._exec_step(step, frame, lid, idx, stack, force_steps_for_call=False)
-                    self._emit_trace(lid, op, idx, t0, frame, shared.get("out") if shared else None, node_id=cur)
+                    self._emit_trace(
+                        lid,
+                        op,
+                        idx,
+                        t0,
+                        frame,
+                        shared.get("out") if shared else None,
+                        node_id=cur,
+                        trajectory_step=step,
+                    )
                     if shared and shared.get("action") == "return":
                         return shared.get("out")
 
@@ -1307,7 +1456,16 @@ class RuntimeEngine:
                         out = self._run_label(_norm_lid(after_edge.get("to")), frame, stack, force_steps=False)
                         if out is not None:
                             return out
-                    self._emit_trace(lid, op, idx, t0, frame, frame.get("_loop_last"), node_id=cur)
+                    self._emit_trace(
+                        lid,
+                        op,
+                        idx,
+                        t0,
+                        frame,
+                        frame.get("_loop_last"),
+                        node_id=cur,
+                        trajectory_step=step,
+                    )
                     cur = None
                     continue
 
@@ -1339,7 +1497,16 @@ class RuntimeEngine:
                         out = self._run_label(_norm_lid(after_edge.get("to")), frame, stack, force_steps=False)
                         if out is not None:
                             return out
-                    self._emit_trace(lid, op, idx, t0, frame, frame.get("_while_last"), node_id=cur)
+                    self._emit_trace(
+                        lid,
+                        op,
+                        idx,
+                        t0,
+                        frame,
+                        frame.get("_while_last"),
+                        node_id=cur,
+                        trajectory_step=step,
+                    )
                     cur = None
                     continue
 
@@ -1353,7 +1520,16 @@ class RuntimeEngine:
                     if cached is None and fallback is not None:
                         cached = self._resolve(fallback, frame)
                     frame[out_var] = cached
-                    self._emit_trace(lid, op, idx, t0, frame, frame.get(out_var), node_id=cur)
+                    self._emit_trace(
+                        lid,
+                        op,
+                        idx,
+                        t0,
+                        frame,
+                        frame.get(out_var),
+                        node_id=cur,
+                        trajectory_step=step,
+                    )
 
                 elif op == "CacheSet":
                     name = step.get("name", "default")
@@ -1362,7 +1538,7 @@ class RuntimeEngine:
                     ttl_s = int(step.get("ttl_s", 0))
                     self._count_adapter_call(lid, idx, op, stack)
                     self.adapters.get_cache().set(name, key, value, ttl_s=ttl_s)
-                    self._emit_trace(lid, op, idx, t0, frame, None, node_id=cur)
+                    self._emit_trace(lid, op, idx, t0, frame, None, node_id=cur, trajectory_step=step)
 
                 elif op == "QueuePut":
                     queue = step.get("queue", "")
@@ -1372,7 +1548,7 @@ class RuntimeEngine:
                     msg_id = self.adapters.get_queue().push(queue, value)
                     if out_var:
                         frame[out_var] = msg_id
-                    self._emit_trace(lid, op, idx, t0, frame, msg_id, node_id=cur)
+                    self._emit_trace(lid, op, idx, t0, frame, msg_id, node_id=cur, trajectory_step=step)
 
                 elif op == "Tx":
                     action = (step.get("action") or "begin").lower()
@@ -1384,7 +1560,7 @@ class RuntimeEngine:
                         self.adapters.get_txn().commit(name)
                     elif action == "rollback":
                         self.adapters.get_txn().rollback(name)
-                    self._emit_trace(lid, op, idx, t0, frame, frame.get("_txid"), node_id=cur)
+                    self._emit_trace(lid, op, idx, t0, frame, frame.get("_txid"), node_id=cur, trajectory_step=step)
 
                 elif op == "Enf":
                     policy_name = step.get("policy", "")
@@ -1402,11 +1578,11 @@ class RuntimeEngine:
                     req_role = constraints.get("role")
                     if req_role and str(frame.get("_role", "")) != str(req_role):
                         raise RuntimeError(f"POLICY_VIOLATION[{policy_name}]: role mismatch")
-                    self._emit_trace(lid, op, idx, t0, frame, None, node_id=cur)
+                    self._emit_trace(lid, op, idx, t0, frame, None, node_id=cur, trajectory_step=step)
 
                 else:
                     self._handle_unknown_op(lid, idx, op, stack, frame, mode="graph")
-                    self._emit_trace(lid, op, idx, t0, frame, None, node_id=cur)
+                    self._emit_trace(lid, op, idx, t0, frame, None, node_id=cur, trajectory_step=step)
 
                 retry_attempts.pop(cur, None)
                 # advance linear node edge with explicit/validated selection.
@@ -1454,7 +1630,7 @@ class RuntimeEngine:
                 )
                 if routed.get("handled"):
                     return routed.get("out")
-                self._raise_runtime_error(e, lid, idx, op, stack, step)
+                self._raise_runtime_error(e, lid, idx, op, stack, frame, step, node_id=cur)
             except AinlRuntimeError:
                 retry_policy = self._retry_policy_from_graph(cur, edge_by_from_port_kind, node_by_id, frame)
                 if retry_policy and cur:
@@ -1476,6 +1652,7 @@ class RuntimeEngine:
                             if self.trace_sink is not None:
                                 self.trace_sink(self.trace_events[-1])
                         continue
+                self._emit_trajectory_fail(lid, op, frame, step, e, node_id=cur)
                 raise
             except Exception as e:
                 retry_policy = self._retry_policy_from_graph(cur, edge_by_from_port_kind, node_by_id, frame)
@@ -1512,7 +1689,7 @@ class RuntimeEngine:
                 )
                 if routed.get("handled"):
                     return routed.get("out")
-                self._raise_runtime_error(e, lid, idx, op, stack, step)
+                self._raise_runtime_error(e, lid, idx, op, stack, frame, step, node_id=cur)
         # If graph terminates without explicit return, optionally fallback for compatibility.
         # Never re-run step-mode after non-meta graph work (prevents duplicate side effects).
         # Err-only graph paths can still fallback.

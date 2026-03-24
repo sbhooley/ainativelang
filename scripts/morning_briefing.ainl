@@ -1,0 +1,48 @@
+# AINL Daily Morning Briefing — Growth & Adoption Focus
+# Runs each morning via cron; outputs to memory + Telegram
+
+S core cron "0 7 * * *"  # 7 AM daily (adjust as needed)
+
+L0:
+  # Timestamps
+  R core iso ->today_iso
+  R core now ->ts
+
+  # Configuration from environment (with sensible defaults)
+  X repo_owner (core.env "AINL_REPO_OWNER" "openclaw")
+  X repo_name (core.env "AINL_REPO_NAME" "AI_Native_Lang")
+  X chat_id (core.env "AINL_TELEGRAM_TARGET" "")
+
+  # GitHub: repo stats
+  X repo_full (core.concat repo_owner "/" repo_name)
+  R github get_repo repo_owner repo_name ->repo_info
+
+  # Extract key metrics (with fallbacks)
+  X stars get repo_info "stargazers_count" || 0
+  X forks get repo_info "forks_count" || 0
+  X open_issues get repo_info "open_issues_count" || 0
+
+  # Note: watchers count not in our slim get_repo; approximate using forks+stars or omit
+  Set watchers 0
+
+  # Construct briefing text
+  R core.concat [
+    "📊 AINL Morning Briefing — " today_iso "\n\n"
+    "Repo: " repo_full "\n"
+    " Stars: " stars "\n"
+    " Forks: " forks "\n"
+    " Open Issues: " open_issues "\n\n"
+    "Focus today: [add prioritization]\n"
+    "Yesterday's progress: [add git log summary]\n"
+  ] ->briefing
+
+  # Save to today's memory log
+  R openclaw_memory append_today briefing ->_
+
+  # Send notification via queue (Telegram) if target set
+  If (core.ne chat_id "") ->L_notify ->L_done
+L_notify:
+  X payload { "text": briefing, "module": "morning_briefing", "ts": ts }
+  R queue Put "notify" payload ->_
+L_done:
+  Ret briefing

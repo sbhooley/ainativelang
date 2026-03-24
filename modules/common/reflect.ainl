@@ -1,0 +1,55 @@
+# modules/common/reflect.ainl
+# Reflection hook: parent supplies trajectory context + failure flag; suggestion is a constant JSON object (parse).
+# Optional LREFLECT_AUDIT writes a static memory row (generic_memory-style X/R pair); Call it after ENTRY if you want persistence.
+#
+# Strict note: boolean-ish frame inputs use R core.mul + core.clamp before If. Trajectory emptiness is not computed here
+# (core.len is not strict-allowlisted); set reflect_traj_nonempty to 0/1 when building the frame.
+#
+# Caller binds before Call reflect/ENTRY ->out:
+# - reflect_abort — truthy/1 -> LEXIT_REFLECT_ABORT
+# - reflect_traj_nonempty — 1 when reflect_trajectory_text should be treated as present (parent decides, e.g. non-empty trim)
+# - reflect_trajectory_text — optional string for context (heuristics / logging); may be empty when reflect_traj_nonempty is 0
+# - reflect_has_fail_pattern — truthy/1 to emit PARSEd adjustment object
+
+LENTRY:
+  R core.mul reflect_abort 1 ->reflect_abort_n
+  R core.clamp reflect_abort_n 0 1 ->reflect_abort_f
+  If reflect_abort_f ->LEXIT_REFLECT_ABORT ->L_reflect_body
+
+L_reflect_body:
+  R core.mul reflect_traj_nonempty 1 ->reflect_trn
+  R core.clamp reflect_trn 0 1 ->reflect_trj_f
+  If reflect_trj_f ->L_reflect_maybe_fail ->LEXIT_OK
+
+L_reflect_maybe_fail:
+  R core.mul reflect_has_fail_pattern 1 ->reflect_hp_n
+  R core.clamp reflect_hp_n 0 1 ->reflect_hp_f
+  If reflect_hp_f ->L_reflect_suggest ->LEXIT_OK
+
+L_reflect_suggest:
+  R core.PARSE "{\"next_temp\":0.4,\"retry_count\":2,\"skip_step\":\"risky_tool\"}" ->reflect_adjustment
+  J reflect_adjustment
+
+LEXIT_OK:
+  R core.ECHO "reflect_ok" ->reflect_ok_out
+  J reflect_ok_out
+
+LEXIT_REFLECT_ABORT:
+  R core.ECHO "reflect_aborted" ->reflect_abort_out
+  J reflect_abort_out
+
+LREFLECT_AUDIT:
+  X memory_tags arr
+  Set memory_namespace "session"
+  Set memory_kind "session.reflect_audit"
+  Set memory_record_id "last_suggestion"
+  R core.PARSE "{\"module\":\"reflect.ainl\",\"applied\":true}" ->memory_payload
+  Set memory_ttl null
+  Set memory_source "reflect.ainl"
+  Set memory_valid_at null
+  Set memory_updated_after null
+  Set memory_list_limit 1
+  X memory_meta {"source":memory_source,"confidence":1.0,"tags":memory_tags,"valid_at":memory_valid_at}
+  R memory put memory_namespace memory_kind memory_record_id memory_payload memory_ttl memory_meta ->reflect_mem_res
+  R core.ECHO "reflect_audit_ok" ->reflect_audit_out
+  J reflect_audit_out

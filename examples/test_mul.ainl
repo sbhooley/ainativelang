@@ -1,0 +1,2 @@
+L0: R core.sub 100 85 ->x J L1
+L1: R core.mul x 2 ->y J y

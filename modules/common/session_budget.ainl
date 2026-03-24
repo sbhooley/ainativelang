@@ -1,0 +1,55 @@
+# modules/common/session_budget.ainl
+# Session budget check: caller supplies current totals; deltas applied with R core.ADD, caps via SUB+clamp.
+# Optional success log uses the generic_memory.ainl-style memory put (inline X/R pair).
+#
+# Strict note: optional budget_log_memory is folded through R core.mul + core.clamp before If (see guard.ainl).
+#
+# Caller binds before Call session_budget/ENTRY ->out:
+# - budget_tokens_start, budget_tokens_delta, budget_max_tokens
+# - budget_time_start, budget_time_delta_sec, budget_max_duration_sec
+# - budget_log_memory — truthy/1 on success triggers memory.put snapshot (requires memory adapter)
+
+LENTRY:
+  R core.ADD budget_tokens_start budget_tokens_delta ->budget_tokens_next
+  R core.SUB budget_tokens_next budget_max_tokens ->budget_tok_raw
+  R core.clamp budget_tok_raw 0 1 ->budget_tok_exceed
+  If budget_tok_exceed ->LEXIT_BUDGET_EXCEEDED ->L_sb_time
+
+L_sb_time:
+  R core.ADD budget_time_start budget_time_delta_sec ->budget_time_next
+  R core.SUB budget_time_next budget_max_duration_sec ->budget_time_raw
+  R core.clamp budget_time_raw 0 1 ->budget_time_exceed
+  If budget_time_exceed ->LEXIT_BUDGET_EXCEEDED ->L_sb_ok_mem
+
+L_sb_ok_mem:
+  R core.mul budget_log_memory 1 ->blm_n
+  R core.clamp blm_n 0 1 ->blm_f
+  If blm_f ->L_sb_log ->LEXIT_OK
+
+L_sb_log:
+  X memory_tags arr
+  Set memory_namespace "session"
+  Set memory_kind "session.budget_snapshot"
+  Set memory_record_id "last"
+  R core.PARSE "{\"module\":\"session_budget.ainl\",\"note\":\"post_check_ok\"}" ->memory_payload
+  Set memory_ttl null
+  Set memory_source "session_budget.ainl"
+  Set memory_valid_at null
+  Set memory_updated_after null
+  Set memory_list_limit 1
+  X memory_meta {"source":memory_source,"confidence":1.0,"tags":memory_tags,"valid_at":memory_valid_at}
+  R memory put memory_namespace memory_kind memory_record_id memory_payload memory_ttl memory_meta ->budget_log_res
+  R core.ECHO "budget_ok" ->sb_out
+  J sb_out
+
+LEXIT_OK:
+  R core.ECHO "budget_ok" ->sb_out
+  J sb_out
+
+LEXIT_BUDGET_EXCEEDED:
+  R core.ECHO "budget_exceeded" ->sb_bad
+  J sb_bad
+
+LBUDGET_RESET:
+  R core.ECHO "budget_reset" ->sb_reset
+  J sb_reset

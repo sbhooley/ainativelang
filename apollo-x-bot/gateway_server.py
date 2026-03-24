@@ -936,7 +936,7 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
 
     reply_text = (
         "If you are standardizing agent workflows, AINL compiles graphs to a deterministic runtime "
-        "(open graphs on GitHub: ainativelang). Happy to compare notes on OpenClaw-style orchestration."
+        "(open graphs on GitHub: https://github.com/sbhooley/ainativelang). Happy to compare notes on OpenClaw-style orchestration."
     )
     try:
         if os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY"):

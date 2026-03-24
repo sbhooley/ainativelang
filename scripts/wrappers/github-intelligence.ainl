@@ -1,14 +1,97 @@
-# GitHub intelligence wrapper — search → CRM digest row → OpenClaw daily memory → notify
-# Schedule: modules/openclaw/cron_github_intelligence.ainl (keep in sync with adapters/openclaw_defaults.py).
-include "modules/openclaw/cron_github_intelligence.ainl"
+S workflow cron "0 */3 * * *"  # every 3 hours
+
+D Config openrouter_api_key:S
+D Config crm_api_base:S
 
 L0:
-  R core iso ->generatedAt
-  R github search_repos "ainativelang" ->repos
-  X newCount (core.len repos)
-  R crm create_github_intelligence_digest generatedAt newCount repos ->digestId
-  R core concat "github-intelligence digestId=" digestId " newCount=" newCount ->memline
-  R openclaw_memory append_today memline ->_
-  R core concat "AINL github-intelligence: repos=" newCount " digestId=" digestId ->note
-  # Optional: `QueuePut notify note` for Telegram (omitted so `run_wrapper_ainl.py --dry-run` stays queue-silent)
-  Ret digestId
+  # R openclaw memory keys with namespace "intel" and collection "github_seen"
+  R memory get_namespace "intel" "github_seen" ->_init_seen
+
+  # Fetch recent GitHub events (last 4h) via OpenRouter
+  begin:
+    R core iso_ts (core.now) ->now_ts
+    X cutoff (core.sub now_ts 14400)
+    R openrouter_chat "openrouter/quasar-alpha:free" {
+      "model": "openrouter/quasar-alpha:free",
+      "messages": [
+        { "role": "system", "content": "You analyze GitHub events for an AI agent framework (AINL). Extract structured data: actor login, event type (Watch/Star, Fork, Issue opened, PR opened, Comment), repo full_name, created_at (ISO), PR/issue number, title, URL, stars_added? (if implicit). Return JSON array." },
+        { "role": "user", "content": core.concat "Fetch the last 100 events from GitHub's public timeline (or trending repos) and summarize key activity related to AI agent frameworks (langchain, crewai, autogen, openagents, aial, ains, etc). Output JSON array of events." }
+      ]
+    } ->llm_resp
+
+    X content get llm_resp "choices"[0] "message" "content"
+    R openrouter_parse_json content ->events
+    Filter events where (core.gte get event "created_at_ts" cutoff) ->recent_events
+    Set all_repos []
+
+    # Transform events to repo-like items with minimal fields
+    Set i 0
+    X total (core.len recent_events)
+  L_event_loop:
+    If (core.ge i total) ->L_event_done
+    X ev recent_events[i]
+    X repo_item {
+      "id": core.concat (get ev "repo" "full_name") "/" (get ev "type"),
+      "full_name": get ev "repo" "full_name",
+      "type": get ev "type",
+      "created_at": get ev "created_at",
+      "actor": get ev "actor" "login"
+    }
+    Set all_repos (core.append all_repos repo_item)
+    X i (core.add i 1)
+    J L_event_loop
+  L_event_done:
+
+    R self_improve log_success { "program": "github-intelligence", "notes": core.concat "Fetched and parsed " (core.len all_repos) " items via OpenRouter" } ->_
+  rescue:
+    R self_improve log_failure { "program": "github-intelligence", "error": get err "message", "context": "Failed to fetch/parse GitHub events via OpenRouter" } ->_
+    Ret "error: events fetch failed"
+
+  # Deduplicate using persistent memory (seen repo IDs)
+  Set new_repos []
+  Set i 0
+  X total2 (core.len all_repos)
+L_dedup_loop:
+  If (core.ge i total2) ->L_dedup_done
+  X r all_repos[i]
+  X seen_key (core.concat "github_seen:" r.id)
+  X seen_res (R memory get "intel" "github_seen" seen_key)
+  If (seen_res.found) ->L_next_item ->L_mark_seen
+L_mark_seen:
+  R memory put "intel" "github_seen" seen_key {} ->_
+  Set new_repos (core.append new_repos r)
+L_next_item:
+  X i (core.add i 1)
+  J L_dedup_loop
+L_dedup_done:
+  X newCount (core.len new_repos)
+  R self_improve log_success { "program": "github-intelligence", "notes": core.concat "Deduped: " newCount " new items out of " total2 } ->_
+
+  # If no new items, exit early
+  If (core.eq newCount 0) ->L_none
+
+  # Build stats
+  X engagement (core.len new_repos)  # could refine: sum of reactions/comments
+  X velocity (core.mul newCount 3600)  # rough per-hour estimate
+  Set stats { "engagement": engagement, "velocity": velocity, "period_hours": 4 }
+
+  # Store digest in CRM
+  begin:
+    X payload {
+      "reposJson": new_repos,
+      "stats": stats,
+      "source": "github-intelligence",
+      "periodHours": 4
+    }
+    # Use crm adapter directly
+    R crm post "/api/github-intelligence/digests" payload ->resp
+    X digest_id get resp "id"
+    R self_improve log_success { "program": "github-intelligence", "notes": core.concat "Stored digest ID " digest_id " with " newCount " repos" } ->_
+    Ret digest_id
+  rescue:
+    R self_improve log_failure { "program": "github-intelligence", "error": get err "message", "context": "Failed to POST digest to CRM" } ->_
+    Ret "error: CRM store failed"
+
+L_none:
+  R self_improve log_success { "program": "github-intelligence", "notes": "No new items to store" } ->_
+  Ret "no-new"

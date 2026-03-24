@@ -1,14 +1,65 @@
-# Content-engine wrapper — probe CRM health, upsert a telemetry lead, log to OpenClaw memory, notify
-# Health URL: frame key crm_health_url (set by scripts/run_wrapper_ainl.py from adapters/openclaw_defaults.py).
-include "modules/openclaw/cron_content_engine.ainl"
+S core cron "*/45 * * * *"  # every 45 minutes
+
+D Config repo_owner:S
+D Config telegram_target:S
 
 L0:
-  R extras http_status crm_health_url ->h
-  R core iso ->ts
-  R core stringify h ->hs
-  R core concat "{\"source\":\"ainl.content_engine\",\"kind\":\"health_probe\",\"health_http\":" hs ",\"checked_at\":\"" ts "\"}" ->json_s
-  R crm upsert_lead json_s ->lead_id
-  R core concat "content-engine health_http=" h " lead_id=" lead_id ->mem
-  R openclaw_memory append_today mem ->_
-  # Optional: `QueuePut notify mem` for Telegram
-  Ret h
+  X repo_full (core.concat Config.repo_owner "/" Config.repo_name)
+
+  # Process trending repos
+  J L_process_trends
+
+L_process_trends:
+  begin:
+    R github trending "daily" ->trending_data
+
+    # Extract top repos with meaningful signals
+    X top (core.slice trending_data 0 10)
+    Filter top where (core.ne get repo "language" null) ->f1
+    Filter f1 where (core.ne get repo "language" "") ->f2
+    Filter f2 where (core.gt get repo "stargazers_count" 100) ->repos
+
+    R self_improve log_success { "program": "content-engine", "notes": core.concat "Fetched " (core.len repos) " trending repos" } ->_
+  rescue:
+    R self_improve log_failure { "program": "content-engine", "error": get err "message", "context": "Failed to fetch trending repos from GitHub" } ->_
+    Ret "error: trending fetch failed"
+  J L_generate_content
+
+L_generate_content:
+  Set i 0
+  Set count (core.len repos)
+  Set generated []
+L_gen_loop:
+  If (core.ge i count) ->L_gen_done
+  begin:
+    X repo repos[i]
+    X title get repo "name"
+    X desc (core.concat title " – " get repo "description" "")
+    X prompt (core.concat "Write a tweet (280 chars) about " title ". Focus on why developers care. Info: " desc)
+    R openai chat "gpt-4o-mini" prompt ->resp
+    X content get resp "choices"[0] "message" "content"
+    X item { "repo_id": get repo "id", "title": title, "content": content }
+    Set generated (core.append generated item)
+  rescue:
+    R self_improve log_failure { "program": "content-engine", "error": get err "message", "context": core.concat "Failed to generate content for " title } ->_
+    # skip this item but continue
+  X i (core.add i 1)
+  J L_gen_loop
+L_gen_done:
+
+  R self_improve log_success { "program": "content-engine", "notes": core.concat "Generated " (core.len generated) " content pieces" } ->_
+  J L_send
+
+L_send:
+  begin:
+    X summary (core.join "\n\n---\n\n" generated)
+    X chat_id Config.telegram_target
+    If (core.ne chat_id "") ->L_do_send ->L_skip_send
+  L_do_send:
+    R openclaw_integration send_telegram chat_id summary ->sent_status
+    R self_improve log_success { "program": "content-engine", "notes": "Digest sent to Telegram" } ->_
+  L_skip_send:
+    Ret summary
+  rescue:
+    R self_improve log_failure { "program": "content-engine", "error": get err "message", "context": "Failed to send Telegram digest" } ->_
+    Ret summary

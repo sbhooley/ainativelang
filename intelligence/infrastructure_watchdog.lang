@@ -1,0 +1,163 @@
+# Infrastructure Watchdog — every 15 minutes
+# Checks services, automatically restarts them when down, and alerts only if restart fails.
+S svc cron "*/15 * * * *"
+
+L0:
+  R core now ->ts
+  R cache get "monitor_heartbeat" "watchdog_cooldown" ->cooldown
+  Set cooldown_seconds 1800
+
+  # Check all services
+  R svc caddy ->caddy_status
+  R svc cloudflared ->cf_status
+  R svc maddy ->maddy_status
+  R svc crm ->crm_status
+
+  X caddy_down eq caddy_status "down"
+  X cf_down eq cf_status "down"
+  X maddy_down eq maddy_status "down"
+  X crm_down eq crm_status "down"
+
+  X any_down or caddy_down cf_down
+  X any_down2 or any_down maddy_down
+  X any_down3 or any_down2 crm_down
+
+  # Build status summary
+  R core concat "caddy:" caddy_status " cloudflared:" cf_status " maddy:" maddy_status " crm:" crm_status ->svc_summary
+
+  # Track consecutive failures per service
+  R cache get "watchdog" "caddy_consec" ->caddy_prev
+  R cache get "watchdog" "cf_consec" ->cf_prev
+  R cache get "watchdog" "maddy_consec" ->maddy_prev
+  R cache get "watchdog" "crm_consec" ->crm_prev
+
+  # Default None to 0
+  If caddy_prev ->L_caddy_prev_ok ->L_caddy_prev_init
+L_caddy_prev_init:
+  Set caddy_prev 0
+  J L_caddy_prev_ok
+L_caddy_prev_ok:
+  If cf_prev ->L_cf_prev_ok ->L_cf_prev_init
+L_cf_prev_init:
+  Set cf_prev 0
+  J L_cf_prev_ok
+L_cf_prev_ok:
+  If maddy_prev ->L_maddy_prev_ok ->L_maddy_prev_init
+L_maddy_prev_init:
+  Set maddy_prev 0
+  J L_maddy_prev_ok
+L_maddy_prev_ok:
+  If crm_prev ->L_crm_prev_ok ->L_crm_prev_init
+L_crm_prev_init:
+  Set crm_prev 0
+  J L_crm_prev_ok
+L_crm_prev_ok:
+
+  # Handle caddy
+  If caddy_down ->L_caddy_down ->L_caddy_up
+L_caddy_down:
+  # Try restart
+  R svc restart caddy ->caddy_restart_ok
+  X caddy_restarted eq caddy_restart_ok true
+  If caddy_restarted ->L_caddy_check ->L_caddy_fail
+L_caddy_up:
+  R cache set "watchdog" "caddy_consec" 0 ->_
+  Set caddy_consec 0
+  J L_check_cf
+L_caddy_fail:
+  X caddy_consec add caddy_prev 1
+  R cache set "watchdog" "caddy_consec" caddy_consec ->_
+  J L_check_cf
+L_caddy_check:
+  # Verify status after restart
+  R svc caddy ->caddy_status2
+  X caddy_still_down eq caddy_status2 "down"
+  If caddy_still_down ->L_caddy_fail ->L_caddy_up
+
+L_check_cf:
+  If cf_down ->L_cf_down ->L_cf_up
+L_cf_down:
+  R svc restart cloudflared ->cf_restart_ok
+  X cf_restarted eq cf_restart_ok true
+  If cf_restarted ->L_cf_check ->L_cf_fail
+L_cf_up:
+  R cache set "watchdog" "cf_consec" 0 ->_
+  Set cf_consec 0
+  J L_check_maddy
+L_cf_fail:
+  X cf_consec add cf_prev 1
+  R cache set "watchdog" "cf_consec" cf_consec ->_
+  J L_check_maddy
+L_cf_check:
+  R svc cloudflared ->cf_status2
+  X cf_still_down eq cf_status2 "down"
+  If cf_still_down ->L_cf_fail ->L_cf_up
+
+L_check_maddy:
+  If maddy_down ->L_maddy_down ->L_maddy_up
+L_maddy_down:
+  R svc restart maddy ->maddy_restart_ok
+  X maddy_restarted eq maddy_restart_ok true
+  If maddy_restarted ->L_maddy_check ->L_maddy_fail
+L_maddy_up:
+  R cache set "watchdog" "maddy_consec" 0 ->_
+  Set maddy_consec 0
+  J L_check_crm
+L_maddy_fail:
+  X maddy_consec add maddy_prev 1
+  R cache set "watchdog" "maddy_consec" maddy_consec ->_
+  J L_check_crm
+L_maddy_check:
+  R svc maddy ->maddy_status2
+  X maddy_still_down eq maddy_status2 "down"
+  If maddy_still_down ->L_maddy_fail ->L_maddy_up
+
+L_check_crm:
+  If crm_down ->L_crm_down ->L_crm_up
+L_crm_down:
+  R svc restart crm ->crm_restart_ok
+  X crm_restarted eq crm_restart_ok true
+  If crm_restarted ->L_crm_check ->L_crm_fail
+L_crm_up:
+  R cache set "watchdog" "crm_consec" 0 ->_
+  Set crm_consec 0
+  J L_eval
+L_crm_fail:
+  X crm_consec add crm_prev 1
+  R cache set "watchdog" "crm_consec" crm_consec ->_
+  J L_eval
+L_crm_check:
+  R svc crm ->crm_status2
+  X crm_still_down eq crm_status2 "down"
+  If crm_still_down ->L_crm_fail ->L_crm_up
+
+L_eval:
+  X caddy_breach gte caddy_consec 3
+  X cf_breach gte cf_consec 3
+  X maddy_breach gte maddy_consec 3
+  X crm_breach gte crm_consec 3
+  X breach1 or caddy_breach cf_breach
+  X breach2 or maddy_breach crm_breach
+  X any_breach or breach1 breach2
+  If any_breach ->L_alert ->L_ok
+
+L_alert:
+  # Check cooldown
+  X since_alert sub ts cooldown
+  X cd_elapsed gt since_alert cooldown_seconds
+  X no_prev eq cooldown 0
+  X should_alert or cd_elapsed no_prev
+  If should_alert ->L_send ->L_ok
+
+L_send:
+  R core concat "🚨 Infrastructure Down\n\nCaddy: " caddy_status " (consec: " caddy_consec ")\nCloudflared: " cf_status " (consec: " cf_consec ")\nMaddy: " maddy_status " (consec: " maddy_consec ")\nCRM: " crm_status " (consec: " crm_consec ")" ->alert_msg
+  QueuePut notify alert_msg
+  R cache set "monitor_heartbeat" "watchdog_cooldown" ts ->_
+  R core concat "infra-down-" ts ->evt_id
+  R cache set "monitor_heartbeat" "infrastructure_watchdog" ts ->_
+  Ret null
+
+L_ok:
+  R core concat "✅ Infrastructure OK — " svc_summary ->ok_msg
+  R cache set "monitor_heartbeat" "infrastructure_watchdog" ts ->_
+  Ret null

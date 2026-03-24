@@ -1,0 +1,61 @@
+# modules/common/guard.ainl
+# Frame-based guard: token and duration ceilings plus a boolean policy slot (strict-safe).
+# Memory audit uses the same put shape as generic_memory.ainl (Memory Contract v1); duplicate of that R/X pair, not an include (generic_memory has no LENTRY/LEXIT_* include contract).
+#
+# Strict note: bare vars in If are checked for defined-before-use; flags are materialized with R core.mul + core.clamp (args are not strict-read), then If uses those temps.
+#
+# Caller binds before Call guard/ENTRY ->out:
+# - guard_skip — truthy/1 short-circuits to LEXIT_OK (Set false/0 to enforce checks)
+# - guard_tokens_used, guard_max_tokens (numbers)
+# - guard_elapsed_sec, guard_max_duration_sec (numbers)
+# - guard_condition_ok — truthy/1 means custom gate passes
+# - guard_audit — truthy/1 on violation runs memory.put audit row (requires memory adapter)
+
+LENTRY:
+  R core.mul guard_skip 1 ->guard_skip_n
+  R core.clamp guard_skip_n 0 1 ->guard_skip_f
+  If guard_skip_f ->LEXIT_OK ->L_guard_tok
+
+L_guard_tok:
+  R core.SUB guard_tokens_used guard_max_tokens ->guard_tok_raw
+  R core.clamp guard_tok_raw 0 1 ->guard_tok_bad
+  If guard_tok_bad ->LEXIT_GUARD_VIOLATION ->L_guard_time
+
+L_guard_time:
+  R core.SUB guard_elapsed_sec guard_max_duration_sec ->guard_time_raw
+  R core.clamp guard_time_raw 0 1 ->guard_time_bad
+  If guard_time_bad ->LEXIT_GUARD_VIOLATION ->L_guard_cond
+
+L_guard_cond:
+  R core.mul guard_condition_ok 1 ->guard_cond_n
+  R core.clamp guard_cond_n 0 1 ->guard_cond_f
+  If guard_cond_f ->LEXIT_OK ->LEXIT_GUARD_VIOLATION
+
+LEXIT_OK:
+  R core.ECHO "guard_ok" ->guard_out
+  J guard_out
+
+LEXIT_GUARD_VIOLATION:
+  R core.mul guard_audit 1 ->guard_audit_n
+  R core.clamp guard_audit_n 0 1 ->guard_audit_f
+  If guard_audit_f ->L_guard_audit ->L_guard_viol_echo
+
+L_guard_audit:
+  X memory_tags arr
+  Set memory_namespace "session"
+  Set memory_kind "session.guard_audit"
+  Set memory_record_id "last_violation"
+  R core.PARSE "{\"reason\":\"guard_threshold\",\"module\":\"guard.ainl\"}" ->memory_payload
+  Set memory_ttl null
+  Set memory_source "guard.ainl"
+  Set memory_valid_at null
+  Set memory_updated_after null
+  Set memory_list_limit 1
+  X memory_meta {"source":memory_source,"confidence":1.0,"tags":memory_tags,"valid_at":memory_valid_at}
+  R memory put memory_namespace memory_kind memory_record_id memory_payload memory_ttl memory_meta ->guard_mem_out
+  R core.ECHO "guard_violation" ->guard_bad
+  J guard_bad
+
+L_guard_viol_echo:
+  R core.ECHO "guard_violation" ->guard_bad
+  J guard_bad

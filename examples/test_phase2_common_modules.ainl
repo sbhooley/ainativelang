@@ -1,0 +1,51 @@
+# examples/test_phase2_common_modules.ainl
+# Phase 2 smoke: guard, session_budget, reflect (strict-safe frame bindings).
+# Run: python3 scripts/validate_ainl.py --strict --strict-reachability examples/test_phase2_common_modules.ainl
+#      python3 -m cli.main run examples/test_phase2_common_modules.ainl --log-trajectory --json --enable-adapter api --enable-adapter memory
+
+include "modules/common/guard.ainl" as guard
+include "modules/common/session_budget.ainl" as sb
+include "modules/common/reflect.ainl" as reflect
+
+L1:
+  Set guard_skip false
+  Set guard_tokens_used 5
+  Set guard_max_tokens 100
+  Set guard_elapsed_sec 1
+  Set guard_max_duration_sec 3600
+  Set guard_condition_ok true
+  Set guard_audit false
+  Call guard/ENTRY ->g_out
+
+  Set budget_tokens_start 10
+  Set budget_tokens_delta 5
+  Set budget_max_tokens 100
+  Set budget_time_start 0
+  Set budget_time_delta_sec 1
+  Set budget_max_duration_sec 9999
+  Set budget_log_memory false
+  Call sb/ENTRY ->b_out
+
+  Set reflect_trajectory_text ""
+  Set reflect_traj_nonempty 0
+  Set reflect_has_fail_pattern false
+  Set reflect_abort false
+  Call reflect/ENTRY ->r_ok
+
+  Set reflect_trajectory_text "{\"outcome\": \"fail\"}"
+  Set reflect_traj_nonempty 1
+  Set reflect_has_fail_pattern true
+  Set reflect_abort false
+  Call reflect/ENTRY ->r_adj
+
+  Set guard_skip false
+  Set guard_tokens_used 500
+  Set guard_max_tokens 10
+  Set guard_elapsed_sec 1
+  Set guard_max_duration_sec 3600
+  Set guard_condition_ok true
+  Set guard_audit false
+  Call guard/ENTRY ->g_viol
+
+  R core.ECHO "done" ->done
+  J done
