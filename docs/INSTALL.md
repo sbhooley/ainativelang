@@ -49,6 +49,47 @@ ainl-validate examples/blog.lang --emit ir
 python -m pip install -e ".[dev,web]"
 ```
 
+## No-root / sandbox install order (PEP 668 aware)
+
+When `sudo` is unavailable or Python is externally managed, use this order:
+
+1. **Best:** isolated venv
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install "ainl-lang[mcp]"
+```
+
+2. **Fallback:** user install (no root)
+
+```bash
+python -m pip install --user "ainl-lang[mcp]"
+```
+
+3. **Last resort:** break-system-packages (only if your platform requires it)
+
+```bash
+python -m pip install --break-system-packages "ainl-lang[mcp]"
+```
+
+For Python 3.13 sandbox hosts, you can use the tested MCP constraints file:
+
+```bash
+python -m pip install --constraint constraints/py313-mcp.txt "ainl-lang[mcp]"
+```
+
+### Host/container responsibilities (outside AINL package scope)
+
+AINL install/runtime checks assume the host (or container image) provides:
+
+- a writable user home directory
+- outbound package download access (or internal package mirror)
+- a usable Python interpreter + `pip`
+- shell startup/PATH behavior that can discover user script bins
+- filesystem permissions allowing local config writes for MCP bootstrap paths
+
 ## Optional local guardrails (recommended)
 
 Enable pre-commit hooks for fast local feedback before pushing:
@@ -93,6 +134,15 @@ Legacy behavior is unchanged: **`compile()` without `context`** still returns IR
 - `ainl-tool-api` - structured tool API CLI
 - `ainl-ollama-eval` - local Ollama eval harness
 - `ainl-visualize` / `ainl visualize` — compile `.ainl` to **Mermaid** (subgraph clusters for `include` aliases; paste into [mermaid.live](https://mermaid.live)) and export images with `--png/--svg` (`--width`/`--height` supported). For image export, install Playwright browser runtime once: `playwright install chromium`. See root `README.md` (**Visualize your workflow**) and `docs/architecture/GRAPH_INTROSPECTION.md` §7.
+- `ainl doctor` - environment diagnostics (imports, PATH, MCP config, install-mcp dry-run checks)
+
+### Doctor command
+
+```bash
+ainl doctor
+ainl doctor --json
+ainl doctor --host openclaw
+```
 
 ## Runtime adapter CLI examples
 

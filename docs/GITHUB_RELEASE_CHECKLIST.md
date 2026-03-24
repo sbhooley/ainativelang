@@ -74,6 +74,10 @@ Advanced memory and TTL hygiene:
 
 - [ ] Run a final docs link check (manual or scripted).
 - [ ] Verify no private/sensitive data in committed artifacts.
+- [ ] `Release Gates` workflow is green (wheel import smoke, `pip check`, MCP dry-run gates).
+- [ ] Wheel install check passed for `import runtime.compat, adapters, cli.main`.
+- [ ] `ainl install-mcp --host openclaw --dry-run` and `--host zeroclaw --dry-run` both pass.
+- [ ] Release notes include a clear install-regression status line (what was validated, and any remaining host-lane caveats).
 - [ ] Create release notes summarizing:
   - key technical changes
   - known limitations

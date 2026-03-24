@@ -35,6 +35,7 @@ Run:
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import uuid
@@ -513,11 +514,32 @@ def security_profiles_resource() -> str:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="ainl-mcp",
+        description="AINL MCP stdio server",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio"],
+        default="stdio",
+        help="Transport mode (stdio only)",
+    )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Print AINL runtime version and exit",
+    )
+    args = parser.parse_args()
+    if args.version:
+        from runtime.engine import RUNTIME_VERSION
+
+        print(RUNTIME_VERSION)
+        return
     if _mcp_server is None:
         raise SystemExit(
             "MCP SDK not installed. Install with: pip install -e '.[mcp]'"
         )
-    _mcp_server.run(transport="stdio")
+    _mcp_server.run(transport=args.transport)
 
 
 if __name__ == "__main__":

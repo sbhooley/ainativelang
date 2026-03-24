@@ -18,6 +18,12 @@ pip install -e ".[interop]"
 pip install -e ".[dev,benchmark,interop]"
 ```
 
+For Python 3.13 sandboxed hosts (PEP 668/no-sudo environments), use the tested MCP constraints:
+
+```bash
+python -m pip install --constraint constraints/py313-mcp.txt "ainl-lang[mcp]"
+```
+
 ## Consuming emitted hybrid modules
 
 Generated files from `scripts/validate_ainl.py --emit langgraph` / `--emit temporal` expect:

@@ -2,7 +2,7 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl-lang`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.2.5** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.2.6** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
 ## Public API surface (for downstream apps)
 
@@ -26,6 +26,7 @@ CLI entry points are listed under **`[project.scripts]`** in `pyproject.toml` (`
 3. Ensure **`make conformance`** and **`pytest`** pass on **Python 3.10** (minimum supported).  
 4. Optional: run **`make benchmark PYTHON=./.venv-py310/bin/python`** and commit refreshed **`BENCHMARK.md`** / **`tooling/benchmark_size.json`** / **`tooling/benchmark_runtime_results.json`** if you track **full** baselines on `main`.
 5. For **CI regression parity**, run **`make benchmark-ci PYTHON=./.venv-py310/bin/python`** and commit **`tooling/benchmark_size_ci.json`** and **`tooling/benchmark_runtime_ci.json`** when they drift. GitHub Actions **`benchmark-regression`** **prefers** those `*_ci.json` files on the baseline commit when present (see **`BENCHMARK.md`** § *CI regression baselines*).
+6. Confirm install hardening gates are green (including non-root container smoke + `constraints/py313-mcp.txt` health workflow status).
 
 ## Build and upload
 
@@ -37,6 +38,24 @@ twine upload dist/*
 ```
 
 Use **TestPyPI** first if desired: `twine upload --repository testpypi dist/*`.
+
+## Required release gates (automation)
+
+Before tagging/uploading, ensure **`Release Gates`** GitHub workflow passes:
+
+- wheel build + `twine check`
+- wheel install smoke (`import runtime.compat, adapters, cli.main`)
+- `ainl --help` and `ainl-mcp --help`
+- `python -m pip check`
+- `ainl install-mcp --host openclaw --dry-run`
+- `ainl install-mcp --host zeroclaw --dry-run`
+- install sections in release notes explicitly mention install-regression status (pass/fail and any known host-lane caveats)
+
+For Python 3.13 sandbox compatibility, use:
+
+```bash
+python -m pip install --constraint constraints/py313-mcp.txt "ainl-lang[mcp]"
+```
 
 ## Git tag
 

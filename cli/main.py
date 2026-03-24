@@ -785,6 +785,29 @@ def main() -> None:
     ocl.add_argument("--verbose", "-v", action="store_true", help="Log each step to stderr")
     ocl.set_defaults(func=cmd_install_openclaw)
 
+    def cmd_doctor(args: argparse.Namespace) -> int:
+        from tooling.doctor import run_doctor
+
+        return run_doctor(
+            host=(args.host or None),
+            json_output=bool(args.json),
+            verbose=bool(args.verbose),
+        )
+
+    doc = sub.add_parser(
+        "doctor",
+        help="Run environment diagnostics (imports, PATH, MCP config, install-mcp dry-run)",
+    )
+    doc.add_argument(
+        "--host",
+        choices=list(list_mcp_host_ids()),
+        default="",
+        help="Limit MCP checks to one host (default: check all known hosts)",
+    )
+    doc.add_argument("--json", action="store_true", help="Emit JSON diagnostics output")
+    doc.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    doc.set_defaults(func=cmd_doctor)
+
     gld = sub.add_parser("golden", help="Run golden fixtures from examples")
     gld.add_argument("--examples-dir", default=str(Path(__file__).resolve().parent.parent / "examples"))
     gld.add_argument("--trace", action="store_true")

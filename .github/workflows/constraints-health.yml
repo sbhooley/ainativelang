@@ -1,0 +1,29 @@
+name: Constraints Health
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+jobs:
+  py313-mcp-constraints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate constraints/py313-mcp.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv .venv-constraints-health
+          . .venv-constraints-health/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install --constraint constraints/py313-mcp.txt ".[mcp]"
+          python -m pip check
+          ainl --help >/dev/null
+          ainl-mcp --help >/dev/null
