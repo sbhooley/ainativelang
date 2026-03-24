@@ -6,7 +6,7 @@ Figures below are copied from **committed** artifacts only — **`BENCHMARK.md`*
 
 **Benchmark refresh (UTC, from JSON):** `tooling/benchmark_size.json` → `generated_at_utc` **2026-03-24T03:24:27.395076+00:00**; `tooling/benchmark_runtime_results.json` → `generated_at_utc` **2026-03-24T03:24:29.102226+00:00**.
 
-### Takeaways
+## Takeaways
 
 *Figures already in this page — not new runs.*
 
