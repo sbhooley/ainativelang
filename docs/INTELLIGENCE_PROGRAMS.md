@@ -14,6 +14,7 @@ AINL sources under `intelligence/` support **OpenClaw-style** automation: memory
 | `session_continuity_enhanced.lang` | Lists `session` memory keys, heartbeat + notify (monitoring posture) |
 | `store_baseline.lang` | One-shot seed into `memory` (`intel` / baseline) |
 | `test_split.lang` | Small harness for split/len-style checks |
+| `infrastructure_watchdog.lang` | Service health checks + optional notify path (operator-tuned; pair with your gateway / bridge allowlists) |
 
 ## Local runner
 

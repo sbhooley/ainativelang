@@ -29,7 +29,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
 - Contributor entrypoint: `CONTRIBUTING.md`
 - Audience quickstart: `docs/AUDIENCE_GUIDE.md`
-- What is AINL (short primer + v1.2 snapshot): `docs/WHAT_IS_AINL.md` (and `WHAT_IS_AINL.md` at repo root)
+- What is AINL (canonical primer + v1.2+ snapshot): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
 - Install and environment setup: `docs/INSTALL.md` (includes `ainl-validate` strict / `--json-diagnostics` / optional **rich**)
 - Compiler structured diagnostics module: `compiler_diagnostics.py` (used by `compiler_v2.py`, `langserver.py`, `scripts/validate_ainl.py`; tests in `tests/test_diagnostics.py`)
 - GitHub release checklist: `docs/GITHUB_RELEASE_CHECKLIST.md`
@@ -53,6 +53,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Capability grant model: `docs/operations/CAPABILITY_GRANT_MODEL.md`
 - Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
+- **CLI trajectory JSONL** (`ainl run --log-trajectory`, `AINL_LOG_TRAJECTORY`): `docs/trajectory.md` (per-step trace beside the `.ainl` source; not runner HTTP audit)
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — includes MCP agent role templates, desktop-safe recipe, end-to-end validator/inspector/runner example, and Claude Code / Cowork / Dispatch guidance
 - **MCP host hub (OpenClaw, ZeroClaw, future):** `docs/getting_started/HOST_MCP_INTEGRATIONS.md` — **`ainl install-mcp --host …`**, skill + CLI pattern, maintainer notes (`tooling/mcp_host_install.py`); stub at `docs/HOST_MCP_INTEGRATIONS.md` for old links
@@ -90,6 +91,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Tracked runtime benchmark JSON (CI regression baseline): `tooling/benchmark_runtime_results.json`
 - Compile-once / run-many proof pack: `docs/architecture/COMPILE_ONCE_RUN_MANY.md`
   - Includes `scripts/summarize_runs.py` for aggregating `RuntimeEngine.run(..., trace=True)` JSON payloads into small health summaries.
+- **Hyperspace emitter** (`--emit hyperspace`, embedded IR agent): `docs/emitters/README.md` · demo `examples/hyperspace_demo.ainl` · adapters `adapters/vector_memory.py`, `adapters/tool_registry.py` · catalog `docs/reference/ADAPTER_REGISTRY.md` §9
 - Launch copy pack: `docs/launch/SHORT_POST.md`, `docs/launch/TECHNICAL_POST.md`
 - Maintainer publish checklist snapshot: `docs/launch/PUBLISH_CHECKLIST.md`
 - Post-release issue drafts and migration templates:
@@ -116,6 +118,7 @@ entry point for new users or unsupervised agents.
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Capability grant model (host handshake): `docs/operations/CAPABILITY_GRANT_MODEL.md`
 - Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
+- **CLI trajectory JSONL:** `docs/trajectory.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`
 - **HTTP bridge for generic external executors** (secondary to MCP for OpenClaw / NemoClaw / ZeroClaw): `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` — pair with `schemas/executor_bridge_request.schema.json`, `modules/common/executor_bridge_request.ainl`, and `schemas/executor_bridge_validate.py`

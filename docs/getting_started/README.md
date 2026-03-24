@@ -36,6 +36,12 @@ ainl visualize examples/hello.ainl --png hello.png
 
 # Run a tiny workflow
 ainl run examples/hello.ainl --json
+
+# Optional: per-step JSONL trace beside the source (see docs/trajectory.md)
+ainl run examples/hello.ainl --log-trajectory --json
+
+# Emit a standalone Hyperspace Python agent (embedded IR); run from repo root
+python3 scripts/validate_ainl.py examples/hyperspace_demo.ainl --strict --emit hyperspace -o demo_agent.py
 ```
 
 No server needed. Good for local development, scripting, and CI.

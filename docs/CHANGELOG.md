@@ -1,5 +1,15 @@
 # Changelog
 
+## March 23, 2026 — Hyperspace bridge (trajectory, common modules, local adapters, emitter)
+
+- **feat(runtime)**: optional per-step **trajectory JSONL** (`--log-trajectory` / `AINL_LOG_TRAJECTORY`) — `docs/trajectory.md`
+- **feat(modules)**: `modules/common/guard.ainl`, `session_budget.ainl`, `reflect.ainl` — token/time ceilings, budget accounting, reflect gates; `modules/common/README.md` updated
+- **feat(adapters)**: local **`vector_memory`** (keyword-scored JSON store) and **`tool_registry`** (JSON tool catalog) under `adapters/`; CLI `--enable-adapter vector_memory|tool_registry`; documented in `docs/reference/ADAPTER_REGISTRY.md`, `docs/adapters/README.md`
+- **feat(emit)**: **`--emit hyperspace`** via `scripts/validate_ainl.py` — standalone agent module with embedded IR; see `docs/emitters/README.md`, root `README.md`, `examples/hyperspace_demo.ainl`
+- **docs**: hub links in `docs/README.md`, `docs/DOCS_INDEX.md`; `docs/runtime/README.md` (trajectory); `docs/examples/README.md` (phase-2 / hyperspace examples); `docs/language/AINL_CORE_AND_MODULES.md` §8 (guard/budget/reflect); `docs/INTELLIGENCE_PROGRAMS.md` (`infrastructure_watchdog.lang`); `docs/RUNTIME_COMPILER_CONTRACT.md` (trajectory note)
+- **ops / examples**: `intelligence/infrastructure_watchdog.lang`, `scripts/morning_briefing.ainl` + wrapper, small `examples/test_*.ainl` harnesses; `.gitignore` **`runtime_runner.log`**
+- **docs (primer policy)**: **`docs/WHAT_IS_AINL.md`** is the **canonical** “What is AINL?” document (stakeholder narrative + capability snapshot); repository root **`WHAT_IS_AINL.md`** is a **stub** pointing to it. **`README.md`**, **`docs/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/overview/README.md`**, **`WHITEPAPERDRAFT.md`** (§5.4 includes note, new §6.5 trajectory / Hyperspace) updated accordingly.
+
 ## v1.2.4 (March 21, 2026) — addendum 2026-03-22
 
 - **fix(apollo-x-bot)**: `gateway_server.py` — **`_classify_wants_envelope`** only when **`messages`** is a non-empty list (avoids **`envelope_missing_messages`** on **`classify_response=raw`** without messages; legacy tweet+prompt path); clearer bind error on **EADDRINUSE**; swallow **BrokenPipeError** / connection resets when the client disconnects early (timeouts).

@@ -11,6 +11,7 @@ Use this section to understand how AINL reaches external systems and how capabil
 - [`MEMORY_CONTRACT.md`](MEMORY_CONTRACT.md) — memory contract and state surfaces
 - [`MEMORY_CONTRACT_V1_1_RFC.md`](MEMORY_CONTRACT_V1_1_RFC.md) — additive v1.1 proposal for deterministic query metadata and filters
 - **Opt-in access metadata on memory rows** (bump `last_accessed` / `access_count` on read, list, or write): source module [`../../modules/common/access_aware_memory.ainl`](../../modules/common/access_aware_memory.ainl), index [`../../modules/common/README.md`](../../modules/common/README.md); graph-safe list path: **`LACCESS_LIST_SAFE`**
+- **Local Hyperspace-oriented adapters** (JSON files under cwd; no extra deps): **`vector_memory`** — keyword overlap search / upsert ([`../../adapters/vector_memory.py`](../../adapters/vector_memory.py)); **`tool_registry`** — list / get / register / discover ([`../../adapters/tool_registry.py`](../../adapters/tool_registry.py)). Enable with `ainl run --enable-adapter vector_memory --enable-adapter tool_registry`. Env: `AINL_VECTOR_MEMORY_PATH`, `AINL_TOOL_REGISTRY_PATH`. Catalog: [`../reference/ADAPTER_REGISTRY.md`](../reference/ADAPTER_REGISTRY.md) §9. Used by the **`--emit hyperspace`** agent ([`../emitters/README.md`](../emitters/README.md)).
 
 ## Related sections
 

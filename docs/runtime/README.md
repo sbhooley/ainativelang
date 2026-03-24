@@ -8,6 +8,7 @@ Use this section to understand how compiled AINL graphs execute, what runtime gu
 - [`../CONFORMANCE.md`](../CONFORMANCE.md) — current implementation conformance
 - [`SAFE_OPTIMIZATION_POLICY.md`](SAFE_OPTIMIZATION_POLICY.md) — optimization guardrails
 - [`TARGETS_ROADMAP.md`](TARGETS_ROADMAP.md) — target/runtime support roadmap
+- [`../trajectory.md`](../trajectory.md) — optional CLI step trace (`<stem>.trajectory.jsonl`, `ainl run --log-trajectory` / `AINL_LOG_TRAJECTORY`)
 
 ## Related sections
 

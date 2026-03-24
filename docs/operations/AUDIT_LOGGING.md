@@ -2,7 +2,7 @@
 
 The **HTTP runner service** (`ainl-runner-service`, `scripts/runtime_runner_service.py`) emits structured JSON log events for **`/run`** and **`/enqueue`** execution paths: `run_start`, per-`adapter_call`, `run_complete` / `run_failed`, and `policy_rejected` when policy rejects a request before execution.
 
-**Not the same surface:** embedding **`RuntimeEngine`** directly (e.g. CLI `ainl run`, tests, `scripts/run_intelligence.py`, MCP `ainl_run`) does **not** emit this JSON audit stream by default. Those paths may expose **traces**, **counters** (e.g. adapter call limits), or host logs, but **not** the runner’s structured event schema unless you wrap execution in a layer that emits it.
+**Not the same surface:** embedding **`RuntimeEngine`** directly (e.g. CLI `ainl run`, tests, `scripts/run_intelligence.py`, MCP `ainl_run`) does **not** emit this JSON audit stream by default. Those paths may expose **traces**, **counters** (e.g. adapter call limits), or host logs, but **not** the runner’s structured event schema unless you wrap execution in a layer that emits it. For **CLI-side per-step JSONL** beside the `.ainl` file, see [`../trajectory.md`](../trajectory.md) (`--log-trajectory` / `AINL_LOG_TRAJECTORY`) — that file is **not** the runner audit schema below.
 
 This doc describes **runner HTTP API** audit events only. Audit logging is part of the **runtime/host** layer for that deployment shape. AINL provides the events from the runner; the hosting environment decides how to collect, store, and act on them. AINL does not provide a log aggregation service or alerting system.
 

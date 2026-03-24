@@ -218,7 +218,7 @@ The repository ships **strict-safe** subgraph files merged at compile time via `
 
 | Location | Reuse | Index |
 |----------|--------|--------|
-| **`modules/common/`** | Any program (`demo/`, `examples/`, `intelligence/`, apps); includes **`executor_bridge_request.ainl`** for HTTP bridge JSON envelopes | [modules/common/README.md](../../modules/common/README.md) |
+| **`modules/common/`** | Any program (`demo/`, `examples/`, `intelligence/`, apps); includes **`executor_bridge_request.ainl`** for HTTP bridge JSON envelopes; **guard** / **session_budget** / **reflect** for strict-safe ceilings, budgets, and reflect gates | [modules/common/README.md](../../modules/common/README.md) |
 | **`modules/llm/`** | LLM / OpenAI-shaped **system** strings and JSON discipline (strict `include` subgraphs) | [modules/llm/README.md](../../modules/llm/README.md) |
 | **`modules/openclaw/`** | OpenClaw cron sketches | See headers in each `.ainl` |
 | **App-local `modules/<your-app>/`** (next to your bridge / gateway) | One deployment’s bridge JSON shells + main graph; **not** shared across products | Keep README + `include` layout beside the gateway that owns executor keys |

@@ -84,6 +84,10 @@ Current policy remains graph-preferred:
 - Step execution is retained as compatibility/fallback and for explicit `steps-only`.
 - Both paths share the same op handlers where possible to reduce semantic drift.
 
+### Trajectory logging (optional)
+
+`RuntimeEngine` may append **one JSON line per executed step** to `<source-stem>.trajectory.jsonl` when the host enables it (CLI: `ainl run --log-trajectory`, env: `AINL_LOG_TRAJECTORY`). This is a **diagnostic artifact** only; it does not change label routing or adapter semantics. It is separate from the runner service’s HTTP audit stream (`docs/operations/AUDIT_LOGGING.md`). See `docs/trajectory.md`.
+
 ### Future Runtime Semantics Location
 
 Any new executable semantics must be defined in compiler-owned IR shape/normalization first, then implemented in `RuntimeEngine` only.

@@ -110,7 +110,7 @@ For the full conformance matrix in one command (tokenizer, IR canonicalization, 
 
 `make conformance` (or `SNAPSHOT_UPDATE=1 make conformance` when intentionally updating snapshots).
 
-Short primer for stakeholders: [`docs/WHAT_IS_AINL.md`](docs/WHAT_IS_AINL.md) (and [`WHAT_IS_AINL.md`](WHAT_IS_AINL.md) at repo root).
+Short primer for stakeholders: **[`docs/WHAT_IS_AINL.md`](docs/WHAT_IS_AINL.md)** (canonical). [`WHAT_IS_AINL.md`](WHAT_IS_AINL.md) at repo root is a **stub** that points to the same content.
 
 ### Getting started with includes
 
@@ -582,7 +582,7 @@ For implementation and shipped-capability status, see:
 
 ### Essential reading
 
-- What is AINL? (short primer + v1.2 capabilities): `docs/WHAT_IS_AINL.md`, `WHAT_IS_AINL.md`
+- What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
 - AINL → HTTP workers (bridge envelope, schema, include): `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` · `schemas/executor_bridge_request.schema.json` · `modules/common/executor_bridge_request.ainl`
 - Getting started (3 integration paths): `docs/getting_started/README.md`
 - Primary docs hub: `docs/README.md`

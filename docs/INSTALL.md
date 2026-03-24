@@ -98,6 +98,22 @@ Legacy behavior is unchanged: **`compile()` without `context`** still returns IR
 
 Use `ainl run` with `--enable-adapter` flags to bootstrap reference adapters without writing Python glue code.
 
+### Trajectory logging
+
+Optional **`--log-trajectory`** or **`AINL_LOG_TRAJECTORY=1`** appends one JSON line per executed step to **`<source-stem>.trajectory.jsonl`** beside the `.ainl` file. This is separate from the HTTP runner’s structured audit log. See **`docs/trajectory.md`**.
+
+### Local `vector_memory` / `tool_registry`
+
+For JSON-backed search/upsert and a local tool catalog (used by **`examples/hyperspace_demo.ainl`** and **`--emit hyperspace`**), enable:
+
+```bash
+ainl run app.ainl --json \
+  --enable-adapter vector_memory \
+  --enable-adapter tool_registry
+```
+
+Env overrides: **`AINL_VECTOR_MEMORY_PATH`**, **`AINL_TOOL_REGISTRY_PATH`**. Details: **`docs/adapters/README.md`**, **`docs/reference/ADAPTER_REGISTRY.md`** §9, **`docs/emitters/README.md`**.
+
 ### HTTP adapter
 
 ```bash
