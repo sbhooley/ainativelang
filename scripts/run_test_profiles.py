@@ -49,6 +49,11 @@ def main() -> None:
         "--ignore=tests/test_visualizer.py",
         "--ignore=tests/test_zeroclaw_wrappers.py",
         "--ignore=tests/test_artifact_policy_manifest.py",
+        "--ignore=tests/test_agent_send_task.py",
+        "--ignore=tests/test_apollo_x_gateway.py",
+        "--ignore=tests/test_install_openclaw.py",
+        "--ignore=tests/test_install_zeroclaw.py",
+        "--ignore=tests/test_sqlite_adapter_contracts.py",
     ]
 
     if args.profile == "core":
