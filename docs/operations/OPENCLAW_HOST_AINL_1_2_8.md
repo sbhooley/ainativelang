@@ -42,6 +42,11 @@ See [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md). Prefer an 
 
 - Operators can **`eval "$(ainl profile emit-shell openclaw-default)"`** (or **`cost-tight`** after measuring) for baseline **`AINL_*`** flags.
 - Set **`AINL_WEEKLY_TOKEN_BUDGET_CAP`** if you want **`weekly_remaining_tokens`** in rolling JSON to match your real budget.
+- Optional (for extra startup savings): enable embedding top-k candidate selection by ensuring:
+  - `AINL_STARTUP_USE_EMBEDDINGS=1` (profiles set this by default), and
+  - `AINL_EMBEDDING_MODE != stub` (set to `openai` on the embedding/indexing cron process), and
+  - you run the embedding pilot once (`openclaw/bridge/run_wrapper_ainl.py embedding-memory-pilot`) so `embedding_workflow_index` has refs, and
+  - `proactive_session_summarizer` has run at least once so `workflow.session_summary` payloads include the real terse bullet text in `payload.summary`.
 - **Gateway-only:** set **`PROMOTER_LLM_MAX_PROMPT_CHARS`** / **`PROMOTER_LLM_MAX_COMPLETION_TOKENS`** on the Apollo / gateway process per **`TOKEN_CAPS_STAGING.md`** (staging order — measure first).
 
 ### 4. Verification

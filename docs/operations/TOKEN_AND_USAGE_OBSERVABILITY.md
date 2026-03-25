@@ -64,6 +64,13 @@ Set on the process that runs `apollo-x-bot/gateway_server.py`:
 | `AINL_EMBEDDING_INDEX_NAMESPACE` | Namespace to scan for indexing (default `workflow`) |
 | `AINL_EMBEDDING_MODE` | `stub` (default) or `openai` for real embeddings (`adapters/embedding_memory.py`) |
 
+| `AINL_STARTUP_USE_EMBEDDINGS` | Enables an optional embedding top-k candidate path inside `token_aware_startup_context`; safe fallback always exists |
+
+Activation detail:
+
+- `token_aware_startup_context` uses embedding hits only when `AINL_EMBEDDING_MODE != stub` (so profiles can keep `AINL_STARTUP_USE_EMBEDDINGS=1` without breaking embeddings).
+- `proactive_session_summarizer` stores the actual terse bullet text into `payload.summary` for `workflow.session_summary` records, so `embedding_workflow_index/search` returns meaningful snippets for startup.
+
 Wrapper: **`python3 openclaw/bridge/run_wrapper_ainl.py embedding-memory-pilot --dry-run`**
 
 Bridge verbs: **`embedding_workflow_index`**, **`embedding_workflow_search`** (see `openclaw/bridge/bridge_token_budget_adapter.py`).

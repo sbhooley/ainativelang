@@ -74,6 +74,20 @@ Set **after** you understand your gateway; **adjust** after `ainl bridge-sizing-
 
 Staging order and hydrate flags: [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md).
 
+### Startup bootstrap caps (AINL token-aware context)
+
+These clamp the *allocation* used by `intelligence/token_aware_startup_context.lang` when it builds `session_context.md`:
+
+- `AINL_STARTUP_CONTEXT_TOKEN_MIN` / `AINL_STARTUP_CONTEXT_TOKEN_MAX`
+- `AINL_STARTUP_USE_EMBEDDINGS` (embedding top-k candidate path; safe fallback enabled)
+
+Important activation rules:
+
+- Embedding top-k only triggers when `AINL_EMBEDDING_MODE` is **not** `stub` (so profiles can leave `AINL_STARTUP_USE_EMBEDDINGS=1` while still being safe by default).
+- When embeddings are real, run the embedding pilot at least once so `workflow.session_summary` text is indexed (see [`EMBEDDING_RETRIEVAL_PILOT.md`](EMBEDDING_RETRIEVAL_PILOT.md)).
+
+To tune startup tokens, start from your profile values, then adjust based on measured `session_context.md` length and user-visible behavior.
+
 ---
 
 ## 3. Cron schedule (recommended defaults)
