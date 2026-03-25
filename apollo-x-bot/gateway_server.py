@@ -17,7 +17,9 @@ Environment (production):
   OPENAI_API_KEY or LLM_API_KEY
   OPENAI_BASE_URL         Default https://api.openai.com/v1
   LLM_MODEL                 Default gpt-4o-mini
-  PROMOTER_STATE_PATH       SQLite file (default: ./apollo-x-bot/data/promoter_state.sqlite)
+  PROMOTER_STATE_PATH       SQLite file (default: apollo-x-bot/data/promoter_state.sqlite). If set to an
+                            existing directory, uses <dir>/promoter_state.sqlite. Resolved to absolute at startup.
+  AINL_MEMORY_DB            Memory SQLite for dashboard memory tail; same directory rule with promoter_memory.sqlite
   PROMOTER_DRY_RUN          If 1, no X writes; LLM falls back to heuristic scoring if no API key
   PROMOTER_MAX_REPLIES_PER_DAY   Default 20 (reply/comment cap per UTC day)
   PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY  Max standalone promotional posts per UTC day (default 5)
@@ -191,12 +193,13 @@ def _count_classify_pass(items: Any, floor: Optional[float] = None) -> int:
 
 class PromoterState:
     def __init__(self, path: Path) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
         self._path = path
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
     def _conn(self) -> sqlite3.Connection:
-        c = sqlite3.connect(str(self._path))
+        # timeout: threaded HTTP server; avoid spurious failures under light lock contention
+        c = sqlite3.connect(str(self._path), timeout=30.0)
         c.row_factory = sqlite3.Row
         return c
 
@@ -598,11 +601,36 @@ def _oauth1_authorization_header(method: str, full_url: str, ck: str, cs: str, t
     return "OAuth " + ", ".join(auth_parts)
 
 
+def _resolve_sqlite_file_path(path: Path, *, default_filename: str) -> Path:
+    """
+    Normalize SQLite paths for env vars. If the path exists and is a directory, use
+    <dir>/<default_filename> (common misconfiguration: PROMOTER_STATE_PATH=/path/to/data).
+    Prefer absolute paths so the gateway does not depend on process cwd after startup.
+    """
+    p = path.expanduser()
+    try:
+        try:
+            p = p.resolve(strict=False)
+        except TypeError:
+            p = p.resolve()
+    except (OSError, RuntimeError):
+        p = Path(os.path.normpath(str(p)))
+    try:
+        if p.exists() and p.is_dir():
+            p = p / default_filename
+    except OSError:
+        pass
+    return p
+
+
 def _memory_db_path() -> Path:
     raw = (os.environ.get("AINL_MEMORY_DB") or "").strip()
     if raw:
-        return Path(raw).expanduser()
-    return Path(__file__).resolve().parent / "data" / "promoter_memory.sqlite"
+        return _resolve_sqlite_file_path(Path(raw), default_filename="promoter_memory.sqlite")
+    return _resolve_sqlite_file_path(
+        Path(__file__).resolve().parent / "data" / "promoter_memory.sqlite",
+        default_filename="promoter_memory.sqlite",
+    )
 
 
 def _normalize_chat_usage(raw: Any) -> Dict[str, int]:
@@ -1795,8 +1823,11 @@ def _discover_authors_from_search_results(state: PromoterState, tweets: List[Dic
 def _state_path() -> Path:
     raw = os.environ.get("PROMOTER_STATE_PATH")
     if raw:
-        return Path(raw).expanduser()
-    return Path(__file__).resolve().parent / "data" / "promoter_state.sqlite"
+        return _resolve_sqlite_file_path(Path(raw.strip()), default_filename="promoter_state.sqlite")
+    return _resolve_sqlite_file_path(
+        Path(__file__).resolve().parent / "data" / "promoter_state.sqlite",
+        default_filename="promoter_state.sqlite",
+    )
 
 
 def _prompts_dir() -> Path:
@@ -3614,7 +3645,8 @@ def main() -> int:
     _log_auth_env_summary()
     host = os.environ.get("PROMOTER_GATEWAY_HOST", "127.0.0.1")
     port = _env_int("PROMOTER_GATEWAY_PORT", 17301)
-    _STATE = PromoterState(_state_path())
+    state_path = _state_path()
+    _STATE = PromoterState(state_path)
     try:
         httpd = ThreadingHTTPServer((host, port), GatewayHandler)
     except OSError as e:
@@ -3630,7 +3662,8 @@ def main() -> int:
     mo = _env_int("PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY", 5)
     print(
         f"apollo-x gateway on http://{host}:{port}/v1/… (see apollo-x-bot/README.md)\n"
-        f"  caps: PROMOTER_MAX_REPLIES_PER_DAY={mr}  PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY={mo}",
+        f"  caps: PROMOTER_MAX_REPLIES_PER_DAY={mr}  PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY={mo}\n"
+        f"  state db: {state_path}",
         file=sys.stderr,
     )
     dash_ref = "127.0.0.1" if host in ("0.0.0.0", "::") else host
