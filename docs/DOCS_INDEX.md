@@ -27,10 +27,20 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Consultant reports index**: `CONSULTANT_REPORTS.md` (see also `AI_CONSULTANT_REPORT_APOLLO.md`)
 - **Agent field reports (OpenClaw / ops narratives)**: `agent_reports/README.md` (e.g. `ainl-king-openclaw-2026-03-19.md`)
 - **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
+- **Token / usage observability (gateway, markdown, rolling budget, caps, embedding pilot):** `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
+- **Token caps (staging order, intelligence hydrate env):** `docs/operations/TOKEN_CAPS_STAGING.md`
+- **Embedding retrieval pilot:** `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`
+- **WASM operator notes:** `docs/operations/WASM_OPERATOR_NOTES.md`
+- **TTL memory tuner (bridge):** `docs/operations/TTL_MEMORY_TUNER.md`
+- **Named env profiles (`ainl profile`, scale-out defaults):** `docs/operations/AINL_PROFILES.md`
+- **Workspace isolation (paths per tenant/user):** `docs/operations/WORKSPACE_ISOLATION.md` — shell pin: `tooling/openclaw_workspace_env.example.sh`
+- **OpenClaw host pack (checklist bundle):** `docs/operations/HOST_PACK_OPENCLAW.md`
+- **Agent + AINL operating model (roles, loop, checklist):** `docs/operations/AGENT_AINL_OPERATING_MODEL.md`
 - Contributor entrypoint: `CONTRIBUTING.md`
 - Audience quickstart: `docs/AUDIENCE_GUIDE.md`
 - What is AINL (canonical primer + v1.2+ snapshot): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
 - Install and environment setup: `docs/INSTALL.md` (includes `ainl-validate` strict / `--json-diagnostics` / optional **rich**)
+- **Strict vs non-strict (opt-in strict):** `docs/getting_started/STRICT_AND_NON_STRICT.md` — default permissive compile; `--strict` / `strict_mode=True` for stronger static checks; how that relates to `demo/` and `examples/`
 - Compiler structured diagnostics module: `compiler_diagnostics.py` (used by `compiler_v2.py`, `langserver.py`, `scripts/validate_ainl.py`; tests in `tests/test_diagnostics.py`)
 - GitHub release checklist: `docs/GITHUB_RELEASE_CHECKLIST.md`
 - Open core charter: `docs/OPEN_CORE_CHARTER.md`
@@ -48,7 +58,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Graph/IR introspection guide: `docs/architecture/GRAPH_INTROSPECTION.md` (includes **Mermaid** CLI: `ainl visualize` / `ainl-visualize`, `scripts/visualize_ainl.py`; image export `--png/--svg` with Playwright; and DOT via `scripts/render_graph.py`)
 - State discipline (tiered state model): `docs/architecture/STATE_DISCIPLINE.md`
 - Runtime semantics contract: `SEMANTICS.md`
-- Runtime/compiler execution contract: `docs/RUNTIME_COMPILER_CONTRACT.md`
+- Runtime/compiler execution contract: `docs/RUNTIME_COMPILER_CONTRACT.md` (includes **graph execution pitfalls**: `X {…}`, `J`, `Set` lists, `memory.list` `null` vs `""`)
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Capability grant model: `docs/operations/CAPABILITY_GRANT_MODEL.md`

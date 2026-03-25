@@ -185,8 +185,8 @@ discovering existing memory records without reading full payloads.
 
 - `namespace` (required): must be one of the v1 namespaces.
 - `record_kind` (optional): when provided, filters to that kind.
-- `record_id_prefix` (optional): when provided, filters to records whose
-  `record_id` starts with this prefix.
+- `record_id_prefix` (optional): when provided (non-null, non-empty string), filters to records whose
+  `record_id` starts with this prefix. In AINL, pass JSON **`null`** to omit the prefix; a literal empty string **`""`** is still “provided” and is **rejected** by the runtime adapter.
 - `updated_since` (optional): an ISO-8601 timestamp string; when provided,
   filters to records whose `updated_at` is greater than or equal to this
   timestamp (string comparison on the stored ISO form).
@@ -237,10 +237,10 @@ Typical usage patterns:
   R memory.list "workflow" "workflow.token_cost_state" "token-"
   ```
 
-- enumerate only records updated recently:
+- enumerate only records updated recently (no `record_id_prefix` filter):
 
   ```text
-  R memory.list "workflow" "workflow.checkpoint" "" "2026-03-10T00:00:00+00:00"
+  R memory.list "workflow" "workflow.checkpoint" null "2026-03-10T00:00:00+00:00"
   ```
 
 `memory.list` is intended as:

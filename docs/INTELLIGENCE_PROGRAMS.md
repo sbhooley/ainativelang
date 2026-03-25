@@ -4,6 +4,8 @@ AINL sources under `intelligence/` support **OpenClaw-style** automation: memory
 
 **Authoring note:** Before `Call genmem/WRITE`, `Call accmem/LACCESS_READ`, or `R memory put`, bind contract fields with **`Set`** (`Set memory_namespace "workflow"`, `Set memory_kind "…"`, …), not **`X`**. The `X` op requires a real function name (`get`, `core.substr`, …); see the callout under **`X`** in **`docs/AINL_SPEC.md`** §2.3.
 
+**Graph runtime:** Intelligence programs run on the compiler-emitted **graph** by default. Do not use **`X dst {…}`** JSON object literals (use **`core.parse`**, **`obj`/`put`**, or **`arr`** — see **`intelligence/token_aware_startup_context.lang`** and **`modules/common/generic_memory.ainl`**). Do not use **`J OtherLabel`** to chain labels (**`J`** returns a value; use **`Call`** or same-label fall-through). For **`memory.list`**, use **`null`** for an omitted **`record_id_prefix`**, not **`""`**. **`metadata.valid_at`** must be an RFC3339 string (e.g. **`R core iso`**) when using the memory contract. Run tests with **`./.venv-py310/bin/python -m pytest`** per **`docs/INSTALL.md`**.
+
 ## Programs
 
 | File | Role |
@@ -31,12 +33,14 @@ python3 scripts/run_intelligence.py continuity
 python3 scripts/run_intelligence.py all
 ```
 
+**Rolling budget → cache:** On each non–dry-run start, the runner merges SQLite **`workflow` / `budget.aggregate` / `weekly_remaining_v1`** (from bridge `rolling_budget_publish`) into **`workflow`/`token_budget`** in `MONITOR_CACHE_JSON`, so startup and summarizer gates align with weekly trends without scanning days of markdown. See **`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`** and **`docs/operations/TOKEN_CAPS_STAGING.md`**. JSON output includes **`budget_hydrate`**.
+
 Enable the same adapters and paths your production gateway uses (`fs`, `cache`, `http`, `memory`, `queue`, etc.); see `docs/INSTALL.md` and `docs/reference/ADAPTER_REGISTRY.md`.
 
 ## Host responsibilities
 
 - **Cron / scheduler:** programs declare `S` schedules; the host must trigger runs.
-- **Prompt injection:** token-aware output is only useful if the host loads `session_context.md` / `MEMORY.md` into the agent context.
+- **Prompt injection:** token-aware output is only useful if the host loads `session_context.md` / `MEMORY.md` into the agent context. Prefer **curated bootstrap** over full `MEMORY.md` when startup context has run — see **`docs/operations/AGENT_AINL_OPERATING_MODEL.md`** (host contract).
 - **Secrets:** summarizer and digest flows need env vars (e.g. `OPENROUTER_API_KEY`) where applicable.
 
 ## See also

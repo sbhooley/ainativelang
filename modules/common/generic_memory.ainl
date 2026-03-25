@@ -19,11 +19,17 @@
 # - LIST  -> memory_hist_result
 
 LWRITE:
-  X memory_meta {"source":memory_source,"confidence":1.0,"tags":memory_tags,"valid_at":memory_valid_at}
+  X memory_meta (obj "source" memory_source)
+  X memory_meta (put memory_meta "confidence" 1.0)
+  X memory_meta (put memory_meta "tags" memory_tags)
+  X memory_meta (put memory_meta "valid_at" memory_valid_at)
   R memory put memory_namespace memory_kind memory_record_id memory_payload memory_ttl memory_meta ->memory_write_result
   J memory_write_result
 
 LLIST:
-  X memory_filters {"updated_after":memory_updated_after,"tags_any":memory_tags,"source":memory_source,"limit":memory_list_limit}
-  R memory list memory_namespace memory_kind "" memory_updated_after memory_filters ->memory_hist_result
+  X memory_filters (obj "updated_after" memory_updated_after)
+  X memory_filters (put memory_filters "tags_any" memory_tags)
+  X memory_filters (put memory_filters "source" memory_source)
+  X memory_filters (put memory_filters "limit" memory_list_limit)
+  R memory list memory_namespace memory_kind null memory_updated_after memory_filters ->memory_hist_result
   J memory_hist_result

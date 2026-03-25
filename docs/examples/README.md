@@ -4,6 +4,7 @@ Use this section to understand example support levels, recommended examples, and
 
 ## Key docs
 
+- **[`../getting_started/STRICT_AND_NON_STRICT.md`](../getting_started/STRICT_AND_NON_STRICT.md)** — **strict** validation is **opt-in**; default **non-strict** is permissive. Many trees here compile non-strict by design; not every example is strict-clean.
 - **[`../ECOSYSTEM_OPENCLAW.md`](../ECOSYSTEM_OPENCLAW.md)** — Clawflows / Agency-Agents **`examples/ecosystem/`** (weekly auto-sync from upstream; OpenClaw- and ZeroClaw-oriented imports)
 - **[`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)** — **OpenClaw skill**, **`ainl install-openclaw`**, MCP importer tools, **`tiktoken cl100k_base`** / **viable subset** context
 - **[`../ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md)** — **ZeroClaw skill**, **`ainl install-zeroclaw`**, MCP importer tools, **`tiktoken cl100k_base`** / **viable subset** context

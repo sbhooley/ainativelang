@@ -25,7 +25,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 
 ## Recommended paths
 
-- New to the project: start with [`overview/`](overview/README.md), then [`getting_started/`](getting_started/README.md)
+- New to the project: start with [`overview/`](overview/README.md), then [`getting_started/`](getting_started/README.md). **Strict vs non-strict compile:** [`getting_started/STRICT_AND_NON_STRICT.md`](getting_started/STRICT_AND_NON_STRICT.md) (strict is **opt-in**; default is permissive).
 - Trying to understand the category: read [`fundamentals/`](fundamentals/README.md)
 - Implementing or extending AINL: read [`language/`](language/README.md), [`architecture/`](architecture/README.md), and [`runtime/`](runtime/README.md)
 - Working with integrations, **OpenClaw**, or **ZeroClaw**: read **[`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)** (**`ainl install-mcp --host …`**, one table for all stacks), then [`adapters/`](adapters/README.md) and [`advanced/`](advanced/README.md); **OpenClaw skill** onboarding is **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** (**`~/.openclaw/openclaw.json`**); **ZeroClaw skill** onboarding is **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**. Generic external executors via HTTP bridge (multi-backend capable): [`integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](integrations/EXTERNAL_EXECUTOR_BRIDGE.md) — **MCP (`ainl-mcp`) first** for OpenClaw / NemoClaw / ZeroClaw.
@@ -38,6 +38,8 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 - **Clawflows / Agency-Agents ecosystem & OpenClaw / ZeroClaw hooks:** **[`ECOSYSTEM_OPENCLAW.md`](ECOSYSTEM_OPENCLAW.md)** — `examples/ecosystem/` (weekly auto-sync), CLI, MCP, PR templates; **OpenClaw** path **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** · **ZeroClaw** path **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**
 
 ## Operations & monitoring (OpenClaw bridge; see also ZeroClaw)
+
+**Token / usage observability (evidence-based savings, agent-friendly map):** [`operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md). **Named env profiles** (scale-out defaults): [`operations/AINL_PROFILES.md`](operations/AINL_PROFILES.md) · **workspace isolation:** [`operations/WORKSPACE_ISOLATION.md`](operations/WORKSPACE_ISOLATION.md) · **agent + AINL operating model:** [`operations/AGENT_AINL_OPERATING_MODEL.md`](operations/AGENT_AINL_OPERATING_MODEL.md).
 
 Production token/budget monitoring, daily memory appends, weekly trends, cron examples, and troubleshooting are documented in one place:
 

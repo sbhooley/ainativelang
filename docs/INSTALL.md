@@ -120,6 +120,8 @@ SNAPSHOT_UPDATE=1 make conformance
 
 - `ainl-validate` - compile/validate/emit from `.lang`
 
+**Strict vs non-strict:** validation is **permissive by default**; **`--strict`** is opt-in for stronger static checks. See **`docs/getting_started/STRICT_AND_NON_STRICT.md`**.
+
 ### `ainl-validate` strict diagnostics
 
 - **`--strict`** (and **`--strict-reachability`**) collects **structured compiler diagnostics** (lineno, kind, spans, suggestions). On failure, a human report is printed to **stderr** (numbered issues, source snippet, underlines). Install **`pip install -e ".[dev]"`** for optional **rich**-formatted output; otherwise plain text with optional ANSI colors when stderr is a TTY.

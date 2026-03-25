@@ -28,6 +28,7 @@ sys.path.insert(0, PROJECT_ROOT)
 from compiler_v2 import AICodeCompiler
 from runtime.engine import RuntimeEngine
 from adapters.openclaw_integration import openclaw_monitor_registry
+from tooling.intelligence_budget_hydrate import hydrate_budget_cache_from_rolling_memory
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger('ainl.intelligence')
@@ -71,6 +72,14 @@ def compile_and_run(program_path: str, trace: bool = False, dry_run: bool = Fals
 
     # Set up adapters (registry already has all allowed adapters)
     registry = openclaw_monitor_registry()
+    hydrate = hydrate_budget_cache_from_rolling_memory(registry)
+    if hydrate.get("ok") and not hydrate.get("skipped"):
+        logger.info("Rolling budget → cache hydrate: %s", hydrate)
+    elif hydrate.get("skipped"):
+        logger.debug("Rolling budget hydrate skipped: %s", hydrate.get("reason"))
+    elif not hydrate.get("ok"):
+        logger.warning("Rolling budget hydrate failed: %s", hydrate)
+
     engine = RuntimeEngine(ir, adapters=registry, trace=trace)
 
     # Run from label 0
@@ -79,11 +88,11 @@ def compile_and_run(program_path: str, trace: bool = False, dry_run: bool = Fals
         result = engine.run_label('0')
         elapsed = time.time() - start
         logger.info(f'Completed in {elapsed:.2f}s — result: {result}')
-        return {'status': 'ok', 'result': result, 'elapsed_s': round(elapsed, 2)}
+        return {'status': 'ok', 'result': result, 'elapsed_s': round(elapsed, 2), 'budget_hydrate': hydrate}
     except Exception as e:
         elapsed = time.time() - start
         logger.error(f'Runtime error after {elapsed:.2f}s: {e}')
-        return {'status': 'error', 'error': str(e), 'elapsed_s': round(elapsed, 2)}
+        return {'status': 'error', 'error': str(e), 'elapsed_s': round(elapsed, 2), 'budget_hydrate': hydrate}
 
 
 def main():

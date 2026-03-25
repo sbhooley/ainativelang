@@ -58,7 +58,10 @@ Adjust `--cron` to match `modules/openclaw/cron_*.ainl` and `tooling/cron_regist
 | `token_usage_reporter.py` | CLI `token-usage`: token/budget summary → stdout + optional `openclaw_memory` append |
 | `bridge_token_budget_adapter.py` | `R bridge token_budget_*` for `token_budget_alert.ainl` (subprocesses `token-usage --json-output`) |
 | `wrappers/token_budget_alert.ainl` | Daily digest; one consolidated `R queue Put` (live); `monitor_cache_prune auto` + markdown when cache >12MB; env `AINL_TOKEN_PRUNE_DAYS`; tests: `AINL_BRIDGE_FAKE_CACHE_MB`, `AINL_BRIDGE_PRUNE_FORCE_ERROR` |
-| `wrappers/weekly_token_trends.ainl` | Sunday-style weekly summary: bridge scans last 7–14 daily `memory/*.md` files, parses `## Token Usage Report`, appends `## Weekly Token Trends` (dry-run safe) |
+| `wrappers/weekly_token_trends.ainl` | Sunday-style weekly summary: bridge scans last 7–14 daily `memory/*.md` files, parses `## Token Usage Report`, appends `## Weekly Token Trends`, then `rolling_budget_publish` → `workflow`/`budget.aggregate`/`weekly_remaining_v1` (dry-run safe) |
+| `wrappers/ttl_memory_tuner.ainl` | Weekly TTL adjustments for `workflow` rows whose metadata `tags` include `ttl_managed` (see `bridge_token_budget_adapter.ttl_memory_tuner_run`) |
+| `wrappers/embedding_memory_pilot.ainl` | Pilot: index SQLite memory → **`embedding_memory`**, top-k search + optional daily md line (`embedding_workflow_index` / `embedding_workflow_search`) |
+| `ir_cache.py` | Wrapper compile cache for `run_wrapper_ainl.py` (`AINL_IR_CACHE`, `AINL_IR_CACHE_DIR`) |
 
 See `docs/ainl_openclaw_unified_integration.md` and `docs/CRON_ORCHESTRATION.md` for full integration context. **Unified operator guide (memory path, sentinel, cron, troubleshooting):** `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 
@@ -69,7 +72,9 @@ Daily markdown target (unless overridden): **`~/.openclaw/workspace/memory/YYYY-
 | Tool / wrapper | Typical command | Role |
 |----------------|-----------------|------|
 | `token-budget-alert` | `python3 openclaw/bridge/run_wrapper_ainl.py token-budget-alert` | Daily token report append, optional **consolidated** notify (timestamped `Daily AINL Status - … UTC`), cache stat/prune, **sentinel** duplicate guard for main report |
-| `weekly-token-trends` | `python3 openclaw/bridge/run_wrapper_ainl.py weekly-token-trends` | Sunday-style scan of recent daily `*.md` → append **`## Weekly Token Trends`** |
+| `weekly-token-trends` | `python3 openclaw/bridge/run_wrapper_ainl.py weekly-token-trends` | Sunday-style scan of recent daily `*.md` → append **`## Weekly Token Trends`** + rolling budget aggregate row |
+| `ttl-memory-tuner` | `python3 openclaw/bridge/run_wrapper_ainl.py ttl-memory-tuner` | Adjust TTL on tagged workflow memory rows (weekly) |
+| `embedding-memory-pilot` | `python3 openclaw/bridge/run_wrapper_ainl.py embedding-memory-pilot` | Index `workflow` memory into **`embedding_memory`**, top-k search + optional daily md append (pilot) |
 | `token-usage` | `python3 openclaw/bridge/ainl_bridge_main.py token-usage` | Ad-hoc report to stdout; optional append (see flags); `--json-output` for wrappers |
 | `cron_drift_check.py` | `python3 openclaw/bridge/cron_drift_check.py` | Read-only: registry vs IR vs `openclaw cron list` |
 | `ainl_memory_append_cli.py` | `python3 openclaw/bridge/ainl_memory_append_cli.py "line"` | Manual one-line append to today’s OpenClaw markdown |
@@ -87,6 +92,15 @@ Daily markdown target (unless overridden): **`~/.openclaw/workspace/memory/YYYY-
 | `AINL_BRIDGE_FAKE_CACHE_MB`, `AINL_BRIDGE_PRUNE_FORCE_ERROR` | **Tests only** — branch simulation |
 | `OPENCLAW_BIN`, `OPENCLAW_TARGET`, `OPENCLAW_NOTIFY_CHANNEL` | Notify / CLI integration |
 | `AINL_ADVOCATE_DAILY_TOKEN_BUDGET` | Budget denominator for token-usage (default 500000) |
+| `AINL_IR_CACHE` | `0` disables IR disk cache for `run_wrapper_ainl.py` (default on) |
+| `AINL_IR_CACHE_DIR` | Cache directory (default `~/.cache/ainl/ir`) |
+| `AINL_WEEKLY_TOKEN_BUDGET_CAP` | Optional weekly token cap; `rolling_budget_publish` stores `weekly_remaining_tokens` |
+| `AINL_TTL_TUNER_TAG` | Metadata tag required for TTL tuning (default `ttl_managed`) |
+| `AINL_BRIDGE_REPORT_MAX_CHARS` | If set (>0), caps **`token_budget_report`** markdown; overflow → short “budget exhausted” stub |
+| `AINL_EMBEDDING_INDEX_NAMESPACE` | For **`embedding_workflow_index`**: memory namespace to scan (default `workflow`) |
+| `AINL_EMBEDDING_MEMORY_DB` / `AINL_EMBEDDING_MODE` | Sidecar index path and stub vs OpenAI embeddings (`adapters/embedding_memory.py`) |
+
+**Sizing (report cap + embedding namespace):** `ainl bridge-sizing-probe` (or `ainl-bridge-sizing-probe`, or `python3 scripts/bridge_sizing_probe.py`), then see **Sizing checklist** in [`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](../../docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md).
 
 ### Weekly token trends (Sunday example)
 

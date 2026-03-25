@@ -34,6 +34,12 @@ from adapters.openclaw_memory import OpenClawMemoryAdapter
 
 import importlib.util
 
+_ir_spec = importlib.util.spec_from_file_location("ainl_bridge_ir_cache", _BRIDGE_DIR / "ir_cache.py")
+assert _ir_spec and _ir_spec.loader
+_ir_mod = importlib.util.module_from_spec(_ir_spec)
+_ir_spec.loader.exec_module(_ir_mod)
+compile_source_cached = _ir_mod.compile_source_cached
+
 _bspec = importlib.util.spec_from_file_location(
     "bridge_token_budget_adapter",
     _BRIDGE_DIR / "bridge_token_budget_adapter.py",
@@ -53,6 +59,8 @@ WRAPPERS = {
     "full-unification": ROOT / "examples" / "openclaw_full_unification.ainl",
     "token-budget-alert": _BRIDGE_DIR / "wrappers" / "token_budget_alert.ainl",
     "weekly-token-trends": _BRIDGE_DIR / "wrappers" / "weekly_token_trends.ainl",
+    "ttl-memory-tuner": _BRIDGE_DIR / "wrappers" / "ttl_memory_tuner.ainl",
+    "embedding-memory-pilot": _BRIDGE_DIR / "wrappers" / "embedding_memory_pilot.ainl",
 }
 
 
@@ -96,8 +104,12 @@ def main() -> None:
         logger.error("Unknown wrapper %r; known: %s", name, ", ".join(WRAPPERS))
         sys.exit(1)
 
-    src = path.read_text(encoding="utf-8")
-    ir = AICodeCompiler(strict_mode=False, strict_reachability=False).compile(src, emit_graph=True)
+    def _compile(src_text: str) -> dict:
+        return AICodeCompiler(strict_mode=False, strict_reachability=False).compile(
+            src_text, emit_graph=True
+        )
+
+    ir = compile_source_cached(path, _compile)
     errs = ir.get("errors") or []
     if errs:
         logger.error("Compile errors: %s", errs)

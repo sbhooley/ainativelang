@@ -5,8 +5,10 @@ S core cron "0 9 * * 0"
 
 L0:
   R bridge weekly_token_trends_report ->md
+  R bridge rolling_budget_publish ->rb
   If dry_run ->L_out ->L_append
 L_append:
   R openclaw_memory append_today md ->_
+  J L_out
 L_out:
   J md

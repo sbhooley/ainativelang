@@ -164,15 +164,16 @@ def _token_report_parse_block_json(text: str) -> str:
     return json.dumps(_token_report_parse_block_dict(text), ensure_ascii=False)
 
 
-def _weekly_token_trends_markdown() -> str:
+def _weekly_token_window_stats() -> Dict[str, Any]:
+    """Structured stats for markdown + rolling_budget_publish (same window as weekly trends)."""
     mem = _openclaw_memory_dir()
     if not mem.is_dir():
-        return "## Weekly Token Trends\n- No memory directory found; set OPENCLAW_MEMORY_DIR or OPENCLAW_WORKSPACE.\n"
+        return {"ok": False, "error": "no_memory_dir", "day_tokens": [], "last7": [], "prev7": []}
     paths = [p for p in mem.glob("*.md") if _DAY_MD_RE.match(p.name)]
     paths.sort(key=lambda p: p.stem, reverse=True)
     newest14 = paths[:14]
     if not newest14:
-        return "## Weekly Token Trends\n- No daily `YYYY-MM-DD.md` files found under memory/.\n"
+        return {"ok": False, "error": "no_daily_md", "day_tokens": [], "last7": [], "prev7": []}
     chrono = sorted(newest14, key=lambda p: p.stem)
     if len(chrono) >= 14:
         prev7 = chrono[:7]
@@ -185,7 +186,9 @@ def _weekly_token_trends_markdown() -> str:
         last7 = chrono
 
     day_tokens: List[int] = []
+    last7_names: List[str] = []
     for p in last7:
+        last7_names.append(p.name)
         try:
             body = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -193,9 +196,273 @@ def _weekly_token_trends_markdown() -> str:
         rep = _token_report_parse_block_dict(body)
         est = rep.get("estimated_total_tokens")
         if est is not None:
-            day_tokens.append(est)
+            day_tokens.append(int(est))
+
+    prev7_names = [p.name for p in prev7]
 
     if not day_tokens:
+        return {
+            "ok": True,
+            "error": None,
+            "day_tokens": [],
+            "last7": last7_names,
+            "prev7": prev7_names,
+            "empty_estimates": True,
+        }
+
+    total_w = sum(day_tokens)
+    avg_d = int(round(total_w / len(day_tokens)))
+    return {
+        "ok": True,
+        "error": None,
+        "day_tokens": day_tokens,
+        "last7": last7_names,
+        "prev7": prev7_names,
+        "empty_estimates": False,
+        "weekly_total_tokens": total_w,
+        "avg_daily_tokens": avg_d,
+        "days_in_window": len(day_tokens),
+    }
+
+
+def _rolling_budget_json_from_stats(stats: Dict[str, Any]) -> str:
+    cap_raw = os.environ.get("AINL_WEEKLY_TOKEN_BUDGET_CAP", "").strip()
+    cap: Optional[int] = None
+    if cap_raw:
+        try:
+            cap = max(0, int(cap_raw))
+        except ValueError:
+            cap = None
+    total_w = int(stats.get("weekly_total_tokens") or 0)
+    remaining: Optional[int] = None
+    if cap is not None:
+        remaining = max(0, cap - total_w)
+    payload = {
+        "weekly_total_tokens": total_w,
+        "avg_daily_tokens": int(stats.get("avg_daily_tokens") or 0),
+        "days_in_window": int(stats.get("days_in_window") or 0),
+        "weekly_cap_tokens": cap,
+        "weekly_remaining_tokens": remaining,
+        "updated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "source": "bridge.weekly_token_trends",
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def _memory_adapter_bridge() -> Any:
+    from runtime.adapters.memory import MemoryAdapter
+
+    db = os.environ.get("AINL_MEMORY_DB", "/tmp/ainl_memory.sqlite3")
+    return MemoryAdapter(
+        db_path=db,
+        valid_namespaces={"intel", "workflow", "session", "long_term", "daily_log", "ops"},
+    )
+
+
+def _bridge_report_max_chars() -> int:
+    """0 = disabled. Set AINL_BRIDGE_REPORT_MAX_CHARS to cap token_budget_report markdown size."""
+    raw = os.environ.get("AINL_BRIDGE_REPORT_MAX_CHARS", "").strip()
+    if not raw:
+        return 0
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 0
+
+
+def _report_budget_exhausted_markdown(title: str, cap: int) -> str:
+    return (
+        f"## {title}\n"
+        f"- **budget exhausted**: report would exceed {cap} characters "
+        "(see `AINL_BRIDGE_REPORT_MAX_CHARS`).\n"
+        "- Reduce monitor history, prune cache, or raise the cap.\n"
+    )
+
+
+def _embedding_workflow_index(context: Dict[str, Any], args: List[Any]) -> Dict[str, Any]:
+    """Index up to N rows from SQLite memory into embedding_memory (SoT unchanged)."""
+    if _context_dry(context):
+        return {"ok": True, "dry_run": True, "indexed": 0, "scanned": 0}
+    limit = 50
+    if args:
+        try:
+            limit = max(1, min(500, int(args[0])))
+        except (TypeError, ValueError):
+            limit = 50
+    ns = (os.environ.get("AINL_EMBEDDING_INDEX_NAMESPACE") or "workflow").strip() or "workflow"
+    from adapters.embedding_memory import EmbeddingMemoryAdapter
+
+    em = EmbeddingMemoryAdapter()
+    ma = _memory_adapter_bridge()
+    listed = ma.call("list", [ns, None, None, None, {"limit": limit}])
+    items = listed.get("items") if isinstance(listed, dict) else None
+    if not items:
+        return {"ok": True, "indexed": 0, "scanned": 0, "namespace": ns}
+    indexed = 0
+    for it in items:
+        rk = str(it.get("record_kind") or "")
+        rid = str(it.get("record_id") or "")
+        if not rk or not rid:
+            continue
+        got = ma.call("get", [ns, rk, rid])
+        if not isinstance(got, dict) or not got.get("found"):
+            continue
+        rec = got.get("record") or {}
+        payload = rec.get("payload")
+        if payload is None:
+            text = ""
+        elif isinstance(payload, dict):
+            text = json.dumps(payload, ensure_ascii=False)
+        else:
+            text = str(payload)
+        text = text[:8000]
+        try:
+            em.call("UPSERT_REF", [ns, rk, rid, text], {})
+            indexed += 1
+        except Exception:
+            continue
+    return {"ok": True, "indexed": indexed, "scanned": len(items), "namespace": ns}
+
+
+def _embedding_workflow_search(args: List[Any], _context: Dict[str, Any]) -> Dict[str, Any]:
+    """Top-k embedding search + memory.get payload snapshots (read path pilot)."""
+    query = str(args[0]) if args else "workflow"
+    k = 5
+    if len(args) > 1 and args[1] is not None:
+        try:
+            k = max(1, min(50, int(args[1])))
+        except (TypeError, ValueError):
+            k = 5
+    from adapters.embedding_memory import EmbeddingMemoryAdapter
+
+    em = EmbeddingMemoryAdapter()
+    hits = em.call("SEARCH", [query, k], {})
+    if not isinstance(hits, list):
+        hits = []
+    ma = _memory_adapter_bridge()
+    out_hits: List[Dict[str, Any]] = []
+    for h in hits:
+        if not isinstance(h, dict):
+            continue
+        ns = h.get("memory_namespace")
+        rk = h.get("memory_kind")
+        rid = h.get("memory_record_id")
+        if not ns or not rk or not rid:
+            continue
+        got = ma.call("get", [str(ns), str(rk), str(rid)])
+        payload_snap: Any = None
+        if isinstance(got, dict) and got.get("found"):
+            payload_snap = (got.get("record") or {}).get("payload")
+        out_hits.append(
+            {
+                "score": h.get("score"),
+                "memory_namespace": ns,
+                "memory_kind": rk,
+                "memory_record_id": rid,
+                "payload_snapshot": payload_snap,
+            }
+        )
+    return {"ok": True, "query": query, "k": k, "hits": out_hits}
+
+
+def _rolling_budget_publish(context: Dict[str, Any]) -> Dict[str, Any]:
+    if _context_dry(context):
+        return {"ok": True, "dry_run": True, "skipped": True}
+    stats = _weekly_token_window_stats()
+    if not stats.get("ok"):
+        return {"ok": False, "error": stats.get("error") or "stats_failed"}
+    if stats.get("empty_estimates"):
+        return {"ok": True, "note": "no_token_estimates", "skipped": True}
+    raw = _rolling_budget_json_from_stats(stats)
+    body = json.loads(raw)
+    ma = _memory_adapter_bridge()
+    ma.call(
+        "put",
+        [
+            "workflow",
+            "budget.aggregate",
+            "weekly_remaining_v1",
+            body,
+            86400 * 14,
+            {"tags": ["rolling_budget", "openclaw"], "source": "bridge"},
+        ],
+    )
+    return {"ok": True, "record_id": "weekly_remaining_v1", "payload": body}
+
+
+def _ttl_memory_tuner_run(context: Dict[str, Any]) -> Dict[str, Any]:
+    """Adjust ttl_seconds on workflow rows with access metadata (tags include ttl_managed)."""
+    if _context_dry(context):
+        return {"ok": True, "dry_run": True, "updated": 0}
+    require_tag = os.environ.get("AINL_TTL_TUNER_TAG", "ttl_managed").strip() or "ttl_managed"
+    ma = _memory_adapter_bridge()
+    listed = ma.call("list", ["workflow", None, None, None, {"limit": 200}])
+    items = listed.get("items") if isinstance(listed, dict) else None
+    if not items:
+        return {"ok": True, "updated": 0, "scanned": 0}
+    updated = 0
+    for it in items:
+        rk = str(it.get("record_kind") or "")
+        rid = str(it.get("record_id") or "")
+        got = ma.call("get", ["workflow", rk, rid])
+        if not isinstance(got, dict) or not got.get("found"):
+            continue
+        rec = got.get("record") or {}
+        if not rec.get("payload"):
+            continue
+        meta = rec.get("metadata") or {}
+        tags = meta.get("tags") if isinstance(meta.get("tags"), list) else []
+        if require_tag not in tags:
+            continue
+        ttl = it.get("ttl_seconds")
+        if ttl is None:
+            continue
+        try:
+            ttl_i = int(ttl)
+        except (TypeError, ValueError):
+            continue
+        ac = meta.get("access_count")
+        if not isinstance(ac, int) or ac < 0:
+            continue
+        if ac >= 3:
+            factor = 1.25
+        elif ac == 0:
+            factor = 0.85
+        else:
+            factor = 1.0
+        new_ttl = int(max(86400, min(7776000, ttl_i * factor)))
+        if new_ttl == ttl_i:
+            continue
+        payload = rec.get("payload")
+        if not isinstance(payload, dict):
+            continue
+        ma.call(
+            "put",
+            [
+                "workflow",
+                rk,
+                rid,
+                payload,
+                new_ttl,
+                meta,
+            ],
+        )
+        updated += 1
+    return {"ok": True, "updated": updated, "scanned": len(items)}
+
+
+def _weekly_token_trends_markdown() -> str:
+    stats = _weekly_token_window_stats()
+    if not stats.get("ok"):
+        if stats.get("error") == "no_memory_dir":
+            return "## Weekly Token Trends\n- No memory directory found; set OPENCLAW_MEMORY_DIR or OPENCLAW_WORKSPACE.\n"
+        return "## Weekly Token Trends\n- No daily `YYYY-MM-DD.md` files found under memory/.\n"
+
+    last7 = stats.get("last7") or []
+    prev7_paths = stats.get("prev7") or []
+    day_tokens: List[int] = list(stats.get("day_tokens") or [])
+
+    if stats.get("empty_estimates") or not day_tokens:
         return (
             "## Weekly Token Trends\n"
             f"- Scanned {len(last7)} recent file(s); no `## Token Usage Report` token estimates found.\n"
@@ -231,9 +498,11 @@ def _weekly_token_trends_markdown() -> str:
     else:
         lines.append("- Trend: → not enough days for split-window trend")
 
-    if prev7:
+    if prev7_paths:
+        mem = _openclaw_memory_dir()
         prev_vals: List[int] = []
-        for p in prev7:
+        for name in prev7_paths:
+            p = mem / name
             try:
                 body = p.read_text(encoding="utf-8", errors="replace")
             except OSError:
@@ -424,6 +693,19 @@ class BridgeTokenBudgetAdapter(RuntimeAdapter):
                 return 1
             except OSError:
                 return 0
+        if t == "rolling_budget_json":
+            stats = _weekly_token_window_stats()
+            if not stats.get("ok") or stats.get("empty_estimates"):
+                return "{}"
+            return _rolling_budget_json_from_stats(stats)
+        if t == "rolling_budget_publish":
+            return _rolling_budget_publish(context)
+        if t == "ttl_memory_tuner_run":
+            return _ttl_memory_tuner_run(context)
+        if t == "embedding_workflow_index":
+            return _embedding_workflow_index(context, args)
+        if t == "embedding_workflow_search":
+            return _embedding_workflow_search(args, context)
         if t == "weekly_token_trends_report":
             return _weekly_token_trends_markdown()
         if t == "token_report_parse_block":
@@ -541,11 +823,17 @@ class BridgeTokenBudgetAdapter(RuntimeAdapter):
             return 1 if data.get("budget_warning") else 0
         if t == "token_budget_report":
             data = _run_token_json(days)
-            return str(data.get("report_markdown") or "")
+            report = str(data.get("report_markdown") or "")
+            cap = _bridge_report_max_chars()
+            if cap > 0 and len(report) > cap:
+                return _report_budget_exhausted_markdown("Token Usage Report", cap)
+            return report
         raise AdapterError(
             f"bridge unknown target {t!r}; see monitor_cache_stat, monitor_cache_prune, "
             "monitor_cache_prune_markdown, monitor_cache_prune_error_markdown, "
             "monitor_cache_prune_result, token_report_today_sent, token_report_today_touch, "
+            "rolling_budget_json, rolling_budget_publish, ttl_memory_tuner_run, "
+            "embedding_workflow_index, embedding_workflow_search, "
             "weekly_token_trends_report, token_report_parse_block, token_report_list_daily_md, "
             "token_budget_notify_reset, token_budget_notify_add, token_budget_notify_build, "
             "token_budget_notify_text, token_budget_warn, token_budget_report"

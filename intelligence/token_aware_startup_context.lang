@@ -31,9 +31,11 @@ L2:
 
 # ── Compute allocation: 10% of remaining, clamped [200..2000] ──
 # Opt-in access metadata: touch latest prior snapshot (if any) before building new context
+# Filters via core.parse — graph runtime does not execute X {object literal}; see runtime/engine _exec_x.
+# Do not use `J L3next` across labels: J resolves a variable and returns (see engine _exec_step J).
 L3:
-  X snap_filters {"source":"intelligence.token_aware_startup_context","tags_any":["context_injection","workflow"],"limit":1}
-  R memory list "workflow" "workflow.context_injection_snapshot" "" "1970-01-01T00:00:00Z" snap_filters ->_snaps
+  X filters (core.parse "{\"source\":\"intelligence.token_aware_startup_context\",\"tags_any\":[\"context_injection\",\"workflow\"],\"limit\":1}")
+  R memory list "workflow" "workflow.context_injection_snapshot" null "1970-01-01T00:00:00Z" filters ->_snaps
   X snap_items get _snaps "items"
   X snap_len len snap_items
   X no_snap eq snap_len 0
@@ -129,16 +131,19 @@ L11:
   R cache set "workflow" "context_injection_lines" count ->_
   R core now ->nowTs
   R cache set "workflow" "context_injection_last" nowTs ->_
+  R core iso ->valid_at_iso
   X mem_id (core.concat "ctx-" (core.stringify nowTs))
-  X mem_payload {"tokens":usedTokens,"lines":count,"generated_at":nowTs}
+  X mem_payload (obj "tokens" usedTokens)
+  X mem_payload (put mem_payload "lines" count)
+  X mem_payload (put mem_payload "generated_at" nowTs)
   Set memory_namespace "workflow"
   Set memory_kind "workflow.context_injection_snapshot"
   Set memory_record_id mem_id
   Set memory_payload mem_payload
   Set memory_ttl 604800
   Set memory_source "intelligence.token_aware_startup_context"
-  Set memory_tags ["intelligence","context_injection","workflow"]
-  Set memory_valid_at nowTs
+  X memory_tags (arr "intelligence" "context_injection" "workflow")
+  Set memory_valid_at valid_at_iso
   Call genmem/WRITE ->_
   J count
 

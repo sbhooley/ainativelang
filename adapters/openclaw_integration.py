@@ -288,11 +288,13 @@ class TiktokAdapter(RuntimeAdapter):
 class WebAdapter(RuntimeAdapter):
     group = 'web'
     def __init__(self, model: Optional[str] = None):
+        # Defer missing-key errors to call() so openclaw_monitor_registry() can build
+        # without OPENROUTER (intelligence runners, tests, dry workflows).
         self.api_key = os.getenv('OPENROUTER_API_KEY')
-        if not self.api_key:
-            raise AdapterError('OPENROUTER_API_KEY not set')
         self.model = model or os.getenv('AINL_WEB_MODEL', 'perplexity/sonar')
     def call(self, target: str, args: List[Any], context: Dict[str, Any]):
+        if not (self.api_key or "").strip():
+            raise AdapterError('OPENROUTER_API_KEY not set')
         if target != 'search':
             raise AdapterError(f'web adapter unsupported target: {target}')
         if len(args) != 1 or not isinstance(args[0], str):
@@ -614,7 +616,7 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     reg = AdapterRegistry(allowed=[
         'core', 'db', 'email', 'calendar', 'social',
         'svc', 'cache', 'queue', 'wasm', 'extras', 'tiktok', 'agent', 'memory',
-        'fs', 'http', 'web'
+        'fs', 'http', 'web', 'embedding_memory',
     ])
     from runtime.adapters.builtins import CoreBuiltinAdapter
     reg.register('core', CoreBuiltinAdapter())
@@ -631,6 +633,9 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     reg.register('agent', AgentAdapter())
     # Memory adapter with extra 'intel' namespace for intelligence storage
     reg.register('memory', MemoryAdapter(valid_namespaces={'intel', 'workflow', 'session', 'long_term', 'daily_log', 'ops'}))
+
+    from adapters.embedding_memory import EmbeddingMemoryAdapter
+    reg.register('embedding_memory', EmbeddingMemoryAdapter())
 
     # Filesystem adapter sandboxed to workspace root
     from runtime.adapters.fs import SandboxedFileSystemAdapter
@@ -650,10 +655,13 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     try:
         from runtime.adapters.wasm import WasmAdapter
         base = Path(__file__).resolve().parent.parent
-        modules = {
-            'metrics': str(base / 'demo' / 'wasm' / 'metrics.wasm'),
-            'health': str(base / 'demo' / 'wasm' / 'health.wasm')
-        }
+        modules = {}
+        for name in ('metrics', 'health'):
+            for ext in ('.wasm', '.wat'):
+                p = base / 'demo' / 'wasm' / f'{name}{ext}'
+                if p.is_file():
+                    modules[name] = str(p)
+                    break
         # Only include modules that exist
         available = {k: v for k, v in modules.items() if Path(v).exists()}
         if available:

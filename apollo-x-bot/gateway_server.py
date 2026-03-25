@@ -34,6 +34,9 @@ Environment (production):
   PROMOTER_DEDUPE_REPLIED_TWEETS If 1 (default), skip reply-draft LLM + post for tweet IDs already replied (or dry-run consumed); avoids repeat spend if the same id reappears.
   PROMOTER_PROMPTS_DIR       Directory with classify_*.txt, reply_system.txt, daily_post_system.txt, daily_post_user_suffix.txt (default: ./prompts beside gateway_server.py)
   PROMOTER_CANONICAL_GITHUB_URL  Repo URL injected into reply prompts and used as default for daily-post link (default: https://github.com/sbhooley/ainativelang)
+  PROMOTER_LLM_MAX_PROMPT_CHARS   If set, truncate chat messages to the last N characters (keeps most recent content).
+  PROMOTER_LLM_MAX_COMPLETION_TOKENS  If set, pass max_tokens to the chat completions API.
+  PROMOTER_LLM_EXTRA_BODY_JSON or OPENAI_CHAT_EXTRA_BODY_JSON  JSON object merged into the request body (provider-specific; e.g. sparse attention flags when supported).
 
   Growth pack (v1.3, all default off):
   PROMOTER_MONITOR_ENABLED     If 1, monitor-poll graphs / x.follow list maintenance active
@@ -627,6 +630,46 @@ def _normalize_chat_usage(raw: Any) -> Dict[str, int]:
     return {"prompt_tokens": pi, "completion_tokens": ci, "total_tokens": ti}
 
 
+def _llm_extra_chat_body() -> Dict[str, Any]:
+    """Merge provider-specific keys (e.g. sparse attention) from JSON env."""
+    raw = (
+        os.environ.get("PROMOTER_LLM_EXTRA_BODY_JSON")
+        or os.environ.get("OPENAI_CHAT_EXTRA_BODY_JSON")
+        or ""
+    ).strip()
+    if not raw:
+        return {}
+    try:
+        out = json.loads(raw)
+        return out if isinstance(out, dict) else {}
+    except json.JSONDecodeError:
+        _gw_debug("llm.extra_body_json: invalid JSON, ignoring")
+        return {}
+
+
+def _truncate_chat_messages(messages: List[Dict[str, str]], max_chars: int) -> List[Dict[str, str]]:
+    """Keep the most recent tail of the conversation under a character budget."""
+    if max_chars <= 0:
+        return messages
+    total = sum(len(str(m.get("content") or "")) for m in messages)
+    if total <= max_chars:
+        return messages
+    out: List[Dict[str, str]] = []
+    remaining = max_chars
+    for m in reversed(messages):
+        c = str(m.get("content") or "")
+        if len(c) <= remaining:
+            out.insert(0, dict(m))
+            remaining -= len(c)
+        else:
+            if remaining > 0:
+                mm = dict(m)
+                mm["content"] = c[-remaining:]
+                out.insert(0, mm)
+            break
+    return out
+
+
 def _openai_chat(
     messages: List[Dict[str, str]],
     *,
@@ -641,10 +684,29 @@ def _openai_chat(
     base = (os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
     model_used = model or os.environ.get("LLM_MODEL") or "gpt-4o-mini"
     temp = 0.2 if temperature is None else float(temperature)
-    payload = json.dumps(
-        {"model": model_used, "messages": messages, "temperature": temp},
-        ensure_ascii=False,
-    ).encode("utf-8")
+    max_prompt = 0
+    try:
+        max_prompt = int((os.environ.get("PROMOTER_LLM_MAX_PROMPT_CHARS") or "0").strip() or "0")
+    except ValueError:
+        max_prompt = 0
+    if max_prompt > 0:
+        before = sum(len(str(m.get("content") or "")) for m in messages)
+        messages = _truncate_chat_messages(messages, max_prompt)
+        after = sum(len(str(m.get("content") or "")) for m in messages)
+        if after < before:
+            _gw_debug(f"llm.prompt_truncated context={usage_context} chars {before}->{after}")
+    max_completion = 0
+    try:
+        max_completion = int((os.environ.get("PROMOTER_LLM_MAX_COMPLETION_TOKENS") or "0").strip() or "0")
+    except ValueError:
+        max_completion = 0
+    body: Dict[str, Any] = {"model": model_used, "messages": messages, "temperature": temp}
+    if max_completion > 0:
+        body["max_tokens"] = max_completion
+    extra = _llm_extra_chat_body()
+    if extra:
+        body.update(extra)
+    payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
     status, _h, data = _http_request(
         "POST",
         f"{base}/chat/completions",

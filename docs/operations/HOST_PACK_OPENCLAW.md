@@ -1,0 +1,20 @@
+# Host pack: OpenClaw (reference bundle)
+
+This is a **documentation bundle** for a supported OpenClaw stack: **not** a separate installer, but a single checklist so support and operators align.
+
+## Contents
+
+1. **Bootstrap** — [`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) (`ainl install-mcp --host openclaw`, `~/.openclaw/openclaw.json`, `ainl-run`).
+2. **Profile** — `ainl profile show openclaw-default` + [`AINL_PROFILES.md`](AINL_PROFILES.md).
+3. **Agent + AINL model** — [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) (host must load curated bootstrap; default operational loop).
+4. **Monitoring** — [`UNIFIED_MONITORING_GUIDE.md`](UNIFIED_MONITORING_GUIDE.md) (bridge `run_wrapper_ainl.py`, daily memory, token budget).
+5. **Observability** — [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md).
+
+## Versioning
+
+When behavior or env vars change in a breaking way, bump the **profile catalog** `version` field in `tooling/ainl_profiles.json` and note the release in [`CHANGELOG.md`](../CHANGELOG.md).
+
+## Other hosts
+
+- **ZeroClaw:** [`../ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md) — different paths; do not reuse OpenClaw daily-memory assumptions.
+- **Generic MCP:** [`../getting_started/HOST_MCP_INTEGRATIONS.md`](../getting_started/HOST_MCP_INTEGRATIONS.md).

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "profiles": {
+    "dev": {
+      "title": "Local development",
+      "description": "Fast iteration: IR cache on, embedding stub, no bridge/gateway caps. Override paths per machine.",
+      "env": {
+        "AINL_IR_CACHE": "1",
+        "AINL_EMBEDDING_MODE": "stub"
+      },
+      "notes": [
+        "Set AINL_FS_ROOT / AINL_MEMORY_DB to a throwaway path when testing destructive flows.",
+        "Do not point production OpenClaw cron at this profile without reviewing caps."
+      ]
+    },
+    "staging": {
+      "title": "Staging / integration",
+      "description": "Closer to production: same defaults as dev plus conservative intelligence merge policy.",
+      "env": {
+        "AINL_IR_CACHE": "1",
+        "AINL_EMBEDDING_MODE": "stub",
+        "AINL_INTELLIGENCE_ROLLING_CONSERVATIVE_DAILY": "1"
+      },
+      "notes": [
+        "Set PROMOTER_LLM_* on the gateway process before load tests.",
+        "Use ainl bridge-sizing-probe before enabling AINL_BRIDGE_REPORT_MAX_CHARS."
+      ]
+    },
+    "openclaw-default": {
+      "title": "OpenClaw host (recommended baseline)",
+      "description": "Portable defaults for bridge wrappers + intelligence: IR cache, stub embeddings until you opt into real vectors.",
+      "env": {
+        "AINL_IR_CACHE": "1",
+        "AINL_EMBEDDING_MODE": "stub",
+        "AINL_INTELLIGENCE_ROLLING_CONSERVATIVE_DAILY": "1"
+      },
+      "notes": [
+        "Align OPENCLAW_WORKSPACE / OPENCLAW_MEMORY_DIR with the same values as run_wrapper_ainl and cron.",
+        "Enable AINL_WEEKLY_TOKEN_BUDGET_CAP when using rolling_budget_publish (see TOKEN_AND_USAGE_OBSERVABILITY.md).",
+        "After weekly-token-trends runs live, intelligence hydration can read weekly_remaining_v1."
+      ]
+    },
+    "cost-tight": {
+      "title": "Cost-tight (aggressive caps hints)",
+      "description": "Lower ceiling on bridge report size; keeps stub embeddings and conservative daily merge. Tune numbers after measuring.",
+      "env": {
+        "AINL_IR_CACHE": "1",
+        "AINL_EMBEDDING_MODE": "stub",
+        "AINL_INTELLIGENCE_ROLLING_CONSERVATIVE_DAILY": "1",
+        "AINL_BRIDGE_REPORT_MAX_CHARS": "16384"
+      },
+      "notes": [
+        "AINL_BRIDGE_REPORT_MAX_CHARS may truncate token_budget_report; raise if operators need full text.",
+        "Add PROMOTER_LLM_MAX_PROMPT_CHARS / MAX_COMPLETION_TOKENS on the gateway in staging before production."
+      ]
+    }
+  }
+}

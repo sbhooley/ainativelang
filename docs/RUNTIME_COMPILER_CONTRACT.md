@@ -84,6 +84,15 @@ Current policy remains graph-preferred:
 - Step execution is retained as compatibility/fallback and for explicit `steps-only`.
 - Both paths share the same op handlers where possible to reduce semantic drift.
 
+### Graph execution pitfalls (object literals, `J`, `Set` lists)
+
+Programs compiled to the label **graph** use the same `X`/`J`/`R` handlers as the legacy step list, but authors hit a few recurring issues:
+
+- **`X` + `{…}` object literals:** the IR uses **`fn: "{"`**, which the runtime does not execute as “build a dict” → **`unknown X fn: {`**. Use **`core.parse`** on a JSON string, or **`X dst (obj "k" v)`** plus **`put`** chains, or other **`core.*`** / **`obj`** / **`arr`** patterns. Shared helpers live in **`modules/common/generic_memory.ainl`**.
+- **`J` is not `goto`:** **`J foo`** resolves **`foo`** in the frame and **returns** that value from the current label subgraph. It does **not** transfer control to label **`foo`**. Use **`Call alias/LABEL`** or sequential nodes in one label.
+- **`Set name […]`:** **`Set`** arity is **`Set <name> <single ref token>`** — a bracketed list does **not** parse as one array value. Use **`X name (arr "a" "b")`** (or similar) for lists.
+- **`memory.list` optional prefix:** pass JSON **`null`** (or omit the argument in adapters that support it) for “no prefix”; a literal **`""`** is still “provided” and is **rejected** by the memory adapter. See **`docs/adapters/MEMORY_CONTRACT.md`** § 3.4.
+
 ### Trajectory logging (optional)
 
 `RuntimeEngine` may append **one JSON line per executed step** to `<source-stem>.trajectory.jsonl` when the host enables it (CLI: `ainl run --log-trajectory`, env: `AINL_LOG_TRAJECTORY`). This is a **diagnostic artifact** only; it does not change label routing or adapter semantics. It is separate from the runner service’s HTTP audit stream (`docs/operations/AUDIT_LOGGING.md`). See `docs/trajectory.md`.

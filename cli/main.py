@@ -65,6 +65,7 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "wasm",
         "memory",
         "vector_memory",
+        "embedding_memory",
         "tool_registry",
         "langchain_tool",
     ]
@@ -226,6 +227,10 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
         from adapters.vector_memory import VectorMemoryAdapter
 
         reg.register("vector_memory", VectorMemoryAdapter())
+    if "embedding_memory" in enabled:
+        from adapters.embedding_memory import EmbeddingMemoryAdapter
+
+        reg.register("embedding_memory", EmbeddingMemoryAdapter())
     if "tool_registry" in enabled:
         from adapters.tool_registry import ToolRegistryAdapter
 
@@ -742,6 +747,7 @@ def main() -> None:
             "wasm",
             "memory",
             "vector_memory",
+            "embedding_memory",
             "tool_registry",
             "langchain_tool",
         ],
@@ -898,6 +904,106 @@ def main() -> None:
     doc.add_argument("--json", action="store_true", help="Emit JSON diagnostics output")
     doc.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     doc.set_defaults(func=cmd_doctor)
+
+    def cmd_bridge_sizing_probe(args: argparse.Namespace) -> int:
+        import json
+
+        from scripts.bridge_sizing_probe import print_plain_report, run_probe
+
+        md = Path(args.bsz_memory_dir).expanduser() if args.bsz_memory_dir else None
+        data = run_probe(args.bsz_db_path, args.bsz_days, memory_dir=md)
+        if args.bsz_json:
+            print(json.dumps(data, indent=2))
+        else:
+            print_plain_report(data)
+        return 0
+
+    bsz = sub.add_parser(
+        "bridge-sizing-probe",
+        help="Read-only OpenClaw bridge sizing: SQLite namespace counts + Token Usage Report section sizes",
+    )
+    bsz.add_argument(
+        "--db-path",
+        dest="bsz_db_path",
+        type=str,
+        default=os.getenv("AINL_MEMORY_DB", "/tmp/ainl_memory.sqlite3"),
+        help="SQLite memory DB (default: AINL_MEMORY_DB or /tmp/ainl_memory.sqlite3)",
+    )
+    bsz.add_argument(
+        "--memory-dir",
+        dest="bsz_memory_dir",
+        default="",
+        help="Directory for daily YYYY-MM-DD.md (overrides OPENCLAW_* for this run)",
+    )
+    bsz.add_argument(
+        "--days",
+        dest="bsz_days",
+        type=int,
+        default=14,
+        help="How many newest daily *.md files to scan (default: 14)",
+    )
+    bsz.add_argument(
+        "--json",
+        dest="bsz_json",
+        action="store_true",
+        help="Emit JSON only",
+    )
+    bsz.set_defaults(func=cmd_bridge_sizing_probe)
+
+    def cmd_profile(args: argparse.Namespace) -> int:
+        import json
+
+        from tooling.ainl_profile_catalog import (
+            emit_shell_exports,
+            format_profile_text,
+            get_profile,
+            list_profile_ids,
+        )
+
+        pc = getattr(args, "profile_cmd", None)
+        if pc == "list":
+            for pid in list_profile_ids():
+                print(pid)
+            return 0
+        if pc == "show":
+            try:
+                if args.profile_json:
+                    print(json.dumps(get_profile(args.profile_id), indent=2))
+                else:
+                    print(format_profile_text(args.profile_id), end="")
+            except KeyError:
+                raise SystemExit(f"unknown profile: {args.profile_id!r} (try: ainl profile list)")
+            return 0
+        if pc == "emit-shell":
+            try:
+                print(emit_shell_exports(args.profile_id), end="")
+            except KeyError:
+                raise SystemExit(f"unknown profile: {args.profile_id!r} (try: ainl profile list)")
+            return 0
+        raise SystemExit(f"unknown profile subcommand: {pc!r}")
+
+    prf = sub.add_parser(
+        "profile",
+        help="Named env profiles (IR cache, embedding mode, bridge caps, intelligence defaults)",
+    )
+    prf_sub = prf.add_subparsers(dest="profile_cmd", required=True)
+    prf_list = prf_sub.add_parser("list", help="List profile ids")
+    prf_list.set_defaults(func=cmd_profile)
+    prf_show = prf_sub.add_parser("show", help="Show one profile (env + notes)")
+    prf_show.add_argument("profile_id", help="Profile id (e.g. openclaw-default)")
+    prf_show.add_argument(
+        "--json",
+        dest="profile_json",
+        action="store_true",
+        help="Emit JSON",
+    )
+    prf_show.set_defaults(func=cmd_profile)
+    prf_emit = prf_sub.add_parser(
+        "emit-shell",
+        help="Print export VAR=value lines for bash/zsh (eval \"$(ainl profile emit-shell ID)\")",
+    )
+    prf_emit.add_argument("profile_id")
+    prf_emit.set_defaults(func=cmd_profile)
 
     gld = sub.add_parser("golden", help="Run golden fixtures from examples")
     gld.add_argument("--examples-dir", default=str(Path(__file__).resolve().parent.parent / "examples"))

@@ -68,6 +68,7 @@ ainl-test-profiles = "scripts.run_test_profiles:main"
 ainl-check-docs = "scripts.check_docs_contracts:main"
 ainl-mcp = "scripts.ainl_mcp_server:main"
 ainl-visualize = "scripts.visualize_ainl:main"
+ainl-bridge-sizing-probe = "scripts.bridge_sizing_probe:main"
 ainl-validate-s-cron = "scripts.validate_s_cron_schedules:main"
 
 [tool.setuptools]
@@ -77,6 +78,9 @@ py-modules = [
   "runtime",
   "grammar_constraint",
 ]
+
+[tool.setuptools.package-data]
+tooling = ["*.json"]
 
 [tool.setuptools.packages.find]
 where = ["."]
