@@ -31,6 +31,16 @@ Set on the process that runs `apollo-x-bot/gateway_server.py`:
 
 Intelligence graphs read **`R cache get "workflow" "token_budget"`**. Hydration copies **`memory` `workflow` / `budget.aggregate` / `weekly_remaining_v1`** (from `rolling_budget_publish`) into that cache key so startup/summarizer gates align with the bridge without scanning 7+ days of markdown.
 
+### Suggested intelligence-side token caps (startup context)
+
+These affect AINL’s LLM-facing prompt sizes (chat context injection), not bridge markdown reports:
+
+- `AINL_STARTUP_CONTEXT_TOKEN_MIN` / `AINL_STARTUP_CONTEXT_TOKEN_MAX`: clamp for `token_aware_startup_context` token budget allocation.
+  - Default min/max values are safe; profiles like `cost-tight` set an aggressive max (e.g. ~500) after measuring.
+- `AINL_STARTUP_USE_EMBEDDINGS`: enables an optional embedding top-k candidate path in `token_aware_startup_context`.
+  - If `AINL_EMBEDDING_MODE=stub`, AINL won’t take the embedding path and will fall back to `MEMORY.md` scanning.
+  - When you set real vectors (`AINL_EMBEDDING_MODE=openai`) and index via the embedding-memory-pilot wrapper, this path can further reduce bootstrap tokens.
+
 ## Suggested order
 
 1. Size bridge reports → set `AINL_BRIDGE_REPORT_MAX_CHARS` if needed.  

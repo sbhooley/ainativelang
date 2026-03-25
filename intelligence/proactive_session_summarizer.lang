@@ -169,7 +169,12 @@ L16:
   X newMem (core.concat currentMem sectionHeader summary "\n")
   R fs write "MEMORY.md" newMem ->_
   X mem_id (core.concat "summary-" dayDate)
-  X mem_payload {"date":dayDate,"summary_len":summaryLen,"created_at":nowIso,"model":llmModel}
+  # Graph-safe memory_payload builder (no raw X {..} object literals).
+  X mem_payload (obj "date" dayDate)
+  X mem_payload (put mem_payload "summary" summary)
+  X mem_payload (put mem_payload "summary_len" summaryLen)
+  X mem_payload (put mem_payload "created_at" nowIso)
+  X mem_payload (put mem_payload "model" llmModel)
   Set memory_namespace "workflow"
   Set memory_kind "workflow.session_summary"
   Set memory_record_id mem_id

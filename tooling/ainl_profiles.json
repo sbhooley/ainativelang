@@ -32,7 +32,10 @@
       "env": {
         "AINL_IR_CACHE": "1",
         "AINL_EMBEDDING_MODE": "stub",
-        "AINL_INTELLIGENCE_ROLLING_CONSERVATIVE_DAILY": "1"
+        "AINL_INTELLIGENCE_ROLLING_CONSERVATIVE_DAILY": "1",
+        "AINL_STARTUP_CONTEXT_TOKEN_MIN": "200",
+        "AINL_STARTUP_CONTEXT_TOKEN_MAX": "800",
+        "AINL_STARTUP_USE_EMBEDDINGS": "1"
       },
       "notes": [
         "Align OPENCLAW_WORKSPACE / OPENCLAW_MEMORY_DIR with the same values as run_wrapper_ainl and cron.",
@@ -47,7 +50,10 @@
         "AINL_IR_CACHE": "1",
         "AINL_EMBEDDING_MODE": "stub",
         "AINL_INTELLIGENCE_ROLLING_CONSERVATIVE_DAILY": "1",
-        "AINL_BRIDGE_REPORT_MAX_CHARS": "16384"
+        "AINL_BRIDGE_REPORT_MAX_CHARS": "16384",
+        "AINL_STARTUP_CONTEXT_TOKEN_MIN": "200",
+        "AINL_STARTUP_CONTEXT_TOKEN_MAX": "500",
+        "AINL_STARTUP_USE_EMBEDDINGS": "1"
       },
       "notes": [
         "AINL_BRIDGE_REPORT_MAX_CHARS may truncate token_budget_report; raise if operators need full text.",
