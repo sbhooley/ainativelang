@@ -51,7 +51,7 @@ def test_runtime_oversight_report_uses_trace_and_adapters():
         "label": "1",
         "out": {"data": []},
         "duration_ms": 12.3,
-        "runtime_version": "1.2.6",
+        "runtime_version": "1.2.8",
         "ir_version": ir.get("ir_version"),
         "trace": [
             {"label": "1", "node_id": "n1", "duration_ms": 5.0},
@@ -64,7 +64,7 @@ def test_runtime_oversight_report_uses_trace_and_adapters():
         "adapter_p95_ms": {"db": 7.5},
     }
     rep = runtime_oversight_report(ir, run_payload)
-    assert rep["schema"]["runtime_version"] == "1.2.6"
+    assert rep["schema"]["runtime_version"] == "1.2.8"
     assert rep["summary"]["ok"] is True
     assert rep["summary"]["label"] == "1"
     # Trace coverage should mention n1 and n2

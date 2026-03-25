@@ -2,7 +2,7 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.2.6
+**Version:** 1.2.8
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `scripts/runtime_runner_service.py`
 **Reference ecosystem:** OpenClaw/NemoClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters, sandboxed operator deployments
@@ -307,7 +307,7 @@ deployment environments.
 
 See `docs/architecture/STATE_DISCIPLINE.md` for the full specification.
 
-**Optional access metadata (opt-in module):** `modules/common/access_aware_memory.ainl` provides **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and **`LACCESS_LIST_SAFE`** helpers that bump **`metadata.last_accessed`** (ISO timestamp) and **`metadata.access_count`** on selected **`memory.get`** / **`memory.list`** / **`memory.put`** paths. Plain adapter calls remain unchanged if you do not use the module. **`LACCESS_LIST_SAFE`** uses a **While** + index loop for graph-reliable list snapshots; **`LACCESS_LIST`** uses a **`ForEach`** surface form whose IR may not yet fully match **Loop** lowering—hosts that rely on **graph-preferred** execution should prefer **`LACCESS_LIST_SAFE`** until the compiler emits an equivalent **Loop**. Details: module header, `modules/common/README.md`, **`docs/RELEASE_NOTES.md`** (feature described under **v1.2.4**; **current release v1.2.6**).
+**Optional access metadata (opt-in module):** `modules/common/access_aware_memory.ainl` provides **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and **`LACCESS_LIST_SAFE`** helpers that bump **`metadata.last_accessed`** (ISO timestamp) and **`metadata.access_count`** on selected **`memory.get`** / **`memory.list`** / **`memory.put`** paths. Plain adapter calls remain unchanged if you do not use the module. **`LACCESS_LIST_SAFE`** uses a **While** + index loop for graph-reliable list snapshots; **`LACCESS_LIST`** uses a **`ForEach`** surface form whose IR may not yet fully match **Loop** lowering—hosts that rely on **graph-preferred** execution should prefer **`LACCESS_LIST_SAFE`** until the compiler emits an equivalent **Loop**. Details: module header, `modules/common/README.md`, **`docs/RELEASE_NOTES.md`** (feature described under **v1.2.4**; **current release v1.2.8**).
 
 ### 7.4 Narrative and integration references
 

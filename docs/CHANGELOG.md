@@ -7,6 +7,15 @@
 - **docs(openclaw)**: **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** — agent-discoverable install/upgrade checklist (profiles, caps, cron, host bootstrap, verification); indexed from **`tooling/bot_bootstrap.json`**, **`HOST_PACK_OPENCLAW.md`**, **`DOCS_INDEX.md`**.
 - **fix(graph)**: intelligence + **`modules/common/generic_memory.ainl`** — graph-safe **`X`** (no raw `{…}` literals), **`memory.list`** optional prefix via **`null`**, metadata **`valid_at`** / tags; see **`docs/RUNTIME_COMPILER_CONTRACT.md`** § graph pitfalls, **`docs/AINL_SPEC.md`**.
 
+## v1.2.7 (March 24, 2026) — Hyperagent Research Pack (additive)
+
+- **feat(cli)**: `ainl inspect <file.ainl> [--strict] [--json]` — dump full canonical IR JSON.
+- **feat(runtime)**: `ainl run --trace-jsonl PATH|-` — structured JSONL execution tape (file or stdout).
+- **feat(diagnostics)**: structured diagnostics expose `llm_repair_hint` for LLM-native repair loops.
+- **feat(mcp)**: `ainl_fitness_report` and `ainl_ir_diff` tools for selection/mutation loops; `ainl_fitness_report` includes `fitness_score` with `fitness_components`/`weights`, plus adapter/operation/frame-key proxy metrics; `ainl_ir_diff` detects payload-level node data deltas (not only topology).
+- **feat(schema)**: machine-readable schema seed `ainl.schema.json`.
+- **docs**: `docs/EMBEDDING_RESEARCH_LOOPS.md`, `docs/operations/MCP_RESEARCH_CONTRACT.md`, `prompts/meta-agent/*`.
+
 ## v1.2.6 (March 24, 2026) — sandbox install hardening, wheel integrity gates, doctor command
 
 - **fix(graph / intelligence)**: **`intelligence/token_aware_startup_context.lang`** and **`modules/common/generic_memory.ainl`** — avoid **`X {…}`** object literals (graph IR → **`unknown X fn: {`**); build filters/payloads with **`core.parse`**, **`obj`/`put`**, **`arr`**; merge list steps into one label (do not use **`J NextLabel`** as a jump); **`memory.list`** uses **`null`** for omitted **`record_id_prefix`**; **`memory_tags`** via **`X … (arr …)`**; **`valid_at`** from **`R core iso`**. Documented in **`docs/AINL_SPEC.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**, **`docs/adapters/MEMORY_CONTRACT.md`** § 3.4.
@@ -50,7 +59,9 @@
 - **test**: **`tests/test_inter_label_dataflow.py`**; Temporal **`execute_workflow`** path in **`tests/test_hybrid_emit_integration.py`** (**`WorkflowEnvironment`**, **`Worker`**, **`ThreadPoolExecutor`** activity executor)
 - **tooling**: **`tooling/artifact_profiles.json`** strict-valid refresh (**`examples/cron/monitor_and_alert.ainl`**, **`corpus/example_monitor_alert/program.ainl`**, …); curriculum order bump + regenerated **`tooling/canonical_training_pack.json`** / **`tooling/training_packs/*`**; conformance syrupy snapshots under **`tests/snapshots/conformance/`**
 
-## v1.2.4 (March 21, 2026) — addendum 2026-03-22
+## v1.2.4 (March 21, 2026)
+
+**Addendum (2026-03-22).**
 
 - **fix(apollo-x-bot)**: `gateway_server.py` — **`_classify_wants_envelope`** only when **`messages`** is a non-empty list (avoids **`envelope_missing_messages`** on **`classify_response=raw`** without messages; legacy tweet+prompt path); clearer bind error on **EADDRINUSE**; swallow **BrokenPipeError** / connection resets when the client disconnects early (timeouts).
 - **fix(cli)**: **`ainl run --http-timeout-s`** help text — note LLM / bridge latency; default remains **5** (callers with slow routes must raise it).
@@ -60,8 +71,6 @@
 - **fix(compiler_v2)**: strict reachability — treat **If** as a valid label terminator (skip “exactly one J” false positive when **If** is last); include **If** when wiring **Loop**/**While** fall-through edges to following labels.
 - **fix(demo)**: **`demo/infrastructure_watchdog.lang`** — restart services when down; verify after restart before alerting.
 - **docs**: **`docs/reference/ADAPTER_REGISTRY.md`** §2.4.3 (**bridge** client timeout); **`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`** §7 (timeouts + **`llm.classify`** envelope rule); **`docs/OPENCLAW_INTEGRATION.md`** (Apollo promoter + **`openclaw-poll.sh`** pointer); **`apollo-x-bot/OPENCLAW_DEPLOY.md`** (**`AINL_HTTP_TIMEOUT_S`** / **`--http-timeout-s`**).
-
-## v1.2.4 (March 21, 2026)
 
 - **packaging**: **`pyproject.toml` / `ainl-lang`** **1.2.4**; **`RUNTIME_VERSION`** (`runtime/engine.py`, mirrored `tests/emits/server/runtime/engine.py`) **1.2.4**; language server **`serverInfo.version`** and runner service **FastAPI** `app.version` follow **`RUNTIME_VERSION`** (runner: `scripts/runtime_runner_service.py`; LSP: `langserver.py`)
 - **feat(modules)**: `modules/common/access_aware_memory.ainl` — opt-in **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, **`LACCESS_LIST_SAFE`** (graph-safe list touches via While + index); header warnings and usage notes for graph vs ForEach
