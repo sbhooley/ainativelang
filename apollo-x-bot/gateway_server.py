@@ -283,8 +283,9 @@ class PromoterState:
 
     def _ensure_analytics_views(self, c: sqlite3.Connection) -> None:
         """Human-oriented SQL views over audit (JSON1). Safe to run every startup."""
-        c.executescript(
-            """
+        try:
+            c.executescript(
+                """
             CREATE VIEW IF NOT EXISTS v_audit_timeline AS
             SELECT
               id,
@@ -315,7 +316,9 @@ class PromoterState:
             FROM audit
             WHERE action = 'llm.usage';
             """
-        )
+            )
+        except sqlite3.OperationalError as e:
+            _gw_debug(f"analytics views skipped (JSON1 or SQL): {e!r}")
 
     def audit_tail(self, limit: int) -> List[Dict[str, Any]]:
         lim = max(1, min(500, int(limit)))
@@ -796,22 +799,38 @@ def _x_recent_search(
         url += f"&since_id={urllib.parse.quote(sid, safe='')}"
     bearer = _x_bearer()
     oauth = _x_oauth1_creds()
-    if bearer:
-        status, _h, data = _http_request(
-            "GET",
-            url,
-            headers={"Authorization": f"Bearer {bearer}"},
-            timeout=120.0,
-        )
-    elif oauth:
-        ck, cs, tok, ts = oauth
-        auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
-        status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=120.0)
-    else:
-        return {"tweets": [], "warning": "Set X_BEARER_TOKEN (search) or full OAuth1 keys (X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET)"}
-    if status >= 400:
-        return {"tweets": [], "error": f"x_search_http_{status}", "detail": data.decode("utf-8", errors="replace")[:500]}
-    obj = json.loads(data.decode("utf-8"))
+    try:
+        if bearer:
+            status, _h, data = _http_request(
+                "GET",
+                url,
+                headers={"Authorization": f"Bearer {bearer}"},
+                timeout=120.0,
+            )
+        elif oauth:
+            ck, cs, tok, ts = oauth
+            auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
+            status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=120.0)
+        else:
+            return {"tweets": [], "warning": "Set X_BEARER_TOKEN (search) or full OAuth1 keys (X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET)"}
+        if status >= 400:
+            return {"tweets": [], "error": f"x_search_http_{status}", "detail": data.decode("utf-8", errors="replace")[:500]}
+        raw_text = data.decode("utf-8") if data else ""
+        try:
+            obj = json.loads(raw_text)
+        except json.JSONDecodeError as je:
+            return {
+                "tweets": [],
+                "error": "x_search_invalid_json",
+                "detail": str(je),
+                "snippet": raw_text[:400],
+            }
+    except (urllib.error.URLError, TimeoutError, OSError, ConnectionError) as e:
+        return {"tweets": [], "error": "x_search_network", "detail": str(e)}
+    except Exception as e:
+        return {"tweets": [], "error": "x_search_request_failed", "detail": str(e)}
+    if not isinstance(obj, dict):
+        return {"tweets": [], "error": "x_search_unexpected_json", "detail": type(obj).__name__}
     raw = obj.get("data") or []
     users_by_id: Dict[str, str] = {}
     for u in (obj.get("includes") or {}).get("users") or []:
@@ -1063,19 +1082,25 @@ def _x_users_lookup(ids: List[str]) -> List[Dict[str, Any]]:
         q = "ids=" + ",".join(_rfc3986(x) for x in chunk)
         q += "&user.fields=description,username,name"
         url = f"https://api.twitter.com/2/users?{q}"
-        if oauth:
-            ck, cs, tok, ts = oauth
-            auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
-            status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=60.0)
-        elif bearer:
-            status, _h, data = _http_request(
-                "GET", url, headers={"Authorization": f"Bearer {bearer}"}, timeout=60.0
-            )
-        else:
+        try:
+            if oauth:
+                ck, cs, tok, ts = oauth
+                auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
+                status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=60.0)
+            elif bearer:
+                status, _h, data = _http_request(
+                    "GET", url, headers={"Authorization": f"Bearer {bearer}"}, timeout=60.0
+                )
+            else:
+                break
+            if status >= 400:
+                break
+            try:
+                obj = json.loads(data.decode("utf-8"))
+            except json.JSONDecodeError:
+                continue
+        except (urllib.error.URLError, OSError, TimeoutError, ConnectionError):
             break
-        if status >= 400:
-            break
-        obj = json.loads(data.decode("utf-8"))
         for u in obj.get("data") or []:
             if isinstance(u, dict):
                 out.append(
@@ -1142,18 +1167,21 @@ def _x_http_tweet_id_to_author(ids: List[str]) -> Dict[str, Dict[str, str]]:
     )
     bearer = _x_bearer()
     oauth = _x_oauth1_creds()
-    if bearer:
-        status, _h, data = _http_request(
-            "GET",
-            url,
-            headers={"Authorization": f"Bearer {bearer}"},
-            timeout=60.0,
-        )
-    elif oauth:
-        ck, cs, tok, ts = oauth
-        auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
-        status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=60.0)
-    else:
+    try:
+        if bearer:
+            status, _h, data = _http_request(
+                "GET",
+                url,
+                headers={"Authorization": f"Bearer {bearer}"},
+                timeout=60.0,
+            )
+        elif oauth:
+            ck, cs, tok, ts = oauth
+            auth = _oauth1_authorization_header("GET", url, ck, cs, tok, ts)
+            status, _h, data = _http_request("GET", url, headers={"Authorization": auth}, timeout=60.0)
+        else:
+            return {}
+    except (urllib.error.URLError, OSError, TimeoutError, ConnectionError):
         return {}
     if status >= 400:
         return {}
@@ -1829,8 +1857,13 @@ def handle_x_search(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any
         return out
     except Exception as e:
         import traceback
+
         _gw_debug(f"x.search exception: {e!r}\n{traceback.format_exc()}")
-        raise
+        try:
+            state.audit("x.search", {"error": "handler_exception", "detail": str(e)[:500]})
+        except Exception:
+            pass
+        return {"tweets": [], "error": "x_search_handler_exception", "detail": str(e)}
 
 
 def handle_llm_classify(body: Dict[str, Any], state: PromoterState) -> Any:
@@ -2693,6 +2726,65 @@ def _utc_hour_keys(start_ts: float, end_ts: float) -> List[str]:
     return keys
 
 
+def _llm_usage_sums_python_24h(state: PromoterState, since_24h: float) -> Tuple[int, int, int, int]:
+    """Aggregate llm.usage token fields without SQL json_extract (JSON1 missing or query failed)."""
+    pt = ct = tt = n = 0
+    with state._conn() as c:
+        rows = c.execute(
+            "SELECT detail_json FROM audit WHERE ts >= ? AND action = 'llm.usage'",
+            (since_24h,),
+        ).fetchall()
+    for row in rows:
+        raw = row[0]
+        n += 1
+        try:
+            d = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(d, dict):
+            continue
+        try:
+            pt += int(float(d.get("prompt_tokens") or 0))
+            ct += int(float(d.get("completion_tokens") or 0))
+            tt += int(float(d.get("total_tokens") or 0))
+        except (TypeError, ValueError):
+            pass
+    return (pt, ct, tt, n)
+
+
+def _tokens_per_hour_python_merge(
+    state: PromoterState, start: float, hour_keys: List[str], tokens_per_hour: Dict[str, int]
+) -> None:
+    hk_set = set(hour_keys)
+    with state._conn() as c:
+        rows = c.execute(
+            "SELECT ts, detail_json FROM audit WHERE ts >= ? AND action = 'llm.usage'",
+            (start,),
+        ).fetchall()
+    for row in rows:
+        ts_raw, raw = row[0], row[1]
+        try:
+            tsf = float(ts_raw)
+        except (TypeError, ValueError):
+            continue
+        hk = datetime.fromtimestamp(tsf, tz=timezone.utc).strftime("%Y-%m-%d %H")
+        if hk not in hk_set:
+            continue
+        try:
+            d = json.loads(raw) if raw else {}
+            tok = int(float(d.get("total_tokens") or 0)) if isinstance(d, dict) else 0
+        except (TypeError, ValueError, json.JSONDecodeError):
+            tok = 0
+        tokens_per_hour[hk] = tokens_per_hour.get(hk, 0) + tok
+
+
+def _dashboard_json_bytes(obj: Any) -> bytes:
+    try:
+        return json.dumps(obj, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError) as e:
+        return json.dumps({"ok": False, "error": "json_encode_failed", "detail": str(e)}).encode("utf-8")
+
+
 def _promoter_charts_bundle(state: PromoterState, counts_24h: Dict[str, int]) -> Dict[str, Any]:
     now = time.time()
     hours = max(12, min(168, _env_int("PROMOTER_DASHBOARD_CHART_HOURS", 48)))
@@ -2719,20 +2811,23 @@ def _promoter_charts_bundle(state: PromoterState, counts_24h: Dict[str, int]) ->
             act = str(action or "")
             if hks in per_hour:
                 per_hour[hks][act] = int(n)
-        tok_rows = c.execute(
-            """
-            SELECT strftime('%Y-%m-%d %H', datetime(ts, 'unixepoch')) AS hk,
-                   IFNULL(SUM(COALESCE(json_extract(detail_json, '$.total_tokens'), 0)), 0) AS t
-            FROM audit
-            WHERE ts >= ? AND action = 'llm.usage'
-            GROUP BY hk
-            """,
-            (start,),
-        ).fetchall()
-        for hk, t in tok_rows:
-            hks = str(hk or "")
-            if hks in tokens_per_hour:
-                tokens_per_hour[hks] = int(float(t or 0))
+        try:
+            tok_rows = c.execute(
+                """
+                SELECT strftime('%Y-%m-%d %H', datetime(ts, 'unixepoch')) AS hk,
+                       IFNULL(SUM(COALESCE(json_extract(detail_json, '$.total_tokens'), 0)), 0) AS t
+                FROM audit
+                WHERE ts >= ? AND action = 'llm.usage'
+                GROUP BY hk
+                """,
+                (start,),
+            ).fetchall()
+            for hk, t in tok_rows:
+                hks = str(hk or "")
+                if hks in tokens_per_hour:
+                    tokens_per_hour[hks] = int(float(t or 0))
+        except sqlite3.OperationalError:
+            _tokens_per_hour_python_merge(state, start, hour_keys, tokens_per_hour)
         day_rows = c.execute(
             """
             SELECT day, count FROM daily_replies
@@ -2806,17 +2901,23 @@ def _promoter_stats_bundle(state: PromoterState) -> Dict[str, Any]:
                 (since_7d,),
             ).fetchall()
         }
-        tok_row = c.execute(
-            """
-            SELECT
-              IFNULL(SUM(COALESCE(json_extract(detail_json, '$.prompt_tokens'), 0)), 0),
-              IFNULL(SUM(COALESCE(json_extract(detail_json, '$.completion_tokens'), 0)), 0),
-              IFNULL(SUM(COALESCE(json_extract(detail_json, '$.total_tokens'), 0)), 0),
-              COUNT(*)
-            FROM audit WHERE ts >= ? AND action = 'llm.usage'
-            """,
-            (since_24h,),
-        ).fetchone()
+        try:
+            tok_row = c.execute(
+                """
+                SELECT
+                  IFNULL(SUM(COALESCE(json_extract(detail_json, '$.prompt_tokens'), 0)), 0),
+                  IFNULL(SUM(COALESCE(json_extract(detail_json, '$.completion_tokens'), 0)), 0),
+                  IFNULL(SUM(COALESCE(json_extract(detail_json, '$.total_tokens'), 0)), 0),
+                  COUNT(*)
+                FROM audit WHERE ts >= ? AND action = 'llm.usage'
+                """,
+                (since_24h,),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            tok_row = None
+        if tok_row is None:
+            pt, ct, tt, n = _llm_usage_sums_python_24h(state, since_24h)
+            tok_row = (pt, ct, tt, n)
     day = state.day_key()
     with state._conn() as c:
         dr = c.execute("SELECT count FROM daily_replies WHERE day = ?", (day,)).fetchone()
@@ -2840,10 +2941,10 @@ def _promoter_stats_bundle(state: PromoterState) -> Dict[str, Any]:
         "audit_actions_last_24h": counts_24h,
         "audit_actions_last_7d": counts_7d,
         "llm_usage_last_24h": {
-            "prompt_tokens": int(tok_row[0]),
-            "completion_tokens": int(tok_row[1]),
-            "total_tokens": int(tok_row[2]),
-            "api_calls_recorded": int(tok_row[3]),
+            "prompt_tokens": int(float(tok_row[0] or 0)),
+            "completion_tokens": int(float(tok_row[1] or 0)),
+            "total_tokens": int(float(tok_row[2] or 0)),
+            "api_calls_recorded": int(tok_row[3] or 0),
         },
         "charts": charts,
     }
@@ -2980,8 +3081,9 @@ a { color: var(--acc); }
 </head>
 <body>
 <h1>Apollo-X promoter</h1>
-<p class="mono" style="color:var(--muted);margin:0 0 1rem">Read-only · refreshes every 60s · JSON: <a href="/v1/promoter.stats">/v1/promoter.stats</a> · scoring audit: <a href="/v1/promoter.audit_tail?focus=scoring&amp;limit=80"><code>audit_tail?focus=scoring</code></a></p>
+<p class="mono" style="color:var(--muted);margin:0 0 1rem">Read-only · refreshes every 60s · JSON: <a href="promoter.stats">promoter.stats</a> · scoring audit: <a href="promoter.audit_tail?focus=scoring&amp;limit=80"><code>audit_tail?focus=scoring</code></a></p>
 <div class="grid" id="cards"></div>
+<p id="chartJsWarn" class="mono" style="display:none;color:#e5756b;margin:0 0 0.75rem"></p>
 <h2 style="font-size:0.95rem; margin:1.2rem 0 0.5rem">Charts</h2>
 <p class="mono" style="color:var(--muted);font-size:0.75rem;margin:0 0 0.75rem">UTC hour buckets · stacked audit actions · cursor commits show polling rhythm</p>
 <div class="grid-charts">
@@ -3004,6 +3106,10 @@ a { color: var(--acc); }
 <div class="card"><table id="mem"><thead><tr><th>Created</th><th>Action</th><th>Verdict</th><th>Handle</th><th>User id</th><th>Tweet id</th><th>Score</th><th>Reason</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
 <script>
 function esc(s){ if(s==null)return ''; var d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+function apiUrl(rel){
+  try { return new URL(rel, window.location.href).href; }
+  catch(e){ return '/' + String(rel||'').replace(/^\\//,''); }
+}
 var _dashCharts = { hourly:null, tokens:null, pie:null, daily:null };
 function _destroyDashCharts(){
   Object.keys(_dashCharts).forEach(function(k){ if(_dashCharts[k]){ _dashCharts[k].destroy(); _dashCharts[k]=null; } });
@@ -3029,7 +3135,16 @@ function _colorForActionKey(k){
 }
 function renderCharts(st){
   var ch = st && st.charts;
-  if(!ch || typeof Chart === 'undefined') return;
+  var warn = document.getElementById('chartJsWarn');
+  if(warn){ warn.style.display='none'; warn.textContent=''; }
+  if(!ch){ return; }
+  if(typeof Chart === 'undefined'){
+    if(warn){
+      warn.style.display='block';
+      warn.textContent='Chart.js did not load (CDN blocked or offline). Allow cdn.jsdelivr.net or use a network that can reach it — summary tables below still update.';
+    }
+    return;
+  }
   _destroyDashCharts();
   var lbl = ch.hour_labels_short || [];
   var sc = ch.stacked_counts || {};
@@ -3050,7 +3165,7 @@ function renderCharts(st){
   var commonLegend = { labels:{ color:_chartMuted, boxWidth:10, font:{ size:10 } } };
   var commonScales = {
     x:{ stacked:true, ticks:{ color:_chartMuted, maxRotation:60, minRotation:45, font:{ size:9 } }, grid:{ color:_chartGrid } },
-    y:{ stacked:true, beginAtZero:true, ticks:{ color:_chartMuted, precision:0 }, grid:{ color:_chartGrid } }
+    y:{ stacked:true, beginAtZero:true, ticks:{ color:_chartMuted, callback:function(v){ return Number.isFinite(v) ? v : ''; } }, grid:{ color:_chartGrid } }
   };
   var elH = document.getElementById('chartHourly');
   if(elH && lbl.length && datasets.length){
@@ -3132,7 +3247,7 @@ function renderCharts(st){
         plugins: { legend: Object.assign({ position:'bottom' }, commonLegend) },
         scales: {
           x: { ticks:{ color:_chartMuted }, grid:{ color:_chartGrid } },
-          y: { beginAtZero:true, ticks:{ color:_chartMuted, precision:0 }, grid:{ color:_chartGrid } }
+          y: { beginAtZero:true, ticks:{ color:_chartMuted, callback:function(v){ return Number.isFinite(v) ? v : ''; } }, grid:{ color:_chartGrid } }
         }
       }
     });
@@ -3166,10 +3281,18 @@ function detailJsonBlock(obj){
 }
 async function load(){
   try{
-    var st = await fetch('/v1/promoter.stats').then(function(r){ return r.json(); });
-    var au = await fetch('/v1/promoter.audit_tail?limit=60').then(function(r){ return r.json(); });
-    var aus = await fetch('/v1/promoter.audit_tail?limit=80&focus=scoring').then(function(r){ return r.json(); });
-    var mem = await fetch('/v1/promoter.memory_tail?limit=50').then(function(r){ return r.json(); });
+    async function jget(rel){
+      var u = apiUrl(rel);
+      var r = await fetch(u);
+      if(!r.ok){ throw new Error(rel + ' HTTP '+r.status+' ('+u+')'); }
+      var j = await r.json();
+      if(j && j.ok === false){ throw new Error((j.error||'error') + (j.detail ? ': '+j.detail : '')); }
+      return j;
+    }
+    var st = await jget('promoter.stats');
+    var au = await jget('promoter.audit_tail?limit=60');
+    var aus = await jget('promoter.audit_tail?limit=80&focus=scoring');
+    var mem = await jget('promoter.memory_tail?limit=50');
     var u = st.llm_usage_last_24h || {};
     var wh = (st.charts && st.charts.window_hours) ? ' · charts: last '+st.charts.window_hours+'h' : '';
     document.getElementById('cards').innerHTML =
@@ -3294,7 +3417,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self._send_html_body(200, _DASHBOARD_HTML.encode("utf-8"))
                 return
             if path == "/v1/promoter.stats":
-                payload = json.dumps(_promoter_stats_bundle(_STATE), ensure_ascii=False).encode("utf-8")
+                payload = _dashboard_json_bytes(_promoter_stats_bundle(_STATE))
                 self._send_json_body(200, payload)
                 return
             if path == "/v1/promoter.audit_tail":
@@ -3315,10 +3438,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     row["verdict"] = vk
                     row["verdict_label"] = vl
                     row["reason"] = _detail_reason_snippet(d)
-                out = json.dumps(
-                    {"ok": True, "focus": focus or None, "rows": enriched},
-                    ensure_ascii=False,
-                ).encode("utf-8")
+                out = _dashboard_json_bytes({"ok": True, "focus": focus or None, "rows": enriched})
                 self._send_json_body(200, out)
                 return
             if path == "/v1/promoter.memory_tail":
@@ -3326,20 +3446,22 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     lim = int((qs.get("limit") or ["40"])[0] or 40)
                 except ValueError:
                     lim = 40
-                blob = json.dumps(
+                blob = _dashboard_json_bytes(
                     {
                         "ok": True,
                         "memory_db": str(_memory_db_path()),
                         "rows": _memory_decisions_tail(_STATE, lim),
-                    },
-                    ensure_ascii=False,
-                ).encode("utf-8")
+                    }
+                )
                 self._send_json_body(200, blob)
                 return
             self.send_error(404, "unknown GET path; try /v1/promoter.dashboard")
         except Exception as e:
-            err = json.dumps({"ok": False, "error": str(e)}).encode("utf-8")
-            self._send_json_body(500, err)
+            import traceback
+
+            _gw_debug(f"GET dashboard error: {e!r}\n{traceback.format_exc()}")
+            err = _dashboard_json_bytes({"ok": False, "error": "dashboard_exception", "detail": str(e)})
+            self._send_json_body(200, err)
 
     def do_POST(self) -> None:
         path = urllib.parse.urlparse(self.path).path
