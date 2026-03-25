@@ -6,6 +6,7 @@
   "implementation_preflight_doc": "docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md",
   "docs_index": "docs/DOCS_INDEX.md",
   "openclaw_ainl_gold_standard": "docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md",
+  "openclaw_host_ainl_1_2_8": "docs/operations/OPENCLAW_HOST_AINL_1_2_8.md",
   "safe_default_docs": [
     "docs/AINL_SPEC.md",
     "docs/AINL_CANONICAL_CORE.md",

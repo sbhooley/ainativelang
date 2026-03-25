@@ -2,6 +2,8 @@
 
 **Purpose:** Canonical reference for **agents and operators** after **`pip install`** / **`ainl install-mcp --host openclaw`** (or similar). Follow this to align **profiles**, **caps**, **cron**, **shared paths**, and **verification** so token savings and **`budget_hydrate`** behavior show up in real sessions. **Adapt numbers** to your measured workload (`bridge-sizing-probe`); the structure stays the same.
 
+**AINL v1.2.8 host briefing (what the repo ships vs what OpenClaw must do):** [`OPENCLAW_HOST_AINL_1_2_8.md`](OPENCLAW_HOST_AINL_1_2_8.md) — copy-paste ready for operators; **`tooling/bot_bootstrap.json`** → **`openclaw_host_ainl_1_2_8`**.
+
 **See also:** [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md) (bundle index) · [`AINL_PROFILES.md`](AINL_PROFILES.md) · [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md) · [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md) · [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md) · [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) · [`../INTELLIGENCE_PROGRAMS.md`](../INTELLIGENCE_PROGRAMS.md) · [`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) · [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md)
 
 ---
@@ -88,5 +90,5 @@ Under typical setups, **session startup** context alone often lands in **~85–9
 
 ## Agent discovery
 
-- **Machine-readable:** `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`**
+- **Machine-readable:** `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`** (checklist) · **`openclaw_host_ainl_1_2_8`** (v1.2.8 host briefing: repo vs host)
 - **Hub:** [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md) · [`docs/README.md`](../README.md) § operations · [`DOCS_INDEX.md`](../DOCS_INDEX.md)

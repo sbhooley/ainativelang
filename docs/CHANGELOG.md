@@ -5,6 +5,7 @@
 - **packaging**: **`pyproject.toml` / `ainl-lang` 1.2.8**; **`RUNTIME_VERSION`** **`1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** aligned. Reinstall or **`pip install -U -e .`** so CLI/MCP/runner **`runtime_version`** matches and **`__pycache__`** from older trees does not shadow updated modules.
 - **feat(ops)**: rolling budget hydration for **`scripts/run_intelligence.py`**, **`tooling/intelligence_budget_hydrate.py`**, workspace env pin **`tooling/openclaw_workspace_env.example.sh`**, ops docs (**`docs/operations/*`**: profiles, token observability, workspace isolation, WASM/TTL/embedding notes).
 - **docs(openclaw)**: **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** — agent-discoverable install/upgrade checklist (profiles, caps, cron, host bootstrap, verification); indexed from **`tooling/bot_bootstrap.json`**, **`HOST_PACK_OPENCLAW.md`**, **`DOCS_INDEX.md`**.
+- **docs(openclaw)**: **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`** — host briefing for **v1.2.8** (repo capabilities vs OpenClaw obligations: probe, rolling hydrate, profiles, bootstrap contract); **`openclaw_host_ainl_1_2_8`** in **`tooling/bot_bootstrap.json`**.
 - **fix(graph)**: intelligence + **`modules/common/generic_memory.ainl`** — graph-safe **`X`** (no raw `{…}` literals), **`memory.list`** optional prefix via **`null`**, metadata **`valid_at`** / tags; see **`docs/RUNTIME_COMPILER_CONTRACT.md`** § graph pitfalls, **`docs/AINL_SPEC.md`**.
 
 ## v1.2.7 (March 24, 2026) — Hyperagent Research Pack (additive)
