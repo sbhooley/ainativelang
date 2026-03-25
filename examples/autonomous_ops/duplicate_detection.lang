@@ -64,12 +64,12 @@ S main
   X today (core.idiv (core.now) 86400)
   X rec_id (core.join ["duplicate-leads-", (core.stringify today)])
   X payload (JsonObj {"count": duplicate_count, "ts": (core.now)})
-  X memory_kind "monitor.duplicate_leads"
-  X memory_record_id rec_id
-  X memory_payload payload
+  Set memory_kind "monitor.duplicate_leads"
+  Set memory_record_id rec_id
+  Set memory_payload payload
   X memory_ttl (core.mul 30 86400)
-  X memory_source "examples.autonomous_ops.duplicate_detection"
-  X memory_tags ["duplicate","lead","monitor"]
+  Set memory_source "examples.autonomous_ops.duplicate_detection"
+  Set memory_tags ["duplicate","lead","monitor"]
   X memory_valid_at (core.now)
   Call opsmem/WRITE ->_
   R email G true

@@ -41,13 +41,13 @@ S main
   X day (core.idiv now 86400)
   X rec_id (core.join ["revenue-", (core.stringify day)])
   X payload (JsonObj {"revenue": revenue, "target": target, "ts": now})
-  X memory_kind "monitor.revenue_forecast"
-  X memory_record_id rec_id
-  X memory_payload payload
+  Set memory_kind "monitor.revenue_forecast"
+  Set memory_record_id rec_id
+  Set memory_payload payload
   X memory_ttl (core.mul 30 86400)
-  X memory_source "demo.revenue_forecast"
-  X memory_tags ["revenue","forecast","monitor"]
-  X memory_valid_at now
+  Set memory_source "demo.revenue_forecast"
+  Set memory_tags ["revenue","forecast","monitor"]
+  Set memory_valid_at now
   Call opsmem/WRITE ->_
   R email G true
 

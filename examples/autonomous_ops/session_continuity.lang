@@ -9,12 +9,12 @@ X window_days (ite cfg (or (cfg.window_days) 1) 1)  # how many days back to look
 # Fetch recent session context records (last N days approx)
 X now_iso (core.iso)
 X window_ago (core.sub now_iso 0 window_days)
-X memory_namespace "session"
-X memory_kind "session.context"
-X memory_updated_after window_ago
-X memory_list_limit 1000
-X memory_tags []
-X memory_source ""
+Set memory_namespace "session"
+Set memory_kind "session.context"
+Set memory_updated_after window_ago
+Set memory_list_limit 1000
+Set memory_tags []
+Set memory_source ""
 Call genmem/LIST ->sessions
 
 X session_items sessions.items
@@ -61,19 +61,19 @@ ForEach session_items (lambda r (
 
 ForEach prefs_to_store (lambda p (
   X pref_id (core.join ["pref-", p.key, "-", hash (p.value)])
-  X memory_namespace "long_term"
-  X memory_kind "long_term.user_preference"
-  X memory_record_id pref_id
-  X memory_payload {
+  Set memory_namespace "long_term"
+  Set memory_kind "long_term.user_preference"
+  Set memory_record_id pref_id
+  Set memory_payload {
     "key": p.key,
     "value": p.value,
     "from_session": p.from_session,
     "updated_at": now_iso
   }
-  X memory_ttl 604800
-  X memory_source "examples.autonomous_ops.session_continuity"
-  X memory_tags ["session","continuity","preference"]
-  X memory_valid_at now_iso
+  Set memory_ttl 604800
+  Set memory_source "examples.autonomous_ops.session_continuity"
+  Set memory_tags ["session","continuity","preference"]
+  Set memory_valid_at now_iso
   Call genmem/WRITE ->_  # 7d TTL
 ))
 

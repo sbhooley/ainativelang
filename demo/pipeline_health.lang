@@ -224,13 +224,13 @@ L_finalize:
   # Persist to memory for trend analysis
   R core concat "pipeline-" now_iso ->pipe_id
   X pipe_payload {"pass_count":pass_count,"fail_count":fail_count,"fail_stage":fail_stage,"ts":ts}
-  X memory_kind "workflow.pipeline_health"
-  X memory_record_id pipe_id
-  X memory_payload pipe_payload
-  X memory_ttl 604800
-  X memory_source "demo.pipeline_health"
-  X memory_tags ["pipeline","health","workflow"]
-  X memory_valid_at now_iso
+  Set memory_kind "workflow.pipeline_health"
+  Set memory_record_id pipe_id
+  Set memory_payload pipe_payload
+  Set memory_ttl 604800
+  Set memory_source "demo.pipeline_health"
+  Set memory_tags ["pipeline","health","workflow"]
+  Set memory_valid_at now_iso
   Call tokenmem/WRITE ->_
 
   # Build the final message

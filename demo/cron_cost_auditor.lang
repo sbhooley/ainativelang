@@ -171,11 +171,11 @@ L_metrics:
   X ok_ratio get metrics_data "ok_ratio"
 
   # ── Pull 24h monitor check history from memory ──
-  X memory_updated_after day_ago_str
-  X memory_list_limit 1000
-  X memory_tags ["monitor","health"]
-  X memory_source ""
-  X memory_kind "workflow.monitor_check"
+  Set memory_updated_after day_ago_str
+  Set memory_list_limit 1000
+  Set memory_tags ["monitor","health"]
+  Set memory_source ""
+  Set memory_kind "workflow.monitor_check"
   Call tokenmem/LIST ->hist_24h
   X checks_24h len hist_24h
 
@@ -248,13 +248,13 @@ L_rec_done:
   # ── Persist audit results to memory (7-day TTL) ──
   R core concat "audit-" now_iso ->audit_id
   X audit_payload {"stale_count":stale_count,"healthy":healthy,"checks_24h":checks_24h,"alerts_24h":alerts_24h,"alert_ratio":alert_ratio,"avg_age_min":avg_age_min,"ok_ratio":ok_ratio,"error_count":error_count,"ts":ts}
-  X memory_kind "workflow.cron_audit"
-  X memory_record_id audit_id
-  X memory_payload audit_payload
-  X memory_ttl 604800
-  X memory_source "demo.cron_cost_auditor"
-  X memory_tags ["audit","cron","workflow"]
-  X memory_valid_at now_iso
+  Set memory_kind "workflow.cron_audit"
+  Set memory_record_id audit_id
+  Set memory_payload audit_payload
+  Set memory_ttl 604800
+  Set memory_source "demo.cron_cost_auditor"
+  Set memory_tags ["audit","cron","workflow"]
+  Set memory_valid_at now_iso
   Call tokenmem/WRITE ->_
 
   # Reset daily alert counter for next cycle

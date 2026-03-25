@@ -2,6 +2,7 @@
 
 ## v1.2.6 (March 24, 2026) — sandbox install hardening, wheel integrity gates, doctor command
 
+- **fix(lang/samples)**: intelligence programs, demos, and autonomous-ops examples — bind memory-contract frame variables with **`Set`** (`memory_namespace`, `memory_kind`, `memory_record_id`, …), not **`X`**, which parses the next token as `fn` (fixes `unknown X fn` / invalid `core.isNull` usage in scheduled OpenClaw flows). Documented in **`docs/AINL_SPEC.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**, **`docs/adapters/MEMORY_CONTRACT.md`**; module example comments in **`modules/common/access_aware_memory.ainl`**.
 - **fix(packaging)**: include `runtime` and `runtime.*` in setuptools package discovery so wheel installs include `runtime.compat` and avoid wheel-only import regressions.
 - **fix(skill-installer)**: `skills/ainl/install.sh` hardened for restricted environments (PEP 668 fallbacks), no `eval`, and idempotent PATH hint updates across `.bashrc`/`.zshrc`/`.profile`.
 - **feat(cli)**: add `ainl doctor` for environment diagnostics (Python/import health, PATH checks, MCP config checks, `install-mcp --dry-run` checks).

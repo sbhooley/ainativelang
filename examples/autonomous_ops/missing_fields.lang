@@ -48,12 +48,12 @@ S main
   X today (core.idiv (core.now) 86400)
   X rec_id (core.join ["missing-fields-", (core.stringify today)])
   X payload (JsonObj {"phone": missing_phone, "email": missing_email, "website": missing_website, "total": total, "ts": (core.now)})
-  X memory_kind "monitor.missing_fields"
-  X memory_record_id rec_id
-  X memory_payload payload
+  Set memory_kind "monitor.missing_fields"
+  Set memory_record_id rec_id
+  Set memory_payload payload
   X memory_ttl (core.mul 30 86400)
-  X memory_source "examples.autonomous_ops.missing_fields"
-  X memory_tags ["missing_fields","lead","monitor"]
+  Set memory_source "examples.autonomous_ops.missing_fields"
+  Set memory_tags ["missing_fields","lead","monitor"]
   X memory_valid_at (core.now)
   Call opsmem/WRITE ->_
   R email G true

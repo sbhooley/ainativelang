@@ -43,13 +43,13 @@ S main
   X day (core.idiv today 86400)
   X rec_id (core.join ["api-quota-", (core.stringify day)])
   X payload (JsonObj {"tokens": total_tokens, "budget": budget, "ts": today})
-  X memory_kind "monitor.api_quota"
-  X memory_record_id rec_id
-  X memory_payload payload
+  Set memory_kind "monitor.api_quota"
+  Set memory_record_id rec_id
+  Set memory_payload payload
   X memory_ttl (core.mul 30 86400)
-  X memory_source "demo.api_quota"
-  X memory_tags ["api","quota","monitor"]
-  X memory_valid_at today
+  Set memory_source "demo.api_quota"
+  Set memory_tags ["api","quota","monitor"]
+  Set memory_valid_at today
   Call opsmem/WRITE ->_
 
 : _missing_key

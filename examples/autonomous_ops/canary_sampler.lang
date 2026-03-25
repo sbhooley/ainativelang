@@ -55,13 +55,13 @@ X cnt0 (core.add (or prev0 0) 1)
 X _ (cache.set "canary" (consecutive_key r0.name) cnt0)
 X _ (set results 0 "consecutive" cnt0)
 X evt0_id (core.join ["slow-", r0.name, "-", now])
-X memory_kind "canary.slow"
-X memory_record_id evt0_id
-X memory_payload {"target":r0.name,"ts":now}
-X memory_ttl 604800
-X memory_source "examples.autonomous_ops.canary_sampler"
-X memory_tags ["canary","slow","monitor"]
-X memory_valid_at now
+Set memory_kind "canary.slow"
+Set memory_record_id evt0_id
+Set memory_payload {"target":r0.name,"ts":now}
+Set memory_ttl 604800
+Set memory_source "examples.autonomous_ops.canary_sampler"
+Set memory_tags ["canary","slow","monitor"]
+Set memory_valid_at now
 Call opsmem/WRITE ->_
 J L_next0
 L_reset0:
@@ -77,13 +77,13 @@ X cnt1 (core.add (or prev1 0) 1)
 X _ (cache.set "canary" (consecutive_key r1.name) cnt1)
 X _ (set results 1 "consecutive" cnt1)
 X evt1_id (core.join ["slow-", r1.name, "-", now])
-X memory_kind "canary.slow"
-X memory_record_id evt1_id
-X memory_payload {"target":r1.name,"ts":now}
-X memory_ttl 604800
-X memory_source "examples.autonomous_ops.canary_sampler"
-X memory_tags ["canary","slow","monitor"]
-X memory_valid_at now
+Set memory_kind "canary.slow"
+Set memory_record_id evt1_id
+Set memory_payload {"target":r1.name,"ts":now}
+Set memory_ttl 604800
+Set memory_source "examples.autonomous_ops.canary_sampler"
+Set memory_tags ["canary","slow","monitor"]
+Set memory_valid_at now
 Call opsmem/WRITE ->_
 J L_next1
 L_reset1:
@@ -121,11 +121,11 @@ L_pre_done:
 L_done:
   # Compute slow event count 24h
   X day_ago (core.sub now 0 1)
-  X memory_updated_after day_ago
-  X memory_list_limit 500
-  X memory_tags ["canary","slow"]
-  X memory_source "examples.autonomous_ops.canary_sampler"
-  X memory_kind "canary.slow"
+  Set memory_updated_after day_ago
+  Set memory_list_limit 500
+  Set memory_tags ["canary","slow"]
+  Set memory_source "examples.autonomous_ops.canary_sampler"
+  Set memory_kind "canary.slow"
   Call opsmem/LIST ->hist
   X slow_24h (len hist.items)
 

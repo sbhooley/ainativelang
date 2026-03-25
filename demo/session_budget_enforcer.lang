@@ -148,14 +148,14 @@ L_compute:
   # Load previous week's spend from memory for weekly tracking
   X week_ago_ts sub ts 604800
   R core stringify week_ago_ts ->week_ago_str
-  X memory_updated_after week_ago_str
-  X memory_list_limit 1000
-  X memory_tags ["budget","enforcement"]
-  X memory_source "demo.session_budget_enforcer"
-  X memory_kind "workflow.budget_enforcement"
-  X memory_namespace "workflow"
-  X memory_list_kind memory_kind
-  X memory_list_filters {"updated_after":memory_updated_after,"tags_any":memory_tags,"source":memory_source,"limit":memory_list_limit}
+  Set memory_updated_after week_ago_str
+  Set memory_list_limit 1000
+  Set memory_tags ["budget","enforcement"]
+  Set memory_source "demo.session_budget_enforcer"
+  Set memory_kind "workflow.budget_enforcement"
+  Set memory_namespace "workflow"
+  Set memory_list_kind memory_kind
+  Set memory_list_filters {"updated_after":memory_updated_after,"tags_any":memory_tags,"source":memory_source,"limit":memory_list_limit}
   Call accmem/LACCESS_LIST_SAFE ->week_hist
   X week_records get week_hist "items"
   X week_hist_count len week_records
@@ -277,13 +277,13 @@ L_persist:
   # Persist to memory for audit trail (7-day TTL)
   R core concat "enforce-" now_iso ->rec_id
   X audit_payload {"gate":gate_level,"daily_used":daily_used,"daily_limit":daily_limit,"daily_pct":daily_pct,"daily_remaining":daily_remaining,"weekly_spent":weekly_spent,"weekly_limit":weekly_limit,"weekly_pct":weekly_pct,"ts":ts,"memory_week_list_count":week_hist_count,"memory_since_last_access_count":recent_access_count}
-  X memory_kind "workflow.budget_enforcement"
-  X memory_record_id rec_id
-  X memory_payload audit_payload
-  X memory_ttl 604800
-  X memory_source "demo.session_budget_enforcer"
-  X memory_tags ["budget","enforcement","workflow"]
-  X memory_valid_at now_iso
+  Set memory_kind "workflow.budget_enforcement"
+  Set memory_record_id rec_id
+  Set memory_payload audit_payload
+  Set memory_ttl 604800
+  Set memory_source "demo.session_budget_enforcer"
+  Set memory_tags ["budget","enforcement","workflow"]
+  Set memory_valid_at now_iso
   Call tokenmem/WRITE ->_
 
   # Heartbeat for meta-monitor / cron_cost_auditor
@@ -372,13 +372,13 @@ L_fetch_fail:
   # Persist failure to memory
   R core concat "enforce-fail-" now_iso ->fail_rec_id
   X fail_payload {"gate":"fetch_error","http_status":status_code,"ts":ts}
-  X memory_kind "workflow.budget_enforcement"
-  X memory_record_id fail_rec_id
-  X memory_payload fail_payload
-  X memory_ttl 604800
-  X memory_source "demo.session_budget_enforcer"
-  X memory_tags ["budget","enforcement","fetch_error"]
-  X memory_valid_at now_iso
+  Set memory_kind "workflow.budget_enforcement"
+  Set memory_record_id fail_rec_id
+  Set memory_payload fail_payload
+  Set memory_ttl 604800
+  Set memory_source "demo.session_budget_enforcer"
+  Set memory_tags ["budget","enforcement","fetch_error"]
+  Set memory_valid_at now_iso
   Call tokenmem/WRITE ->_
 
   QueuePut notify fail_msg

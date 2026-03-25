@@ -35,12 +35,12 @@ S main
   X day (core.idiv (core.now) 86400)
   X rec_id (core.join ["invoice-aging-", (core.stringify day)])
   X payload (JsonObj {"count": count, "amount": total_amount, "ts": (core.now)})
-  X memory_kind "monitor.invoice_aging"
-  X memory_record_id rec_id
-  X memory_payload payload
+  Set memory_kind "monitor.invoice_aging"
+  Set memory_record_id rec_id
+  Set memory_payload payload
   X memory_ttl (core.mul 30 86400)
-  X memory_source "demo.invoice_aging"
-  X memory_tags ["invoice","aging","monitor"]
+  Set memory_source "demo.invoice_aging"
+  Set memory_tags ["invoice","aging","monitor"]
   X memory_valid_at (core.now)
   Call opsmem/WRITE ->_
   R email G true

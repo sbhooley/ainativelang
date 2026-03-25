@@ -3,12 +3,12 @@
 # Normal memory.get / memory.list are unchanged (no adapter side effects).
 #
 # Example (bind frame vars, then call — not inline string args):
-#   X memory_namespace "long_term"
-#   X memory_kind "long_term.distilled_insight"
-#   X memory_record_id "key123"
-#   X memory_payload payload
-#   X memory_ttl null
-#   X memory_access_put_meta meta
+#   Set memory_namespace "long_term"
+#   Set memory_kind "long_term.distilled_insight"
+#   Set memory_record_id "key123"
+#   Set memory_payload payload
+#   Set memory_ttl null
+#   Set memory_access_put_meta meta
 #   Call accmem/LACCESS_WRITE ->res
 #
 # Before Call LACCESS_READ:

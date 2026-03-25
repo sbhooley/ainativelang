@@ -21,12 +21,12 @@ S main
   X day (core.idiv (core.now) 86400)
   X rec_id (core.join ["tiktok-health-", (core.stringify day)])
   X payload (JsonObj {"video_count": count, "ts": (core.now)})
-  X memory_kind "monitor.tiktok_health"
-  X memory_record_id rec_id
-  X memory_payload payload
+  Set memory_kind "monitor.tiktok_health"
+  Set memory_record_id rec_id
+  Set memory_payload payload
   X memory_ttl (core.mul 7 86400)
-  X memory_source "demo.tiktok_health"
-  X memory_tags ["tiktok","health","monitor"]
+  Set memory_source "demo.tiktok_health"
+  Set memory_tags ["tiktok","health","monitor"]
   X memory_valid_at (core.now)
   Call opsmem/WRITE ->_
 

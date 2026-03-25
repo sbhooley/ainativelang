@@ -172,6 +172,8 @@ id            := [A-Za-z_][A-Za-z0-9_]*
 | **Tbl** | table_name, type_name | column … | |
 | **Ev** | component, event, target | | target = path (e.g. /checkout) or label |
 
+> **Note — `X` is not general assignment.** The `X` step is `X <dst> <fn> [args…]` where `<fn>` must be a built-in op or a `core.*` call. Lines such as `X memory_namespace "workflow"` are parsed with `<fn> = workflow` and fail at runtime (`unknown X fn: workflow`). For memory-contract and other **frame bindings** (literals or copies from variables), use **`Set`**: `Set memory_namespace "workflow"`, `Set memory_record_id rid`, … Keep **`X`** when the right-hand side is a real expression, e.g. `X memory_ttl (core.mul 30 86400)` or `X memory_tags arr`. Caller contracts: `modules/common/generic_memory.ainl`, `modules/common/access_aware_memory.ainl`.
+
 ### 2.3.1 **S hybrid** (deployment hint / emit planning)
 
 A top-level line of the form:

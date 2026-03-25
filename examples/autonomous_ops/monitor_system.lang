@@ -114,13 +114,13 @@ L93: J L_persist
 # Persist this run's check summary to memory (7d TTL) for history_24h
 L_persist: X record_id (core.concat "run-" (core.stringify ts))
     X summary {"email_count":email_count,"cal_count":cal_count,"social_count":social_count,"leads_count":leads_count,"failed_services":failed_services,"ts":ts,"needs_notify":needs_notify}
-    X memory_kind "workflow.monitor_check"
-    X memory_record_id record_id
-    X memory_payload summary
-    X memory_ttl 604800
-    X memory_source "examples.autonomous_ops.monitor_system"
-    X memory_tags ["monitor","workflow","health"]
-    X memory_valid_at ts
+    Set memory_kind "workflow.monitor_check"
+    Set memory_record_id record_id
+    Set memory_payload summary
+    Set memory_ttl 604800
+    Set memory_source "examples.autonomous_ops.monitor_system"
+    Set memory_tags ["monitor","workflow","health"]
+    Set memory_valid_at ts
     Call tokenmem/WRITE ->_
     J L54
 
@@ -130,11 +130,11 @@ L55: X now_ts (core.now)
     R cache get "state" "last_notified" ->last_notif
     X day_ago_ts (core.sub now_ts 86400)
     R core iso_ts day_ago_ts ->day_ago_iso
-    X memory_updated_after day_ago_iso
-    X memory_list_limit 500
-    X memory_tags ["monitor","health"]
-    X memory_source "examples.autonomous_ops.monitor_system"
-    X memory_kind "workflow.monitor_check"
+    Set memory_updated_after day_ago_iso
+    Set memory_list_limit 500
+    Set memory_tags ["monitor","health"]
+    Set memory_source "examples.autonomous_ops.monitor_system"
+    Set memory_kind "workflow.monitor_check"
     Call tokenmem/LIST ->hist
     X hist_count len hist.items
     X status (core.ite (core.gt needs_notify 0) "alert" "ok")

@@ -7,12 +7,12 @@ include "modules/common/generic_memory.ainl" as genmem
 
 L0:
   R core now ->ts
-  X memory_namespace "session"
-  X memory_kind "session.context"
-  X memory_updated_after "1970-01-01T00:00:00Z"
-  X memory_list_limit 1000
-  X memory_tags []
-  X memory_source ""
+  Set memory_namespace "session"
+  Set memory_kind "session.context"
+  Set memory_updated_after "1970-01-01T00:00:00Z"
+  Set memory_list_limit 1000
+  Set memory_tags []
+  Set memory_source ""
   Call genmem/LIST ->sessions
   X session_items sessions.items
   X total len session_items

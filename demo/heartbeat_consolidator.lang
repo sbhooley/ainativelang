@@ -365,13 +365,13 @@ L_budget_legacy_fine:
 L_persist:
   R core concat "consolidator-" ts ->rec_id
   X summary {"alert_count":alert_count,"ts":ts}
-  X memory_kind "workflow.monitor_check"
-  X memory_record_id rec_id
-  X memory_payload summary
-  X memory_ttl 604800
-  X memory_source "demo.heartbeat_consolidator"
-  X memory_tags ["monitor","workflow","health"]
-  X memory_valid_at ts
+  Set memory_kind "workflow.monitor_check"
+  Set memory_record_id rec_id
+  Set memory_payload summary
+  Set memory_ttl 604800
+  Set memory_source "demo.heartbeat_consolidator"
+  Set memory_tags ["monitor","workflow","health"]
+  Set memory_valid_at ts
   Call tokenmem/WRITE ->_
 
   # Increment the audit alert counter (used by cron_cost_auditor)

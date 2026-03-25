@@ -43,13 +43,13 @@ S main
   # Write trend record (always)
   X rec_id (core.join ["score-drift-", (core.idiv now 86400)])
   X trend (JsonObj {"cur_avg": cur_avg, "prev_avg": prev_avg, "ts": now})
-  X memory_kind "monitor.lead_score_drift"
-  X memory_record_id rec_id
-  X memory_payload trend
+  Set memory_kind "monitor.lead_score_drift"
+  Set memory_record_id rec_id
+  Set memory_payload trend
   X memory_ttl (core.mul 30 86400)
-  X memory_source "demo.lead_score_drift"
-  X memory_tags ["lead","score","drift","monitor"]
-  X memory_valid_at now
+  Set memory_source "demo.lead_score_drift"
+  Set memory_tags ["lead","score","drift","monitor"]
+  Set memory_valid_at now
   Call opsmem/WRITE ->_
 
   # Check for significant drop (>15%)

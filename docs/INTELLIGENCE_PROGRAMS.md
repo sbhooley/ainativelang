@@ -2,6 +2,8 @@
 
 AINL sources under `intelligence/` support **OpenClaw-style** automation: memory compaction, session signals, token-aware bootstrap context, and scheduled digests. They are **examples / operator programs** — not part of the core language spec. **ZeroClaw** users usually integrate via **`docs/ZEROCLAW_INTEGRATION.md`** (skill + **`ainl-mcp`**), not this monitor registry layout.
 
+**Authoring note:** Before `Call genmem/WRITE`, `Call accmem/LACCESS_READ`, or `R memory put`, bind contract fields with **`Set`** (`Set memory_namespace "workflow"`, `Set memory_kind "…"`, …), not **`X`**. The `X` op requires a real function name (`get`, `core.substr`, …); see the callout under **`X`** in **`docs/AINL_SPEC.md`** §2.3.
+
 ## Programs
 
 | File | Role |

@@ -12,11 +12,11 @@ L0: R core now ->now J L1
 L1: X today_bucket (core.idiv now 86400)
     X week_ago_sec (core.sub now 604800)
     R core iso_ts week_ago_sec ->week_ago_iso
-    X memory_updated_after week_ago_iso
-    X memory_list_limit 2000
-    X memory_tags ["service_check"]
-    X memory_source "examples.autonomous_ops.infrastructure_watchdog"
-    X memory_kind "workflow.service_check"
+    Set memory_updated_after week_ago_iso
+    Set memory_list_limit 2000
+    Set memory_tags ["service_check"]
+    Set memory_source "examples.autonomous_ops.infrastructure_watchdog"
+    Set memory_kind "workflow.service_check"
     Call tokenmem/LIST ->list
     X items list.items
 

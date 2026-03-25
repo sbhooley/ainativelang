@@ -60,9 +60,9 @@ L5:
 L5a:
   X snap0b get snap_items2 "0"
   X prev_rid2 get snap0b "record_id"
-  X memory_namespace "workflow"
-  X memory_kind "workflow.context_injection_snapshot"
-  X memory_record_id prev_rid2
+  Set memory_namespace "workflow"
+  Set memory_kind "workflow.context_injection_snapshot"
+  Set memory_record_id prev_rid2
   Call accmem/LACCESS_READ ->_
   J L5b
 L5b:
@@ -74,14 +74,14 @@ L5b:
   R cache set "session" "continuity_last_ok" ts ->_
   X rec_id (core.concat "continuity-" isoTs)
   X rec_payload {"status":"ok","line_count":lineCount,"token_count":tokenCount,"ts":ts}
-  X memory_namespace "workflow"
-  X memory_kind "workflow.session_continuity"
-  X memory_record_id rec_id
-  X memory_payload rec_payload
-  X memory_ttl 604800
-  X memory_source "intelligence.session_continuity_enhanced"
-  X memory_tags ["intelligence","continuity","session"]
-  X memory_valid_at isoTs
+  Set memory_namespace "workflow"
+  Set memory_kind "workflow.session_continuity"
+  Set memory_record_id rec_id
+  Set memory_payload rec_payload
+  Set memory_ttl 604800
+  Set memory_source "intelligence.session_continuity_enhanced"
+  Set memory_tags ["intelligence","continuity","session"]
+  Set memory_valid_at isoTs
   Call genmem/WRITE ->_
   J lineCount
 

@@ -42,22 +42,22 @@ X daily ({
 })
 
 X record_id (core.join ["audit-", today_date])
-X memory_kind "lead_quality_audit.daily"
-X memory_record_id record_id
-X memory_payload daily
-X memory_ttl 7776000
-X memory_source "examples.autonomous_ops.lead_quality_audit"
-X memory_tags ["lead_quality","audit","workflow"]
-X memory_valid_at today_date
+Set memory_kind "lead_quality_audit.daily"
+Set memory_record_id record_id
+Set memory_payload daily
+Set memory_ttl 7776000
+Set memory_source "examples.autonomous_ops.lead_quality_audit"
+Set memory_tags ["lead_quality","audit","workflow"]
+Set memory_valid_at today_date
 Call tokenmem/WRITE ->_  # 90d
 
 # Compute rolling window using server-side filter
 X window_days_iso (core.sub (core.iso) 0 window_days)
-X memory_updated_after window_days_iso
-X memory_list_limit 500
-X memory_tags ["lead_quality","audit"]
-X memory_source "examples.autonomous_ops.lead_quality_audit"
-X memory_kind "lead_quality_audit.daily"
+Set memory_updated_after window_days_iso
+Set memory_list_limit 500
+Set memory_tags ["lead_quality","audit"]
+Set memory_source "examples.autonomous_ops.lead_quality_audit"
+Set memory_kind "lead_quality_audit.daily"
 Call tokenmem/LIST ->hist
 X hist_items hist.items
 X hist_count (len hist_items)

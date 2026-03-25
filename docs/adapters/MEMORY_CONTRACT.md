@@ -23,6 +23,8 @@ plus bounded list filters (`tags_any`, `tags_all`, created/updated ranges,
 responses, and capability-advertised memory profile hints. These are additive
 extensions; existing v1 call shapes remain valid.
 
+**AINL syntax (callers):** When filling namespace / kind / record id in the execution frame before `R memory put` or module `Call`s, use **`Set memory_namespace "…"`** (not `X memory_namespace "…"`). The `X` op is `X dst fn args…`; a line like `X memory_namespace "workflow"` is parsed as `fn = workflow` and fails at runtime. See **`docs/AINL_SPEC.md`** (note after the **`X`** op in §2.3).
+
 > **Positioning note.** Memory is classified as `extension_openclaw` in the
 > adapter support tier, but it is the **recommended durable state mechanism**
 > for any workflow that needs persistence beyond a single run. The extension

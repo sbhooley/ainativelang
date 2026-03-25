@@ -15,8 +15,7 @@ S core cron "*/5 * * * *"
 # ── Entry: load budget state and gate on remaining tokens ──
 L0:
   R cache get "workflow" "token_budget" ->budget_state
-  X isNull (core.isNull budget_state)
-  X hasBudget (not isNull)
+  X hasBudget (ne budget_state null)
   If hasBudget ->L1 ->L2
 
 # Use cached budget
@@ -42,9 +41,9 @@ L3:
 L3a:
   X snap0 get snap_items "0"
   X prev_rid get snap0 "record_id"
-  X memory_namespace "workflow"
-  X memory_kind "workflow.context_injection_snapshot"
-  X memory_record_id prev_rid
+  Set memory_namespace "workflow"
+  Set memory_kind "workflow.context_injection_snapshot"
+  Set memory_record_id prev_rid
   Call accmem/LACCESS_READ ->_
   J L3b
 L3b:
@@ -132,14 +131,14 @@ L11:
   R cache set "workflow" "context_injection_last" nowTs ->_
   X mem_id (core.concat "ctx-" (core.stringify nowTs))
   X mem_payload {"tokens":usedTokens,"lines":count,"generated_at":nowTs}
-  X memory_namespace "workflow"
-  X memory_kind "workflow.context_injection_snapshot"
-  X memory_record_id mem_id
-  X memory_payload mem_payload
-  X memory_ttl 604800
-  X memory_source "intelligence.token_aware_startup_context"
-  X memory_tags ["intelligence","context_injection","workflow"]
-  X memory_valid_at nowTs
+  Set memory_namespace "workflow"
+  Set memory_kind "workflow.context_injection_snapshot"
+  Set memory_record_id mem_id
+  Set memory_payload mem_payload
+  Set memory_ttl 604800
+  Set memory_source "intelligence.token_aware_startup_context"
+  Set memory_tags ["intelligence","context_injection","workflow"]
+  Set memory_valid_at nowTs
   Call genmem/WRITE ->_
   J count
 

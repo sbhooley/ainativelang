@@ -34,12 +34,12 @@ S main
   # Write memory trend (TTL 30 days)
   X rec_id (core.join ["lead-aging-", (core.idiv (core.now) 86400)])
   X payload (JsonObj {"count": aged_count, "ts": (core.now)})
-  X memory_kind "monitor.lead_aging"
-  X memory_record_id rec_id
-  X memory_payload payload
+  Set memory_kind "monitor.lead_aging"
+  Set memory_record_id rec_id
+  Set memory_payload payload
   X memory_ttl (core.mul 30 86400)
-  X memory_source "examples.autonomous_ops.lead_aging"
-  X memory_tags ["lead","aging","monitor"]
+  Set memory_source "examples.autonomous_ops.lead_aging"
+  Set memory_tags ["lead","aging","monitor"]
   X memory_valid_at (core.now)
   Call opsmem/WRITE ->_
   R email G true

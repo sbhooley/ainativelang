@@ -49,13 +49,13 @@ L_breach:
   L_next3:
 
   X breach_id (core.join ["breach-", now])
-  X memory_kind "tiktok_sla.breach"
-  X memory_record_id breach_id
-  X memory_payload {"recent_count":recent_count,"video_fresh":video_fresh,"backup_fresh":backup_fresh,"reasons":reasons,"ts":now}
-  X memory_ttl 604800
-  X memory_source "examples.autonomous_ops.tiktok_sla_monitor"
-  X memory_tags ["tiktok","sla","breach","monitor"]
-  X memory_valid_at now
+  Set memory_kind "tiktok_sla.breach"
+  Set memory_record_id breach_id
+  Set memory_payload {"recent_count":recent_count,"video_fresh":video_fresh,"backup_fresh":backup_fresh,"reasons":reasons,"ts":now}
+  Set memory_ttl 604800
+  Set memory_source "examples.autonomous_ops.tiktok_sla_monitor"
+  Set memory_tags ["tiktok","sla","breach","monitor"]
+  Set memory_valid_at now
   Call opsmem/WRITE ->_
 
   X alert_payload ({
@@ -78,11 +78,11 @@ L_breach:
 L_ok:
 L_finish:
   X day_ago (core.sub now 0 1)
-  X memory_updated_after day_ago
-  X memory_list_limit 500
-  X memory_tags ["tiktok","breach"]
-  X memory_source "examples.autonomous_ops.tiktok_sla_monitor"
-  X memory_kind "tiktok_sla.breach"
+  Set memory_updated_after day_ago
+  Set memory_list_limit 500
+  Set memory_tags ["tiktok","breach"]
+  Set memory_source "examples.autonomous_ops.tiktok_sla_monitor"
+  Set memory_kind "tiktok_sla.breach"
   Call opsmem/LIST ->hist
   X breaches_24h (len hist.items)
 

@@ -28,11 +28,11 @@ X now_iso (core.iso)
 X week_ago (core.sub now_iso 0 7)  # ISO prefix for last 7 days
 
 # Get stored token cost state for last 7 days from memory
-X memory_updated_after week_ago
-X memory_list_limit 1000
-X memory_tags []
-X memory_source ""
-X memory_kind "workflow.token_cost_state"
+Set memory_updated_after week_ago
+Set memory_list_limit 1000
+Set memory_tags []
+Set memory_source ""
+Set memory_kind "workflow.token_cost_state"
 Call tokenmem/LIST ->mems
 X stored_items mems.items
 X stored_cost (core.sum (map stored_items (lambda i (i.record_id.payload.cost_usd or 0))))
@@ -53,13 +53,13 @@ X pct_used (core.div week_cost safe_budget)
 # Persist today’s summary to memory (workflow.token_cost_state) with 7-day TTL
 X record_id (core.join ["tok-", today_date, "-", now_iso])
 X payload ({"date":today_date, "cost_usd":day_cost, "total_tokens":total_tokens, "ts":now_iso})
-X memory_kind "workflow.token_cost_state"
-X memory_record_id record_id
-X memory_payload payload
-X memory_ttl 604800
-X memory_source "examples.autonomous_ops.token_budget_tracker"
-X memory_tags ["token_cost","budget","workflow"]
-X memory_valid_at now_iso
+Set memory_kind "workflow.token_cost_state"
+Set memory_record_id record_id
+Set memory_payload payload
+Set memory_ttl 604800
+Set memory_source "examples.autonomous_ops.token_budget_tracker"
+Set memory_tags ["token_cost","budget","workflow"]
+Set memory_valid_at now_iso
 Call tokenmem/WRITE ->_
 
 # Decide if we should alert (> alert_threshold)

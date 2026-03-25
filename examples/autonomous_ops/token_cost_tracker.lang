@@ -41,19 +41,19 @@ X payload ({
   "total_completion":total_completion,
   "ts":now_iso
 })
-X memory_kind "workflow.token_cost_state"
-X memory_record_id record_id
-X memory_payload payload
-X memory_ttl 604800
-X memory_source "examples.autonomous_ops.token_cost_tracker"
-X memory_tags ["token_cost","monitor","workflow"]
-X memory_valid_at now_iso
+Set memory_kind "workflow.token_cost_state"
+Set memory_record_id record_id
+Set memory_payload payload
+Set memory_ttl 604800
+Set memory_source "examples.autonomous_ops.token_cost_tracker"
+Set memory_tags ["token_cost","monitor","workflow"]
+Set memory_valid_at now_iso
 Call tokenmem/WRITE ->_
 
 # Compute rolling 7‑day totals using server‑side filtering
 X week_ago_iso (core.sub now_iso 0 7)
-X memory_updated_after week_ago_iso
-X memory_list_limit 500
+Set memory_updated_after week_ago_iso
+Set memory_list_limit 500
 Call tokenmem/LIST ->mems
 X stored_items mems.items
 X stored_week_cost (core.sum (map stored_items (lambda i (i.record_id.payload.cost_usd or 0))))

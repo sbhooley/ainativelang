@@ -33,14 +33,14 @@ L_analyze:
 L_spike:
   R core concat "digest-" ts ->rec_id
   R core concat "{\"mention_count\":" mention_count ",\"tiktok_recent\":" tiktok_recent ",\"spike\":true,\"ts\":" ts "}" ->payload_json
-  X memory_namespace "ops"
-  X memory_kind "intel.digest"
-  X memory_record_id rec_id
-  X memory_payload payload_json
-  X memory_ttl 604800
-  X memory_source "intelligence.intelligence_digest"
-  X memory_tags ["intelligence","digest","ops"]
-  X memory_valid_at ts
+  Set memory_namespace "ops"
+  Set memory_kind "intel.digest"
+  Set memory_record_id rec_id
+  Set memory_payload payload_json
+  Set memory_ttl 604800
+  Set memory_source "intelligence.intelligence_digest"
+  Set memory_tags ["intelligence","digest","ops"]
+  Set memory_valid_at ts
   Call genmem/WRITE ->_
   R core concat "Intel digest SPIKE mentions=" mention_count " tiktok=" tiktok_recent ->note
   QueuePut notify note
@@ -50,14 +50,14 @@ L_spike:
 L_normal:
   R core concat "digest-" ts ->rec_id
   R core concat "{\"mention_count\":" mention_count ",\"tiktok_recent\":" tiktok_recent ",\"spike\":false,\"ts\":" ts "}" ->payload_json
-  X memory_namespace "ops"
-  X memory_kind "intel.digest"
-  X memory_record_id rec_id
-  X memory_payload payload_json
-  X memory_ttl 604800
-  X memory_source "intelligence.intelligence_digest"
-  X memory_tags ["intelligence","digest","ops"]
-  X memory_valid_at ts
+  Set memory_namespace "ops"
+  Set memory_kind "intel.digest"
+  Set memory_record_id rec_id
+  Set memory_payload payload_json
+  Set memory_ttl 604800
+  Set memory_source "intelligence.intelligence_digest"
+  Set memory_tags ["intelligence","digest","ops"]
+  Set memory_valid_at ts
   Call genmem/WRITE ->_
   R core concat "Intel digest OK mentions=" mention_count ->note2
   QueuePut notify note2

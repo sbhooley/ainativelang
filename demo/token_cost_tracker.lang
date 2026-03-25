@@ -49,19 +49,19 @@ L_parse:
   # Store today's snapshot in memory for weekly rollup
   R core concat "tok-" now_iso ->record_id
   R core concat "{\"date\":\"" now_iso "\",\"ts\":" ts "}" ->day_payload
-  X memory_kind "workflow.token_cost_state"
-  X memory_record_id record_id
-  X memory_payload day_payload
-  X memory_ttl 604800
-  X memory_source "demo.token_cost_tracker"
-  X memory_tags ["token_cost","monitor","workflow"]
-  X memory_valid_at now_iso
+  Set memory_kind "workflow.token_cost_state"
+  Set memory_record_id record_id
+  Set memory_payload day_payload
+  Set memory_ttl 604800
+  Set memory_source "demo.token_cost_tracker"
+  Set memory_tags ["token_cost","monitor","workflow"]
+  Set memory_valid_at now_iso
   Call tokenmem/WRITE ->_
 
   # Query 7-day history for weekly rollup
   R core iso_ts ->week_ago
-  X memory_updated_after week_ago
-  X memory_list_limit 500
+  Set memory_updated_after week_ago
+  Set memory_list_limit 500
   Call tokenmem/LIST ->hist
   X week_count len hist
 

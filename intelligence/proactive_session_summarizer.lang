@@ -94,9 +94,9 @@ L10:
 L11:
   X sum_touch_date (core.substr targetFile 0 10)
   X pre_sum_id (core.concat "summary-" sum_touch_date)
-  X memory_namespace "workflow"
-  X memory_kind "workflow.session_summary"
-  X memory_record_id pre_sum_id
+  Set memory_namespace "workflow"
+  Set memory_kind "workflow.session_summary"
+  Set memory_record_id pre_sum_id
   Call accmem/LACCESS_READ ->_
   X filePath (core.concat "memory/" targetFile)
   R fs read filePath ->dayContent
@@ -170,14 +170,14 @@ L16:
   R fs write "MEMORY.md" newMem ->_
   X mem_id (core.concat "summary-" dayDate)
   X mem_payload {"date":dayDate,"summary_len":summaryLen,"created_at":nowIso,"model":llmModel}
-  X memory_namespace "workflow"
-  X memory_kind "workflow.session_summary"
-  X memory_record_id mem_id
-  X memory_payload mem_payload
-  X memory_ttl 1209600
-  X memory_source "intelligence.proactive_session_summarizer"
-  X memory_tags ["intelligence","summary","memory"]
-  X memory_valid_at nowIso
+  Set memory_namespace "workflow"
+  Set memory_kind "workflow.session_summary"
+  Set memory_record_id mem_id
+  Set memory_payload mem_payload
+  Set memory_ttl 1209600
+  Set memory_source "intelligence.proactive_session_summarizer"
+  Set memory_tags ["intelligence","summary","memory"]
+  Set memory_valid_at nowIso
   Call genmem/WRITE ->_
   X markKey (core.concat "summarized." dayDate)
   R cache set "workflow" markKey "done" ->_

@@ -5,14 +5,14 @@ L0:
 L1:
   X payload (obj "text" text)
 L2:
-  X memory_namespace "intel"
-  X memory_kind "baseline"
-  X memory_record_id "2026-03-16-v1"
-  X memory_payload payload
-  X memory_ttl 604800
-  X memory_source "intelligence.store_baseline"
-  X memory_tags ["intelligence","baseline"]
-  X memory_valid_at "2026-03-16T00:00:00Z"
+  Set memory_namespace "intel"
+  Set memory_kind "baseline"
+  Set memory_record_id "2026-03-16-v1"
+  Set memory_payload payload
+  Set memory_ttl 604800
+  Set memory_source "intelligence.store_baseline"
+  Set memory_tags ["intelligence","baseline"]
+  Set memory_valid_at "2026-03-16T00:00:00Z"
   Call genmem/WRITE ->_
 L3:
   R core concat "baseline_stored" ->msg
