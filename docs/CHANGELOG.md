@@ -2,6 +2,7 @@
 
 ## v1.2.8 (March 25, 2026) — OpenClaw ops, intelligence hydration, graph-runtime docs
 
+- **docs(whitepaper)**: **`WHITEPAPERDRAFT.md`** (v1.2.8 positioning, §6.6 graph pitfalls, §10.5 intelligence, §13.5 token caps, §17.1 shipped, appendix OpenClaw file map); supporting updates: **`docs/WHAT_IS_AINL.md`**, **`docs/DOCS_INDEX.md`**, **`docs/overview/README.md`**, **`docs/POST_RELEASE_ROADMAP.md`**
 - **packaging**: **`pyproject.toml` / `ainl-lang` 1.2.8**; **`RUNTIME_VERSION`** **`1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** aligned. Reinstall or **`pip install -U -e .`** so CLI/MCP/runner **`runtime_version`** matches and **`__pycache__`** from older trees does not shadow updated modules.
 - **feat(ops)**: rolling budget hydration for **`scripts/run_intelligence.py`**, **`tooling/intelligence_budget_hydrate.py`**, workspace env pin **`tooling/openclaw_workspace_env.example.sh`**, ops docs (**`docs/operations/*`**: profiles, token observability, workspace isolation, WASM/TTL/embedding notes).
 - **docs(openclaw)**: **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** — agent-discoverable install/upgrade checklist (profiles, caps, cron, host bootstrap, verification); indexed from **`tooling/bot_bootstrap.json`**, **`HOST_PACK_OPENCLAW.md`**, **`DOCS_INDEX.md`**.

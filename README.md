@@ -624,6 +624,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
+- Whitepaper draft (architecture, benchmarks, OpenClaw v1.2.8 ops + token economics): **`WHITEPAPERDRAFT.md`**
 - AINL → HTTP workers (bridge envelope, schema, include): `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` · `schemas/executor_bridge_request.schema.json` · `modules/common/executor_bridge_request.ainl`
 - Getting started (3 integration paths): `docs/getting_started/README.md`
 - Primary docs hub: `docs/README.md`

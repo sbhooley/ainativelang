@@ -41,6 +41,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Contributor entrypoint: `CONTRIBUTING.md`
 - Audience quickstart: `docs/AUDIENCE_GUIDE.md`
 - What is AINL (canonical primer + v1.2+ snapshot): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
+- **Whitepaper draft (long-form architecture, v1.2.8 OpenClaw + token economics):** **`WHITEPAPERDRAFT.md`** (repository root)
 - Install and environment setup: `docs/INSTALL.md` (includes `ainl-validate` strict / `--json-diagnostics` / optional **rich**)
 - **Strict vs non-strict (opt-in strict):** `docs/getting_started/STRICT_AND_NON_STRICT.md` — default permissive compile; `--strict` / `strict_mode=True` for stronger static checks; how that relates to `demo/` and `examples/`
 - Compiler structured diagnostics module: `compiler_diagnostics.py` (used by `compiler_v2.py`, `langserver.py`, `scripts/validate_ainl.py`; tests in `tests/test_diagnostics.py`)

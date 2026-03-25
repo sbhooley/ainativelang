@@ -8,6 +8,7 @@
 - **OpenClaw + AINL gold standard:** **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** — install/upgrade checklist (profiles, caps, cron, bootstrap, verification); **`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**.
 - **OpenClaw host briefing (v1.2.8):** **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`** — what the repo ships vs what the host must wire; **`openclaw_host_ainl_1_2_8`**.
 - Graph-safe patterns for intelligence programs and **`generic_memory`**: avoid **`X {…}`** object literals; use **`null`** for omitted **`memory.list`** prefix; RFC3339 **`valid_at`**; documented in **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/AINL_SPEC.md`**, **`docs/adapters/MEMORY_CONTRACT.md`**.
+- **Whitepaper + primer sync:** **`WHITEPAPERDRAFT.md`** updated for v1.2.8 (OpenClaw positioning, §6.6 graph pitfalls, §10.5 intelligence runner, §13.5 token caps, appendix file map); **`docs/WHAT_IS_AINL.md`**, **`docs/DOCS_INDEX.md`**, **`docs/overview/README.md`**, **`docs/POST_RELEASE_ROADMAP.md`**.
 
 ## AINL v1.2.7 — Hyperagent Research Pack (additive) (2026-03-24)
 
