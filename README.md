@@ -202,6 +202,8 @@ Details: **[`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md)** · s
 
 For restricted Python sandboxes (PEP 668 externally-managed environments, common on OpenClaw/Clawbot hosts), no-root install order is: **venv first**, then **`--user`**, then **`--break-system-packages`** only as a last resort. `skills/ainl/install.sh` runs a compatible fallback sequence automatically and continues with MCP setup once `ainl` is available.
 
+**Intelligence layer (after bootstrap):** `install-mcp` / `./install.sh` wires **MCP** and **`ainl-run`**; **bridge cron, env profiles, and `run_intelligence`** still need the one-time operator pass in [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md). With that wiring, the **OpenClaw bridge + intelligence** path exposes AINL’s **cap auto-tuner**, **rolling budget → monitor hydration**, and optional **embedding pilot**—a **self-managing resource & budget layer** (not self-tuning workflow logic: compiled graphs stay deterministic) that adjusts **caps and cache pressure** from observed usage. See [`docs/INTELLIGENCE_PROGRAMS.md`](docs/INTELLIGENCE_PROGRAMS.md) and [`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md). On **typical high-frequency monitoring and digest** workloads, that stack helps sustain **~90–95%** token savings versus prompt-loop orchestration for the same scheduled work, with **near-zero recurring orchestration cost** after compile—**validate** on your host (`ainl bridge-sizing-probe`, weekly trends).
+
 If you need a clean uninstall in managed sandboxes:
 
 ```bash
