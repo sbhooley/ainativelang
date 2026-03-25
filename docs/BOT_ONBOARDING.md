@@ -7,7 +7,7 @@ Short entrypoint for bots (and other agents) newly exposed to this repo. Use thi
 ## Where to start
 
 1. **Machine-readable bootstrap** — `tooling/bot_bootstrap.json`
-   Points to onboarding doc, preflight doc, and key safe vs advanced docs. Use it to discover paths programmatically.
+   Points to onboarding doc, preflight doc, and key safe vs advanced docs. Use it to discover paths programmatically. For **OpenClaw + AINL** install/upgrade posture, read **`openclaw_ainl_gold_standard`** → **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**.
 
 2. **Docs index** — `docs/DOCS_INDEX.md`
    Top-level map of documentation (core, advanced, training, contributor path). Prefer this over guessing doc names.

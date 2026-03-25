@@ -5,6 +5,7 @@
   "primary_onboarding_doc": "docs/BOT_ONBOARDING.md",
   "implementation_preflight_doc": "docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md",
   "docs_index": "docs/DOCS_INDEX.md",
+  "openclaw_ainl_gold_standard": "docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md",
   "safe_default_docs": [
     "docs/AINL_SPEC.md",
     "docs/AINL_CANONICAL_CORE.md",

@@ -45,6 +45,7 @@ Enable the same adapters and paths your production gateway uses (`fs`, `cache`, 
 
 ## See also
 
+- [`operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md) — recommended cron, paths, and **`budget_hydrate`** checks for OpenClaw-style hosts
 - [`agent_reports/README.md`](../agent_reports/README.md) — operator field reports
 - [`docs/RUNTIME_COMPILER_CONTRACT.md`](RUNTIME_COMPILER_CONTRACT.md)
 - [`docs/OPENCLAW_ADAPTERS.md`](OPENCLAW_ADAPTERS.md)

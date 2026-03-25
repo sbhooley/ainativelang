@@ -4,6 +4,7 @@ Use this section for real deployment-style operational docs: monitors, playbooks
 
 ## Key docs
 
+- [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) — **OpenClaw + AINL gold standard** (profiles, caps, cron, host behavior, verification); agent index: **`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**
 - [`AINL_PROFILES.md`](AINL_PROFILES.md) — **named env profiles** (`ainl profile list|show|emit-shell`), portable defaults for many installs
 - [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md) — separate DBs/paths per workspace or tenant
 - [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md) — OpenClaw reference bundle (links bootstrap + monitoring + profiles)

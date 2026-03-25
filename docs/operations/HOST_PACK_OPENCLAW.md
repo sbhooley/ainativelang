@@ -2,6 +2,10 @@
 
 This is a **documentation bundle** for a supported OpenClaw stack: **not** a separate installer, but a single checklist so support and operators align.
 
+## Gold standard (install / upgrade)
+
+**Start here:** [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) — profiles (`openclaw-default` → `cost-tight`), caps, cron, host bootstrap, verification, and **`budget_hydrate`** checks. **`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**.
+
 ## Contents
 
 1. **Bootstrap** — [`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) (`ainl install-mcp --host openclaw`, `~/.openclaw/openclaw.json`, `ainl-run`).

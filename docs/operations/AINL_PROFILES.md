@@ -34,6 +34,7 @@ eval "$(ainl profile emit-shell openclaw-default)"
 
 ## See also
 
+- [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) — full OpenClaw install/upgrade checklist (profiles, caps, cron, verification)
 - [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md)
 - [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md)
 - [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md)

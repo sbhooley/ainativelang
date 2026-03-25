@@ -5,6 +5,7 @@
 **PyPI / runtime:** **`ainl-lang` 1.2.8** — **`RUNTIME_VERSION` `1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned. After pulling, reinstall the package (**`pip install -U -e .`**) or recreate the venv if you see stale **`runtime_version`** or import shadowing from **`__pycache__`**.
 
 - Rolling budget → monitor cache hydration for **`scripts/run_intelligence.py`**; workspace path pin script; expanded **`docs/operations/`** (profiles, token usage, workspace isolation, host pack).
+- **OpenClaw + AINL gold standard:** **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** — install/upgrade checklist (profiles, caps, cron, bootstrap, verification); **`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**.
 - Graph-safe patterns for intelligence programs and **`generic_memory`**: avoid **`X {…}`** object literals; use **`null`** for omitted **`memory.list`** prefix; RFC3339 **`valid_at`**; documented in **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/AINL_SPEC.md`**, **`docs/adapters/MEMORY_CONTRACT.md`**.
 
 ## AINL v1.2.7 — Hyperagent Research Pack (additive) (2026-03-24)
