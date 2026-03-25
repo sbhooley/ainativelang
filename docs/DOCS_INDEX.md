@@ -146,7 +146,7 @@ entry point for new users or unsupervised agents.
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`
   - v1.1 additive RFC (deterministic metadata/filtering only): `docs/adapters/MEMORY_CONTRACT_V1_1_RFC.md`
-  - Opt-in **`last_accessed` / `access_count`** helpers (include module; graph-safe list path **`LACCESS_LIST_SAFE`**): `modules/common/access_aware_memory.ainl`, `modules/common/README.md`, `docs/RELEASE_NOTES.md` (**shipped v1.2.4**; **latest release v1.2.6**)
+  - Opt-in **`last_accessed` / `access_count`** helpers (include module; graph-safe list path **`LACCESS_LIST_SAFE`**): `modules/common/access_aware_memory.ainl`, `modules/common/README.md`, `docs/RELEASE_NOTES.md` (**shipped v1.2.4**; **latest release v1.2.8**)
   - Memory v1 bridge and CLI tools (JSON/JSONL): `tooling/memory_bridge.py`, `scripts/export_memory_records.py`, `scripts/import_memory_records.py`
   - One-way markdown daily-log export (human-facing): `tooling/memory_markdown_bridge.py`, `scripts/export_memory_daily_log_markdown.py`
   - Curated markdown import (long-term facts/preferences): `tooling/memory_markdown_import.py`, `scripts/import_memory_markdown.py`

@@ -35,6 +35,8 @@ ainl-validate examples/blog.lang --emit ir
 Automation / agents: prefer **`./.venv-py310/bin/python`** (after bootstrap above) for pytest,
 scripts, and checks so results match the 3.10 CI matrix.
 
+After upgrading the repo to a new **`pyproject.toml` / `RUNTIME_VERSION`** (see **`docs/CHANGELOG.md`**), reinstall editable installs with **`pip install -U -e .`** (or recreate the venv) so **`ainl`** / **`runtime`** imports match the tree and stale **`__pycache__`** does not shadow updated modules.
+
 ## Windows (PowerShell)
 
 ```powershell

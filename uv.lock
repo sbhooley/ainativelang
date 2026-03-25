@@ -4,7 +4,7 @@ requires-python = ">=3.10"
 
 [[package]]
 name = "ainl-lang"
-version = "1.2.7"
+version = "1.2.8"
 source = { editable = "." }
 
 [package.optional-dependencies]

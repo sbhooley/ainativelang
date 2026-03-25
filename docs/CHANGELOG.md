@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.8 (March 25, 2026) — OpenClaw ops, intelligence hydration, graph-runtime docs
+
+- **packaging**: **`pyproject.toml` / `ainl-lang` 1.2.8**; **`RUNTIME_VERSION`** **`1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** aligned. Reinstall or **`pip install -U -e .`** so CLI/MCP/runner **`runtime_version`** matches and **`__pycache__`** from older trees does not shadow updated modules.
+- **feat(ops)**: rolling budget hydration for **`scripts/run_intelligence.py`**, **`tooling/intelligence_budget_hydrate.py`**, workspace env pin **`tooling/openclaw_workspace_env.example.sh`**, ops docs (**`docs/operations/*`**: profiles, token observability, workspace isolation, WASM/TTL/embedding notes).
+- **fix(graph)**: intelligence + **`modules/common/generic_memory.ainl`** — graph-safe **`X`** (no raw `{…}` literals), **`memory.list`** optional prefix via **`null`**, metadata **`valid_at`** / tags; see **`docs/RUNTIME_COMPILER_CONTRACT.md`** § graph pitfalls, **`docs/AINL_SPEC.md`**.
+
 ## v1.2.6 (March 24, 2026) — sandbox install hardening, wheel integrity gates, doctor command
 
 - **fix(graph / intelligence)**: **`intelligence/token_aware_startup_context.lang`** and **`modules/common/generic_memory.ainl`** — avoid **`X {…}`** object literals (graph IR → **`unknown X fn: {`**); build filters/payloads with **`core.parse`**, **`obj`/`put`**, **`arr`**; merge list steps into one label (do not use **`J NextLabel`** as a jump); **`memory.list`** uses **`null`** for omitted **`record_id_prefix`**; **`memory_tags`** via **`X … (arr …)`**; **`valid_at`** from **`R core iso`**. Documented in **`docs/AINL_SPEC.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**, **`docs/adapters/MEMORY_CONTRACT.md`** § 3.4.

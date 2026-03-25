@@ -2,7 +2,7 @@
 
 This is the primary navigation hub for the `docs/` tree.
 
-**Current `ainl-lang` release:** **v1.2.6** — [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (PyPI / **`RUNTIME_VERSION`** / citation metadata).
+**Current `ainl-lang` release:** **v1.2.8** — [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (PyPI / **`RUNTIME_VERSION`** / citation metadata).
 
 AINL docs are organized by user intent and conceptual layer rather than by file creation history. Start here if you want the shortest path to the right section. Use [`DOCS_INDEX.md`](DOCS_INDEX.md) as the exhaustive reference map.
 
