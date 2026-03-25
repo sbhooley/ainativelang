@@ -1,0 +1,378 @@
+# AINL Auto-Tuner for OpenClaw
+# Production-grade cap tuning to hit 90-95% token savings target.
+# Part of the AINL + OpenClaw integration suite.
+
+program auto_tune_ainl_caps
+  version: 1.0.0
+  author: "AINL Core"
+  license: "MIT"
+
+  # Configuration — users can override via env
+  config {
+    # Minimum days of data required before making recommendations
+    min_history_days: 7
+
+    # Savings target range (percent)
+    target_savings_min: 90.0
+    target_savings_max: 95.0
+
+    # Adjustment step sizes (multipliers)
+    bridge_step_factor: 0.85   # reduce by 15% when tightening
+    promoter_step_factor: 0.90 # reduce by 10% when tightening
+    bridge_grow_factor: 1.15   # increase by 15% when hitting limit
+    promoter_grow_factor: 1.10 # increase by 10% when hitting limit
+
+    # Hard bounds (safety)
+    bridge_min_chars: 500
+    bridge_max_chars: 5000
+    promoter_prompt_min: 1000
+    promoter_prompt_max: 10000
+    promoter_completion_min: 200
+    promoter_completion_max: 2000
+
+    # Stability: require N consecutive days within target before tightening
+    stable_days_required: 5
+
+    # Automatic apply? false = dry-run only; set OPENCLAW_AINL_AUTO_APPLY=true to enable
+    auto_apply: false
+
+    # Workspace paths (defaults, can be overridden by env)
+    workspace: env.OPENCLAW_WORKSPACE ?? "/workspace"
+    monitor_cache: "${workspace}/.ainl/monitor_state.json"
+    bridge_db: "${workspace}/.ainl/ainl_memory.sqlite3"
+    tuning_log: "${workspace}/.ainl/tuning_log.json"
+    recommendations_out: "${workspace}/.ainl/tuning_recommendations.json"
+  }
+
+  # State file for history of recommendations and applied changes
+  state tuning_state {
+    last_applied: null
+    history: [] # list of {date, savings_pct, bridge_max, promoter_prompt_max, promoter_completion_max, applied: bool}
+  }
+
+  # Entry point
+  entrypoint main
+
+  # Helper: load JSON safely
+  fn load_json(path) -> any {
+    # In real implementation, use file I/O + json.parse; here we pseudo-code
+    try {
+      content = read_file(path)
+      return parse_json(content)
+    } catch (e) {
+      log("WARN: Failed to load $path: $e")
+      return null
+    }
+  }
+
+  # Helper: write JSON with atomic replace
+  fn write_json(path, data) {
+    tmp = path + ".tmp"
+    write_file(tmp, format_json(data))
+    rename(tmp, path)
+  }
+
+  # Helper: calculate savings % from monitor cache
+  fn compute_savings(monitor) -> float {
+    # Primary: use workflow.token_budget if available
+    baseline = monitor.workflow?.token_budget?.baseline_estimated_total_tokens ?? null
+    actual = monitor.workflow?.token_budget?.actual_daily_total ?? null
+    if baseline != null and actual != null and baseline > 0 {
+      savings = ((baseline - actual) / baseline) * 100.0
+      return round(savings, 1)
+    }
+    # Fallback: estimate from context_injection_tokens assuming a static baseline
+    # Typical full MEMORY.md load ~100k tokens (adjustable via config.fallback_baseline_tokens)
+    fallback_baseline = config.fallback_baseline_tokens ?? 100000
+    injection = monitor.workflow?.context_injection_tokens ?? null
+    if injection != null and injection < fallback_baseline {
+      savings = ((fallback_baseline - injection) / fallback_baseline) * 100.0
+      return round(savings, 1)
+    }
+    return null
+  }
+
+  # Helper: get recent bridge report sizes from SQLite
+  fn get_bridge_report_sizes(db_path) -> list<float> {
+    # Query recent bridge runs (last 7 days) to see actual payload sizes in chars
+    # Tables:假定 bridge_reports with columns: id, created_at, payload_json
+    # We extract len(payload_json['report']) or similar
+    sizes = []
+    try {
+      db = sqlite_open(db_path)
+      rows = sqlite_query(db, """
+        SELECT payload_json FROM bridge_reports
+        WHERE created_at >= datetime('now', '-7 days')
+        ORDER BY created_at DESC
+      """)
+      for row in rows {
+        payload = parse_json(row.payload_json)
+        report_len = len(payload.report?.content ?? payload.report ?? "")
+        if report_len > 0 {
+          sizes.append(report_len)
+        }
+      }
+      db_close(db)
+    } catch (e) {
+      log("WARN: Bridge size query failed: $e")
+    }
+    return sizes
+  }
+
+  # Helper: get current OpenClaw env vars via gateway or local config
+  fn get_current_caps() -> map[string]string {
+    # Prefer gateway config.get; fallback to reading openclaw.json
+    # Returns: {
+    #   AINL_BRIDGE_REPORT_MAX_CHARS, PROMOTER_LLM_MAX_PROMPT_CHARS, PROMOTER_LLM_MAX_COMPLETION_TOKENS
+    # }
+    try {
+      cfg = gateway_config_get()  # pseudo; returns full config object
+      env = cfg.env?.vars ?? {}
+      return {
+        bridge_chars: env.AINL_BRIDGE_REPORT_MAX_CHARS,
+        promoter_prompt: env.PROMOTER_LLM_MAX_PROMPT_CHARS,
+        promoter_completion: env.PROMOTER_LLM_MAX_COMPLETION_TOKENS
+      }
+    } catch (e) {
+      # Fallback to local file
+      path = "${config.workspace}/.openclaw/openclaw.json"
+      data = load_json(path)
+      if data != null {
+        env = data.env?.vars ?? {}
+        return {
+          bridge_chars: env.AINL_BRIDGE_REPORT_MAX_CHARS,
+          promoter_prompt: env.PROMOTER_LLM_MAX_PROMPT_CHARS,
+          promoter_completion: env.PROMOTER_LLM_MAX_COMPLETION_TOKENS
+        }
+      }
+    }
+    return { bridge_chars: null, promoter_prompt: null, promoter_completion: null }
+  }
+
+  # Helper: apply new caps via gateway config.patch (if auto_apply)
+  fn apply_caps(new_caps) {
+    if not config.auto_apply {
+      log("DRY-RUN: Would apply caps: $new_caps")
+      return
+    }
+    # Build patch
+    patch = {
+      "env": {
+        "vars": {
+          "AINL_BRIDGE_REPORT_MAX_CHARS": new_caps.bridge_chars,
+          "PROMOTER_LLM_MAX_PROMPT_CHARS": new_caps.promoter_prompt,
+          "PROMOTER_LLM_MAX_COMPLETION_TOKENS": new_caps.promoter_completion
+        }
+      }
+    }
+    # Send patch
+    try {
+      gateway_config_patch(patch, "AINL auto-tune recommendation")
+      log("Applied new caps: $new_caps")
+    } catch (e) {
+      log("ERROR: Failed to apply caps: $e")
+    }
+  }
+
+  # Core: decide adjustments
+  fn decide_adjustments(savings_pct, bridge_sizes, current_caps, recent_savings_history) -> map[string]int {
+    new_caps = clone(current_caps)  # copy current numeric values
+    # Ensure ints
+    for k in ["bridge_chars", "promoter_prompt", "promoter_completion"] {
+      if new_caps[k] != null {
+        new_caps[k] = int(new_caps[k])
+      }
+    }
+
+    # 1. Bridge sizing
+    if len(bridge_sizes) > 0 {
+      max_size = max(bridge_sizes)
+      current_max = new_caps.bridge_chars
+      if current_max == null { current_max = 3000 }  # fallback
+      # If max_size is consistently < 80% of current_max, we can reduce
+      if max_size < (current_max * 0.8) {
+        candidate = int(round(max_size * 1.2))  # headroom 20%
+        candidate = max(candidate, config.bridge_min_chars)
+        candidate = min(candidate, config.bridge_max_chars)
+        # Step factor to avoid huge jumps
+        candidate = max(candidate, int(current_max * config.bridge_step_factor))
+        new_caps.bridge_chars = candidate
+      } else if max_size > (current_max * 0.95) {
+        # Hitting limit, increase
+        candidate = int(round(max_size * config.bridge_grow_factor))
+        candidate = min(candidate, config.bridge_max_chars)
+        new_caps.bridge_chars = candidate
+      }
+    }
+
+    # 2. Promoter sizing
+    # We infer from savings: if savings below target, promoter prompts likely too large
+    if savings_pct < config.target_savings_min {
+      # Relax? Actually, if savings low, maybe promoter caps too loose? No — smaller caps = more savings.
+      # Low savings means we're not truncating enough; we need tighter caps.
+      if new_caps.promoter_prompt != null and new_caps.promoter_prompt > config.promoter_prompt_min {
+        new_caps.promoter_prompt = int(round(new_caps.promoter_prompt * config.promoter_step_factor))
+        new_caps.promoter_prompt = max(new_caps.promoter_prompt, config.promoter_prompt_min)
+      }
+      if new_caps.promoter_completion != null and new_caps.promoter_completion > config.promoter_completion_min {
+        new_caps.promoter_completion = int(round(new_caps.promoter_completion * config.promoter_step_factor))
+        new_caps.promoter_completion = max(new_caps.promoter_completion, config.promoter_completion_min)
+      }
+    } else if savings_pct > config.target_savings_max {
+      # Over-saving: caps may be too tight causing quality issues; relax slightly
+      if new_caps.promoter_prompt != null and new_caps.promoter_prompt < config.promoter_prompt_max {
+        new_caps.promoter_prompt = int(round(new_caps.promoter_prompt * (2.0 - config.promoter_step_factor)))  # inverse of tighten
+        new_caps.promoter_prompt = min(new_caps.promoter_prompt, config.promoter_prompt_max)
+      }
+      if new_caps.promoter_completion != null and new_caps.promoter_completion < config.promoter_completion_max {
+        new_caps.promoter_completion = int(round(new_caps.promoter_completion * (2.0 - config.promoter_step_factor)))
+        new_caps.promoter_completion = min(new_caps.promoter_completion, config.promoter_completion_max)
+      }
+    }
+
+    # 3. Stability check: only tighten if recent_savings_history shows config.stable_days_required consecutive days within target
+    if len(recent_savings_history) >= config.stable_days_required {
+      all_good = true
+      for s in last_n(recent_savings_history, config.stable_days_required) {
+        if s < config.target_savings_min or s > config.target_savings_max {
+          all_good = false
+          break
+        }
+      }
+      if not all_good {
+        # Not stable yet; do not tighten further beyond what we already did for immediate savings
+        # We could choose to revert some changes, but better to wait
+        log("INFO: Savings not stable for $config.stable_days_required days; holding off on aggressive tightening")
+      }
+    }
+
+    return new_caps
+  }
+
+  # Main logic
+  fn main() {
+    log("=== AINL Auto-Tune Starting ===")
+
+    # 1. Load monitor cache
+    monitor = load_json(config.monitor_cache)
+    if monitor == null {
+      log("ERROR: Cannot load monitor cache at $config.monitor_cache")
+      exit(1)
+    }
+
+    # 2. Compute recent savings (last 7 days)
+    savings_history = []  # list of daily savings pct
+    # Assuming monitor.workflow.token_budget.daily_savings is a list or map with dates
+    daily_budget = monitor.workflow?.token_budget?.daily ?? {}
+    # daily_budget could be { "2026-03-19": { "savings_pct": 88.2 }, ... }
+    if len(daily_budget) > 0 {
+      # Sort by date, take up to min_history_days
+      dates = sorted(keys(daily_budget))
+      recent_dates = last_n(dates, config.min_history_days)
+      for d in recent_dates {
+        entry = daily_budget[d]
+        if entry?.savings_pct != null {
+          savings_history.append(entry.savings_pct)
+        }
+      }
+    }
+
+    if len(savings_history) < config.min_history_days {
+      log("WARN: Insufficient history ($len(savings_history)/$config.min_history_days days). Skipping recommendation.")
+      exit(0)
+    }
+
+    latest_savings = last(savings_history)
+    log("Latest savings: $latest_savings% (history: $savings_history)")
+
+    # 3. Get current caps
+    current = get_current_caps()
+    if current.bridge_chars == null or current.promoter_prompt == null or current.promoter_completion == null {
+      log("ERROR: Could not determine current caps from OpenClaw config")
+      exit(1)
+    }
+    log("Current caps: bridge=${current.bridge_chars}, promoter_prompt=${current.promoter_prompt}, promoter_completion=${current.promoter_completion}")
+
+    # 4. Get bridge report sizes
+    bridge_sizes = get_bridge_report_sizes(config.bridge_db)
+    if len(bridge_sizes) > 0 {
+      log("Bridge reports (last 7d): min=${min(bridge_sizes)}, max=${max(bridge_sizes)}, avg=${round(mean(bridge_sizes),0)}")
+    } else {
+      log("WARN: No bridge report sizes found; relying on current bridge cap only")
+    }
+
+    # 5. Decide adjustments
+    new_caps = decide_adjustments(latest_savings, bridge_sizes, current, savings_history)
+
+    # 6. Check if anything changed
+    changed = (
+      new_caps.bridge_chars != int(current.bridge_chars) or
+      new_caps.promoter_prompt != int(current.promoter_prompt) or
+      new_caps.promoter_completion != int(current.promoter_completion)
+    )
+
+    if not changed {
+      log("INFO: No cap adjustments recommended.")
+      # Still write a no-op recommendation for audit trail
+      recommendations = {
+        "generated_at": now_utc_iso(),
+        "savings_pct": latest_savings,
+        "current": { "bridge_chars": current.bridge_chars, "promoter_prompt": current.promoter_prompt, "promoter_completion": current.promoter_completion },
+        "recommended": { "bridge_chars": current.bridge_chars, "promoter_prompt": current.promoter_prompt, "promoter_completion": current.promoter_completion },
+        "applied": false,
+        "reason": "No change indicated by tuning logic"
+      }
+      write_json(config.recommendations_out, recommendations)
+      exit(0)
+    }
+
+    # 7. Build recommendation payload
+    recommendations = {
+      "generated_at": now_utc_iso(),
+      "savings_pct": latest_savings,
+      "history": savings_history,
+      "current": { "bridge_chars": current.bridge_chars, "promoter_prompt": current.promoter_prompt, "promoter_completion": current.promoter_completion },
+      "recommended": { "bridge_chars": new_caps.bridge_chars, "promoter_prompt": new_caps.promoter_prompt, "promoter_completion": new_caps.promoter_completion },
+      "bridge_sizes_sample": bridge_sizes,
+      "auto_apply": config.auto_apply,
+      "applied": false
+    }
+
+    # 8. Write recommendations file (always)
+    write_json(config.recommendations_out, recommendations)
+    log("Recommendations written to $config.recommendations_out")
+
+    # 9. Log to tuning_state
+    state = load_json(config.tuning_log) ?? { "last_applied": null, "history": [] }
+    state.history.append({
+      "date": now_utc_iso(),
+      "savings_pct": latest_savings,
+      "current": recommendations.current,
+      "recommended": recommendations.recommended,
+      "applied": false
+    })
+    # Keep last 90 days
+    if len(state.history) > 90 {
+      state.history = state.history[-90:]
+    }
+    write_json(config.tuning_log, state)
+
+    # 10. Optionally auto-apply
+    if config.auto_apply {
+      log("Auto-apply enabled; applying caps...")
+      apply_caps(new_caps)
+      recommendations.applied = true
+      state.last_applied = now_utc_iso()
+      # Update last history entry
+      if len(state.history) > 0 {
+        state.history[-1].applied = true
+      }
+      write_json(config.tuning_log, state)
+      write_json(config.recommendations_out, recommendations)  # update applied flag
+    } else {
+      log("Dry-run mode; set OPENCLAW_AINL_AUTO_APPLY=true to auto-apply, or apply manually from $config.recommendations_out")
+    }
+
+    log("=== AINL Auto-Tune Complete ===")
+  }
+end

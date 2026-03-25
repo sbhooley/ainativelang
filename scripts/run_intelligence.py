@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runner for AINL intelligence programs (context injection, summarizer, consolidation).
+"""Runner for AINL intelligence programs (context injection, summarizer, consolidation, auto-tune).
 
 Usage:
     python3 run_intelligence.py <program>  [--trace] [--dry-run]
@@ -8,12 +8,13 @@ Programs:
     context    — Token-aware startup context injection
     summarizer — Proactive session summarizer (LLM-backed)
     consolidation — Memory consolidation (keyword-based)
-    all        — Run all three in order
+    auto_tune_ainl_caps — Weekly auto-tuning of AINL/OpenClaw caps
+    all        — Run context, consolidation, summarizer (excludes auto-tune)
 
 Examples:
     python3 run_intelligence.py context
     python3 run_intelligence.py summarizer --trace
-    python3 run_intelligence.py all
+    python3 run_intelligence.py auto_tune_ainl_caps
 """
 import sys
 import os
@@ -38,13 +39,45 @@ PROGRAMS = {
     'summarizer': 'intelligence/proactive_session_summarizer.lang',
     'consolidation': 'intelligence/memory_consolidation.lang',
     'continuity': 'intelligence/session_continuity_enhanced.lang',
+    'auto_tune_ainl_caps': 'scripts/auto_tune_ainl_caps.py',
 }
 
 
 def compile_and_run(program_path: str, trace: bool = False, dry_run: bool = False) -> dict:
-    """Compile an AINL program and execute it."""
+    """Run an AINL program or Python tool."""
     full_path = os.path.join(PROJECT_ROOT, program_path)
     logger.info(f'Loading: {program_path}')
+
+    # If it's a Python script, run it directly
+    if program_path.endswith('.py'):
+        if dry_run:
+            logger.info('Dry run — would execute Python tool')
+            return {'status': 'dry_run', 'tool': program_path}
+        import subprocess
+        cmd = [sys.executable, str(full_path)] + (['--dry-run'] if dry_run else [])
+        start = time.time()
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            elapsed = time.time() - start
+            logger.info(f'Python tool exit={result.returncode} in {elapsed:.2f}s')
+            if result.stdout:
+                print(result.stdout)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
+            return {
+                'status': 'ok' if result.returncode == 0 else 'error',
+                'returncode': result.returncode,
+                'elapsed_s': round(elapsed, 2),
+                'stdout': result.stdout,
+                'stderr': result.stderr,
+            }
+        except Exception as e:
+            elapsed = time.time() - start
+            logger.error(f'Failed to run Python tool: {e}')
+            return {'status': 'error', 'error': str(e), 'elapsed_s': round(elapsed, 2)}
+
+    # Otherwise assume AINL .lang file and compile
+    logger.info(f'Compiling AINL program: {program_path}')
 
     with open(full_path) as f:
         source = f.read()
