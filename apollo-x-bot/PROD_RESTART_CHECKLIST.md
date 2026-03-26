@@ -34,6 +34,7 @@ print("stats_ok", bool(s))
 print("last_poll_success_ts", (s.get("run_health") or {}).get("last_poll_success_ts"))
 print("daily_fallback_active", (s.get("policy_state") or {}).get("daily_fallback_active"))
 print("llm_calls_avoided", (s.get("cost_avoidance_last_24h") or {}).get("llm_calls_avoided"))
+print("original_posts_today", s.get("original_posts_today"), "/", s.get("original_posts_cap"))
 PY
 ```
 

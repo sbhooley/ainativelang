@@ -10,6 +10,8 @@ This page documents the reusable AINL modules introduced while thinning `apollo-
   - `PROMOTER_PERSONA_PROFILE` (`default`, `fity`)
 - Returns:
   - Persona instruction string (empty string for `default`)
+- Notes:
+  - `fity` is intentionally **AINL/graph-centric** (concrete wiring, adapters, deterministic workflows) rather than generic “agent” hype.
 
 ## `modules/llm/promoter_reply_prompt_bundle.ainl`
 
@@ -23,6 +25,7 @@ This page documents the reusable AINL modules introduced while thinning `apollo-
 - Notes:
   - Applies persona instructions from `promoter_persona_prompt.ainl`.
   - Uses `PROMOTER_CANONICAL_GITHUB_URL` when composing fallback/link text.
+  - Reply prompts are tuned to be **concrete and opinionated** (mention AINL explicitly; reference node wiring/failure modes when useful).
 
 ## `modules/llm/promoter_process_tweet_payload.ainl`
 

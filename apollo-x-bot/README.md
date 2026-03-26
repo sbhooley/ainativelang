@@ -63,7 +63,7 @@ The graph uses `R bridge.POST <executor_key> <json_body>` (see `docs/integration
 | `llm.chat` | `POST /v1/llm.chat` | OpenAI-style `messages[]` + optional `temperature` + `usage_context`; used by **`modules/llm/promoter_daily_post_payload.ainl`** for daily post copy (strict graph). |
 | `promoter.daily_snippets` | `POST /v1/promoter.daily_snippets` | `{ snippets }` — repo text for the daily prompt (same env as `PROMOTER_DAILY_SNIPPET_FILES`). |
 | `promoter.daily_post_prompts` | `POST /v1/promoter.daily_post_prompts` | `{ system, user_suffix }` from `daily_post_system.txt` + `daily_post_user_suffix.txt`. |
-| `promoter.maybe_daily_post` | `POST /v1/promoter.maybe_daily_post` | Up to **`PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY`** (default 5) original posts per UTC day, spaced by **`PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC`** (default 3h). Body `payload` may include **`text`** (draft from graph); otherwise **`topic` + `link`** produce a static line. |
+| `promoter.maybe_daily_post` | `POST /v1/promoter.maybe_daily_post` | Up to **`PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY`** (default 15) original posts per UTC day, spaced by **`PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC`** (default 3600s = 1h). Body `payload` may include **`text`** (draft from graph); otherwise **`topic` + `link`** produce a static line. |
 | `kv.get` | `POST /v1/kv.get` | Read promoter SQLite KV: body `{ "key": "<name>" }` (or executor-bridge `payload` with same keys) → `{ ok, value }` (`value` is JSON `null` when missing). |
 | `kv.set` | `POST /v1/kv.set` | Write/delete KV: `{ "key", "value" }` — string values stored; `value: null` deletes the key. Same SQLite file as search cursor / dedupe (`PROMOTER_STATE_PATH`). |
 
@@ -73,7 +73,7 @@ The gateway logs **every successful chat/completion** that returns a `usage` obj
 
 | Path | Role |
 |------|------|
-| `GET /` or `GET /v1/promoter.dashboard` | Single-page **HTML** monitor: **Chart.js** graphs, **scoring & reply outcomes** (filtered audit: discovery, skips, dry-run, posts), full **audit** tail, **AINL memory decisions** (`gate_eval`, classify counts, etc.) with verdict/reason/JSON detail. Auto-refresh 60s. |
+| `GET /` or `GET /v1/promoter.dashboard` | Single-page **HTML** monitor: **Chart.js** graphs, **scoring & reply outcomes** (filtered audit: discovery, skips, dry-run, posts), full **audit** tail, **AINL memory decisions** (`gate_eval`, classify counts, etc.) with verdict/reason/JSON detail. Auto-refresh 10s and shows a visible **Last refresh** indicator. |
 | `GET /v1/promoter.stats` | JSON snapshot: paths, today’s reply count, dedupe size, `audit` action counts (24h / 7d), LLM token sums (24h), plus **`charts`** (hourly series, `daily_replies`, pie data). Tune `PROMOTER_DASHBOARD_CHART_HOURS` / `PROMOTER_DASHBOARD_CHART_DAYS`. |
 | `GET /v1/promoter.audit_tail?limit=80` | JSON: newest `audit` rows with parsed `detail` objects. Each row includes **`verdict`**, **`verdict_label`**, **`reason`** (derived from `detail`). Use **`focus=scoring`** to restrict to reply/discovery outcomes: `discovery_from_search`, `process_tweet_*`. |
 | `GET /v1/promoter.memory_tail?limit=40` | JSON: newest `memory_records` for `ops` / `promoter.decision` (same DB as `--memory-db`). Rows include **`verdict`**, **`reason`**, **`user_id`**, full **`detail`** (gate body, classify metadata, etc.). |
@@ -127,9 +127,9 @@ You can put variables in **`apollo-x-bot/.env`** (`KEY=value` per line). The gat
 | `AINL_MEMORY_DB` | SQLite file for `record_decision` / `memory.put` (default in scripts: `apollo-x-bot/data/promoter_memory.sqlite`; else CLI default `~/.openclaw/ainl_memory.sqlite3`). |
 | `PROMOTER_DRY_RUN` | Set to `1` to skip X writes and use heuristic scoring when no LLM key is set. |
 | `PROMOTER_MAX_REPLIES_PER_DAY` | Default **`20`** (reply/comment cap per UTC day). |
-| `PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY` | Max standalone promotional posts per UTC day (default **`5`**). |
-| `PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC` | Minimum seconds between original posts (default **`10800`** = 3h) so polls spread posts across the day. |
-| `PROMOTER_DAILY_POST_TEMPERATURE` | Sampling temperature for **`llm.chat`** when `usage_context=daily_original_post` (graph default **`0.72`**; gateway default if temperature omitted). |
+| `PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY` | Max standalone promotional posts per UTC day (default **`15`**). |
+| `PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC` | Minimum seconds between original posts (default **`3600`** = 1h) so polls spread posts across the day. |
+| `PROMOTER_DAILY_POST_TEMPERATURE` | Sampling temperature for **`llm.chat`** when `usage_context=daily_original_post` (graph default **`0.9`**; gateway default if temperature omitted). |
 | `PROMOTER_DAILY_SKIP_LLM` | If **`1`**, **`ainl-x-promoter.ainl`** skips **`llm.chat`** and sends only topic+link to **`maybe_daily_post`** (static body). |
 | `PROMOTER_PERSONA_PROFILE` | Personality profile for generated post/reply tone. `default` (current behavior) or `fity`. |
 | `PROMOTER_CODEBASE_ROOT` | Root directory for snippet files (default: repo root, parent of `apollo-x-bot`). |
@@ -166,7 +166,7 @@ Bind the gateway to **localhost** or protect it behind a reverse proxy; the exec
 Set `PROMOTER_PERSONA_PROFILE` in `.env` (or host env) to change style at runtime:
 
 - `default`: existing Apollo style.
-- `fity`: ultra-short, chill, motivational Web3-native voice with playful edge; ends with casual engagement questions; avoids using "Captain/Captains".
+- `fity`: ultra-short, punchy, slightly imperfect voice with playful edge; aggressively AINL/graph-focused (no vague agent fluff); uses light emoji sparingly; ends with casual engagement questions; avoids using "Captain/Captains".
 
 ## Optional Apollo-X Growth Pack (v1.3)
 

@@ -1993,11 +1993,13 @@ def _promoter_codebase_root() -> Path:
 
 
 def _promoter_max_original_posts_per_day() -> int:
-    return max(0, min(50, _env_int("PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY", 5)))
+    # Default: allow up to 15 original posts per day (still capped and overridable via env).
+    return max(0, min(50, _env_int("PROMOTER_MAX_ORIGINAL_POSTS_PER_DAY", 15)))
 
 
 def _promoter_original_min_interval_sec() -> int:
-    return max(60, _env_int("PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC", 10800))
+    # Default: allow multiple originals per day, spaced ~1h apart.
+    return max(60, _env_int("PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC", 3600))
 
 
 def _read_daily_codebase_snippets() -> str:

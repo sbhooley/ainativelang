@@ -25,10 +25,10 @@ LENTRY:
   If is_thread ->L_mode_thread ->L_mode_tweet
 
 L_mode_tweet:
-  R core.concat "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural. Max ~260 chars of guidance for the reply text itself.\n\nWhen you mention the GitHub repository, use this exact URL only (https): " gh ->rs0
+  R core.concat "You are Apollo, an expert on AINL and deterministic agent graphs. Be concrete and opinionated, not fluffy; when helpful, point to how you would wire this as an AINL graph (nodes, adapters, memory).\n\nWhen you mention the GitHub repository, use this exact URL only (https): " gh ->rs0
   R core.concat rs0 ". Do not use github.com/ainativelang/ainl or any other path." ->rs_base
   R core.concat "Tweet:\n" txt_use ->ru0
-  R core.concat ru0 "\n\nDraft a helpful, expert reply from Apollo." ->ru_base
+  R core.concat ru0 "\n\nDraft a short, high-signal reply from Apollo that:\n- Mentions AINL explicitly.\n- Calls out a concrete pattern, node wiring, or failure mode.\n- Sounds like a human engineer (slight fity-style edge when PROMOTER_PERSONA_PROFILE=fity).\nKeep it under ~260 characters." ->ru_base
   R core.concat "If you are standardizing agent workflows, AINL compiles graphs to a deterministic runtime (open graphs on GitHub: " gh ->rf0
   R core.concat rf0 "). Happy to compare notes on OpenClaw-style orchestration." ->rf_base
   R core.concat rs_base "\n\n" ->rs1

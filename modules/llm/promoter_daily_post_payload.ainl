@@ -62,7 +62,7 @@ L_pd_fetch:
   R core.concat "{\"role\":\"system\",\"content\":" sys_j "}" ->m0
   R core.concat "{\"role\":\"user\",\"content\":" usr_j "}" ->m1
   R core.concat "[" m0 "," m1 "]" ->msgs
-  R core.env "PROMOTER_DAILY_POST_TEMPERATURE" "0.72" ->dtemp
+  R core.env "PROMOTER_DAILY_POST_TEMPERATURE" "0.9" ->dtemp
   R core.concat "{\"messages\":" msgs ",\"temperature\":" dtemp ",\"usage_context\":\"daily_original_post\"}" ->pd_llm_inner_json
   R core.stringify "ainl-x-promoter" ->pd_rid_j
   R core.stringify "daily" ->pd_sid_j
