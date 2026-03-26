@@ -58,6 +58,7 @@ These wrappers run via **`openclaw/bridge/run_wrapper_ainl.py`** and write to Op
 |--------------|----------------------|------|
 | `token-budget-alert` | `0 23 * * *` UTC | Token usage report append to **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**, optional budget Telegram (consolidated, timestamped), monitor-cache size/prune, sentinel duplicate guard for the **main** report |
 | `weekly-token-trends` | `0 9 * * 0` (Sun) | Scans recent `YYYY-MM-DD.md` files, appends **`## Weekly Token Trends`** |
+| `email-monitor` (optional) | `*/15 * * * *` (default) | Checks Gmail for unread emails via the `email` adapter and sends a Telegram notification if any are found. **Requires** `openclaw mail` plugin (not included in default installs). See [`docs/openclaw/EMAIL_MONITOR.md`](openclaw/EMAIL_MONITOR.md) for details and enabling instructions. Currently disabled in `run_wrapper_ainl.py` by default. |
 
 **Single operator guide:** [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](operations/UNIFIED_MONITORING_GUIDE.md)  
 **Token budget detail:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md)  
@@ -159,32 +160,60 @@ The **token_aware_startup_context** wrapper automatically generates a compact `s
 
 - Reads your full `MEMORY.md`
 - Filters for high-signal lines (decisions, preferences, todos, lessons, settings)
-- Respects a configurable token budget (default: 10% of remaining daily budget, clamped 200–2000 tokens)
+- Respects a configurable token budget (default: 5% of remaining daily budget, clamped **100–150** tokens, typically **~115**)
 - Writes optimized context to `.openclaw/bootstrap/session_context.md`
 - Persists generation stats to AINL memory and cache
 
-This automation replaces manual curation of `session_context.md`, making _you_ (the AI agent) the maintainer. With a target of 200–500 tokens, it reduces session bootstrap tokens from ~3,200 (full MEMORY.md) to well under 1,000, preventing context max-outs during high-frequency usage.
+This automation replaces manual curation of `session_context.md`, making _you_ (the AI agent) the maintainer. With a target of **100–150** tokens (typical ~115), it reduces session bootstrap tokens from ~3,200 (full MEMORY.md) by **>96%**, preventing context max-outs during high-frequency usage.
 
 ### Installation (v1.2.8+)
 
-1. **Copy the wrapper** to the bridge wrappers directory:
+**Quickest path:** Run the all-in-one setup script:
+
+```bash
+cd AI_Native_Lang/scripts
+./setup_ainl_integration.sh --with-cron
+```
+
+This performs all steps below automatically:
+- Applies OpenClaw config patch (env vars, compaction) including setting `OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT=1`
+- Registers wrappers (including token-aware-startup)
+- Adds cron jobs (token-aware startup, token budget alerts, weekly trends)
+- Restarts gateway
+
+See [`scripts/setup_ainl_integration.sh`](../../scripts/setup_ainl_integration.sh) for details.
+
+**Manual installation:**
+
+1. Copy the wrapper to the bridge wrappers directory:
    ```bash
    cp AI_Native_Lang/intelligence/token_aware_startup_context.lang AI_Native_Lang/openclaw/bridge/wrappers/token_aware_startup_context.ainl
    ```
 
-2. **Register the wrapper** in `openclaw/bridge/run_wrapper_ainl.py`:
-   Add the following entry to the `WRAPPERS` dictionary:
+2. Register the wrapper in `openclaw/bridge/run_wrapper_ainl.py` (if not already present):
    ```python
    "token-aware-startup": _BRIDGE_DIR / "wrappers" / "token_aware_startup_context.ainl",
    ```
 
-3. **Configure token budget (optional)**:
-   Set environment variables to tune the budget:
-   - `AINL_STARTUP_CONTEXT_TOKEN_MIN` (default: 200)
-   - `AINL_STARTUP_CONTEXT_TOKEN_MAX` (default: 2000)
-   - `AINL_STARTUP_USE_EMBEDDINGS` (default: 0) – enable if embedding_memory is indexed
+3. **Set environment variable** (OpenClaw >= 2026.3.22; native support):
+   Ensure `OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT=1` is set in OpenClaw’s environment (the setup script does this via `gateway config.patch`). For manual setup:
+   ```bash
+   openclaw gateway config.patch '{"env":{"vars":{"OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT":"1"}}}'
+   openclaw gateway restart
+   ```
+   *For OpenClaw versions older than 2026.3.22, use the legacy patch script `scripts/patch_bootstrap_loader.sh` (not recommended; upgrade OpenClaw).*
 
-4. **Add a cron job** to run it periodically (e.g., every 15 minutes):
+4. Apply the configuration patch (or set manually):
+   ```bash
+   openclaw gateway config.patch AI_Native_Lang/scripts/config_patch_ainl_integration.json
+   ```
+   This sets:
+   - `AINL_STARTUP_CONTEXT_TOKEN_MIN=100`, `MAX=200`
+   - `AINL_STARTUP_USE_EMBEDDINGS=1`, `EMBEDDING_MODE=lite`
+   - `AINL_EXECUTION_MODE=graph-preferred`
+   - `agents.defaults.compaction.reserveTokens=30000`
+
+5. Add cron job (if not using the setup script):
    ```bash
    openclaw cron add \
      --name "Token-Aware Startup Context" \
@@ -193,25 +222,24 @@ This automation replaces manual curation of `session_context.md`, making _you_ (
      --message "Run: cd /path/to/AI_Native_Lang && python3 openclaw/bridge/run_wrapper_ainl.py token-aware-startup" \
      --description "Generates optimized session_context.md for faster boot"
    ```
-   Adjust the schedule as needed; every 15 min keeps context fresh without overloading.
 
-5. **Test** (dry-run still writes due to fs adapter; test on a non-critical workspace first):
+6. Test:
    ```bash
    python3 openclaw/bridge/run_wrapper_ainl.py token-aware-startup --dry-run
    ```
-   Inspect `.openclaw/bootstrap/session_context.md` to verify content size (roughly 200–500 lines for 200–500 tokens).
+   Inspect `.openclaw/bootstrap/session_context.md` to verify size (~100–150 tokens).
 
 ### Verification
 
 - Check the file modification time updates with each run.
-- Compare token counts: `openclaw token usage` or inspect `session_context.md` line count.
-- Ensure your regular sessions now bootstrap with the smaller context (observe token count in `/status`).
+- Compare token counts: the generated file should be ~100–150 tokens (~10–15 lines, ~400–500 bytes).
+- Ensure your regular sessions now bootstrap with the smaller context (observe token count in `/status`; ~115 tokens expected).
 
 ### Notes
 
 - The wrapper uses the `openclaw_monitor_registry()` adapters; no extra dependencies required.
 - The program respects the `AINL_FS_ROOT` environment (set automatically by the registry to your OpenClaw workspace) so it reads `MEMORY.md` and writes to the correct `.openclaw/bootstrap` path.
-- If `embedding_memory` is populated, the wrapper can optionally use semantic search to pick high-value lines by setting `AINL_STARTUP_USE_EMBEDDINGS=1` and configuring `EMBEDDING_MODE`.
+- The current wrapper build forces filesystem-only selection (`useEmb=false`) for stability; embedding flags are reserved for a future re-enable pass.
 
 **See also:** Standalone documentation in `docs/openclaw/TOKEN_AWARE_STARTUP_CONTEXT.md`.
 
