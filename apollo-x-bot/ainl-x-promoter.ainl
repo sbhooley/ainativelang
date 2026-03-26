@@ -201,6 +201,29 @@ L_each:
   R core.parse "\"heuristic_score\"" ->gk_hsc
   X gate_tweet_id get tweet id
   X gate_user_id get tweet user_id
+  Set has_tid null
+  X has_tid ne gate_tweet_id ""
+  If has_tid ->L_each_has_tid ->L_each_missing_tid
+
+L_each_missing_tid:
+  R core.parse "\"missing_tweet_id\"" ->gate_reason
+  R core.parse "false" ->gate_dry
+  R core.parse "{}" ->sk
+  R core.parse "\"ok\"" ->sk_ok
+  R core.parse "\"action\"" ->sk_ac
+  R core.parse "\"reason\"" ->sk_re
+  R core.parse "\"dry_run\"" ->sk_dr
+  R core.parse "\"user_id\"" ->sk_uid
+  R core.parse "true" ->sk_true
+  R core.parse "\"skipped\"" ->sk_skip
+  X sk put sk sk_ok sk_true
+  X sk put sk sk_ac sk_skip
+  X sk put sk sk_re gate_reason
+  X sk put sk sk_dr gate_dry
+  X sk put sk sk_uid gate_user_id
+  J sk
+
+L_each_has_tid:
   X gate_pl put gate_pl gk_tid gate_tweet_id
   X gate_pl put gate_pl gk_uid gate_user_id
   X gate_pl put gate_pl gk_hsc heur_score

@@ -710,7 +710,11 @@ def _openai_chat(
     if not key:
         raise RuntimeError("OPENAI_API_KEY or LLM_API_KEY not set")
     base = (os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
-    model_used = model or os.environ.get("LLM_MODEL") or "gpt-4o-mini"
+    model_env = (os.environ.get("LLM_MODEL") or "").strip()
+    if not model_env and "openrouter.ai" in base.lower():
+        # Keep OpenRouter default deterministic for the promoter.
+        model_env = "stepfun/step-3.5-flash:free"
+    model_used = model or model_env or "gpt-4o-mini"
     temp = 0.2 if temperature is None else float(temperature)
     max_prompt = 0
     try:
