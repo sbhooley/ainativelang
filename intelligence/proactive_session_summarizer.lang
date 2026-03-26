@@ -144,7 +144,7 @@ L12c:
   X reqBody (put reqBody "messages" msgs)
   X reqBody (put reqBody "temperature" 0.2)
   # Keep summaries tightly bounded for bootstrap and embedding indexing.
-  X reqBody (put reqBody "max_tokens" 350)
+  X reqBody (put reqBody "max_tokens" 300)
   R http POST "https://openrouter.ai/api/v1/chat/completions" reqBody headers 120 ->resp
   X httpOk (get resp "ok")
   If httpOk ->L13 ->L14

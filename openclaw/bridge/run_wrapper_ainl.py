@@ -17,7 +17,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 # Repo root: openclaw/bridge/ -> openclaw/ -> repo
 _BRIDGE_DIR = Path(__file__).resolve().parent
@@ -97,6 +97,24 @@ def _should_skip_wrapper(name: str) -> Optional[dict]:
         week_rem = tb.get("weekly_remaining_tokens")
         min_day = int(os.environ.get("AINL_WRAPPER_MIN_DAILY_REMAINING", "1000"))
         min_week = int(os.environ.get("AINL_WRAPPER_MIN_WEEKLY_REMAINING", "5000"))
+
+        # Optional per-wrapper overrides via JSON:
+        # AINL_WRAPPER_BUDGET_GUARDS_JSON='{"weekly-token-trends":{"min_weekly":10000},"ttl-memory-tuner":{"skip":true}}'
+        guards_raw = (os.environ.get("AINL_WRAPPER_BUDGET_GUARDS_JSON") or "").strip()
+        if guards_raw:
+            try:
+                guards = json.loads(guards_raw)
+                if isinstance(guards, dict) and isinstance(guards.get(name), dict):
+                    g = guards[name]
+                    if g.get("skip") in (True, 1, "1", "true", "yes", "True"):
+                        return {"reason": "wrapper_forced_skip", "guard": g}
+                    if g.get("min_daily") is not None:
+                        min_day = int(g["min_daily"])
+                    if g.get("min_weekly") is not None:
+                        min_week = int(g["min_weekly"])
+            except Exception:
+                pass
+
         if week_rem is not None and int(week_rem) < min_week:
             return {"reason": "weekly_budget_low", "weekly_remaining_tokens": int(week_rem), "min_weekly": min_week}
         if day_rem is not None and int(day_rem) < min_day:

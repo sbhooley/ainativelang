@@ -6,7 +6,7 @@
 
 - SQLite memory (`AINL_MEMORY_DB`) with rows in the namespace you index (`AINL_EMBEDDING_INDEX_NAMESPACE`, default `workflow`).
 - Sidecar DB: `AINL_EMBEDDING_MEMORY_DB` (default `/tmp/ainl_embedding_memory.sqlite3`).
-- `AINL_EMBEDDING_MODE`: start with `stub` for CI/dry runs; use `openai` (or your provider wiring in `adapters/embedding_memory.py`) for real vectors.
+- `AINL_EMBEDDING_MODE`: start with `stub` for CI/dry runs; use `openai` for real vectors; use `local` for dependency-free offline top-k (hashing-based; rough relevance, not model-semantic).
 
 ## What gets indexed (so vector search actually returns text)
 
@@ -40,5 +40,14 @@ When real vectors are enabled, `token_aware_startup_context.lang` will try embed
 2. **Query** with a fixed prompt template; inspect `hits` payloads before feeding an LLM.  
 3. **Swap** one call site from `memory.list` → search + `memory.get` for returned refs only.  
 4. **Measure** prompt token delta before expanding scope.
+
+## “Embed on write” (in-lane pattern for high-signal kinds)
+
+AINL does not rewrite workflows at runtime, but you *can* keep retrieval quality high by indexing **right after writes** for specific record kinds:
+
+- When `proactive_session_summarizer.lang` writes `workflow.session_summary` (with `payload.summary`), ensure `embedding_workflow_index` runs on a cadence (weekly is the pilot default; increase if you need fresher retrieval).
+- For other high-signal records (decisions, preferences, settings), write them into SQLite `memory` under a stable kind/id, then index that namespace/kind on a schedule using the same bridge verb.
+
+If you want a reusable include for “search → lines,” use `modules/common/vector_retrieval.ainl` (Call `vec/VEC_SEARCH` or `vec/VEC_LINES`) and keep `k=3–5` unless evidence says otherwise.
 
 See [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md) and [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md).

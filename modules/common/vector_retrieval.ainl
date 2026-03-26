@@ -1,0 +1,75 @@
+# modules/common/vector_retrieval.ainl
+# Minimal include helpers for the OpenClaw embedding pilot.
+#
+# Goal: keep prompts small by using top-k embedding retrieval instead of stuffing memory.list hits.
+#
+# This module is deliberately thin and in-lane:
+# - It does not mutate host sessions.
+# - It does not depend on any non-core AINL semantics.
+# - It relies on the existing OpenClaw bridge verbs:
+#   - R bridge embedding_workflow_search <query> <k> ->res
+# which returns hits with payload_snapshot.
+#
+# Caller inputs (frame vars; set before Call):
+# - vec_query (string)
+# - vec_k (number; default 5)
+#
+# Outputs:
+# - VEC_SEARCH -> vec_hits (list of hit dicts)
+# - VEC_LINES  -> vec_lines (array of short strings suitable for bootstrap / prompt context)
+
+LVEC_SEARCH:
+  X q (core.trim vec_query)
+  X qlen (core.len q)
+  X empty (eq qlen 0)
+  If empty ->LVEC_EMPTY ->LVEC_DO
+
+LVEC_DO:
+  X k0 (or vec_k 5)
+  # bridge returns: {ok, query, k, hits:[{score, memory_*, payload_snapshot}]}
+  R bridge embedding_workflow_search q k0 ->vec_res
+  X ok (get vec_res "ok")
+  If ok ->LVEC_OK ->LVEC_EMPTY
+
+LVEC_OK:
+  X vec_hits (get vec_res "hits")
+  J vec_hits
+
+LVEC_EMPTY:
+  X vec_hits (arr)
+  J vec_hits
+
+
+LVEC_LINES:
+  Call VEC_SEARCH ->hits
+  X vec_lines (arr)
+  X n (core.len hits)
+  X none (eq n 0)
+  If none ->LVEC_LINES_DONE ->LVEC_LINES_LOOP
+
+LVEC_LINES_LOOP:
+  Loop hits h ->LVEC_LINES_HIT ->LVEC_LINES_DONE
+
+LVEC_LINES_HIT:
+  # Common cases:
+  # - payload_snapshot.summary (workflow.session_summary)
+  # - payload_snapshot may be a dict; stringify for safety.
+  X sn (get h "payload_snapshot.summary")
+  X hasSn (ne sn null)
+  If hasSn ->LVEC_LINES_PUSH ->LVEC_LINES_FALLBACK
+
+LVEC_LINES_FALLBACK:
+  X ps (get h "payload_snapshot")
+  X asStr (core.stringify ps)
+  X trimmed (core.trim asStr)
+  X vec_lines (push vec_lines trimmed)
+  J 1
+
+LVEC_LINES_PUSH:
+  X trimmed (core.trim sn)
+  X vec_lines (push vec_lines trimmed)
+  J 1
+
+LVEC_LINES_DONE:
+  J vec_lines
+
