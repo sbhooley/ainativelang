@@ -301,6 +301,9 @@ More patterns coming soon (approval gate, circuit breaker, RAG retrieval, etc.).
 AINL can be used through three integration surfaces. All three run the same
 compiler and runtime; they differ in how you connect.
 
+External runtime option (opt-in): AINL can call PTC-Lisp through `ptc_runner`
+for reliability overlays and trace interoperability; see `docs/adapters/PTC_RUNNER.md`.
+
 The canonical "hello world" workflow used below:
 
 ```
