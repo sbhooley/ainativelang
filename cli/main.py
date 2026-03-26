@@ -143,6 +143,7 @@ class _NullApiAdapter(RuntimeAdapter):
 
 def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -> None:
     enabled = set(args.enable_adapter or [])
+    env_enable_ptc = str(os.environ.get("AINL_ENABLE_PTC", "")).strip().lower() in {"1", "true", "yes", "on"}
     if "ext" in enabled:
         reg.register("ext", _EchoAdapter())
     if "http" in enabled:
@@ -239,6 +240,30 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
         from adapters.langchain_tool import LangchainToolAdapter
 
         reg.register("langchain_tool", LangchainToolAdapter())
+    if "ptc_runner" in enabled or env_enable_ptc:
+        from adapters.ptc_runner import PtcRunnerAdapter
+
+        reg.register(
+            "ptc_runner",
+            PtcRunnerAdapter(
+                enabled=True,
+                allow_hosts=args.http_allow_host or [],
+                timeout_s=args.http_timeout_s,
+                max_response_bytes=args.http_max_response_bytes,
+            ),
+        )
+    if "llm_query" in enabled or str(os.environ.get("AINL_ENABLE_LLM_QUERY", "")).strip().lower() in {"1", "true", "yes", "on"}:
+        from adapters.llm_query import LlmQueryAdapter
+
+        reg.register(
+            "llm_query",
+            LlmQueryAdapter(
+                enabled=True,
+                allow_hosts=args.http_allow_host or [],
+                timeout_s=args.http_timeout_s,
+                max_response_bytes=args.http_max_response_bytes,
+            ),
+        )
 
 
 def _pretty_runtime_error(err: Exception) -> str:
@@ -750,6 +775,8 @@ def main() -> None:
             "embedding_memory",
             "tool_registry",
             "langchain_tool",
+            "ptc_runner",
+            "llm_query",
         ],
         default=[],
     )

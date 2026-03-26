@@ -1,0 +1,22 @@
+# modules/common/parallel.ainl
+# Additive parallel orchestration helper (pcall-style).
+# Caller sets:
+#   parallel_queue_name, parallel_payloads, parallel_count
+
+LENTRY:
+  R queue.Put parallel_queue_name parallel_payloads ->parallel_dispatch
+  J parallel_dispatch
+
+LPCALL:
+  R queue.Put parallel_queue_name parallel_payloads ->parallel_dispatch
+  J parallel_dispatch
+
+LWAIT:
+  R core.SLEEP parallel_count ->parallel_wait
+  J parallel_wait
+
+LEXIT_OK:
+  J "ok"
+
+LEXIT_FAIL:
+  J "err"

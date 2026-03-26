@@ -39,6 +39,8 @@ PROGRAMS = {
     'summarizer': 'intelligence/proactive_session_summarizer.lang',
     'consolidation': 'intelligence/memory_consolidation.lang',
     'continuity': 'intelligence/session_continuity_enhanced.lang',
+    'signature_enforcer': 'intelligence/signature_enforcer.py',
+    'trace_export_ptc_jsonl': 'intelligence/trace_export_ptc_jsonl.py',
     'auto_tune_ainl_caps': 'scripts/auto_tune_ainl_caps.py',
 }
 

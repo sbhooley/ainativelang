@@ -1,0 +1,19 @@
+# modules/common/subagent_isolated.ainl
+# SubAgent-like include wrapper with isolated namespace + budget envelope.
+# Caller sets:
+#   subagent_namespace, subagent_budget, subagent_payload
+
+LENTRY:
+  X subagent_envelope (obj "namespace" subagent_namespace)
+  X subagent_envelope (put subagent_envelope "budget" subagent_budget)
+  X subagent_envelope (put subagent_envelope "payload" subagent_payload)
+  J subagent_envelope
+
+LWORK:
+  J subagent_payload
+
+LEXIT_OK:
+  J "ok"
+
+LEXIT_FAIL:
+  J "err"

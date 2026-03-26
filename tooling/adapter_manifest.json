@@ -368,6 +368,30 @@
       "sandbox_safe": false,
       "notes": "Invokes LangChain-compatible tools by name; optional langchain-core. Use R langchain_tool.CALL \"tool_name\" args... or R langchain_tool.<registered_verb> ...; enable via --enable-adapter langchain_tool. Additional dotted verbs for strict mode must be listed in ADAPTER_EFFECT and this manifest."
     },
+    "ptc_runner": {
+      "support_tier": "compatibility",
+      "strict_contract": true,
+      "recommended_lane": "noncanonical",
+      "verbs": ["RUN"],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "Optional external PTC Runner adapter. Enable via --enable-adapter ptc_runner or AINL_ENABLE_PTC=true. Supports R ptc_runner run ... and R ptc_runner.RUN ..."
+    },
+    "llm_query": {
+      "support_tier": "compatibility",
+      "strict_contract": true,
+      "recommended_lane": "noncanonical",
+      "verbs": ["QUERY", "RUN"],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "Optional ad-hoc LLM query adapter. Enable via --enable-adapter llm_query or AINL_ENABLE_LLM_QUERY=true. Supports R llm_query query ... and R llm_query.QUERY ..."
+    },
     "openclaw_memory": {
       "support_tier": "extension_openclaw",
       "strict_contract": false,

@@ -122,6 +122,9 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     # LangChain / CrewAI-style external tools; dynamic side effects depend on the registered tool.
     "langchain_tool.CALL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
     "langchain_tool.MY_SEARCH_TOOL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
+    "ptc_runner.RUN": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "llm_query.QUERY": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "llm_query.RUN": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "tools.CALL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
     # wasm compute calls are treated as pure compute effects.
     "wasm.CALL": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
@@ -150,6 +153,24 @@ def strict_adapter_key_for_step(step: Dict[str, Any]) -> str:
         isinstance(adapter, str)
         and "." not in adapter
         and adapter.lower() == "memory"
+        and not str(req_op or "").strip()
+    ):
+        ent = (step.get("entity") or step.get("target") or "").strip()
+        if ent:
+            return strict_adapter_key(adapter, ent)
+    if (
+        isinstance(adapter, str)
+        and "." not in adapter
+        and adapter.lower() == "ptc_runner"
+        and not str(req_op or "").strip()
+    ):
+        ent = (step.get("entity") or step.get("target") or "").strip()
+        if ent:
+            return strict_adapter_key(adapter, ent)
+    if (
+        isinstance(adapter, str)
+        and "." not in adapter
+        and adapter.lower() == "llm_query"
         and not str(req_op or "").strip()
     ):
         ent = (step.get("entity") or step.get("target") or "").strip()

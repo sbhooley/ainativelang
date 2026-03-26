@@ -71,6 +71,8 @@ from tooling.mcp_ecosystem_import import (
     list_ecosystem_templates,
 )
 from tooling.graph_diff import graph_diff
+from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
+from intelligence.trace_export_ptc_jsonl import export_file as export_ptc_trace_file
 
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
@@ -97,6 +99,9 @@ ALL_TOOL_NAMES: List[str] = [
     "ainl_list_ecosystem",
     "ainl_fitness_report",
     "ainl_ir_diff",
+    "ainl_ptc_signature_check",
+    "ainl_trace_export",
+    "ainl_ptc_run",
 ]
 
 ALL_RESOURCE_URIS: List[str] = [
@@ -679,6 +684,53 @@ def ainl_ir_diff(file1: str, file2: str, strict: bool = True) -> dict:
             "human_summary": diff.get("human_summary", ""),
         },
     }
+
+
+@_register_tool
+def ainl_ptc_signature_check(code: str, strict: bool = True) -> dict:
+    """Inspect optional '# signature: ...' metadata annotations in source."""
+    ir = _compile(code, strict=strict)
+    errors = ir.get("errors") or []
+    if errors:
+        return {"ok": False, "errors": errors}
+    annotations = collect_signature_annotations(code)
+    return {"ok": True, "count": len(annotations), "annotations": annotations}
+
+
+@_register_tool
+def ainl_trace_export(trace_jsonl: str, output_jsonl: str) -> dict:
+    """Export AINL trajectory JSONL to PTC-compatible JSONL."""
+    return export_ptc_trace_file(trace_jsonl, output_jsonl)
+
+
+@_register_tool
+def ainl_ptc_run(
+    lisp: str,
+    signature: Optional[str] = None,
+    subagent_budget: Optional[int] = None,
+    max_attempts: int = 1,
+) -> dict:
+    """Run PTC-Lisp through the optional ptc_runner adapter."""
+    from adapters.ptc_runner import PtcRunnerAdapter
+
+    adapter = PtcRunnerAdapter(
+        enabled=True,
+        allow_hosts=[],
+        timeout_s=30.0,
+        max_response_bytes=1_000_000,
+    )
+    if signature:
+        out = run_with_signature_retry(
+            adapter=adapter,
+            lisp=lisp,
+            signature=signature,
+            subagent_budget=subagent_budget,
+            context={},
+            max_attempts=max_attempts,
+        )
+        return {"ok": bool(out.get("ok")), "result": out}
+    out = adapter.run(lisp, signature=signature, subagent_budget=subagent_budget, context={})
+    return {"ok": bool(out.get("ok")), "result": out}
 
 
 # ---------------------------------------------------------------------------

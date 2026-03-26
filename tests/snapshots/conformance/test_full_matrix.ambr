@@ -269,6 +269,13 @@
     }),
     'audit': dict({
     }),
+    'avm_policy_fragment': dict({
+      'allowed_adapters': list([
+        'core',
+      ]),
+      'capability_policy_names': list([
+      ]),
+    }),
     'capabilities': dict({
       'auth': dict({
       }),
@@ -528,6 +535,21 @@
     }),
     'errors': list([
     ]),
+    'execution_requirements': dict({
+      'avm_policy_fragment': dict({
+        'allowed_adapters': list([
+          'core',
+        ]),
+        'capability_policy_names': list([
+        ]),
+      }),
+      'ephemeral': True,
+      'isolation_level': 'none',
+      'required_capabilities': list([
+        'core',
+      ]),
+      'resource_profile': 'default',
+    }),
     'graph_schema_version': '1.0',
     'graph_semantic_checksum': 'sha256:ac24d8ec024ec14632baa412e9b416fe853baac49b5e7868b8c556da3b737164',
     'ir_version': '1.0.0',
@@ -750,6 +772,13 @@
       'version_prefix': '',
     }),
     'audit': dict({
+    }),
+    'avm_policy_fragment': dict({
+      'allowed_adapters': list([
+        'core',
+      ]),
+      'capability_policy_names': list([
+      ]),
     }),
     'capabilities': dict({
       'auth': dict({
@@ -1502,6 +1531,21 @@
     }),
     'errors': list([
     ]),
+    'execution_requirements': dict({
+      'avm_policy_fragment': dict({
+        'allowed_adapters': list([
+          'core',
+        ]),
+        'capability_policy_names': list([
+        ]),
+      }),
+      'ephemeral': True,
+      'isolation_level': 'none',
+      'required_capabilities': list([
+        'core',
+      ]),
+      'resource_profile': 'default',
+    }),
     'graph_schema_version': '1.0',
     'graph_semantic_checksum': 'sha256:2d5729c189251dc777847203cda58b02e101b0b25b53355a1f037aab3431e29e',
     'ir_version': '1.0.0',
@@ -2614,6 +2658,14 @@
       'version_prefix': '',
     }),
     'audit': dict({
+    }),
+    'avm_policy_fragment': dict({
+      'allowed_adapters': list([
+        'core',
+        'memory',
+      ]),
+      'capability_policy_names': list([
+      ]),
     }),
     'capabilities': dict({
       'auth': dict({
@@ -3734,6 +3786,23 @@
     }),
     'errors': list([
     ]),
+    'execution_requirements': dict({
+      'avm_policy_fragment': dict({
+        'allowed_adapters': list([
+          'core',
+          'memory',
+        ]),
+        'capability_policy_names': list([
+        ]),
+      }),
+      'ephemeral': True,
+      'isolation_level': 'none',
+      'required_capabilities': list([
+        'core',
+        'memory',
+      ]),
+      'resource_profile': 'default',
+    }),
     'graph_schema_version': '1.0',
     'graph_semantic_checksum': 'sha256:a196abce44d1e9275b3daeb110eb79633ce2324acf8282e35108a88daab97d35',
     'ir_version': '1.0.0',

@@ -318,6 +318,56 @@ See also `docs/architecture/STATE_DISCIPLINE.md`.
 
 See: `docs/adapters/MEMORY_CONTRACT.md`
 
+### 7.3 PTC-style reliability overlays (opt-in)
+
+AINL can layer optional PTC-inspired reliability patterns without changing core
+graph semantics:
+
+- `ptc_runner` adapter for external PTC-Lisp execution (`R ptc_runner run ...`)
+- `signature` comment metadata (`# signature: {field :type}`) for post-run checks
+- `intelligence/signature_enforcer.py` for bounded retry validation
+- `intelligence/trace_export_ptc_jsonl.py` for trace interoperability
+- `modules/common/parallel.ainl` and `modules/common/subagent_isolated.ainl`
+  for composition-oriented orchestration patterns
+
+These are additive and opt-in. Existing AINL graphs run unchanged.
+
+Canonical doc walkthrough:
+
+- `docs/adapters/PTC_RUNNER.md` → **Canonical End-to-End Example**
+
+Minimal orchestration sequence:
+
+```bash
+# 1) run workflow with trajectory enabled
+AINL_PTC_RUNNER_MOCK=1 \
+python3 <<'PY'
+from pathlib import Path
+from runtime.engine import RuntimeEngine
+from runtime.adapters.base import AdapterRegistry
+from adapters.ptc_runner import PtcRunnerAdapter
+
+code = Path("examples/ptc_integration_example.ainl").read_text()
+reg = AdapterRegistry(allowed=["core", "ptc_runner"])
+reg.register("ptc_runner", PtcRunnerAdapter(enabled=True))
+
+eng = RuntimeEngine.from_code(
+    code,
+    strict=True,
+    adapters=reg,
+    source_path=str(Path("examples/ptc_integration_example.ainl").resolve()),
+    trajectory_log_path="/tmp/ainl_ptc_example.jsonl",
+)
+print(eng.run_label("1"))
+PY
+
+# 2) run signature metadata inspection
+python3 intelligence/signature_enforcer.py examples/ptc_integration_example.ainl
+
+# 3) export AINL trajectory to PTC-compatible JSONL
+PYTHONPATH=. python3 scripts/ainl_trace_viewer.py /tmp/ainl_ptc_example.jsonl --ptc-export /tmp/ptc_trace.jsonl
+```
+
 ### 7.2 Agent coordination
 
 The AINL agent adapter provides a local, file-backed mailbox for inter-agent

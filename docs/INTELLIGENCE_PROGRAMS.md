@@ -19,6 +19,8 @@ AINL sources under `intelligence/` support **OpenClaw-style** automation: memory
 | `store_baseline.lang` | One-shot seed into `memory` (`intel` / baseline) |
 | `test_split.lang` | Small harness for split/len-style checks |
 | `infrastructure_watchdog.lang` | Service health checks + optional notify path (operator-tuned; pair with your gateway / bridge allowlists) |
+| `signature_enforcer.py` | Optional signature metadata checks (`# signature: ...`) + bounded retry helper for `ptc_runner` |
+| `trace_export_ptc_jsonl.py` | Exports AINL trajectory JSONL to PTC-compatible JSONL shape |
 
 ## Local runner
 
@@ -30,12 +32,30 @@ python3 scripts/run_intelligence.py context
 python3 scripts/run_intelligence.py summarizer --trace
 python3 scripts/run_intelligence.py consolidation
 python3 scripts/run_intelligence.py continuity
+python3 scripts/run_intelligence.py signature_enforcer --dry-run
+python3 scripts/run_intelligence.py trace_export_ptc_jsonl --dry-run
 python3 scripts/run_intelligence.py all
 ```
 
 **Rolling budget → cache:** On each non–dry-run start, the runner merges SQLite **`workflow` / `budget.aggregate` / `weekly_remaining_v1`** (from bridge `rolling_budget_publish`) into **`workflow`/`token_budget`** in `MONITOR_CACHE_JSON`, so startup and summarizer gates align with weekly trends without scanning days of markdown. See **`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`** and **`docs/operations/TOKEN_CAPS_STAGING.md`**. JSON output includes **`budget_hydrate`**.
 
 Enable the same adapters and paths your production gateway uses (`fs`, `cache`, `http`, `memory`, `queue`, etc.); see `docs/INSTALL.md` and `docs/reference/ADAPTER_REGISTRY.md`.
+
+## PTC Reliability Patterns
+
+For PTC-style reliability overlays (all opt-in), use:
+
+- `intelligence/signature_enforcer.py`
+  - parses optional `# signature: ...` metadata
+  - validates result shape/types
+  - supports bounded retry helper for `ptc_runner`
+- `intelligence/trace_export_ptc_jsonl.py`
+  - converts AINL trajectory JSONL into PTC-compatible JSONL
+  - strips `_`-prefixed keys during export (context firewall)
+
+Reference end-to-end flow:
+
+- `docs/adapters/PTC_RUNNER.md` → **Canonical End-to-End Example**
 
 ## Host responsibilities
 

@@ -21,6 +21,10 @@ def test_strict_allows_explicit_runtime_supported_adapter_verbs():
         'L1: R fs.READ "note.txt" ->out J out\n',
         'L1: R tools.CALL "ping" ->out J out\n',
         'L1: R memory prune ->out J out\n',
+        'L1: R ptc_runner run "(+ 1 2)" "{total :float}" 5 ->out J out\n',
+        'L1: R ptc_runner.RUN "(+ 1 2)" "{total :float}" 5 ->out J out\n',
+        'L1: R llm_query query "hello" "gpt" 64 ->out J out\n',
+        'L1: R llm_query.QUERY "hello" "gpt" 64 ->out J out\n',
     ]
     for code in programs:
         errs = _strict_errors(code)

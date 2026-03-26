@@ -21,6 +21,7 @@ from typing import List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from compiler_diagnostics import CompilationDiagnosticError, CompilerContext, Diagnostic
 from compiler_v2 import AICodeCompiler
+from intelligence.signature_enforcer import signature_diagnostics
 
 
 def _line_start_byte_offset(source: str, lineno: int) -> int:
@@ -260,6 +261,11 @@ def compile_and_validate(
     ctx: Optional[CompilerContext] = CompilerContext() if use_structured else None
     try:
         ir = c.compile(code, emit_graph=True, context=ctx)
+        # Additive diagnostics: optional R-signature metadata linting via comments.
+        extra_diags = signature_diagnostics(code)
+        if extra_diags:
+            ir.setdefault("diagnostics", [])
+            ir["diagnostics"].extend(extra_diags)
         if ir.get("errors"):
             return {"ok": False, "errors": ir.get("errors", []), "ir": ir}
         return {"ok": True, "ir": ir}

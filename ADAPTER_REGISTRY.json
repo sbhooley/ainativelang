@@ -652,6 +652,59 @@
         "DISCOVER returns a TOOL.discover-style envelope.",
         "Use split form: R tool_registry list / discover / get name / register ... ->out."
       ]
+    },
+    "ptc_runner": {
+      "description": "Optional external PTC Runner bridge for executing PTC-Lisp snippets from AINL graphs.",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "targets": {
+        "run": {
+          "args": ["lisp", "signature?", "subagent_budget?"],
+          "returns": "{ok, runtime, status_code?, result, traces}",
+          "pure": false
+        }
+      },
+      "config": {
+        "enable_env": "AINL_ENABLE_PTC=true or --enable-adapter ptc_runner",
+        "runner_url_env": "AINL_PTC_RUNNER_URL",
+        "mock_env": "AINL_PTC_RUNNER_MOCK",
+        "subprocess_cmd_env": "AINL_PTC_RUNNER_CMD"
+      },
+      "notes": [
+        "Lowercase split form and dotted uppercase form are both supported: R ptc_runner run ... and R ptc_runner.RUN ...",
+        "Adapter remains opt-in and is not active unless explicitly enabled."
+      ]
+    },
+    "llm_query": {
+      "description": "Optional ad-hoc LLM query adapter for prompt execution from AINL graph steps.",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "targets": {
+        "query": {
+          "args": ["prompt", "model?", "max_tokens?"],
+          "returns": "{ok, runtime, status_code?, result, traces}",
+          "pure": false
+        },
+        "run": {
+          "args": ["prompt", "model?", "max_tokens?"],
+          "returns": "{ok, runtime, status_code?, result, traces}",
+          "pure": false
+        }
+      },
+      "config": {
+        "enable_env": "AINL_ENABLE_LLM_QUERY=true or --enable-adapter llm_query",
+        "runner_url_env": "AINL_LLM_QUERY_URL",
+        "mock_env": "AINL_LLM_QUERY_MOCK",
+        "subprocess_cmd_env": "AINL_LLM_QUERY_CMD"
+      },
+      "notes": [
+        "Supports split and dotted forms: R llm_query query ... and R llm_query.QUERY ...",
+        "Underscore-prefixed context keys are filtered before request serialization."
+      ]
     }
   },
   "notes": [

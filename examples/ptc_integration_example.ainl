@@ -1,0 +1,13 @@
+L1:
+  Set subagent_namespace "ptc/orders"
+  Set subagent_budget 3
+  Set subagent_payload "{\"task\":\"orders\"}"
+  X subagent_envelope (obj "namespace" subagent_namespace)
+  X subagent_envelope (put subagent_envelope "budget" subagent_budget)
+  X subagent_envelope (put subagent_envelope "payload" subagent_payload)
+
+  # Context firewall demo: underscore-prefixed values remain local and are stripped before outbound adapter serialization.
+  Set _internal_token "debug-only-secret"
+
+  R ptc_runner run "(->> (tool/get_orders {:status \"pending\"}) (filter #(> (:amount %) 100)) (sum-by :amount))" "{total :float}" 3 ->ptc_out # signature: {total :float}
+  J ptc_out

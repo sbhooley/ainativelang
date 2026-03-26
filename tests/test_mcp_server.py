@@ -26,6 +26,9 @@ from scripts.ainl_mcp_server import (
     ainl_run,
     ainl_fitness_report,
     ainl_ir_diff,
+    ainl_ptc_signature_check,
+    ainl_trace_export,
+    ainl_ptc_run,
     _load_json,
     _merge_policy,
     _merge_limits,
@@ -200,6 +203,40 @@ class TestResearchTools:
         assert result["ok"] is True
         assert "diff" in result
         assert isinstance(result["diff"]["changed_nodes"], list)
+
+    def test_ptc_signature_check(self):
+        code = "L1: R core.ADD 1 2 ->x # signature: {x :int}\n"
+        result = ainl_ptc_signature_check(code, strict=True)
+        assert result["ok"] is True
+        assert result["count"] >= 1
+
+    def test_trace_export(self, tmp_path: Path):
+        src = tmp_path / "trace.jsonl"
+        dst = tmp_path / "ptc.jsonl"
+        src.write_text(
+            json.dumps(
+                {
+                    "step_id": 1,
+                    "label": "1",
+                    "operation": "R",
+                    "inputs": {"_private": "x", "node_id": "n1"},
+                    "output": {"ok": True},
+                    "outcome": "success",
+                    "timestamp": "2026-03-26T00:00:00.000Z",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        out = ainl_trace_export(str(src), str(dst))
+        assert out["ok"] is True
+        assert dst.exists()
+
+    def test_ptc_run_mock(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("AINL_PTC_RUNNER_MOCK", "1")
+        result = ainl_ptc_run("(+ 1 2)", signature="{value :string}", max_attempts=2)
+        assert result["ok"] is True
+        assert "result" in result
 
     def test_fitness_score_zero_when_reliability_zero(self, tmp_path: Path):
         # Uses db adapter so safe-profile (core-only) fitness runs reliably fail.

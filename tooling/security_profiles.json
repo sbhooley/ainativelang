@@ -95,6 +95,30 @@
         "decide which adapters to enable per deployment",
         "treat extension_openclaw adapters as operator-only"
       ]
+    },
+    "ptc_sandbox_plus": {
+      "description": "Sandboxed profile for optional PTC/LLM reliability adapters with strict limits.",
+      "intended_use": [
+        "ptc_runner integration testing",
+        "signature-enforced agent workflows",
+        "limited external orchestration"
+      ],
+      "adapter_allowlist": ["core", "memory", "cache", "ptc_runner", "llm_query"],
+      "forbidden_adapters": ["fs", "sqlite", "tools", "agent", "svc", "extras", "tiktok", "email", "calendar", "social"],
+      "forbidden_effects": [],
+      "forbidden_effect_tiers": [],
+      "forbidden_privilege_tiers": ["operator_sensitive"],
+      "runtime_limits": {
+        "max_steps": 3000,
+        "max_depth": 30,
+        "max_adapter_calls": 300,
+        "max_time_ms": 30000
+      },
+      "orchestrator_expectations": [
+        "enable only explicit endpoints for ptc_runner/llm_query via host allowlists",
+        "treat underscore-prefixed context keys as private and non-exportable",
+        "run signature_enforcer for post-execution validation"
+      ]
     }
   }
 }
