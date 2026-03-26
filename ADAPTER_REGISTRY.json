@@ -662,7 +662,12 @@
       "targets": {
         "run": {
           "args": ["lisp", "signature?", "subagent_budget?"],
-          "returns": "{ok, runtime, status_code?, result, traces}",
+          "returns": "{ok, runtime, status_code?, result, beam_metrics?, traces}",
+          "pure": false
+        },
+        "health": {
+          "args": [],
+          "returns": "{ok, runtime, status_code?, result{beam_status}, beam_metrics?, traces}",
           "pure": false
         }
       },
@@ -670,10 +675,13 @@
         "enable_env": "AINL_ENABLE_PTC=true or --enable-adapter ptc_runner",
         "runner_url_env": "AINL_PTC_RUNNER_URL",
         "mock_env": "AINL_PTC_RUNNER_MOCK",
-        "subprocess_cmd_env": "AINL_PTC_RUNNER_CMD"
+        "subprocess_cmd_env": "AINL_PTC_RUNNER_CMD",
+        "metrics_path_env": "AINL_PTC_METRICS_PATH (optional, e.g. /metrics)"
       },
       "notes": [
         "Lowercase split form and dotted uppercase form are both supported: R ptc_runner run ... and R ptc_runner.RUN ...",
+        "Health aliases are supported: R ptc_runner health and R ptc_runner status.",
+        "For LangGraph hybrids, use intelligence/ptc_to_langgraph_bridge.py to generate thin bridge nodes without modifying the core emitter.",
         "Adapter remains opt-in and is not active unless explicitly enabled."
       ]
     },

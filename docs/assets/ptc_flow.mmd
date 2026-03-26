@@ -1,0 +1,9 @@
+flowchart LR
+  A["AINL Graph\n(hybrid_order_processor / price_monitor)"]
+    --> B["ptc_run.ainl\nptc_parallel.ainl\nrecovery_loop.ainl"]
+  B --> C["PTC Runner\nPTC-Lisp on BEAM"]
+  C --> D["Envelope\nok / result / beam_metrics / beam_telemetry"]
+  D --> E["Trace Export\ntrace_export_ptc_jsonl.py"]
+  D --> F["LangGraph Bridge\nptc_to_langgraph_bridge.py"]
+  E --> G["PTC-compatible JSONL\nOps & audit"]
+  F --> H["FastAPI / LangGraph deployment\nHybrid runtime"]

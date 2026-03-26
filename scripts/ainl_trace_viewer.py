@@ -25,11 +25,33 @@ def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
     return rows
 
 
+def _beam_metrics_from_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    output = row.get("output")
+    if not isinstance(output, dict):
+        return out
+    raw = output.get("beam_metrics")
+    if not isinstance(raw, dict) and isinstance(output.get("result"), dict):
+        raw = output["result"].get("beam_metrics")
+    if not isinstance(raw, dict):
+        return out
+    if "heap_bytes" in raw or "heap" in raw:
+        out["heap_bytes"] = raw.get("heap_bytes", raw.get("heap"))
+    if "reductions" in raw:
+        out["reductions"] = raw.get("reductions")
+    if "exec_time_ms" in raw or "execution_time_ms" in raw:
+        out["exec_time_ms"] = raw.get("exec_time_ms", raw.get("execution_time_ms"))
+    if "pid" in raw or "process_id" in raw:
+        out["pid"] = raw.get("pid", raw.get("process_id"))
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="View or export AINL trajectory JSONL")
     ap.add_argument("trace_jsonl", help="Path to AINL trajectory JSONL")
     ap.add_argument("--summary", action="store_true", help="Print compact summary")
     ap.add_argument("--ptc-export", default="", help="Write PTC-compatible JSONL export to path")
+    ap.add_argument("--show-beam", action="store_true", help="Include beam_metrics details when available")
     args = ap.parse_args()
 
     src = Path(args.trace_jsonl).expanduser()
@@ -42,6 +64,8 @@ def main() -> None:
     if args.summary:
         ops: Dict[str, int] = {}
         labels: Dict[str, int] = {}
+        beam_rows = 0
+        beam_samples: List[Dict[str, Any]] = []
         for r in rows:
             op = str(r.get("operation") or "")
             lb = str(r.get("label") or "")
@@ -49,20 +73,29 @@ def main() -> None:
                 ops[op] = ops.get(op, 0) + 1
             if lb:
                 labels[lb] = labels.get(lb, 0) + 1
+            bm = _beam_metrics_from_row(r)
+            if bm:
+                beam_rows += 1
+                if len(beam_samples) < 5:
+                    beam_samples.append({"step_id": r.get("step_id"), "label": lb, "beam_metrics": bm})
+        payload: Dict[str, Any] = {
+            "ok": True,
+            "count": len(rows),
+            "ops": dict(sorted(ops.items())),
+            "labels": dict(sorted(labels.items())),
+        }
+        if args.show_beam:
+            payload["beam_rows"] = beam_rows
+            payload["beam_samples"] = beam_samples
         print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "count": len(rows),
-                    "ops": dict(sorted(ops.items())),
-                    "labels": dict(sorted(labels.items())),
-                },
-                indent=2,
-            )
+            json.dumps(payload, indent=2)
         )
         return
 
-    print(json.dumps({"ok": True, "count": len(rows), "rows": rows[:20]}, indent=2))
+    payload = {"ok": True, "count": len(rows), "rows": rows[:20]}
+    if args.show_beam:
+        payload["beam_rows"] = [r for r in rows if _beam_metrics_from_row(r)]
+    print(json.dumps(payload, indent=2))
 
 
 if __name__ == "__main__":

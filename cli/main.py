@@ -284,6 +284,66 @@ def _pretty_runtime_error(err: Exception) -> str:
     return f"{msg}\n  line {line_no}: {src}\n           {caret}"
 
 
+def cmd_run_hybrid_ptc(args: argparse.Namespace) -> int:
+    """Thin wrapper that runs examples/hybrid_order_processor.ainl with sensible defaults."""
+    if not args.no_mock and not os.environ.get("AINL_PTC_RUNNER_MOCK"):
+        os.environ["AINL_PTC_RUNNER_MOCK"] = "1"
+
+    print("Running hybrid PTC order processor example...")
+    print("  source: examples/hybrid_order_processor.ainl")
+    print(f"  trace:  {args.trace_jsonl}")
+    print("  mock:  ", "yes" if os.environ.get("AINL_PTC_RUNNER_MOCK") else "no (live)")
+    print()
+    print("Next steps:")
+    print("  Export PTC JSONL:     PYTHONPATH=. python3 scripts/ainl_trace_viewer.py --ptc-export")
+    print("  LangGraph bridge:     PYTHONPATH=. python3 scripts/run_intelligence.py ptc_to_langgraph_bridge")
+    print()
+
+    # Build a namespace that cmd_run accepts, re-using all existing defaults.
+    run_args = argparse.Namespace(
+        file="examples/hybrid_order_processor.ainl",
+        label="",
+        strict=False,
+        strict_reachability=False,
+        trace=False,
+        log_trajectory=False,
+        trace_jsonl=args.trace_jsonl,
+        json=False,
+        no_step_fallback=False,
+        execution_mode="graph-preferred",
+        unknown_op_policy=None,
+        trace_out="",
+        record_adapters="",
+        replay_adapters="",
+        enable_adapter=["ptc_runner"],
+        bridge_endpoint=[],
+        http_allow_host=["localhost"],
+        http_timeout_s=5.0,
+        http_max_response_bytes=1_000_000,
+        sqlite_db="",
+        sqlite_allow_write=False,
+        sqlite_allow_table=[],
+        sqlite_timeout_s=5.0,
+        fs_root="",
+        fs_max_read_bytes=1_000_000,
+        fs_max_write_bytes=1_000_000,
+        fs_allow_ext=[],
+        fs_allow_delete=False,
+        tools_allow=[],
+        wasm_module=[],
+        wasm_allow_module=[],
+        memory_db="",
+        max_steps=None,
+        max_depth=None,
+        max_adapter_calls=None,
+        max_time_ms=None,
+        max_frame_bytes=None,
+        max_loop_iters=None,
+        self_test_graph=False,
+    )
+    return cmd_run(run_args)
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     if args.self_test_graph:
         return cmd_self_test_graph(args)
@@ -820,6 +880,22 @@ def main() -> None:
     runp.add_argument("--max-loop-iters", type=int, default=None)
     runp.add_argument("--self-test-graph", action="store_true")
     runp.set_defaults(func=cmd_run)
+
+    hybrid_p = sub.add_parser(
+        "run-hybrid-ptc",
+        help="run the hybrid PTC order processor example (mock-friendly; requires ptc_runner adapter)",
+    )
+    hybrid_p.add_argument(
+        "--no-mock",
+        action="store_true",
+        help="do not force AINL_PTC_RUNNER_MOCK=1 (use current env)",
+    )
+    hybrid_p.add_argument(
+        "--trace-jsonl",
+        default="/tmp/hybrid_orders.trace.jsonl",
+        help="path to write hybrid trace JSONL (default: /tmp/hybrid_orders.trace.jsonl)",
+    )
+    hybrid_p.set_defaults(func=cmd_run_hybrid_ptc)
 
     chk = sub.add_parser("check", help="Compile/check AINL file")
     chk.add_argument("file")

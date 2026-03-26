@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.2.9 (March 26, 2026) — PTC-Lisp hybrid integration polish (Phases 1–4.5)
+
+- **feat(ptc)**: `adapters/ptc_runner.py` — opt-in PTC Runner adapter (HTTP + mock + subprocess mode via `AINL_PTC_USE_SUBPROCESS` / `AINL_PTC_RUNNER_CMD`); disabled by default; `AINL_ENABLE_PTC=true` or `--enable-adapter ptc_runner`; structured result envelope with `ok`, `result`, `beam_metrics`, `beam_telemetry`; health/status verbs; `_strip_private_keys` context firewall; registered in `ADAPTER_REGISTRY.json`, `tooling/adapter_manifest.json`, `tooling/effect_analysis.py`.
+- **feat(ptc)**: `adapters/llm_query.py` — lightweight opt-in LLM query adapter mirroring `ptc_runner` structure; `run`/`query` verbs; `_strip_private_keys` at serialization boundary.
+- **feat(ptc/modules)**: `modules/common/ptc_run.ainl` — thin syntactic-sugar wrapper over `ptc_runner run` with named frame variables and safe defaults for optional `signature` and `subagent_budget`.
+- **feat(ptc/modules)**: `modules/common/ptc_parallel.ainl` — pcall-style fan-out orchestrator; respects `max_concurrent` cap; optional `queue.Put` side-channel.
+- **feat(ptc/modules)**: `modules/common/recovery_loop.ainl` — bounded retry wrapper for `ptc_runner` calls based on `ok: false` envelope; `max_attempts` capped at 10.
+- **feat(ptc/intelligence)**: `intelligence/signature_enforcer.py` — parse `# signature: ...` metadata, validate output shapes, `run_with_signature_retry` (max 3 attempts).
+- **feat(ptc/intelligence)**: `intelligence/trace_export_ptc_jsonl.py` — export AINL trajectories in PTC-compatible JSONL; `_strip_private_keys`; `beam_metrics` and `beam_telemetry` fields.
+- **feat(ptc/intelligence)**: `intelligence/context_firewall_audit.py` — audit `.ainl` source and trajectory files for `_`-prefixed key leakage; runnable via `scripts/run_intelligence.py`.
+- **feat(ptc/intelligence)**: `intelligence/ptc_to_langgraph_bridge.py` — analyze `.ainl` source or trajectory for `ptc_runner` calls; emit LangGraph-compatible `create_ptc_tool_node` Python snippet.
+- **feat(ptc/mcp)**: `scripts/ainl_mcp_server.py` — new tools: `ainl_ptc_signature_check`, `ainl_trace_export`, `ainl_ptc_run`, `ainl_ptc_health_check`, `ainl_ptc_audit` (combined signature + firewall report); wired into `tooling/mcp_exposure_profiles.json`.
+- **feat(ptc/cli)**: `cli/main.py` — `ainl run-hybrid-ptc` subcommand: thin wrapper over `ainl run` with pre-configured defaults (mock mode, `ptc_runner` adapter, trace path); `--no-mock` and `--trace-jsonl` overrides.
+- **feat(ptc/examples)**: `examples/hybrid_order_processor.ainl` — production hybrid example: parallel order batches, signature validation, recovery loop, `_` context firewall, trace/LangGraph bridge comments.
+- **feat(ptc/examples)**: `examples/price_monitor.ainl` — second production example: parallel price monitoring with `ptc_parallel` + `recovery_loop` + `_` context firewall.
+- **feat(ptc/docs)**: `docs/assets/ptc_flow.mmd` — Mermaid flow diagram: AINL graph → PTC modules → PTC Runner/BEAM → enriched envelope → trace export / LangGraph bridge → deployment.
+- **feat(ptc/security)**: `tooling/security_profiles.json` — `ptc_sandbox_plus` named profile with `max_subagent_budget`, `trace_depth`, `max_concurrent_calls`.
+- **docs(ptc)**: `docs/adapters/PTC_RUNNER.md` — full integration guide (setup, verbs, envelope, signature, context firewall, parallel, recovery, subprocess BEAM mode, LangGraph emission, MCP tools, Mermaid diagram, production examples).
+- **docs(ptc)**: `WHITEPAPERDRAFT.md` §8.4 — PTC-Lisp hybrid integration positioning note.
+- **docs(ptc)**: `README.md`, `docs/README.md`, `docs/INTELLIGENCE_PROGRAMS.md`, `docs/EXAMPLE_SUPPORT_MATRIX.md`, `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — cross-references and quick-start callouts.
+
 ## v1.2.8 (March 25, 2026) — OpenClaw ops, intelligence hydration, graph-runtime docs
 
 - **docs(whitepaper)**: **`WHITEPAPERDRAFT.md`** (v1.2.8 positioning, §6.6 graph pitfalls, §10.5 intelligence, §13.5 token caps, §17.1 shipped, appendix OpenClaw file map); supporting updates: **`docs/WHAT_IS_AINL.md`**, **`docs/DOCS_INDEX.md`**, **`docs/overview/README.md`**, **`docs/POST_RELEASE_ROADMAP.md`**

@@ -41,6 +41,8 @@ PROGRAMS = {
     'continuity': 'intelligence/session_continuity_enhanced.lang',
     'signature_enforcer': 'intelligence/signature_enforcer.py',
     'trace_export_ptc_jsonl': 'intelligence/trace_export_ptc_jsonl.py',
+    'context_firewall_audit': 'intelligence/context_firewall_audit.py',
+    'ptc_to_langgraph_bridge': 'intelligence/ptc_to_langgraph_bridge.py',
     'auto_tune_ainl_caps': 'scripts/auto_tune_ainl_caps.py',
 }
 

@@ -1,0 +1,48 @@
+# examples/price_monitor.ainl
+#
+# Production hybrid example: monitor symbols for large price changes.
+# Demonstrates ptc_parallel.ainl (fan-out) + recovery_loop.ainl (bounded retries)
+# + _-prefixed context firewall.
+#
+# Quick start (mock mode):
+#   AINL_ENABLE_PTC=true AINL_PTC_RUNNER_MOCK=1 \
+#   python3 -m cli.main run examples/price_monitor.ainl \
+#     --enable-adapter ptc_runner --strict=false \
+#     --http-allow-host localhost \
+#     --trace-jsonl /tmp/price_monitor.trace.jsonl
+#
+# Export trace to PTC-compatible JSONL:
+#   PYTHONPATH=. python3 scripts/ainl_trace_viewer.py \
+#     --ptc-export --input /tmp/price_monitor.trace.jsonl
+#
+# See docs/adapters/PTC_RUNNER.md for the full integration guide.
+
+include modules/common/ptc_parallel.ainl as ppar
+include modules/common/recovery_loop.ainl as rec
+
+LENTRY:
+  # _-prefixed keys are stripped from all external serialisation (context firewall)
+  Set _price_monitor_api_key "redacted-api-key"
+  Set _price_monitor_run_id "price-monitor-001"
+
+  # Phase 1: fetch price data for two symbols in parallel
+  Set ptc_parallel_calls_json "[{\"lisp\":\"(->> (tool/get_prices {:symbol \\\"XYZ\\\" :sources [\\\"A\\\" \\\"B\\\" \\\"C\\\"]}) (filter #(> (Math/abs (:change %)) 0.05)) (summarize-change))\",\"signature\":\"{avg_change :float, alerts :int}\"},{\"lisp\":\"(->> (tool/get_prices {:symbol \\\"ABC\\\" :sources [\\\"A\\\" \\\"B\\\"]}) (filter #(> (Math/abs (:change %)) 0.05)) (summarize-change))\",\"signature\":\"{avg_change :float, alerts :int}\"}]"
+  Set ptc_parallel_subagent_budget 5
+  Set ptc_parallel_max_concurrent 2
+  Set ptc_parallel_queue_name null
+  Call ppar/ENTRY ->ptc_price_batches
+
+  # Phase 2: consolidate XYZ summary with recovery
+  Set ptc_recovery_lisp "(->> (tool/get_prices {:symbol \"XYZ\"}) (filter #(> (Math/abs (:change %)) 0.05)) (summarize-change))"
+  Set ptc_recovery_signature "{avg_change :float, alerts :int}"
+  Set ptc_recovery_subagent_budget 5
+  Set ptc_recovery_max_attempts 3
+  Call rec/ENTRY ->ptc_price_summary
+
+  J ptc_price_summary
+
+LEXIT_OK:
+  J "ok"
+
+LEXIT_FAIL:
+  J "err"

@@ -18,6 +18,7 @@ def test_ptc_runner_mock_success_envelope():
         assert out["runtime"] == "ptc_runner"
         assert isinstance(out.get("traces"), list)
         assert isinstance(out.get("result"), dict)
+        assert isinstance(out.get("beam_metrics"), dict)
     finally:
         if old_mock is None:
             os.environ.pop("AINL_PTC_RUNNER_MOCK", None)
@@ -77,3 +78,59 @@ def test_ptc_runner_private_context_firewall():
     adp._post_http = _fake_post  # type: ignore[attr-defined]
     out = adp.run("(+ 1 2)", context={"visible": 1, "_secret": 2})
     assert out["ok"] is True
+
+
+def test_ptc_runner_health_mock_success():
+    old_mock = os.environ.get("AINL_PTC_RUNNER_MOCK")
+    try:
+        os.environ["AINL_PTC_RUNNER_MOCK"] = "1"
+        reg = AdapterRegistry(allowed=["ptc_runner"])
+        reg.register("ptc_runner", PtcRunnerAdapter(enabled=True))
+        out = reg.call("ptc_runner", "health", [], {})
+        assert out["ok"] is True
+        assert out["result"]["beam_status"] == "running"
+        assert isinstance(out.get("beam_metrics"), dict)
+    finally:
+        if old_mock is None:
+            os.environ.pop("AINL_PTC_RUNNER_MOCK", None)
+        else:
+            os.environ["AINL_PTC_RUNNER_MOCK"] = old_mock
+
+
+def test_ptc_runner_status_alias_calls_health():
+    old_mock = os.environ.get("AINL_PTC_RUNNER_MOCK")
+    try:
+        os.environ["AINL_PTC_RUNNER_MOCK"] = "1"
+        reg = AdapterRegistry(allowed=["ptc_runner"])
+        reg.register("ptc_runner", PtcRunnerAdapter(enabled=True))
+        out = reg.call("ptc_runner", "status", [], {})
+        assert out["ok"] is True
+        assert out["result"]["beam_status"] == "running"
+    finally:
+        if old_mock is None:
+            os.environ.pop("AINL_PTC_RUNNER_MOCK", None)
+        else:
+            os.environ["AINL_PTC_RUNNER_MOCK"] = old_mock
+
+
+def test_ptc_runner_beam_metrics_passthrough_from_body():
+    adp = PtcRunnerAdapter(enabled=True, runner_url="http://localhost:4000/run")
+
+    def _fake_post(payload):
+        return {
+            "ok": True,
+            "status_code": 200,
+            "body": {
+                "result": {"ok": True},
+                "beam_metrics": {"heap": 123, "reductions": 5, "execution_time_ms": 7, "process_id": "<0.1.0>"},
+                "traces": [],
+            },
+        }
+
+    adp._post_http = _fake_post  # type: ignore[attr-defined]
+    out = adp.run("(+ 1 2)", context={})
+    assert out["ok"] is True
+    assert out["beam_metrics"]["heap_bytes"] == 123
+    assert out["beam_metrics"]["reductions"] == 5
+    assert out["beam_metrics"]["exec_time_ms"] == 7
+    assert out["beam_metrics"]["pid"] == "<0.1.0>"

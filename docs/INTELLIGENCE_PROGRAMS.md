@@ -41,9 +41,9 @@ python3 scripts/run_intelligence.py all
 
 Enable the same adapters and paths your production gateway uses (`fs`, `cache`, `http`, `memory`, `queue`, etc.); see `docs/INSTALL.md` and `docs/reference/ADAPTER_REGISTRY.md`.
 
-## PTC Reliability Patterns
+## PTC Hybrid Patterns (Reliability + Emission)
 
-For PTC-style reliability overlays (all opt-in), use:
+For PTC-style reliability and hybrid overlays (all opt-in), use:
 
 - `intelligence/signature_enforcer.py`
   - parses optional `# signature: ...` metadata
@@ -52,6 +52,18 @@ For PTC-style reliability overlays (all opt-in), use:
 - `intelligence/trace_export_ptc_jsonl.py`
   - converts AINL trajectory JSONL into PTC-compatible JSONL
   - strips `_`-prefixed keys during export (context firewall)
+- `intelligence/context_firewall_audit.py`
+  - audits trajectories and sources for accidental non-`_` keys before `ptc_runner` / `llm_query`
+  - surfaces warnings without changing graph semantics
+- `modules/common/ptc_parallel.ainl`
+  - orchestrates a list of `ptc_runner` calls in a pcall-style pattern
+  - supports an optional inline max_concurrent cap
+- `modules/common/recovery_loop.ainl`
+  - wraps `ptc_runner` calls with bounded retries using the runner envelope (`ok:false`)
+  - treats `signature` as runner-side validation input (or mock simulation)
+- `intelligence/ptc_to_langgraph_bridge.py`
+  - detects `ptc_runner` steps from source or trajectory
+  - emits a copy-paste LangGraph bridge snippet with thin ptc tool nodes
 
 Reference end-to-end flow:
 

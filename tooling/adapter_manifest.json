@@ -372,13 +372,13 @@
       "support_tier": "compatibility",
       "strict_contract": true,
       "recommended_lane": "noncanonical",
-      "verbs": ["RUN"],
+      "verbs": ["RUN", "HEALTH", "STATUS"],
       "effect_default": "io",
       "privilege_tier": "network",
       "destructive": true,
       "network_facing": true,
       "sandbox_safe": false,
-      "notes": "Optional external PTC Runner adapter. Enable via --enable-adapter ptc_runner or AINL_ENABLE_PTC=true. Supports R ptc_runner run ... and R ptc_runner.RUN ..."
+      "notes": "Optional external PTC Runner adapter. Enable via --enable-adapter ptc_runner or AINL_ENABLE_PTC=true. Supports run plus health/status read checks."
     },
     "llm_query": {
       "support_tier": "compatibility",

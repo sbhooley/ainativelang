@@ -112,7 +112,10 @@
         "max_steps": 3000,
         "max_depth": 30,
         "max_adapter_calls": 300,
-        "max_time_ms": 30000
+        "max_time_ms": 30000,
+        "max_subagent_budget": 10,
+        "trace_depth": 200,
+        "max_concurrent_calls": 10
       },
       "orchestrator_expectations": [
         "enable only explicit endpoints for ptc_runner/llm_query via host allowlists",

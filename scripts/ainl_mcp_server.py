@@ -102,6 +102,7 @@ ALL_TOOL_NAMES: List[str] = [
     "ainl_ptc_signature_check",
     "ainl_trace_export",
     "ainl_ptc_run",
+    "ainl_ptc_health_check",
 ]
 
 ALL_RESOURCE_URIS: List[str] = [
@@ -731,6 +732,27 @@ def ainl_ptc_run(
         return {"ok": bool(out.get("ok")), "result": out}
     out = adapter.run(lisp, signature=signature, subagent_budget=subagent_budget, context={})
     return {"ok": bool(out.get("ok")), "result": out}
+
+
+@_register_tool
+def ainl_ptc_health_check(
+    allow_hosts: Optional[List[str]] = None,
+    timeout_s: float = 5.0,
+) -> dict:
+    """Lightweight health/status check for the optional ptc_runner service."""
+    from adapters.ptc_runner import PtcRunnerAdapter
+
+    try:
+        adapter = PtcRunnerAdapter(
+            enabled=True,
+            allow_hosts=allow_hosts or [],
+            timeout_s=timeout_s,
+            max_response_bytes=200_000,
+        )
+        out = adapter.health(context={})
+        return {"ok": bool(out.get("ok")), "result": out}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ---------------------------------------------------------------------------

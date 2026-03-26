@@ -111,7 +111,11 @@
       "examples/test_mul.ainl",
       "examples/test_X_sub.ainl"
     ],
-    "legacy-compat": []
+    "legacy-compat": [
+      "examples/ptc_integration_example.ainl",
+      "examples/hybrid_order_processor.ainl",
+      "examples/price_monitor.ainl"
+    ]
   },
   "corpus_examples": {
     "strict-valid": [

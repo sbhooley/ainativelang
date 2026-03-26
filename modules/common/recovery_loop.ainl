@@ -1,0 +1,55 @@
+# modules/common/recovery_loop.ainl
+# Bounded recovery wrapper for `ptc_runner` calls.
+#
+# Frame in:
+#   ptc_recovery_lisp             PTC-Lisp source string
+#   ptc_recovery_signature       optional signature string passed to `ptc_runner run`
+#   ptc_recovery_subagent_budget integer passed to `ptc_runner run`
+#   ptc_recovery_max_attempts    optional integer (default: 3)
+#
+# Return value:
+#   The final `ptc_runner` result envelope (success when `ok: true`).
+
+LENTRY:
+  # Defaults / gating values.
+  X ptc_recovery_max_eff ite (eq ptc_recovery_max_attempts null) 3 ptc_recovery_max_attempts
+  X ptc_recovery_max_cap ite (lt 10 ptc_recovery_max_eff) 10 ptc_recovery_max_eff
+  X ptc_recovery_max_plus1 add ptc_recovery_max_cap 1
+  X ptc_recovery_sig_eff ite (eq ptc_recovery_signature null) null ptc_recovery_signature
+
+  Set ptc_recovery_last_out null
+  X ptc_recovery_ok eq 1 0  # false
+  # Strict dataflow: declare temps before first use in loop body.
+  Set pp_in_range null
+  Set pp_not_ok null
+  Set pp_should_call null
+
+  # Retry attempts: 1..10 (guarded by max_attempts and ok:false).
+  R core.parse "[1,2,3,4,5,6,7,8,9,10]" ->ptc_recovery_attempts_arr
+
+  Loop ptc_recovery_attempts_arr ptc_recovery_attempt_num ->Lptc_recovery_body ->Lptc_recovery_after
+
+Lptc_recovery_body:
+  X pp_in_range lt ptc_recovery_attempt_num ptc_recovery_max_plus1
+  X pp_not_ok not ptc_recovery_ok
+  X pp_should_call and pp_not_ok pp_in_range
+  If pp_should_call ->Lptc_recovery_do_call ->Lptc_recovery_skip_call
+
+Lptc_recovery_do_call:
+  R ptc_runner run ptc_recovery_lisp ptc_recovery_sig_eff ptc_recovery_subagent_budget ->ptc_recovery_last_out
+  X ptc_recovery_ok get ptc_recovery_last_out ok
+  J null
+
+Lptc_recovery_skip_call:
+  J null
+
+Lptc_recovery_after:
+  # Loop termination returns the last computed envelope.
+  J ptc_recovery_last_out
+
+LEXIT_OK:
+  J "ok"
+
+LEXIT_FAIL:
+  J "err"
+

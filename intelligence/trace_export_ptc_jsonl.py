@@ -21,7 +21,38 @@ def _to_ptc_event(record: Dict[str, Any]) -> Dict[str, Any]:
     err = None
     if outcome == "fail" and isinstance(output, dict):
         err = output.get("error")
-    return {
+    beam_metrics: Dict[str, Any] = {}
+    beam_telemetry: Dict[str, Any] = {}
+    if isinstance(output, dict):
+        raw_bm = output.get("beam_metrics")
+        if isinstance(raw_bm, dict):
+            if "heap_bytes" in raw_bm or "heap" in raw_bm:
+                beam_metrics["heap_bytes"] = raw_bm.get("heap_bytes", raw_bm.get("heap"))
+            if "reductions" in raw_bm:
+                beam_metrics["reductions"] = raw_bm.get("reductions")
+            if "exec_time_ms" in raw_bm or "execution_time_ms" in raw_bm:
+                beam_metrics["exec_time_ms"] = raw_bm.get("exec_time_ms", raw_bm.get("execution_time_ms"))
+            if "pid" in raw_bm or "process_id" in raw_bm:
+                beam_metrics["process_id"] = raw_bm.get("process_id", raw_bm.get("pid"))
+        if isinstance(output.get("beam_telemetry"), dict):
+            beam_telemetry = dict(output["beam_telemetry"])
+
+        if not beam_metrics and isinstance(output.get("result"), dict):
+            nested = output["result"].get("beam_metrics")
+            if isinstance(nested, dict):
+                if "heap_bytes" in nested or "heap" in nested:
+                    beam_metrics["heap_bytes"] = nested.get("heap_bytes", nested.get("heap"))
+                if "reductions" in nested:
+                    beam_metrics["reductions"] = nested.get("reductions")
+                if "exec_time_ms" in nested or "execution_time_ms" in nested:
+                    beam_metrics["exec_time_ms"] = nested.get("exec_time_ms", nested.get("execution_time_ms"))
+                if "pid" in nested or "process_id" in nested:
+                    beam_metrics["process_id"] = nested.get("process_id", nested.get("pid"))
+            nested_bt = output["result"].get("beam_telemetry")
+            if isinstance(nested_bt, dict):
+                beam_telemetry = dict(nested_bt)
+
+    event = {
         "ts": record.get("timestamp"),
         "step_id": record.get("step_id"),
         "label": record.get("label"),
@@ -31,6 +62,11 @@ def _to_ptc_event(record: Dict[str, Any]) -> Dict[str, Any]:
         "output": output,
         "error": err,
     }
+    if beam_metrics:
+        event["beam_metrics"] = beam_metrics
+    if beam_telemetry:
+        event["beam_telemetry"] = beam_telemetry
+    return event
 
 
 def export_records(records: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:

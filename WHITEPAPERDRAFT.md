@@ -371,6 +371,22 @@ Without adapters, each new workflow often requires the model to regenerate API c
 
 This reduces both generation burden and runtime ambiguity.
 
+### 8.4 PTC-Lisp Hybrid Integration (Optional External Runtime)
+
+AINL ships an optional PTC-Lisp integration via the `ptc_runner` adapter. This adapter treats PTC Runner (a sandboxed Elixir/BEAM execution environment) as an external runtime while keeping AINL in its graph-canonical, compile-once/emit-many lane. No changes are required to the core DSL, parser, compiler, or emitters.
+
+Key properties:
+
+- **Adapter-only integration**: PTC is accessed via `R ptc_runner run ...` and thin helper modules (`modules/common/ptc_run.ainl`, `ptc_parallel.ainl`, `recovery_loop.ainl`). The core language surface is untouched.
+- **Reliability overlays**: Optional signatures (`# signature: ...`), bounded retries via `recovery_loop`, pcall-style fan-out via `ptc_parallel`, and a `_`-prefixed context firewall that prevents sensitive internal state from reaching external services or LLMs.
+- **Observability and BEAM telemetry**: Health/status verbs, normalized `beam_metrics`, and optional `beam_telemetry` via subprocess mode (`AINL_PTC_USE_SUBPROCESS`), all exported through `intelligence/trace_export_ptc_jsonl.py`.
+- **Hybrid emission**: `intelligence/ptc_to_langgraph_bridge.py` turns PTC-backed AINL graphs into LangGraph tool nodes without modifying the core emitter.
+- **Security-gated**: Disabled by default; opt-in via `--enable-adapter ptc_runner` or `AINL_ENABLE_PTC=true`. Governed by the `ptc_sandbox_plus` named security profile.
+
+This makes it possible to keep AINL as the single source of truth for the workflow graph while delegating specific safe, deterministic computations to PTC-Lisp running on BEAM — and then emitting the result to any AINL-supported target (FastAPI, LangGraph, Docker, K8s, etc.).
+
+See `docs/adapters/PTC_RUNNER.md` for the full integration guide, and `examples/hybrid_order_processor.ainl` / `examples/price_monitor.ainl` for production-ready examples. The CLI convenience command `ainl run-hybrid-ptc` provides a mock-friendly onramp for local experimentation.
+
 ---
 
 ## 9. Multi-Target Emission

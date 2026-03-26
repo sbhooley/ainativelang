@@ -127,6 +127,18 @@ fully-automated agent fabric.
 | `examples/golden/04_alerting_monitor.ainl` | `non-strict-only` | Compatibility/golden artifact; uses operator-only `svc` adapter |
 | `examples/golden/05_file_processor.ainl` | `non-strict-only` | Compatibility/golden artifact |
 
+## PTC Hybrid Examples
+
+These examples demonstrate opt-in PTC-Lisp integration. They require `--enable-adapter ptc_runner` and run cleanly in mock mode (`AINL_PTC_RUNNER_MOCK=1`).
+
+| Example | Profile | Mock-friendly | Notes |
+|---------|---------|---------------|-------|
+| `examples/hybrid_order_processor.ainl` | `legacy-compat` | yes | PTC hybrid: parallel order batches, signatures, `_` context firewall, trace export, LangGraph bridge |
+| `examples/price_monitor.ainl` | `legacy-compat` | yes | PTC hybrid: price monitor with parallel/recovery patterns and `_` context firewall |
+| `examples/ptc_integration_example.ainl` | `legacy-compat` | yes | Canonical end-to-end PTC integration reference |
+
+These are `legacy-compat` because they use `strict=False` (the `ptc_parallel` and `recovery_loop` modules require runtime relaxation due to strict compiler dataflow limitations with `Loop`-based patterns). They are fully functional and recommended for PTC integration exploration.
+
 ## Deprecated Examples
 
 No repository examples are classified as `deprecated` yet in the current

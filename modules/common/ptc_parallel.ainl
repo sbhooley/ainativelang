@@ -1,0 +1,70 @@
+# modules/common/ptc_parallel.ainl
+# PTC-style parallel (pcall-like) orchestration for lists of `ptc_runner` calls.
+#
+# Frame in:
+#   ptc_parallel_calls_json        JSON array string of call objects:
+#     [{"lisp":"...","signature":"..."}, ...]
+#   ptc_parallel_subagent_budget    integer passed to each `ptc_runner run`
+#   ptc_parallel_max_concurrent     optional integer (limits *inline* calls; best-effort)
+#   ptc_parallel_queue_name         optional string; if provided, emits a `queue.Put` per
+#                                   scheduled call as a side-channel (no result collection)
+#
+# Return value (frame out):
+#   List of `ptc_runner` result envelopes for the calls that were executed inline.
+
+LENTRY:
+  R core.parse ptc_parallel_calls_json ->ptc_parallel_calls_arr
+  R core.parse "[]" ->ptc_parallel_results
+  Set ptc_parallel_seen 0
+  # Strict dataflow: declare temps before first use in loop body.
+  Set ptc_parallel_should_call null
+  Set ptc_parallel_do_queue null
+  Set ptc_parallel_max_eff null
+  Set ptc_parallel_seen_next null
+
+  # Inline calls are capped; side-channel queue puts are gated separately.
+  Loop ptc_parallel_calls_arr ptc_parallel_item ->Lptc_parallel_body ->Lptc_parallel_after
+
+Lptc_parallel_body:
+  # Compute optional gating values *inside* the loop body so strict dataflow sees definitions.
+  X ptc_parallel_max_eff ite (eq ptc_parallel_max_concurrent null) 999999 ptc_parallel_max_concurrent
+  X ptc_parallel_do_queue ne ptc_parallel_queue_name null
+  X ptc_parallel_should_call lt ptc_parallel_seen ptc_parallel_max_eff
+  If ptc_parallel_should_call ->Lptc_parallel_do_call ->Lptc_parallel_skip_call
+
+Lptc_parallel_do_call:
+  X ptc_parallel_call_lisp get ptc_parallel_item lisp
+  X ptc_parallel_call_sig get ptc_parallel_item signature
+  R ptc_runner run ptc_parallel_call_lisp ptc_parallel_call_sig ptc_parallel_subagent_budget ->ptc_parallel_call_out
+  X ptc_parallel_results push ptc_parallel_results ptc_parallel_call_out
+
+  # Advance inline-call counter.
+  X ptc_parallel_seen_next add ptc_parallel_seen 1
+  Set ptc_parallel_seen ptc_parallel_seen_next
+
+  # Optional side-channel scheduling.
+  If ptc_parallel_do_queue ->Lptc_parallel_queue_put ->Lptc_parallel_no_queue
+
+Lptc_parallel_queue_put:
+  R queue.Put ptc_parallel_queue_name ptc_parallel_item ->ptc_parallel_queue_msg_id
+  J null
+
+Lptc_parallel_no_queue:
+  J null
+
+Lptc_parallel_skip_call:
+  # Still advance inline-call counter when skipping so the cap works across the whole list.
+  X ptc_parallel_seen_next add ptc_parallel_seen 1
+  Set ptc_parallel_seen ptc_parallel_seen_next
+  J null
+
+Lptc_parallel_after:
+  # Loop termination returns the collected results.
+  J ptc_parallel_results
+
+LEXIT_OK:
+  J "ok"
+
+LEXIT_FAIL:
+  J "err"
+

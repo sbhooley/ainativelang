@@ -28,3 +28,34 @@ def test_trace_export_file_filters_private_keys(tmp_path: Path):
     obj = json.loads(lines[0])
     assert "_secret" not in json.dumps(obj)
     assert "_private" not in json.dumps(obj)
+
+
+def test_trace_export_includes_normalized_beam_metrics(tmp_path: Path):
+    src = tmp_path / "trace_beam.jsonl"
+    dst = tmp_path / "ptc_beam.jsonl"
+    rec = {
+        "step_id": 2,
+        "label": "1",
+        "operation": "R",
+        "inputs": {"step": {"adapter": "ptc_runner"}},
+        "output": {
+            "ok": True,
+            "beam_metrics": {
+                "heap": 4096,
+                "reductions": 44,
+                "execution_time_ms": 12,
+                "pid": "<0.22.0>",
+            },
+        },
+        "outcome": "success",
+        "timestamp": "2026-03-26T00:00:01.000Z",
+    }
+    src.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    out = export_file(str(src), str(dst))
+    assert out["ok"] is True
+    line = [ln for ln in dst.read_text(encoding="utf-8").splitlines() if ln.strip()][0]
+    obj = json.loads(line)
+    assert obj["beam_metrics"]["heap_bytes"] == 4096
+    assert obj["beam_metrics"]["reductions"] == 44
+    assert obj["beam_metrics"]["exec_time_ms"] == 12
+    assert obj["beam_metrics"]["process_id"] == "<0.22.0>"

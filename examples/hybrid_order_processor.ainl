@@ -1,0 +1,54 @@
+# examples/hybrid_order_processor.ainl
+#
+# Production hybrid example: combines ptc_run.ainl, ptc_parallel.ainl,
+# and recovery_loop.ainl for order processing.
+#
+# Quick start (mock mode):
+#   ainl run-hybrid-ptc
+# or manually:
+#   AINL_ENABLE_PTC=true AINL_PTC_RUNNER_MOCK=1 \
+#   python3 -m cli.main run examples/hybrid_order_processor.ainl \
+#     --enable-adapter ptc_runner --strict=false \
+#     --http-allow-host localhost \
+#     --trace-jsonl /tmp/hybrid_orders.trace.jsonl
+#
+# Export trace to PTC-compatible JSONL:
+#   PYTHONPATH=. python3 scripts/ainl_trace_viewer.py \
+#     --ptc-export --input /tmp/hybrid_orders.trace.jsonl
+#
+# Generate LangGraph bridge:
+#   PYTHONPATH=. python3 scripts/run_intelligence.py ptc_to_langgraph_bridge \
+#     --source examples/hybrid_order_processor.ainl
+#
+# See docs/adapters/PTC_RUNNER.md for the full integration guide.
+
+include modules/common/ptc_parallel.ainl as ppar
+include modules/common/recovery_loop.ainl as rec
+
+LENTRY:
+  # _-prefixed keys are stripped from all external serialisation (context firewall)
+  Set _orders_internal_token "debug-only-secret"
+  Set _orders_last_run_id "hybrid-order-processor-001"
+
+  # Phase 1: fetch two order batches in parallel via ptc_parallel
+  Set ptc_parallel_calls_json "[{\"lisp\":\"(->> (tool/get_orders {:status \\\"pending\\\" :batch 1}) (filter #(> (:amount %) 100)) (sum-by :amount))\",\"signature\":\"{total :float}\"},{\"lisp\":\"(->> (tool/get_orders {:status \\\"pending\\\" :batch 2}) (filter #(> (:amount %) 100)) (sum-by :amount))\",\"signature\":\"{total :float}\"}]"
+  Set ptc_parallel_subagent_budget 5
+  Set ptc_parallel_max_concurrent 2
+  Set ptc_parallel_queue_name null
+  Call ppar/ENTRY ->ptc_batches
+
+  # Phase 2: consolidate with a recovery-backed single call
+  Set ptc_recovery_lisp "(->> (tool/get_orders {:status \"pending\"}) (filter #(> (:amount %) 100)) (sum-by :amount))"
+  Set ptc_recovery_signature "{total :float, count :int}"
+  Set ptc_recovery_subagent_budget 5
+  Set ptc_recovery_max_attempts 3
+  Set ptc_recovery_subagent_budget 5
+  Call rec/ENTRY ->ptc_final
+
+  J ptc_final
+
+LEXIT_OK:
+  J "ok"
+
+LEXIT_FAIL:
+  J "err"

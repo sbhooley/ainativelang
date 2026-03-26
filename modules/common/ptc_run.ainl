@@ -1,0 +1,35 @@
+# modules/common/ptc_run.ainl
+# Thin wrapper for `ptc_runner run` with clearer, named frame variables.
+# Caller sets:
+#   ptc_run_lisp             — required PTC-Lisp source string
+#   ptc_run_signature        — optional signature string (default: null)
+#   ptc_run_subagent_budget  — optional integer budget (default: 3)
+#
+# Usage:
+#   include modules/common/ptc_run.ainl as ptcrun
+#   L1:
+#     Set ptc_run_lisp "(+ 1 2)"
+#     Set ptc_run_signature "{total :int}"
+#     Set ptc_run_subagent_budget 5
+#     Call ptcrun/ENTRY ->ptc_out
+#     J ptc_out
+
+LENTRY:
+  # Normalize optional signature: treat unset sentinel or null as null.
+  X ptc_run_sig_is_sentinel or (eq ptc_run_signature "ptc_run_signature") (eq ptc_run_signature null)
+  X ptc_run_signature_norm ite ptc_run_sig_is_sentinel null ptc_run_signature
+
+  # Normalize optional budget: default to 3 when unset or null.
+  X ptc_run_budget_is_sentinel or (eq ptc_run_subagent_budget "ptc_run_subagent_budget") (eq ptc_run_subagent_budget null)
+  X ptc_run_subagent_budget_norm ite ptc_run_budget_is_sentinel 3 ptc_run_subagent_budget
+
+  # Delegate to the canonical adapter.
+  R ptc_runner run ptc_run_lisp ptc_run_signature_norm ptc_run_subagent_budget_norm ->ptc_run_out
+  J ptc_run_out
+
+LEXIT_OK:
+  J "ok"
+
+LEXIT_FAIL:
+  J "err"
+
