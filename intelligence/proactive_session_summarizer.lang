@@ -20,9 +20,19 @@ L0:
   If hasBudget ->L0a ->L0b
 
 L0a:
+  # Prefer weekly gate when present (rolling aggregate hydrate), else daily.
+  X weekRem (get budget_state "weekly_remaining_tokens")
+  X hasWeek (ne weekRem null)
+  If hasWeek ->L0a_week ->L0a_day
+
+L0a_week:
+  X budgetLowW (lt weekRem 5000)
+  If budgetLowW ->L30 ->L1
+
+L0a_day:
   X dayRem (get budget_state "daily_remaining")
-  X budgetLow (lt dayRem 1000)
-  If budgetLow ->L30 ->L1
+  X budgetLowD (lt dayRem 1000)
+  If budgetLowD ->L30 ->L1
 
 L0b:
   Set dayRem 20000
@@ -133,8 +143,8 @@ L12c:
   X reqBody (obj "model" llmModel)
   X reqBody (put reqBody "messages" msgs)
   X reqBody (put reqBody "temperature" 0.2)
-  # 4096 tokens: enough for reasoning models to think + produce content
-  X reqBody (put reqBody "max_tokens" 4096)
+  # Keep summaries tightly bounded for bootstrap and embedding indexing.
+  X reqBody (put reqBody "max_tokens" 350)
   R http POST "https://openrouter.ai/api/v1/chat/completions" reqBody headers 120 ->resp
   X httpOk (get resp "ok")
   If httpOk ->L13 ->L14
@@ -181,7 +191,8 @@ L16:
   Set memory_payload mem_payload
   Set memory_ttl 1209600
   Set memory_source "intelligence.proactive_session_summarizer"
-  Set memory_tags ["intelligence","summary","memory"]
+  X mem_tags (arr "intelligence" "summary" "memory")
+  Set memory_tags mem_tags
   Set memory_valid_at nowIso
   Call genmem/WRITE ->_
   X markKey (core.concat "summarized." dayDate)

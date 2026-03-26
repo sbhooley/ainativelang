@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Any, Optional
 
 # Repo root: openclaw/bridge/ -> openclaw/ -> repo
 _BRIDGE_DIR = Path(__file__).resolve().parent
@@ -65,6 +66,45 @@ WRAPPERS = {
     # "email-monitor": _BRIDGE_DIR / "wrappers" / "email_monitor.ainl",  # disabled: requires 'openclaw mail' plugin
 }
 
+def _read_monitor_budget() -> dict:
+    """Best-effort read of rolling budget from MONITOR_CACHE_JSON.
+
+    This is an execution guard only; the bridge/intelligence stack remains the source of truth.
+    """
+    path = Path(os.environ.get("MONITOR_CACHE_JSON", "/tmp/monitor_state.json")).expanduser()
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    wf = obj.get("workflow") if isinstance(obj, dict) else None
+    tb = wf.get("token_budget") if isinstance(wf, dict) else None
+    return tb if isinstance(tb, dict) else {}
+
+
+def _should_skip_wrapper(name: str) -> Optional[dict]:
+    """Skip noncritical wrappers when budgets are low.
+
+    This keeps scheduled bridge jobs from spending tokens when a host is already near exhaustion.
+    """
+    critical = {"token-budget-alert"}
+    if name in critical:
+        return None
+    tb = _read_monitor_budget()
+    if not tb:
+        return None
+    try:
+        day_rem = tb.get("daily_remaining")
+        week_rem = tb.get("weekly_remaining_tokens")
+        min_day = int(os.environ.get("AINL_WRAPPER_MIN_DAILY_REMAINING", "1000"))
+        min_week = int(os.environ.get("AINL_WRAPPER_MIN_WEEKLY_REMAINING", "5000"))
+        if week_rem is not None and int(week_rem) < min_week:
+            return {"reason": "weekly_budget_low", "weekly_remaining_tokens": int(week_rem), "min_weekly": min_week}
+        if day_rem is not None and int(day_rem) < min_day:
+            return {"reason": "daily_budget_low", "daily_remaining": int(day_rem), "min_daily": min_day}
+    except Exception:
+        return None
+    return None
+
 
 def _crm_health_url() -> str:
     """Health probe URL for content-engine. Prefer CRM_HEALTH_URL, else CRM_API_BASE + /api/health."""
@@ -105,6 +145,12 @@ def main() -> None:
     if not path or not path.is_file():
         logger.error("Unknown wrapper %r; known: %s", name, ", ".join(WRAPPERS))
         sys.exit(1)
+
+    skip = _should_skip_wrapper(name)
+    if skip:
+        payload = {"ok": True, "wrapper": name, "skipped": True, "skip": skip}
+        print(json.dumps(payload, indent=2, default=str))
+        return
 
     def _compile(src_text: str) -> dict:
         return AICodeCompiler(strict_mode=False, strict_reachability=False).compile(

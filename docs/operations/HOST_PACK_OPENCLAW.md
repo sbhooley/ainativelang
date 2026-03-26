@@ -15,6 +15,7 @@ This is a **documentation bundle** for a supported OpenClaw stack: **not** a sep
 3. **Agent + AINL model** — [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) (host must load curated bootstrap; default operational loop).
 4. **Monitoring** — [`UNIFIED_MONITORING_GUIDE.md`](UNIFIED_MONITORING_GUIDE.md) (bridge `run_wrapper_ainl.py`, daily memory, token budget).
 5. **Observability** — [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md).
+6. **OpenClaw requests 2–6 mapping (what’s shipped vs proposed):** [`OPENCLAW_REQUESTS_2_6_MAPPING.md`](OPENCLAW_REQUESTS_2_6_MAPPING.md) (summarizer, WASM, embeddings, caps, “sparse attention” honest note).
 
 ## Versioning
 

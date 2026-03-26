@@ -283,3 +283,4 @@ Run it once after installing/upgrading AINL.
 
 - **Machine-readable:** `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`** (checklist) · **`openclaw_host_ainl_1_2_8`** (v1.2.8 host briefing: repo vs host)
 - **Hub:** [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md) · [`docs/README.md`](../README.md) § operations · [`DOCS_INDEX.md`](../DOCS_INDEX.md)
+- **OpenClaw requests 2–6 mapping:** [`OPENCLAW_REQUESTS_2_6_MAPPING.md`](OPENCLAW_REQUESTS_2_6_MAPPING.md) (what’s shipped in v1.2.8 vs proposed extensions)

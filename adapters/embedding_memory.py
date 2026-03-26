@@ -3,7 +3,8 @@
 Enable: ``--enable-adapter embedding_memory`` and set ``AINL_EMBEDDING_MEMORY_DB`` (default ``/tmp/ainl_embedding_memory.sqlite3``).
 
 Modes:
-  - ``AINL_EMBEDDING_MODE=stub`` (default): deterministic hash vectors (no network).
+  - ``AINL_EMBEDDING_MODE=stub`` (default): deterministic hash vectors (no network; intended for tests and safe-default installs).
+  - ``AINL_EMBEDDING_MODE=local``: dependency-free local embeddings (hashing-based; better than ``stub`` for rough top-k, still not model-semantic).
   - ``AINL_EMBEDDING_MODE=openai``: ``text-embedding-3-small`` via OpenAI-compatible API (needs ``OPENAI_API_KEY`` or ``LLM_API_KEY``).
 
 Verbs:
@@ -27,10 +28,11 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from runtime.adapters.base import AdapterError, RuntimeAdapter
 
 _DEFAULT_DB = "/tmp/ainl_embedding_memory.sqlite3"
-_DIM = 32
+_DIM_STUB = 32
+_DIM_LOCAL = 256
 
 
-def _stub_embed(text: str, dim: int = _DIM) -> List[float]:
+def _stub_embed(text: str, dim: int = _DIM_STUB) -> List[float]:
     """Deterministic pseudo-embedding for tests and zero-dep installs."""
     t = (text or "").strip().lower()
     vec = [0.0] * dim
@@ -38,6 +40,43 @@ def _stub_embed(text: str, dim: int = _DIM) -> List[float]:
         h = hashlib.sha256(f"{i}:{tok}".encode("utf-8")).digest()
         for j in range(dim):
             vec[j] += (h[j % len(h)] - 128) / 128.0
+    norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+    return [x / norm for x in vec]
+
+
+def _local_embed(text: str, dim: int = _DIM_LOCAL) -> List[float]:
+    """Dependency-free local embedding (hashed bag-of-words + char n-grams).
+
+    This is not a learned semantic embedding. It exists to support rough top-k selection
+    in offline environments without introducing heavy dependencies.
+    """
+    t = (text or "").strip().lower()
+    vec = [0.0] * dim
+    if not t:
+        return vec
+
+    def _add_hash(feature: str, weight: float) -> None:
+        h = hashlib.sha256(feature.encode("utf-8")).digest()
+        idx = int.from_bytes(h[:4], "big") % dim
+        sign = -1.0 if (h[4] & 1) else 1.0
+        vec[idx] += sign * weight
+
+    # word features
+    for tok in t.split():
+        if not tok:
+            continue
+        _add_hash(f"w:{tok}", 1.0)
+
+    # character 3-grams (bounded)
+    s = f"  {t}  "
+    max_ngrams = 2000
+    n = 0
+    for i in range(len(s) - 2):
+        _add_hash(f"c3:{s[i:i+3]}", 0.3)
+        n += 1
+        if n >= max_ngrams:
+            break
+
     norm = math.sqrt(sum(x * x for x in vec)) or 1.0
     return [x / norm for x in vec]
 
@@ -114,9 +153,12 @@ class EmbeddingMemoryAdapter(RuntimeAdapter):
 
     def _embed(self, text: str) -> List[float]:
         mode = (os.environ.get("AINL_EMBEDDING_MODE") or "stub").strip().lower()
+        dim = _DIM_LOCAL if mode in ("local", "offline") else _DIM_STUB
         if mode in ("openai", "api"):
-            return _openai_embed(text, _DIM)
-        return _stub_embed(text, _DIM)
+            return _openai_embed(text, dim)
+        if mode in ("local", "offline"):
+            return _local_embed(text, dim)
+        return _stub_embed(text, dim)
 
     def _upsert(
         self,
