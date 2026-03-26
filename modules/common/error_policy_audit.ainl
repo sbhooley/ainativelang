@@ -1,0 +1,25 @@
+# modules/common/error_policy_audit.ainl
+# Build a standard policy audit detail JSON string.
+#
+# Frame in:
+#   epa_result  object|null
+#   epa_policy  object|null
+#   epa_apply   object|null
+#
+# Return:
+#   JSON string: {"result":..., "policy":..., "apply":...}
+
+LENTRY:
+  X r_use (ite (eq epa_result null) {} epa_result)
+  X p_use (ite (eq epa_policy null) {} epa_policy)
+  X a_use (ite (eq epa_apply null) {} epa_apply)
+  R core.stringify r_use ->rj
+  R core.stringify p_use ->pj
+  R core.stringify a_use ->aj
+  R core.concat "{\"result\":" rj ",\"policy\":" pj ",\"apply\":" aj "}" ->out_j
+  J out_j
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

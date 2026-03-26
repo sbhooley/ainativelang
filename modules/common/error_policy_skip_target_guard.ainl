@@ -1,0 +1,112 @@
+# modules/common/error_policy_skip_target_guard.ainl
+# Read + GC target-level skip flags (TTL-based) from KV.
+#
+# Frame in:
+#   epsg_scope      namespace prefix (default: "default")
+#   epsg_target_id  target identifier (required for meaningful lookup)
+#
+# Return object:
+#   should_skip     boolean
+#   skip_key        string
+#   reason          string
+
+include "modules/common/executor_request_builder.ainl" as exreq
+
+LENTRY:
+  X scope_use (ite (eq epsg_scope null) "default" epsg_scope)
+  X target_use (ite (eq epsg_target_id null) "" epsg_target_id)
+  X k0 core.concat scope_use "_skip_target_"
+  X skip_key core.concat k0 target_use
+  X b_true eq 1 1
+  X b_false eq 1 0
+  Set has_target null
+  X has_target ne target_use ""
+  If has_target ->L_fetch ->L_no_target
+
+L_no_target:
+  R core.parse "{}" ->out
+  R core.parse "\"should_skip\"" ->k_ss
+  R core.parse "\"skip_key\"" ->k_sk
+  R core.parse "\"reason\"" ->k_rs
+  X out put out k_ss b_false
+  X out put out k_sk skip_key
+  X out put out k_rs "missing_target_id"
+  J out
+
+L_fetch:
+  R core.concat "{\"key\":\"" skip_key "\"}" ->executor_req_payload_json
+  R core.echo "kv.get" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_skip_guard" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_get
+  R bridge.POST kv.get req_get ->get_http
+  R core.parse "\"body\"" ->k_body
+  R core.parse "\"value\"" ->k_value
+  X body_obj get get_http k_body
+  X raw_a get body_obj k_value
+  X raw_b get get_http k_value
+  X raw_v (ite (eq raw_a null) raw_b raw_a)
+  Set is_null null
+  X is_null eq raw_v null
+  If is_null ->L_not_set ->L_check_empty
+
+L_check_empty:
+  Set is_empty null
+  X is_empty eq raw_v ""
+  If is_empty ->L_not_set ->L_eval
+
+L_not_set:
+  R core.parse "{}" ->out
+  R core.parse "\"should_skip\"" ->k_ss
+  R core.parse "\"skip_key\"" ->k_sk
+  R core.parse "\"reason\"" ->k_rs
+  X out put out k_ss b_false
+  X out put out k_sk skip_key
+  X out put out k_rs "not_set"
+  J out
+
+L_eval:
+  Set until_ts null
+  R core.parse "\"until_ts\"" ->k_until
+  R core.parse raw_v ->parsed_v
+  X until_ts get parsed_v k_until
+  If until_ts ->L_eval_ttl ->L_expired
+
+L_eval_ttl:
+  X now_ts core.now
+  Set still_active null
+  X still_active gt until_ts now_ts
+  If still_active ->L_active ->L_expired
+
+L_active:
+  R core.parse "{}" ->out
+  R core.parse "\"should_skip\"" ->k_ss
+  R core.parse "\"skip_key\"" ->k_sk
+  R core.parse "\"reason\"" ->k_rs
+  X out put out k_ss b_true
+  X out put out k_sk skip_key
+  X out put out k_rs "active_ttl"
+  J out
+
+L_expired:
+  R core.concat "{\"key\":\"" skip_key "\",\"value\":null}" ->executor_req_payload_json
+  R core.echo "kv.set" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_skip_guard" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_clr
+  R bridge.POST kv.set req_clr ->clr_http
+  R core.parse "{}" ->out
+  R core.parse "\"should_skip\"" ->k_ss
+  R core.parse "\"skip_key\"" ->k_sk
+  R core.parse "\"reason\"" ->k_rs
+  X out put out k_ss b_false
+  X out put out k_sk skip_key
+  X out put out k_rs "expired_cleared"
+  J out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

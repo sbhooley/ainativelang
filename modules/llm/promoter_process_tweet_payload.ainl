@@ -11,38 +11,52 @@
 #     reply_user_prompt: string
 #     reply_fallback_text: string
 
-include "modules/common/promoter_persona_prompt.ainl" as ppp
+include "modules/llm/promoter_reply_prompt_bundle.ainl" as prb
 
 LENTRY:
+  Set force_static null
+  X force_static eq ppt_force_static 1
+  If force_static ->L_static ->L_dynamic
+
+L_static:
+  Set tweet_use null
+  X tweet_use (ite (eq ppt_tweet null) {} ppt_tweet)
+  R core.env "PROMOTER_CANONICAL_GITHUB_URL" "https://github.com/sbhooley/ainativelang" ->gh
+  R core.concat "AINL keeps agent workflows deterministic and bridge-friendly; this helps teams ship reliable automation. " gh ->reply_fallback_text
+  R core.parse "{}" ->out
+  R core.parse "\"payload\"" ->k_pay
+  R core.parse "\"reply_system_prompt\"" ->k_rsp
+  R core.parse "\"reply_user_prompt\"" ->k_rup
+  R core.parse "\"reply_fallback_text\"" ->k_rfp
+  X out put out k_pay tweet_use
+  X out put out k_rsp ""
+  X out put out k_rup ""
+  X out put out k_rfp reply_fallback_text
+  J out
+
+L_dynamic:
   Set tweet_use null
   X tweet_use (ite (eq ppt_tweet null) {} ppt_tweet)
   X tw_text get tweet_use text
   R core.echo "" ->empty_s
   X tw_text2 (ite (eq tw_text null) empty_s tw_text)
 
-  R core.env "PROMOTER_CANONICAL_GITHUB_URL" "https://github.com/sbhooley/ainativelang" ->gh
-  R core.concat "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural. Max ~260 chars of guidance for the reply text itself.\n\nWhen you mention the GitHub repository, use this exact URL only (https): " gh ->rs0
-  R core.concat rs0 ". Do not use github.com/ainativelang/ainl or any other path." ->rs_base
-
-  R core.echo "reply" ->ppp_mode
-  Call ppp/ENTRY ->reply_persona
-  Set has_persona null
-  X has_persona ne reply_persona ""
-  R core.concat rs_base "\n\n" ->rs1
-  R core.concat rs1 reply_persona ->rs_with_persona
-  X reply_system_prompt (ite has_persona rs_with_persona rs_base)
-
-  R core.concat "Tweet:\n" tw_text2 ->ru0
-  R core.concat ru0 "\n\nDraft a helpful, expert reply from Apollo." ->reply_user_prompt
-
-  R core.concat "If you are standardizing agent workflows, AINL compiles graphs to a deterministic runtime (open graphs on GitHub: " gh ->rf0
-  R core.concat rf0 "). Happy to compare notes on OpenClaw-style orchestration." ->reply_fallback_text
+  R core.echo "tweet" ->prb_mode
+  X prb_text (ite (eq tw_text2 null) "" tw_text2)
+  Call prb/ENTRY ->reply_bundle
+  R core.parse "\"reply_system_prompt\"" ->k_rsp
+  R core.parse "\"reply_user_prompt\"" ->k_rup
+  R core.parse "\"reply_fallback_text\"" ->k_rfp
+  X reply_system_prompt get reply_bundle k_rsp
+  X reply_user_prompt get reply_bundle k_rup
+  X reply_fallback_text get reply_bundle k_rfp
 
   R core.parse "{}" ->out
-  X out put out "payload" tweet_use
-  X out put out "reply_system_prompt" reply_system_prompt
-  X out put out "reply_user_prompt" reply_user_prompt
-  X out put out "reply_fallback_text" reply_fallback_text
+  R core.parse "\"payload\"" ->k_pay
+  X out put out k_pay tweet_use
+  X out put out k_rsp reply_system_prompt
+  X out put out k_rup reply_user_prompt
+  X out put out k_rfp reply_fallback_text
   J out
 
 LEXIT_OK:

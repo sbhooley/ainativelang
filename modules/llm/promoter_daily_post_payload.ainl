@@ -14,6 +14,11 @@ include "modules/common/executor_bridge_request.ainl" as pd_br
 include "modules/common/promoter_persona_prompt.ainl" as ppp
 
 LENTRY:
+  Set force_static null
+  X force_static eq pd_force_static 1
+  If force_static ->L_pd_static ->L_pd_entry_env
+
+L_pd_entry_env:
   R core.env "PROMOTER_DAILY_SKIP_LLM" "0" ->sk_raw
   R core.parse sk_raw ->sk_n
   Set sk_skip null

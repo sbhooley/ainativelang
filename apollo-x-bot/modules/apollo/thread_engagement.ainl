@@ -3,6 +3,7 @@
 
 include "../../../modules/common/executor_request_builder.ainl" as exreq
 include "../../../modules/common/record_decision.ainl" as rd
+include "../../../modules/llm/promoter_thread_continue_payload.ainl" as ptcp
 
 S core cron "45 */2 * * *"
 
@@ -44,13 +45,10 @@ L_th_empty:
 L_th_reply:
   X last_tw get tws 0
   X reply_tid get last_tw id
-  R core.parse "{}" ->tc_pay
-  R core.parse "\"tweets\"" ->k_tw
-  X tc_pay put tc_pay k_tw tws
-  R core.parse "\"reply_to_tweet_id\"" ->k_rid
-  X tc_pay put tc_pay k_rid reply_tid
-  R core.parse "\"conversation_id\"" ->k_cid
-  X tc_pay put tc_pay k_cid conv_cid
+  X ptc_tweets tws
+  X ptc_reply_to_tweet_id reply_tid
+  X ptc_conversation_id conv_cid
+  Call ptcp/ENTRY ->tc_pay
   R core.stringify tc_pay ->executor_req_payload_json
   R core.echo "promoter.thread_continue" ->executor_req_executor
   Set executor_req_run_id null

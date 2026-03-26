@@ -1,0 +1,46 @@
+# modules/llm/promoter_thread_continue_payload.ainl
+# Build payload object for promoter.thread_continue with persona-aware prompt fields.
+#
+# Frame in:
+#   ptc_tweets (array)
+#   ptc_reply_to_tweet_id (string)
+#   ptc_conversation_id (string)
+#
+# Return:
+#   payload object with:
+#     tweets, reply_to_tweet_id, conversation_id
+#     reply_system_prompt, reply_user_prompt, reply_fallback_text
+
+include "modules/llm/promoter_reply_prompt_bundle.ainl" as prb
+
+LENTRY:
+  X tw_use (ite (eq ptc_tweets null) [] ptc_tweets)
+  X rid_use (ite (eq ptc_reply_to_tweet_id null) "" ptc_reply_to_tweet_id)
+  X cid_use (ite (eq ptc_conversation_id null) "" ptc_conversation_id)
+  R core.stringify tw_use ->tw_j
+  R core.echo "thread" ->prb_mode
+  X prb_text (ite (eq tw_j null) "" tw_j)
+  Call prb/ENTRY ->reply_bundle
+  R core.parse "\"reply_system_prompt\"" ->k_rsp
+  R core.parse "\"reply_user_prompt\"" ->k_rup
+  R core.parse "\"reply_fallback_text\"" ->k_rfp
+  X reply_system_prompt get reply_bundle k_rsp
+  X reply_user_prompt get reply_bundle k_rup
+  X reply_fallback_text get reply_bundle k_rfp
+
+  R core.parse "{}" ->out
+  R core.parse "\"tweets\"" ->k_tws
+  R core.parse "\"reply_to_tweet_id\"" ->k_rid
+  R core.parse "\"conversation_id\"" ->k_cid
+  X out put out k_tws tw_use
+  X out put out k_rid rid_use
+  X out put out k_cid cid_use
+  X out put out k_rsp reply_system_prompt
+  X out put out k_rup reply_user_prompt
+  X out put out k_rfp reply_fallback_text
+  J out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

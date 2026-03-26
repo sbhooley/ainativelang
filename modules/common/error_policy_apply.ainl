@@ -1,0 +1,132 @@
+# modules/common/error_policy_apply.ainl
+# Apply normalized error policy decisions (from error_policy_from_result) using KV side effects.
+#
+# Frame in:
+#   epa_policy                 object (expects `action`)
+#   epa_scope                  string (namespace prefix), default: "default"
+#   epa_target_id              optional string (used by skip_target actions)
+#
+# Return object:
+#   applied            boolean
+#   block_set          boolean
+#   block_key          string
+#   action             string
+
+include "modules/common/executor_request_builder.ainl" as exreq
+
+LENTRY:
+  X policy_use (ite (eq epa_policy null) {} epa_policy)
+  X scope_use (ite (eq epa_scope null) "default" epa_scope)
+  X target_use (ite (eq epa_target_id null) "" epa_target_id)
+  X action get policy_use action
+  X bool_true eq 1 1
+  X bool_false eq 1 0
+  Set is_retry_later null
+  Set is_fallback_model null
+  Set is_skip_target null
+  X is_retry_later eq action "retry_later"
+  X is_fallback_model eq action "fallback_model"
+  X is_skip_target eq action "skip_target"
+  If is_retry_later ->L_do_retry_later ->L_check_fallback
+
+L_check_fallback:
+  If is_fallback_model ->L_do_fallback_model ->L_check_skip
+
+L_check_skip:
+  If is_skip_target ->L_do_skip_target ->L_no_block
+
+L_do_retry_later:
+  X effect_key core.concat scope_use "_block_flag"
+  R core.parse "{}" ->out
+  R core.parse "\"applied\"" ->k_ap
+  R core.parse "\"block_set\"" ->k_bs
+  R core.parse "\"block_key\"" ->k_bk
+  R core.parse "\"action\"" ->k_ac
+  R core.concat "{\"key\":\"" effect_key "\",\"value\":\"1\"}" ->executor_req_payload_json
+  R core.echo "kv.set" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_policy_apply" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_set
+  R bridge.POST kv.set req_set ->set_http
+  X out put out k_ap bool_true
+  X out put out k_bs bool_true
+  X out put out k_bk effect_key
+  X out put out k_ac action
+  J out
+
+L_do_fallback_model:
+  X effect_key core.concat scope_use "_fallback_model_flag"
+  R core.env "PROMOTER_POLICY_FALLBACK_MODEL_TTL_SEC" "3600" ->ttl_s
+  R core.parse ttl_s ->ttl_n
+  X now_ts core.now
+  R core.add now_ts ttl_n ->until_ts
+  R core.stringify until_ts ->until_j
+  R core.concat "{\"until_ts\":" until_j ",\"action\":\"fallback_model\"}" ->val_j
+  R core.parse "{}" ->out
+  R core.parse "\"applied\"" ->k_ap
+  R core.parse "\"block_set\"" ->k_bs
+  R core.parse "\"block_key\"" ->k_bk
+  R core.parse "\"action\"" ->k_ac
+  R core.concat "{\"key\":\"" effect_key "\",\"value\":" val_j "}" ->executor_req_payload_json
+  R core.echo "kv.set" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_policy_apply" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_set
+  R bridge.POST kv.set req_set ->set_http
+  X out put out k_ap bool_true
+  X out put out k_bs bool_true
+  X out put out k_bk effect_key
+  X out put out k_ac action
+  J out
+
+L_do_skip_target:
+  Set has_target null
+  X has_target ne target_use ""
+  If has_target ->L_do_skip_target_yes ->L_no_block
+
+L_do_skip_target_yes:
+  X k0 core.concat scope_use "_skip_target_"
+  X effect_key core.concat k0 target_use
+  R core.env "PROMOTER_POLICY_SKIP_TARGET_TTL_SEC" "21600" ->ttl_s
+  R core.parse ttl_s ->ttl_n
+  X now_ts core.now
+  R core.add now_ts ttl_n ->until_ts
+  R core.stringify until_ts ->until_j
+  R core.concat "{\"until_ts\":" until_j ",\"action\":\"skip_target\"}" ->val_j
+  R core.parse "{}" ->out
+  R core.parse "\"applied\"" ->k_ap
+  R core.parse "\"block_set\"" ->k_bs
+  R core.parse "\"block_key\"" ->k_bk
+  R core.parse "\"action\"" ->k_ac
+  R core.concat "{\"key\":\"" effect_key "\",\"value\":" val_j "}" ->executor_req_payload_json
+  R core.echo "kv.set" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_policy_apply" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_set
+  R bridge.POST kv.set req_set ->set_http
+  X out put out k_ap bool_true
+  X out put out k_bs bool_true
+  X out put out k_bk effect_key
+  X out put out k_ac action
+  J out
+
+L_no_block:
+  X block_key core.concat scope_use "_block_flag"
+  R core.parse "{}" ->out
+  R core.parse "\"applied\"" ->k_ap
+  R core.parse "\"block_set\"" ->k_bs
+  R core.parse "\"block_key\"" ->k_bk
+  R core.parse "\"action\"" ->k_ac
+  X out put out k_ap bool_true
+  X out put out k_bs bool_false
+  X out put out k_bk block_key
+  X out put out k_ac action
+  J out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

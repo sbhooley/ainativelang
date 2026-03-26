@@ -13,6 +13,11 @@ include "../modules/llm/llm_classify_request_builder.ainl" as llm_crb
 include "../modules/llm/llm_safe_json_parse.ainl" as llm_sjp
 include "../modules/common/heuristic_keyword_score.ainl" as hkw
 include "../modules/common/record_decision.ainl" as rd
+include "../modules/common/error_policy_from_result.ainl" as epr
+include "../modules/common/error_policy_apply.ainl" as epa
+include "../modules/common/error_policy_skip_target_guard.ainl" as epsg
+include "../modules/common/error_policy_flag_guard.ainl" as epfg
+include "../modules/common/error_policy_audit.ainl" as epau
 include "../modules/common/promoter_discover_from_tweets.ainl" as pdt
 include "../modules/llm/promoter_daily_post_payload.ainl" as pdpp
 include "../modules/llm/promoter_process_tweet_payload.ainl" as pptp
@@ -225,6 +230,24 @@ L_each_missing_tid:
   J sk
 
 L_each_has_tid:
+  # Early policy short-circuit to avoid gate_eval and extra calls.
+  R core.echo "promoter_reply" ->epsg_scope
+  X epsg_target_id (ite (eq gate_user_id null) "" gate_user_id)
+  Call epsg/ENTRY ->pre_skip_guard_out
+  X pre_skip_user_flag get pre_skip_guard_out should_skip
+  X skip_k0 get pre_skip_guard_out skip_key
+  Set pre_skip_user_on null
+  X pre_skip_user_on eq pre_skip_user_flag true
+  If pre_skip_user_on ->L71_skip_target ->L_each_pre_fallback
+
+L_each_pre_fallback:
+  R core.echo "promoter_reply_fallback_model_flag" ->epfg_key
+  Set reply_fb_on null
+  Call epfg/ENTRY ->pre_reply_fb_out
+  X reply_fb_on get pre_reply_fb_out active
+  If reply_fb_on ->L71_fallback_on ->L_each_gate_eval
+
+L_each_gate_eval:
   X gate_pl put gate_pl gk_tid gate_tweet_id
   X gate_pl put gate_pl gk_uid gate_user_id
   X gate_pl put gate_pl gk_hsc heur_score
@@ -247,6 +270,56 @@ L_each_has_tid:
 
 L71:
   Set step_out null
+  R core.echo "promoter_reply" ->epsg_scope
+  X epsg_target_id (ite (eq gate_user_id null) "" gate_user_id)
+  Call epsg/ENTRY ->skip_guard_out
+  X skip_user_flag get skip_guard_out should_skip
+  X skip_k0 get skip_guard_out skip_key
+  Set skip_user_on null
+  X skip_user_on eq skip_user_flag true
+  If skip_user_on ->L71_skip_target ->L71_fallback_check
+
+L71_fallback_check:
+  R core.echo "promoter_reply_fallback_model_flag" ->epfg_key
+  Set reply_fb_on null
+  Call epfg/ENTRY ->reply_fb_out
+  X reply_fb_on get reply_fb_out active
+  Set ppt_force_static null
+  X ppt_force_static (ite (eq reply_fb_on true) 1 0)
+  If reply_fb_on ->L71_fallback_on ->L71_process
+
+L71_fallback_on:
+  R core.parse "1" ->ppt_force_static
+  R core.parse "{}" ->rd_fb
+  X rd_fb put rd_fb "flag" "promoter_reply_fallback_model_flag"
+  X rd_fb put rd_fb "active" reply_fb_on
+  R core.stringify rd_fb ->record_rd_detail_json
+  R core.echo "process_tweet_fallback_model_active" ->record_rd_action
+  X record_rd_tweet_id get tweet id
+  X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  If reply_fb_on ->L71_process ->L71_process
+
+L71_skip_target:
+  R core.parse "{}" ->skp
+  X skp put skp "reason" "policy_skip_target"
+  X skp put skp "user_id" gate_user_id
+  X skp put skp "tweet_id" gate_tweet_id
+  X skp put skp "skip_key" skip_k0
+  R core.stringify skp ->record_rd_detail_json
+  R core.echo "process_tweet_policy_skip_target" ->record_rd_action
+  X record_rd_tweet_id get tweet id
+  X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  R core.parse "{}" ->skret
+  X skret put skret "ok" true
+  X skret put skret "action" "skipped"
+  X skret put skret "reason" "policy_skip_target"
+  J skret
+
+L71_process:
   R core.stringify tweet ->ppt_tweet_json
   R core.parse ppt_tweet_json ->ppt_tweet
   Call pptp/ENTRY ->pt_payload
@@ -258,7 +331,16 @@ L71:
   Call exreq/ENTRY ->req_pt
   R bridge.POST promoter.process_tweet req_pt ->step_out
   X proc_b get step_out body
-  R core.stringify proc_b ->record_rd_detail_json
+  X ep_result (ite (eq proc_b null) {} proc_b)
+  Call epr/ENTRY ->proc_pol
+  X epa_policy (ite (eq proc_pol null) {} proc_pol)
+  R core.echo "promoter_reply" ->epa_scope
+  X epa_target_id (ite (eq gate_user_id null) "" gate_user_id)
+  Call epa/ENTRY ->proc_apply_out
+  X epa_result (ite (eq proc_b null) {} proc_b)
+  X epa_policy (ite (eq proc_pol null) {} proc_pol)
+  X epa_apply (ite (eq proc_apply_out null) {} proc_apply_out)
+  Call epau/ENTRY ->record_rd_detail_json
   R core.echo "process_tweet" ->record_rd_action
   X record_rd_tweet_id get tweet id
   X record_rd_score (ite (eq heur_score null) zero_heur heur_score)
@@ -332,6 +414,56 @@ L_after_loop:
   Set record_rd_score null
   R core.echo "promoter" ->record_rd_scope
   Call rd/ENTRY ->_
+  R core.echo "kv.get" ->executor_req_executor
+  R core.echo "{\"key\":\"promoter_daily_block_flag\"}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_daily_guard" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_daily_block
+  R bridge.POST kv.get req_daily_block ->daily_block_http
+  X daily_block_raw get daily_block_http body value
+  X daily_block_raw2 get daily_block_http value
+  X daily_block_value (ite (eq daily_block_raw null) daily_block_raw2 daily_block_raw)
+  Set daily_block_active null
+  X daily_block_active ne daily_block_value ""
+  If daily_block_active ->L_daily_blocked ->L_daily_run
+
+L_daily_blocked:
+  R core.echo "{\"key\":\"promoter_daily_block_flag\",\"value\":null}" ->executor_req_payload_json
+  R core.echo "kv.set" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_daily_guard" ->executor_req_step_id
+  R core.add 30 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_daily_block_clear
+  R bridge.POST kv.set req_daily_block_clear ->daily_block_clear_http
+  R core.parse "{}" ->rd_db
+  X rd_db put rd_db "block_flag" daily_block_value
+  R core.stringify rd_db ->record_rd_detail_json
+  R core.echo "daily_post_deferred_rate_limit" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"
+
+L_daily_run:
+  Set daily_fb_on null
+  R core.echo "promoter_daily_fallback_model_flag" ->epfg_key
+  Call epfg/ENTRY ->daily_fb_out
+  X daily_fb_on get daily_fb_out active
+  If daily_fb_on ->L_daily_fallback_on ->L_daily_fallback_off
+
+L_daily_fallback_on:
+  R core.parse "{}" ->rd_dfb
+  X rd_dfb put rd_dfb "flag" "promoter_daily_fallback_model_flag"
+  X rd_dfb put rd_dfb "active" daily_fb_on
+  R core.stringify rd_dfb ->record_rd_detail_json
+  R core.echo "daily_post_fallback_model_active" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  R core.parse "1" ->pd_force_static
   Call pdpp/ENTRY ->executor_req_payload_json
   R core.echo "promoter.maybe_daily_post" ->executor_req_executor
   Set executor_req_run_id null
@@ -340,12 +472,65 @@ L_after_loop:
   Call exreq/ENTRY ->req_daily
   R bridge.POST promoter.maybe_daily_post req_daily ->daily_out
   X daily_b get daily_out body
-  R core.stringify daily_b ->record_rd_detail_json
+  X ep_result (ite (eq daily_b null) {} daily_b)
+  Call epr/ENTRY ->daily_pol
+  X epa_result (ite (eq daily_b null) {} daily_b)
+  X epa_policy (ite (eq daily_pol null) {} daily_pol)
+  R core.parse "{}" ->epa_apply
+  Call epau/ENTRY ->record_rd_detail_json
   R core.echo "daily_post" ->record_rd_action
   Set record_rd_tweet_id null
   Set record_rd_score null
   R core.echo "promoter" ->record_rd_scope
   Call rd/ENTRY ->_
+  X daily_policy_action get daily_pol action
+  Set daily_is_retry_later null
+  X daily_is_retry_later eq daily_policy_action "retry_later"
+  If daily_is_retry_later ->L_daily_set_rate_limit_cooldown ->L_daily_done
+
+L_daily_fallback_off:
+  R core.parse "0" ->pd_force_static
+  Call pdpp/ENTRY ->executor_req_payload_json
+  R core.echo "promoter.maybe_daily_post" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "daily" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call exreq/ENTRY ->req_daily
+  R bridge.POST promoter.maybe_daily_post req_daily ->daily_out
+  X daily_b get daily_out body
+  X ep_result (ite (eq daily_b null) {} daily_b)
+  Call epr/ENTRY ->daily_pol
+  X epa_result (ite (eq daily_b null) {} daily_b)
+  X epa_policy (ite (eq daily_pol null) {} daily_pol)
+  R core.parse "{}" ->epa_apply
+  Call epau/ENTRY ->record_rd_detail_json
+  R core.echo "daily_post" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  X daily_policy_action get daily_pol action
+  Set daily_is_retry_later null
+  X daily_is_retry_later eq daily_policy_action "retry_later"
+  If daily_is_retry_later ->L_daily_set_rate_limit_cooldown ->L_daily_done
+
+L_daily_set_rate_limit_cooldown:
+  X epa_policy (ite (eq daily_pol null) {} daily_pol)
+  R core.echo "promoter_daily" ->epa_scope
+  Call epa/ENTRY ->daily_apply_out
+  R core.parse "{}" ->rd_cd
+  X rd_cd put rd_cd "block_flag" "1"
+  X rd_cd put rd_cd "action" daily_policy_action
+  X rd_cd put rd_cd "apply" daily_apply_out
+  R core.stringify rd_cd ->record_rd_detail_json
+  R core.echo "daily_post_rate_limit_cooldown_set" ->record_rd_action
+  Set record_rd_tweet_id null
+  Set record_rd_score null
+  R core.echo "promoter" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"
+
+L_daily_done:
   J "ok"
 
 # =============================================================================

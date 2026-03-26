@@ -1,0 +1,218 @@
+# modules/common/error_policy_from_result.ainl
+# Classify executor/bridge result objects into reusable error-policy decisions.
+#
+# Frame in:
+#   ep_result (object; typically bridge response body or handler return)
+#
+# Return object:
+#   category   (none|duplicate|rate_limit|not_authorized|credit|transient|other)
+#   action     (none|rewrite_and_retry|retry_later|skip_target|fallback_model|retry_once|fail)
+#   retryable  (boolean)
+#   reason     (string)
+
+LENTRY:
+  X res_use (ite (eq ep_result null) {} ep_result)
+  X ok_raw get res_use ok
+  Set is_ok null
+  X is_ok eq ok_raw true
+  If is_ok ->L_ok ->L_err
+
+L_ok:
+  R core.parse "{}" ->out
+  R core.parse "\"category\"" ->k_cat
+  R core.parse "\"action\"" ->k_act
+  R core.parse "\"retryable\"" ->k_ret
+  R core.parse "\"reason\"" ->k_rsn
+  R core.parse "\"none\"" ->v_none
+  R core.parse "\"\"" ->v_empty
+  X v_false eq 1 0
+  X out put out k_cat v_none
+  X out put out k_act v_none
+  X out put out k_ret v_false
+  X out put out k_rsn v_empty
+  J out
+
+L_err:
+  X e_raw get res_use error
+  X d_raw get res_use detail
+  X dd_raw get d_raw detail
+  R core.stringify res_use ->res_j
+  X msg0 (ite (eq dd_raw null) res_j dd_raw)
+  X msg1 (ite (eq msg0 null) res_j msg0)
+  R core.lower msg1 ->msg_l
+  R core.lower e_raw ->err_l
+
+  Set hit_dup null
+  Set hit_429a null
+  Set hit_429b null
+  Set hit_429c null
+  Set hit_403a null
+  Set hit_403b null
+  Set hit_403c null
+  Set hit_403d null
+  Set hit_402a null
+  Set hit_402b null
+  Set hit_402c null
+  Set hit_402d null
+  Set hit_5xx null
+  Set hit_timeout null
+  X hit_dup core.contains msg_l "duplicate content"
+  X hit_429a core.contains err_l "429"
+  X hit_429b core.contains msg_l "rate limit"
+  X hit_429c core.contains msg_l "too many requests"
+  X hit_403a core.contains err_l "403"
+  X hit_403b core.contains msg_l "forbidden"
+  X hit_403c core.contains msg_l "not allowed"
+  X hit_403d core.contains msg_l "not permitted"
+  X hit_402a core.contains msg_l "requires more credits"
+  X hit_402b core.contains msg_l "\"code\":402"
+  X hit_402c core.contains msg_l "insufficient credits"
+  X hit_402d core.contains err_l "402"
+  X hit_5xx core.contains err_l "post_http_5"
+  X hit_timeout core.contains msg_l "timeout"
+
+  If hit_dup ->L_duplicate ->L_check_rate
+
+L_check_rate:
+  Set hit_rate null
+  X hit_rate or hit_429a hit_429b
+  X hit_rate or hit_rate hit_429c
+  If hit_rate ->L_rate ->L_check_auth
+
+L_check_auth:
+  Set hit_auth null
+  X hit_auth or hit_403a hit_403b
+  X hit_auth or hit_auth hit_403c
+  X hit_auth or hit_auth hit_403d
+  If hit_auth ->L_auth ->L_check_credit
+
+L_check_credit:
+  Set hit_credit null
+  X hit_credit or hit_402a hit_402b
+  X hit_credit or hit_credit hit_402c
+  X hit_credit or hit_credit hit_402d
+  If hit_credit ->L_credit ->L_check_transient
+
+L_check_transient:
+  Set hit_trans null
+  X hit_trans or hit_5xx hit_timeout
+  If hit_trans ->L_transient ->L_other
+
+L_duplicate:
+  Call L_emit_duplicate ->out
+  J out
+
+L_rate:
+  Call L_emit_rate ->out
+  J out
+
+L_auth:
+  Call L_emit_auth ->out
+  J out
+
+L_credit:
+  Call L_emit_credit ->out
+  J out
+
+L_transient:
+  Call L_emit_transient ->out
+  J out
+
+L_other:
+  Call L_emit_other ->out
+  J out
+
+L_emit_duplicate:
+  R core.parse "{}" ->out
+  R core.parse "\"category\"" ->k_cat
+  R core.parse "\"action\"" ->k_act
+  R core.parse "\"retryable\"" ->k_ret
+  R core.parse "\"reason\"" ->k_rsn
+  R core.parse "\"duplicate\"" ->v_cat
+  R core.parse "\"rewrite_and_retry\"" ->v_act
+  X v_ret eq 1 1
+  X out put out k_cat v_cat
+  X out put out k_act v_act
+  X out put out k_ret v_ret
+  X out put out k_rsn msg1
+  J out
+
+L_emit_rate:
+  R core.parse "{}" ->out
+  R core.parse "\"category\"" ->k_cat
+  R core.parse "\"action\"" ->k_act
+  R core.parse "\"retryable\"" ->k_ret
+  R core.parse "\"reason\"" ->k_rsn
+  R core.parse "\"rate_limit\"" ->v_cat
+  R core.parse "\"retry_later\"" ->v_act
+  X v_ret eq 1 1
+  X out put out k_cat v_cat
+  X out put out k_act v_act
+  X out put out k_ret v_ret
+  X out put out k_rsn msg1
+  J out
+
+L_emit_auth:
+  R core.parse "{}" ->out
+  R core.parse "\"category\"" ->k_cat
+  R core.parse "\"action\"" ->k_act
+  R core.parse "\"retryable\"" ->k_ret
+  R core.parse "\"reason\"" ->k_rsn
+  R core.parse "\"not_authorized\"" ->v_cat
+  R core.parse "\"skip_target\"" ->v_act
+  X v_ret eq 1 0
+  X out put out k_cat v_cat
+  X out put out k_act v_act
+  X out put out k_ret v_ret
+  X out put out k_rsn msg1
+  J out
+
+L_emit_credit:
+  R core.parse "{}" ->out
+  R core.parse "\"category\"" ->k_cat
+  R core.parse "\"action\"" ->k_act
+  R core.parse "\"retryable\"" ->k_ret
+  R core.parse "\"reason\"" ->k_rsn
+  R core.parse "\"credit\"" ->v_cat
+  R core.parse "\"fallback_model\"" ->v_act
+  X v_ret eq 1 1
+  X out put out k_cat v_cat
+  X out put out k_act v_act
+  X out put out k_ret v_ret
+  X out put out k_rsn msg1
+  J out
+
+L_emit_transient:
+  R core.parse "{}" ->out
+  R core.parse "\"category\"" ->k_cat
+  R core.parse "\"action\"" ->k_act
+  R core.parse "\"retryable\"" ->k_ret
+  R core.parse "\"reason\"" ->k_rsn
+  R core.parse "\"transient\"" ->v_cat
+  R core.parse "\"retry_once\"" ->v_act
+  X v_ret eq 1 1
+  X out put out k_cat v_cat
+  X out put out k_act v_act
+  X out put out k_ret v_ret
+  X out put out k_rsn msg1
+  J out
+
+L_emit_other:
+  R core.parse "{}" ->out
+  R core.parse "\"category\"" ->k_cat
+  R core.parse "\"action\"" ->k_act
+  R core.parse "\"retryable\"" ->k_ret
+  R core.parse "\"reason\"" ->k_rsn
+  R core.parse "\"other\"" ->v_cat
+  R core.parse "\"fail\"" ->v_act
+  X v_ret eq 1 0
+  X out put out k_cat v_cat
+  X out put out k_act v_act
+  X out put out k_ret v_ret
+  X out put out k_rsn msg1
+  J out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

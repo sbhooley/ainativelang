@@ -1,0 +1,67 @@
+# modules/llm/promoter_reply_prompt_bundle.ainl
+# Shared reply prompt bundle for promoter payload builders.
+#
+# Frame in:
+#   prb_mode  "tweet" | "thread" (default: "tweet")
+#   prb_text  source text for user prompt body
+#
+# Return object:
+#   reply_system_prompt, reply_user_prompt, reply_fallback_text
+
+include "modules/common/promoter_persona_prompt.ainl" as ppp
+
+LENTRY:
+  X mode_use (ite (eq prb_mode null) "tweet" prb_mode)
+  X txt_use (ite (eq prb_text null) "" prb_text)
+  R core.env "PROMOTER_CANONICAL_GITHUB_URL" "https://github.com/sbhooley/ainativelang" ->gh
+
+  R core.echo "reply" ->ppp_mode
+  Call ppp/ENTRY ->reply_persona
+  Set has_persona null
+  X has_persona ne reply_persona ""
+
+  Set is_thread null
+  X is_thread eq mode_use "thread"
+  If is_thread ->L_mode_thread ->L_mode_tweet
+
+L_mode_tweet:
+  R core.concat "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural. Max ~260 chars of guidance for the reply text itself.\n\nWhen you mention the GitHub repository, use this exact URL only (https): " gh ->rs0
+  R core.concat rs0 ". Do not use github.com/ainativelang/ainl or any other path." ->rs_base
+  R core.concat "Tweet:\n" txt_use ->ru0
+  R core.concat ru0 "\n\nDraft a helpful, expert reply from Apollo." ->ru_base
+  R core.concat "If you are standardizing agent workflows, AINL compiles graphs to a deterministic runtime (open graphs on GitHub: " gh ->rf0
+  R core.concat rf0 "). Happy to compare notes on OpenClaw-style orchestration." ->rf_base
+  R core.concat rs_base "\n\n" ->rs1
+  R core.concat rs1 reply_persona ->rs_with_persona
+  X reply_system_prompt (ite has_persona rs_with_persona rs_base)
+  R core.parse "{}" ->out
+  R core.parse "\"reply_system_prompt\"" ->k_rsp
+  R core.parse "\"reply_user_prompt\"" ->k_rup
+  R core.parse "\"reply_fallback_text\"" ->k_rfp
+  X out put out k_rsp reply_system_prompt
+  X out put out k_rup ru_base
+  X out put out k_rfp rf_base
+  J out
+
+L_mode_thread:
+  R core.echo "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural." ->rs_base
+  R core.concat "Thread so far:\n" txt_use ->ru1
+  R core.concat ru1 "\n\nDraft one concise reply as Apollo." ->ru_base
+  R core.concat "Thanks for the thread - AINL graphs are deterministic and bridge-friendly. More: " gh ->rf_base
+  R core.concat rs_base "\n\n" ->rs1
+  R core.concat rs1 reply_persona ->rs_with_persona
+  X reply_system_prompt (ite has_persona rs_with_persona rs_base)
+
+  R core.parse "{}" ->out
+  R core.parse "\"reply_system_prompt\"" ->k_rsp
+  R core.parse "\"reply_user_prompt\"" ->k_rup
+  R core.parse "\"reply_fallback_text\"" ->k_rfp
+  X out put out k_rsp reply_system_prompt
+  X out put out k_rup ru_base
+  X out put out k_rfp rf_base
+  J out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"
