@@ -47,18 +47,16 @@ L3a:
   Set memory_kind "workflow.context_injection_snapshot"
   Set memory_record_id prev_rid
   Call accmem/LACCESS_READ ->_
-  # Continue with the same allocation + selection logic as the no-snapshot path.
-  R core env "AINL_STARTUP_CONTEXT_TOKEN_MIN" 200 ->tokenMin
-  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 2000 ->tokenMax
-  X raw (mul tokenCap 0.1)
+  # Use same low allocation as no-snapshot path (ensure budget stays low even with snapshot).
+  R core env "AINL_STARTUP_CONTEXT_TOKEN_MIN" 100 ->tokenMin
+  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 150 ->tokenMax
+  # Use fixed 5% allocation (avoid env-read instability)
+  Set pct 0.05
+  X raw (mul tokenCap pct)
   X tokenCap (core.clamp raw tokenMin tokenMax)
 
-  # Optional: build candidate lines from embedding top-k (when real vectors are enabled).
-  R core env "AINL_STARTUP_USE_EMBEDDINGS" "0" ->embFlag
-  R core env "AINL_EMBEDDING_MODE" "stub" ->embMode
-  X embOn (or (eq embFlag "1") (eq embFlag "true"))
-  X embReal (ne embMode "stub")
-  X useEmb (and embOn embReal)
+  # Force filesystem only; embeddings bridge not ready.
+  Set useEmb false
   Call L3b_prepare_allLines ->_
 
   X totalLines (core.len allLines)
@@ -69,18 +67,16 @@ L3a:
   Loop allLines line ->L4 ->L7
 
 L3b:
-  # Allocate tokens: 10% of remaining, then clamp (env-tunable).
-  R core env "AINL_STARTUP_CONTEXT_TOKEN_MIN" 200 ->tokenMin
-  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 2000 ->tokenMax
-  X raw (mul tokenCap 0.1)
+  # Allocate tokens: 5% of remaining, then clamp (env-tunable).
+  R core env "AINL_STARTUP_CONTEXT_TOKEN_MIN" 100 ->tokenMin
+  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 150 ->tokenMax
+  # Use fixed 5% allocation (avoid env-read instability)
+  Set pct 0.05
+  X raw (mul tokenCap pct)
   X tokenCap (core.clamp raw tokenMin tokenMax)
 
-  # Optional: build candidate lines from embedding top-k (when real vectors are enabled).
-  R core env "AINL_STARTUP_USE_EMBEDDINGS" "0" ->embFlag
-  R core env "AINL_EMBEDDING_MODE" "stub" ->embMode
-  X embOn (or (eq embFlag "1") (eq embFlag "true"))
-  X embReal (ne embMode "stub")
-  X useEmb (and embOn embReal)
+  # Force filesystem only; embeddings bridge not ready.
+  Set useEmb false
   Call L3b_prepare_allLines ->_
 
   X totalLines (core.len allLines)
@@ -147,7 +143,7 @@ L5:
   X kw7 (core.contains lower "setting")
   X kw8 (core.contains lower "cron")
   X hasKeyword (or kw1 (or kw2 (or kw3 (or kw4 (or kw5 (or kw6 (or kw7 kw8)))))))
-  X isLong (gt lineLen 30)
+  X isLong (gt lineLen 60)
   X keyLine (and isLong hasKeyword)
   X bulletLine (and hasBullet isLong)
   X keep (or isTerse (or keyLine bulletLine))

@@ -1,0 +1,19 @@
+{
+  "env": {
+    "vars": {
+      "OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT": "1",
+      "AINL_STARTUP_CONTEXT_TOKEN_MIN": "100",
+      "AINL_STARTUP_CONTEXT_TOKEN_MAX": "100",
+      "AINL_STARTUP_USE_EMBEDDINGS": "1",
+      "AINL_EMBEDDING_MODE": "lite",
+      "AINL_EXECUTION_MODE": "graph-preferred"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "compaction": {
+        "reserveTokens": 30000
+      }
+    }
+  }
+}
