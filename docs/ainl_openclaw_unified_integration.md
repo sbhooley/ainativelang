@@ -151,9 +151,73 @@ If your CLI uses `--session` instead of `--session-key`, substitute per `opencla
 3. **Cutover**: Disable duplicate Node cron entries when wrappers prove stable; retain Node for only-if-needed endpoints (e.g. heavy ETL) behind feature flags.
 4. **Strict compile**: These wrappers are built with `strict_mode=False`. If you later enable strict mode, add matching `ADAPTER_EFFECT` entries in `tooling/effect_analysis.py` for each `adapter.VERB` key.
 
+## Token-aware startup context optimization
+
+The **token_aware_startup_context** wrapper automatically generates a compact `session_context.md` for OpenClaw session bootstrapping, reducing token usage on every new session.
+
+### What it does
+
+- Reads your full `MEMORY.md`
+- Filters for high-signal lines (decisions, preferences, todos, lessons, settings)
+- Respects a configurable token budget (default: 10% of remaining daily budget, clamped 200–2000 tokens)
+- Writes optimized context to `.openclaw/bootstrap/session_context.md`
+- Persists generation stats to AINL memory and cache
+
+This automation replaces manual curation of `session_context.md`, making _you_ (the AI agent) the maintainer. With a target of 200–500 tokens, it reduces session bootstrap tokens from ~3,200 (full MEMORY.md) to well under 1,000, preventing context max-outs during high-frequency usage.
+
+### Installation (v1.2.8+)
+
+1. **Copy the wrapper** to the bridge wrappers directory:
+   ```bash
+   cp AI_Native_Lang/intelligence/token_aware_startup_context.lang AI_Native_Lang/openclaw/bridge/wrappers/token_aware_startup_context.ainl
+   ```
+
+2. **Register the wrapper** in `openclaw/bridge/run_wrapper_ainl.py`:
+   Add the following entry to the `WRAPPERS` dictionary:
+   ```python
+   "token-aware-startup": _BRIDGE_DIR / "wrappers" / "token_aware_startup_context.ainl",
+   ```
+
+3. **Configure token budget (optional)**:
+   Set environment variables to tune the budget:
+   - `AINL_STARTUP_CONTEXT_TOKEN_MIN` (default: 200)
+   - `AINL_STARTUP_CONTEXT_TOKEN_MAX` (default: 2000)
+   - `AINL_STARTUP_USE_EMBEDDINGS` (default: 0) – enable if embedding_memory is indexed
+
+4. **Add a cron job** to run it periodically (e.g., every 15 minutes):
+   ```bash
+   openclaw cron add \
+     --name "Token-Aware Startup Context" \
+     --cron "*/15 * * * *" \
+     --session-key "agent:default:ainl-advocate" \
+     --message "Run: cd /path/to/AI_Native_Lang && python3 openclaw/bridge/run_wrapper_ainl.py token-aware-startup" \
+     --description "Generates optimized session_context.md for faster boot"
+   ```
+   Adjust the schedule as needed; every 15 min keeps context fresh without overloading.
+
+5. **Test** (dry-run still writes due to fs adapter; test on a non-critical workspace first):
+   ```bash
+   python3 openclaw/bridge/run_wrapper_ainl.py token-aware-startup --dry-run
+   ```
+   Inspect `.openclaw/bootstrap/session_context.md` to verify content size (roughly 200–500 lines for 200–500 tokens).
+
+### Verification
+
+- Check the file modification time updates with each run.
+- Compare token counts: `openclaw token usage` or inspect `session_context.md` line count.
+- Ensure your regular sessions now bootstrap with the smaller context (observe token count in `/status`).
+
+### Notes
+
+- The wrapper uses the `openclaw_monitor_registry()` adapters; no extra dependencies required.
+- The program respects the `AINL_FS_ROOT` environment (set automatically by the registry to your OpenClaw workspace) so it reads `MEMORY.md` and writes to the correct `.openclaw/bootstrap` path.
+- If `embedding_memory` is populated, the wrapper can optionally use semantic search to pick high-value lines by setting `AINL_STARTUP_USE_EMBEDDINGS=1` and configuring `EMBEDDING_MODE`.
+
+**See also:** Standalone documentation in `docs/openclaw/TOKEN_AWARE_STARTUP_CONTEXT.md`.
+
 ## Files touched in the repo
 
-- **Bridge / integration**: `openclaw/bridge/*` (runner, drift check, memory CLI, triggers), `scripts/run_wrapper_ainl.py` + `scripts/cron_drift_check.py` + `scripts/ainl_memory_append_cli.py` (shims), `scripts/wrappers/*.ainl`, `examples/openclaw_full_unification.ainl`, `openclaw/bridge/README.md`, [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](operations/UNIFIED_MONITORING_GUIDE.md) (unified monitoring hub), this doc.
+- **Bridge / integration**: `openclaw/bridge/*` (runner, drift check, memory CLI, triggers), `scripts/run_wrapper_ainl.py` + `scripts/cron_drift_check.py` + `scripts/ainl_memory_append_cli.py` (shims), `scripts/wrappers/*.ainl`, `examples/openclaw_full_unification.ainl`, `openclaw/bridge/README.md`, [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](operations/UNIFIED_MONITORING_GUIDE.md) (unified monitoring hub), this doc, **plus**: `openclaw/bridge/wrappers/token_aware_startup_context.ainl` (new wrapper).
 - **Adapters / modules**: `adapters/openclaw_memory.py`, `adapters/github.py`, `adapters/crm.py`, `adapters/openclaw_defaults.py`, `modules/openclaw/cron_*.ainl`.
 - **Updated**: `tooling/adapter_manifest.json` (adapter entries including `crm` notes).
 

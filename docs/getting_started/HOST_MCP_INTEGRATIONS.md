@@ -29,6 +29,6 @@ Older **`ainl-lang`** wheels may only expose **`install-openclaw`** / **`install
 
 ## Deep dives
 
-- **OpenClaw:** [`OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) — **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**. Cron/bridge (non-MCP): [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md).
+- **OpenClaw:** [`OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) — **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**. Cron/bridge (non-MCP): [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md). **Unified bridge & workspace automation:** [`../ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md).
 - **ZeroClaw:** [`ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md) — **`~/.zeroclaw/mcp.json`**, optional **`[ainl_bridge]`** when run from a git checkout.
 - **Operators / MCP templates:** [`operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](../operations/EXTERNAL_ORCHESTRATION_GUIDE.md).
