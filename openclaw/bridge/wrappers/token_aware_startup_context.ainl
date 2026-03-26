@@ -9,6 +9,7 @@
 # Includes before S so module labels merge into the prelude.
 include "modules/common/generic_memory.ainl" as genmem
 include "modules/common/access_aware_memory.ainl" as accmem
+include "modules/common/vector_retrieval.ainl" as vec
 # S line is only `<adapter> cron "<expr>"` — extra tokens break the schedule (path becomes literal "cron").
 S core cron "*/5 * * * *"
 
@@ -55,8 +56,12 @@ L3a:
   X raw (mul tokenCap pct)
   X tokenCap (core.clamp raw tokenMin tokenMax)
 
-  # Force filesystem only; embeddings bridge not ready.
-  Set useEmb false
+  # Optional: build candidate lines from embedding top-k (when enabled + non-stub mode).
+  R core env "AINL_STARTUP_USE_EMBEDDINGS" "0" ->embFlag
+  R core env "AINL_EMBEDDING_MODE" "stub" ->embMode
+  X embOn (or (eq embFlag "1") (eq embFlag "true"))
+  X embReal (ne embMode "stub")
+  X useEmb (and embOn embReal)
   Call L3b_prepare_allLines ->_
 
   X totalLines (core.len allLines)
@@ -75,8 +80,12 @@ L3b:
   X raw (mul tokenCap pct)
   X tokenCap (core.clamp raw tokenMin tokenMax)
 
-  # Force filesystem only; embeddings bridge not ready.
-  Set useEmb false
+  # Optional: build candidate lines from embedding top-k (when enabled + non-stub mode).
+  R core env "AINL_STARTUP_USE_EMBEDDINGS" "0" ->embFlag
+  R core env "AINL_EMBEDDING_MODE" "stub" ->embMode
+  X embOn (or (eq embFlag "1") (eq embFlag "true"))
+  X embReal (ne embMode "stub")
+  X useEmb (and embOn embReal)
   Call L3b_prepare_allLines ->_
 
   X totalLines (core.len allLines)
@@ -95,21 +104,12 @@ L3b_prepare_fs:
   J 1
 
 L3b_prepare_emb:
-  # Search top-k workflow.session_summary memory payload snapshots.
-  R bridge embedding_workflow_search "session startup decisions preferences todos settings" 5 ->embHits
-  X hitsLen (core.len embHits)
+  Set vec_query "session startup decisions preferences todos settings"
+  Set vec_k 5
+  Call vec/VEC_LINES ->allLines
+  X hitsLen (core.len allLines)
   X noHits (eq hitsLen 0)
-  If noHits ->L3b_prepare_fs ->L3b_emb_build
-
-L3b_emb_build:
-  X allLines (arr)
-  Loop embHits hit ->L3b_emb_hit ->L3b_emb_after
-
-L3b_emb_hit:
-  # payload_snapshot.summary is stored by proactive_session_summarizer.
-  X snip (get hit "payload_snapshot.summary")
-  X trimmed (core.trim snip)
-  X allLines (push allLines trimmed)
+  If noHits ->L3b_prepare_fs ->L3b_emb_after
 
 L3b_emb_after:
   J 1

@@ -63,6 +63,7 @@ WRAPPERS = {
     "ttl-memory-tuner": _BRIDGE_DIR / "wrappers" / "ttl_memory_tuner.ainl",
     "embedding-memory-pilot": _BRIDGE_DIR / "wrappers" / "embedding_memory_pilot.ainl",
     "token-aware-startup": _BRIDGE_DIR / "wrappers" / "token_aware_startup_context.ainl",
+    "wasm-health-score": _BRIDGE_DIR / "wrappers" / "wasm_health_score.ainl",
     # "email-monitor": _BRIDGE_DIR / "wrappers" / "email_monitor.ainl",  # disabled: requires 'openclaw mail' plugin
 }
 

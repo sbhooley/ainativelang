@@ -57,6 +57,16 @@ Set on the process that runs `apollo-x-bot/gateway_server.py`:
 |----------|------|
 | `AINL_BRIDGE_REPORT_MAX_CHARS` | If set (>0), caps **`token_budget_report`** markdown length; overflow returns a short **budget exhausted** stub instead of a huge report |
 
+## Wrapper-level low-budget guard (bridge runner)
+
+The OpenClaw wrapper runner (`python3 openclaw/bridge/run_wrapper_ainl.py <name>`) can skip **noncritical** wrappers when rolling budgets are low (read from `MONITOR_CACHE_JSON.workflow.token_budget`).
+
+| Variable | Role |
+|----------|------|
+| `AINL_WRAPPER_MIN_DAILY_REMAINING` | Skip noncritical wrappers when `daily_remaining` falls below this (default `1000`) |
+| `AINL_WRAPPER_MIN_WEEKLY_REMAINING` | Skip noncritical wrappers when `weekly_remaining_tokens` falls below this (default `5000`) |
+| `AINL_WRAPPER_BUDGET_GUARDS_JSON` | Per-wrapper overrides / forced skips (JSON). Example: `{"weekly-token-trends":{"min_weekly":10000},"ttl-memory-tuner":{"skip":true}}` |
+
 ## Embedding pilot (index + search)
 
 | Variable | Role |
