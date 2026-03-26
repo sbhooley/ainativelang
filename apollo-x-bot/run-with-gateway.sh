@@ -31,7 +31,7 @@ else
   export PYTHONPATH="$ROOT:$PYTHONPATH"
 fi
 GWHOST="${PROMOTER_GATEWAY_HOST:-127.0.0.1}"
-GWPORT="${PROMOTER_GATEWAY_PORT:-17301}"
+GWPORT="${PROMOTER_GATEWAY_PORT:-17302}"
 export PROMOTER_STATE_PATH="${PROMOTER_STATE_PATH:-$ROOT/apollo-x-bot/data/promoter_state.sqlite}"
 # AINL memory adapter SQLite: record_decision.ainl (and any top-level memory.put). Optional access_aware_memory.ainl patterns also use this DB when wired from a graph.
 export AINL_MEMORY_DB="${AINL_MEMORY_DB:-$ROOT/apollo-x-bot/data/promoter_memory.sqlite}"

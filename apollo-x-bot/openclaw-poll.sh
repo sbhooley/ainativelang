@@ -7,7 +7,7 @@
 # File contents example:
 #   export X_BEARER_TOKEN=...
 #   export OPENAI_API_KEY=...
-#   export PROMOTER_GATEWAY_URL=http://127.0.0.1:17301
+#   export PROMOTER_GATEWAY_URL=http://127.0.0.1:17302
 #   export PROMOTER_DRY_RUN=0
 #   export PYTHON=/path/to/venv/bin/python
 set -euo pipefail
@@ -25,8 +25,15 @@ if [[ -f "$ENV_FILE" ]]; then
   set -a && source "$ENV_FILE" && set +a
 fi
 
-PY="${PYTHON:-python3}"
-GATEWAY="${PROMOTER_GATEWAY_URL:-http://127.0.0.1:17301}"
+# Prefer explicit PYTHON override, then common local runtimes.
+if [[ -n "${PYTHON:-}" ]]; then
+  PY="$PYTHON"
+elif [[ -x "/data/.openclaw/workspace/ainativelang/.venv-ainl/bin/python3" ]]; then
+  PY="/data/.openclaw/workspace/ainativelang/.venv-ainl/bin/python3"
+else
+  PY="python3"
+fi
+GATEWAY="${PROMOTER_GATEWAY_URL:-http://127.0.0.1:17302}"
 GATEWAY="${GATEWAY%/}"
 
 export PROMOTER_STATE_PATH="${PROMOTER_STATE_PATH:-$ROOT/apollo-x-bot/data/promoter_state.sqlite}"

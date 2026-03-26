@@ -12,8 +12,15 @@ if [[ -f "$ENV_FILE" ]]; then
   set -a && source "$ENV_FILE" && set +a
 fi
 
-PY="${PYTHON:-python3}"
-GATEWAY="${PROMOTER_GATEWAY_URL:-http://127.0.0.1:17301}"
+# Prefer explicit PYTHON override, then common local runtimes.
+if [[ -n "${PYTHON:-}" ]]; then
+  PY="$PYTHON"
+elif [[ -x "/data/.openclaw/workspace/ainativelang/.venv-ainl/bin/python3" ]]; then
+  PY="/data/.openclaw/workspace/ainativelang/.venv-ainl/bin/python3"
+else
+  PY="python3"
+fi
+GATEWAY="${PROMOTER_GATEWAY_URL:-http://127.0.0.1:17302}"
 GATEWAY="${GATEWAY%/}"
 HTTP_TIMEOUT_S="${AINL_HTTP_TIMEOUT_S:-120}"
 

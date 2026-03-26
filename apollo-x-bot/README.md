@@ -143,7 +143,7 @@ You can put variables in **`apollo-x-bot/.env`** (`KEY=value` per line). The gat
 | `PROMOTER_PROMPTS_DIR` | Directory containing `classify_system.txt`, `classify_instruction.txt`, `reply_system.txt`, `daily_post_system.txt`, `daily_post_user_suffix.txt` (default: `apollo-x-bot/prompts` next to `gateway_server.py`). |
 | `PROMOTER_DAILY_TOPIC` / `PROMOTER_DAILY_LINK` | Optional defaults for the daily-post chain in **`promoter_daily_post_payload.ainl`** (same defaults as the previous hard-coded JSON in the graph). |
 | `PROMOTER_GATEWAY_HOST` | Default `127.0.0.1`. |
-| `PROMOTER_GATEWAY_PORT` | Default `17301`. |
+| `PROMOTER_GATEWAY_PORT` | Default `17302`. |
 | `PROMOTER_GATEWAY_DEBUG` | Set to `1` to print `[apollo-x-gateway] …` lines on **stderr** (tweet counts, `n_score_ge_8`, skip reasons). |
 | `PROMOTER_DASHBOARD_ENABLED` | Default **on** (`1`): serve GET dashboard + JSON stats. Set **`0`** to disable when the gateway is reachable beyond localhost. |
 | `PROMOTER_MONITOR_ENABLED` | Growth pack: `1` enables optional **`monitor-poll.sh`** / `follow_manager.ainl` (default `0`). |
@@ -222,7 +222,7 @@ python3 apollo-x-bot/gateway_server.py
 **2. Run the graph** (separate terminal) with one `--bridge-endpoint` per key:
 
 ```bash
-BASE=http://127.0.0.1:17301
+BASE=http://127.0.0.1:17302
 python3 -m cli.main run apollo-x-bot/ainl-x-promoter.ainl --strict --label _poll \
   --enable-adapter bridge \
   --enable-adapter memory \

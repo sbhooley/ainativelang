@@ -27,7 +27,7 @@ Create a file **outside git**, e.g. `~/.openclaw/apollo-x-promoter.env`:
 
 ```bash
 export PYTHON=/path/to/venv/bin/python
-export PROMOTER_GATEWAY_URL=http://127.0.0.1:17301
+export PROMOTER_GATEWAY_URL=http://127.0.0.1:17302
 export PROMOTER_DRY_RUN=0
 # Search (app): Bearer is enough for GET /2/tweets/search/recent
 export X_BEARER_TOKEN=...
@@ -66,7 +66,7 @@ The gateway must be up **before** each poll. Example (adjust paths):
 cd /path/to/AI_Native_Lang
 set -a && source ~/.openclaw/apollo-x-promoter.env && set +a
 export PROMOTER_GATEWAY_HOST=127.0.0.1
-export PROMOTER_GATEWAY_PORT=17301
+export PROMOTER_GATEWAY_PORT=17302
 exec python3 apollo-x-bot/gateway_server.py
 ```
 

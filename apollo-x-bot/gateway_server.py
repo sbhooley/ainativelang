@@ -1078,6 +1078,89 @@ def _x_post_original(text: str) -> Dict[str, Any]:
     return {"ok": True, "tweet_id": tid, "raw": obj}
 
 
+def _x_error_message(post_result: Dict[str, Any]) -> str:
+    """Best-effort extraction of human-readable X API error text."""
+    if not isinstance(post_result, dict):
+        return ""
+    detail = post_result.get("detail")
+    if isinstance(detail, dict):
+        msg = detail.get("detail")
+        if isinstance(msg, str) and msg.strip():
+            return msg.strip()
+        errs = detail.get("errors")
+        if isinstance(errs, list):
+            parts: List[str] = []
+            for e in errs:
+                if not isinstance(e, dict):
+                    continue
+                em = e.get("message")
+                if isinstance(em, str) and em.strip():
+                    parts.append(em.strip())
+            if parts:
+                return " | ".join(parts)
+    if isinstance(detail, str):
+        return detail.strip()
+    return ""
+
+
+def _is_x_duplicate_content_error(post_result: Dict[str, Any]) -> bool:
+    msg = _x_error_message(post_result).lower()
+    if not msg:
+        return False
+    return ("duplicate content" in msg) or ("duplicate" in msg and "tweet" in msg)
+
+
+def _refactor_daily_text_for_duplicate(
+    *,
+    topic: str,
+    link: str,
+    previous_text: str,
+    attempt: int,
+    state: Optional["PromoterState"] = None,
+) -> str:
+    """Rewrite daily text when X rejects duplicate content."""
+    prior = str(previous_text or "").strip()
+    if not prior:
+        prior = f"{topic} — deterministic agent graphs as code. {link}"
+    # Deterministic fallback if LLM is unavailable or fails.
+    fallback = _normalize_promoter_github_links(
+        f"{topic} update #{attempt + 1}: new angle on deterministic AINL workflows. {link} "
+        f"(fresh phrasing {int(time.time()) % 100000})"
+    )
+    fallback = re.sub(r"\s+", " ", fallback).strip()[:280]
+    try:
+        if os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY"):
+            rewritten = _openai_chat(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You rewrite X posts to avoid duplicate-content rejection. "
+                            "Output ONE unique post under 260 chars, preserving intent and the exact link."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Original post rejected as duplicate:\n{prior}\n\n"
+                            f"Topic: {topic}\n"
+                            f"Required link (must appear exactly): {link}\n"
+                            "Rewrite with a materially different opening, structure, and wording."
+                        ),
+                    },
+                ],
+                state=state,
+                usage_context="daily_original_post_refactor",
+            ).strip()
+            rewritten = _normalize_promoter_github_links(rewritten)
+            rewritten = re.sub(r"\s+", " ", rewritten).strip()[:280]
+            if rewritten and rewritten.lower() != prior.lower():
+                return rewritten
+    except Exception:
+        pass
+    return fallback
+
+
 # -----------------------------------------------------------------------------
 # Growth pack helpers (KV lists, X follow/like/me, conversation fetch)
 # -----------------------------------------------------------------------------
@@ -2475,8 +2558,57 @@ def handle_kv_set(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
     if raw is None:
         state.kv_delete(key)
     else:
-        state.kv_set(key, str(raw))
+        if isinstance(raw, (dict, list, bool, int, float)):
+            try:
+                state.kv_set(key, json.dumps(raw, ensure_ascii=False, allow_nan=False))
+            except Exception:
+                state.kv_set(key, str(raw))
+        else:
+            state.kv_set(key, str(raw))
     return {"ok": True}
+
+
+def handle_promoter_policy_cleanup(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    now = time.time()
+    cleared: List[str] = []
+    kept: List[str] = []
+    scanned = 0
+    with state._conn() as c:
+        rows = c.execute(
+            """
+            SELECT k, v FROM promoter_kv
+            WHERE k = 'promoter_daily_block_flag'
+               OR k = 'promoter_daily_fallback_model_flag'
+               OR k = 'promoter_reply_fallback_model_flag'
+               OR k LIKE 'promoter_reply_skip_target_%'
+            """
+        ).fetchall()
+        scanned = len(rows)
+        for r in rows:
+            k = str(r[0] or "")
+            raw = str(r[1] or "")
+            s = raw.strip()
+            if not s:
+                c.execute("DELETE FROM promoter_kv WHERE k = ?", (k,))
+                cleared.append(k)
+                continue
+            until = _policy_until_ts(s)
+            is_legacy_block = (k == "promoter_daily_block_flag" and s == "1")
+            should_clear = bool(is_legacy_block or until is None or float(until) <= now)
+            if should_clear:
+                c.execute("DELETE FROM promoter_kv WHERE k = ?", (k,))
+                cleared.append(k)
+            else:
+                kept.append(k)
+    out = {
+        "ok": True,
+        "scanned": int(scanned),
+        "cleared": len(cleared),
+        "kept": len(kept),
+        "cleared_keys": cleared[:80],
+    }
+    state.audit("policy_flags_cleanup", {"scanned": int(scanned), "cleared": len(cleared), "kept": len(kept)})
+    return out
 
 
 def handle_maybe_daily(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
@@ -2550,19 +2682,53 @@ def handle_maybe_daily(body: Dict[str, Any], state: PromoterState) -> Dict[str, 
             "original_posts_cap": max_posts,
         }
 
-    post = _x_post_original(text[:280])
+    attempt_cap = max(0, _env_int("PROMOTER_DAILY_DUPLICATE_REWRITE_ATTEMPTS", 2))
+    text_try = text[:280]
+    post = _x_post_original(text_try)
+    attempts = 0
+    while (not post.get("ok")) and _is_x_duplicate_content_error(post) and attempts < attempt_cap:
+        err_msg = _x_error_message(post)
+        state.audit(
+            "daily_post_retry_duplicate",
+            {
+                "attempt": attempts + 1,
+                "max_attempts": attempt_cap,
+                "reason": err_msg,
+                "prior_text": text_try,
+            },
+        )
+        _gw_debug(
+            f"maybe_daily duplicate_content_retry attempt={attempts + 1}/{attempt_cap} msg={err_msg!r}"
+        )
+        text_try = _refactor_daily_text_for_duplicate(
+            topic=topic,
+            link=link,
+            previous_text=text_try,
+            attempt=attempts,
+            state=state,
+        )[:280]
+        attempts += 1
+        post = _x_post_original(text_try)
     if not post.get("ok"):
         _gw_debug(f"maybe_daily post_failed detail={post!r}")
-        return {"ok": False, "action": "daily_failed", "detail": post}
+        return {
+            "ok": False,
+            "action": "daily_failed",
+            "detail": post,
+            "attempted_rewrites": attempts,
+            "x_error_message": _x_error_message(post),
+        }
     tw_id = str(post.get("tweet_id") or "").strip()
     if tw_id:
         state.append_original_post_log(tw_id)
-    state.audit("daily_post", {"tweet_id": post.get("tweet_id")})
+    state.audit("daily_post", {"tweet_id": post.get("tweet_id"), "rewrite_attempts": attempts})
     _gw_debug(f"maybe_daily posted tweet_id={post.get('tweet_id')!r}")
     return {
         "ok": True,
         "action": "daily_posted",
         "tweet_id": post.get("tweet_id"),
+        "text": text_try,
+        "rewrite_attempts": attempts,
         "original_posts_today": n + (1 if tw_id else 0),
         "original_posts_cap": max_posts,
     }
@@ -2806,20 +2972,40 @@ def handle_promoter_thread_continue(body: Dict[str, Any], state: PromoterState) 
         return {"ok": False, "error": "missing_reply_to_tweet_id"}
     if state.count_today_replies() >= max_day:
         return {"ok": True, "action": "skipped", "reason": "daily_reply_cap", "dry_run": dry}
-    reply_system = (_load_prompt_file("reply_system") or "").strip()
+    rs_raw = inner.get("reply_system_prompt")
+    if not (isinstance(rs_raw, str) and str(rs_raw).strip()):
+        rs_raw = body.get("reply_system_prompt")
+    reply_system = str(rs_raw).strip() if isinstance(rs_raw, str) and str(rs_raw).strip() else ""
+    custom_reply_system = bool(reply_system)
+    if not reply_system:
+        reply_system = (_load_prompt_file("reply_system") or "").strip()
     if not reply_system:
         reply_system = (
             "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural."
         )
     reply_system = _reply_system_with_canonical_link(reply_system)
-    reply_system = _apply_persona_instructions(reply_system, "reply")
+    if not custom_reply_system:
+        reply_system = _apply_persona_instructions(reply_system, "reply")
     transcript_bits: List[str] = []
     for t in tweets:
         if isinstance(t, dict):
             transcript_bits.append(str(t.get("text", "")))
     transcript = "\n".join(transcript_bits)[:2000]
+    ru_raw = inner.get("reply_user_prompt")
+    if not (isinstance(ru_raw, str) and str(ru_raw).strip()):
+        ru_raw = body.get("reply_user_prompt")
+    reply_user_prompt = (
+        str(ru_raw).strip()
+        if isinstance(ru_raw, str) and str(ru_raw).strip()
+        else f"Thread so far:\n{transcript}\n\nDraft one concise reply as Apollo."
+    )
+    rf_raw = inner.get("reply_fallback_text")
+    if not (isinstance(rf_raw, str) and str(rf_raw).strip()):
+        rf_raw = body.get("reply_fallback_text")
     reply_text = (
-        f"Thanks for the thread — AINL graphs are deterministic and bridge-friendly. More: {_canonical_github_repo_url()}"
+        str(rf_raw).strip()
+        if isinstance(rf_raw, str) and str(rf_raw).strip()
+        else f"Thanks for the thread — AINL graphs are deterministic and bridge-friendly. More: {_canonical_github_repo_url()}"
     )
     try:
         if os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY"):
@@ -2828,7 +3014,7 @@ def handle_promoter_thread_continue(body: Dict[str, Any], state: PromoterState) 
                     {"role": "system", "content": reply_system},
                     {
                         "role": "user",
-                        "content": f"Thread so far:\n{transcript}\n\nDraft one concise reply as Apollo.",
+                        "content": reply_user_prompt,
                     },
                 ],
                 state=state,
@@ -3042,6 +3228,36 @@ def _promoter_charts_bundle(state: PromoterState, counts_24h: Dict[str, int]) ->
     }
 
 
+def _policy_until_ts(raw_value: Optional[str]) -> Optional[int]:
+    s = str(raw_value or "").strip()
+    if not s:
+        return None
+    try:
+        parsed = json.loads(s)
+    except Exception:
+        return None
+    if isinstance(parsed, dict):
+        v = parsed.get("until_ts")
+    elif isinstance(parsed, (int, float)):
+        v = parsed
+    else:
+        return None
+    try:
+        ts = int(float(v))
+    except Exception:
+        return None
+    return ts if ts > 0 else None
+
+
+def _fmt_utc_unix(ts: Optional[int]) -> Optional[str]:
+    if ts is None:
+        return None
+    try:
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(float(ts)))
+    except Exception:
+        return None
+
+
 def _promoter_stats_bundle(state: PromoterState) -> Dict[str, Any]:
     now = time.time()
     since_24h = now - 86400.0
@@ -3078,6 +3294,35 @@ def _promoter_stats_bundle(state: PromoterState) -> Dict[str, Any]:
         if tok_row is None:
             pt, ct, tt, n = _llm_usage_sums_python_24h(state, since_24h)
             tok_row = (pt, ct, tt, n)
+        last_ok_row = c.execute(
+            "SELECT MAX(ts) FROM audit WHERE action = 'search_cursor_commit'"
+        ).fetchone()
+        last_poll_success_ts = float(last_ok_row[0]) if last_ok_row and last_ok_row[0] is not None else None
+        commits_last_hour_row = c.execute(
+            "SELECT COUNT(*) FROM audit WHERE ts >= ? AND action = 'search_cursor_commit'",
+            (now - 3600.0,),
+        ).fetchone()
+        poll_commits_last_hour = int(commits_last_hour_row[0]) if commits_last_hour_row else 0
+        recent_actions = [
+            str(r[0] or "")
+            for r in c.execute(
+                "SELECT action FROM audit WHERE action IN ('llm.classify_error','search_cursor_commit') ORDER BY id DESC LIMIT 50"
+            ).fetchall()
+        ]
+    classify_error_streak = 0
+    for a in recent_actions:
+        if a == "llm.classify_error":
+            classify_error_streak += 1
+            continue
+        if a == "search_cursor_commit":
+            break
+    run_health = {
+        "last_poll_success_ts": last_poll_success_ts,
+        "last_poll_success_utc": _fmt_utc_unix(int(last_poll_success_ts)) if last_poll_success_ts is not None else None,
+        "seconds_since_last_poll_success": int(max(0.0, now - last_poll_success_ts)) if last_poll_success_ts is not None else None,
+        "poll_commits_last_hour": int(poll_commits_last_hour),
+        "classify_error_streak": int(classify_error_streak),
+    }
     day = state.day_key()
     with state._conn() as c:
         dr = c.execute("SELECT count FROM daily_replies WHERE day = ?", (day,)).fetchone()
@@ -3086,6 +3331,129 @@ def _promoter_stats_bundle(state: PromoterState) -> Dict[str, Any]:
         dedupe_size = int(rt[0]) if rt else 0
     mem_p = _memory_db_path()
     charts = _promoter_charts_bundle(state, counts_24h)
+    with state._conn() as c:
+        daily_block_raw_row = c.execute(
+            "SELECT v FROM promoter_kv WHERE k = 'promoter_daily_block_flag'"
+        ).fetchone()
+        daily_fb_row = c.execute(
+            "SELECT v FROM promoter_kv WHERE k = 'promoter_daily_fallback_model_flag'"
+        ).fetchone()
+        reply_fb_row = c.execute(
+            "SELECT v FROM promoter_kv WHERE k = 'promoter_reply_fallback_model_flag'"
+        ).fetchone()
+        skip_rows = c.execute(
+            "SELECT k, v FROM promoter_kv WHERE k LIKE ?",
+            ("%_skip_target_%",),
+        ).fetchall()
+    daily_block_raw = str(daily_block_raw_row[0]) if daily_block_raw_row else ""
+    daily_block_set = bool(daily_block_raw.strip())
+    daily_block_until = _policy_until_ts(daily_block_raw)
+    daily_fb_until = _policy_until_ts(str(daily_fb_row[0]) if daily_fb_row else "")
+    reply_fb_until = _policy_until_ts(str(reply_fb_row[0]) if reply_fb_row else "")
+    active_skip_target_count = 0
+    for r in skip_rows:
+        try:
+            raw_v = str(r[1] or "")
+        except Exception:
+            raw_v = ""
+        uts = _policy_until_ts(raw_v)
+        if uts is not None and float(uts) > now:
+            active_skip_target_count += 1
+    policy_state = {
+        "daily_block_flag_set": daily_block_set,
+        "daily_block_until_ts": daily_block_until,
+        "daily_block_until_utc": _fmt_utc_unix(daily_block_until),
+        "daily_fallback_active": bool(daily_fb_until is not None and float(daily_fb_until) > now),
+        "daily_fallback_until_ts": daily_fb_until,
+        "daily_fallback_until_utc": _fmt_utc_unix(daily_fb_until),
+        "reply_fallback_active": bool(reply_fb_until is not None and float(reply_fb_until) > now),
+        "reply_fallback_until_ts": reply_fb_until,
+        "reply_fallback_until_utc": _fmt_utc_unix(reply_fb_until),
+        "active_skip_target_count": int(active_skip_target_count),
+        "skip_target_keys_scanned": int(len(skip_rows)),
+    }
+    policy_counts_24h = {
+        k: int(v)
+        for k, v in counts_24h.items()
+        if (
+            k.startswith("process_tweet_policy_")
+            or k.startswith("daily_post_rate_limit_")
+            or k.startswith("daily_post_deferred_")
+            or k.startswith("process_tweet_fallback_model_")
+            or k.startswith("daily_post_fallback_model_")
+            or k.startswith("policy_flags_cleanup")
+        )
+    }
+    policy_counts_7d = {
+        k: int(v)
+        for k, v in counts_7d.items()
+        if (
+            k.startswith("process_tweet_policy_")
+            or k.startswith("daily_post_rate_limit_")
+            or k.startswith("daily_post_deferred_")
+            or k.startswith("process_tweet_fallback_model_")
+            or k.startswith("daily_post_fallback_model_")
+            or k.startswith("policy_flags_cleanup")
+        )
+    }
+    mem_policy_24h, mem_policy_7d, mem_policy_day_7d = _memory_policy_action_counts(now)
+    for k, v in mem_policy_24h.items():
+        policy_counts_24h[k] = int(policy_counts_24h.get(k, 0)) + int(v)
+    for k, v in mem_policy_7d.items():
+        policy_counts_7d[k] = int(policy_counts_7d.get(k, 0)) + int(v)
+    policy_aliases = {
+        "process_tweet_policy_skip_target": "reply.skip_target",
+        "process_tweet_fallback_model_active": "reply.fallback_active",
+        "daily_post_fallback_model_active": "daily.fallback_active",
+        "daily_post_deferred_rate_limit": "daily.rate_limit_deferred",
+        "daily_post_rate_limit_cooldown_set": "daily.rate_limit_cooldown_set",
+        "policy_flags_cleanup": "ops.policy_cleanup",
+    }
+    policy_norm_24h: Dict[str, int] = {}
+    for k, v in policy_counts_24h.items():
+        nk = policy_aliases.get(k, k)
+        policy_norm_24h[nk] = int(policy_norm_24h.get(nk, 0)) + int(v)
+    policy_norm_7d: Dict[str, int] = {}
+    for k, v in policy_counts_7d.items():
+        nk = policy_aliases.get(k, k)
+        policy_norm_7d[nk] = int(policy_norm_7d.get(nk, 0)) + int(v)
+    llm_calls_avoided_24h = int(policy_norm_24h.get("reply.skip_target", 0)) + int(
+        policy_norm_24h.get("reply.fallback_active", 0)
+    ) + int(policy_norm_24h.get("daily.fallback_active", 0))
+    # When daily defer short-circuits execution, fallback-active action may be masked.
+    # Count one avoided LLM call if fallback flag is active but no daily fallback action was recorded.
+    if bool(policy_state.get("daily_fallback_active")) and int(policy_norm_24h.get("daily.fallback_active", 0)) <= 0:
+        llm_calls_avoided_24h += 1
+    x_calls_avoided_24h = int(policy_norm_24h.get("reply.skip_target", 0)) + int(
+        policy_norm_24h.get("daily.rate_limit_deferred", 0)
+    )
+    day_keys_7d: List[str] = []
+    llm_avoided_daily_7d: List[int] = []
+    x_avoided_daily_7d: List[int] = []
+    by_day_norm: Dict[str, Dict[str, int]] = {}
+    for d, amap in mem_policy_day_7d.items():
+        if not d:
+            continue
+        dn = by_day_norm.setdefault(d, {})
+        for a, n in amap.items():
+            an = policy_aliases.get(str(a), str(a))
+            dn[an] = int(dn.get(an, 0)) + int(n or 0)
+    for i in range(6, -1, -1):
+        d = time.strftime("%Y-%m-%d", time.gmtime(now - (i * 86400.0)))
+        day_keys_7d.append(d)
+        m = by_day_norm.get(d, {})
+        llm_avoided_daily_7d.append(
+            int(m.get("reply.skip_target", 0))
+            + int(m.get("reply.fallback_active", 0))
+            + int(m.get("daily.fallback_active", 0))
+        )
+        if (
+            i == 0
+            and bool(policy_state.get("daily_fallback_active"))
+            and int(m.get("daily.fallback_active", 0)) <= 0
+        ):
+            llm_avoided_daily_7d[-1] = int(llm_avoided_daily_7d[-1]) + 1
+        x_avoided_daily_7d.append(int(m.get("reply.skip_target", 0)) + int(m.get("daily.rate_limit_deferred", 0)))
     return {
         "ok": True,
         "generated_at_unix": now,
@@ -3100,6 +3468,21 @@ def _promoter_stats_bundle(state: PromoterState) -> Dict[str, Any]:
         "replied_tweet_dedupe_rows": dedupe_size,
         "audit_actions_last_24h": counts_24h,
         "audit_actions_last_7d": counts_7d,
+        "policy_actions_last_24h": policy_counts_24h,
+        "policy_actions_last_7d": policy_counts_7d,
+        "policy_actions_normalized_last_24h": policy_norm_24h,
+        "policy_actions_normalized_last_7d": policy_norm_7d,
+        "cost_avoidance_last_24h": {
+            "llm_calls_avoided": llm_calls_avoided_24h,
+            "x_calls_avoided_est": x_calls_avoided_24h,
+        },
+        "cost_avoidance_daily_7d": {
+            "days": day_keys_7d,
+            "llm_calls_avoided": llm_avoided_daily_7d,
+            "x_calls_avoided_est": x_avoided_daily_7d,
+        },
+        "run_health": run_health,
+        "policy_state": policy_state,
         "llm_usage_last_24h": {
             "prompt_tokens": int(float(tok_row[0] or 0)),
             "completion_tokens": int(float(tok_row[1] or 0)),
@@ -3204,6 +3587,67 @@ def _memory_decisions_tail(state: Optional[PromoterState], limit: int) -> List[D
     return out
 
 
+def _memory_policy_action_counts(now_ts: float) -> Tuple[Dict[str, int], Dict[str, int], Dict[str, Dict[str, int]]]:
+    """Policy action counts from memory records (24h, 7d, and per-day 7d)."""
+    p = _memory_db_path()
+    if not p.is_file():
+        return {}, {}, {}
+    since_24h = now_ts - 86400.0
+    since_7d = now_ts - 7.0 * 86400.0
+    out_24h: Dict[str, int] = {}
+    out_7d: Dict[str, int] = {}
+    out_day_7d: Dict[str, Dict[str, int]] = {}
+    try:
+        c = sqlite3.connect(str(p.expanduser().resolve()), timeout=5.0)
+        c.row_factory = sqlite3.Row
+        try:
+            rows = c.execute(
+                """
+                SELECT created_at, payload_json
+                FROM memory_records
+                WHERE namespace = 'ops' AND record_kind = 'promoter.decision'
+                ORDER BY id DESC LIMIT 2000
+                """
+            ).fetchall()
+        finally:
+            c.close()
+    except sqlite3.Error:
+        return {}, {}, {}
+    for r in rows:
+        created = str(r["created_at"] or "")
+        try:
+            dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            ts = float(dt.timestamp())
+        except Exception:
+            continue
+        if ts < since_7d:
+            continue
+        raw = str(r["payload_json"] or "{}")
+        try:
+            payload = json.loads(raw)
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        action = str(payload.get("action") or "").strip()
+        if not (
+            action.startswith("process_tweet_policy_")
+            or action.startswith("daily_post_rate_limit_")
+            or action.startswith("daily_post_deferred_")
+            or action.startswith("process_tweet_fallback_model_")
+            or action.startswith("daily_post_fallback_model_")
+            or action.startswith("policy_flags_cleanup")
+        ):
+            continue
+        out_7d[action] = int(out_7d.get(action, 0)) + 1
+        d = time.strftime("%Y-%m-%d", time.gmtime(ts))
+        by = out_day_7d.setdefault(d, {})
+        by[action] = int(by.get(action, 0)) + 1
+        if ts >= since_24h:
+            out_24h[action] = int(out_24h.get(action, 0)) + 1
+    return out_24h, out_7d, out_day_7d
+
+
 # Read-only HTML monitor: Chart.js from jsDelivr CDN; all data from same-origin JSON.
 _DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -3241,7 +3685,8 @@ a { color: var(--acc); }
 </head>
 <body>
 <h1>Apollo-X promoter</h1>
-<p class="mono" style="color:var(--muted);margin:0 0 1rem">Read-only · refreshes every 60s · JSON: <a href="promoter.stats">promoter.stats</a> · scoring audit: <a href="promoter.audit_tail?focus=scoring&amp;limit=80"><code>audit_tail?focus=scoring</code></a></p>
+<p class="mono" style="color:var(--muted);margin:0 0 0.4rem">Read-only · refreshes every 60s · JSON: <a href="promoter.stats">promoter.stats</a> · scoring audit: <a href="promoter.audit_tail?focus=scoring&amp;limit=80"><code>audit_tail?focus=scoring</code></a></p>
+<p class="mono" style="margin:0 0 1rem"><button id="btnPolicyCleanup" class="badge neutral" style="cursor:pointer;border:0">Clear stale policy flags</button> <span id="policyCleanupMsg" style="color:var(--muted)"></span></p>
 <div class="grid" id="cards"></div>
 <p id="chartJsWarn" class="mono" style="display:none;color:#e5756b;margin:0 0 0.75rem"></p>
 <h2 style="font-size:0.95rem; margin:1.2rem 0 0.5rem">Charts</h2>
@@ -3252,6 +3697,8 @@ a { color: var(--acc); }
 <div class="grid-charts split">
 <div class="card"><h2>LLM total_tokens / hour</h2><div class="chart-wrap tall"><canvas id="chartTokens" aria-label="LLM tokens per hour"></canvas></div></div>
 <div class="card"><h2>Audit mix (last 24h)</h2><div class="chart-wrap tall"><canvas id="chartPie" aria-label="Action mix doughnut"></canvas></div></div>
+<div class="card"><h2>Policy actions (24h)</h2><div class="chart-wrap tall"><canvas id="chartPolicy" aria-label="Policy action counts"></canvas></div></div>
+<div class="card"><h2>Cost avoidance trend (7d)</h2><div class="chart-wrap tall"><canvas id="chartAvoided" aria-label="Avoided calls trend"></canvas></div></div>
 </div>
 <div class="grid-charts">
 <div class="card"><h2>Replies recorded by UTC day</h2><p class="mono" style="color:var(--muted);font-size:0.75rem;margin:0 0 0.5rem">From <code>daily_replies</code> table (promoter reply counter)</p><div class="chart-wrap wide"><canvas id="chartDaily" aria-label="Daily reply counts"></canvas></div></div>
@@ -3270,7 +3717,7 @@ function apiUrl(rel){
   try { return new URL(rel, window.location.href).href; }
   catch(e){ return '/' + String(rel||'').replace(/^\\//,''); }
 }
-var _dashCharts = { hourly:null, tokens:null, pie:null, daily:null };
+var _dashCharts = { hourly:null, tokens:null, pie:null, daily:null, policy:null, avoided:null };
 function _destroyDashCharts(){
   Object.keys(_dashCharts).forEach(function(k){ if(_dashCharts[k]){ _dashCharts[k].destroy(); _dashCharts[k]=null; } });
 }
@@ -3412,6 +3859,79 @@ function renderCharts(st){
       }
     });
   }
+  var elPol = document.getElementById('chartPolicy');
+  var polMap = st.policy_actions_normalized_last_24h || st.policy_actions_last_24h || {};
+  var polKeys = Object.keys(polMap || {});
+  if(elPol && polKeys.length){
+    var polPairs = polKeys.map(function(k){ return { k:k, v:Number(polMap[k] || 0) }; });
+    polPairs.sort(function(a,b){ return b.v - a.v; });
+    var polLabels = polPairs.map(function(x){ return x.k; });
+    var polVals = polPairs.map(function(x){ return x.v; });
+    _dashCharts.policy = new Chart(elPol, {
+      type: 'bar',
+      data: {
+        labels: polLabels,
+        datasets: [{
+          label: 'policy action count (24h)',
+          data: polVals,
+          backgroundColor: 'rgba(163,139,255,0.78)',
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: Object.assign({ position:'bottom' }, commonLegend) },
+        scales: {
+          x: { beginAtZero:true, ticks:{ color:_chartMuted, callback:function(v){ return Number.isFinite(v) ? v : ''; } }, grid:{ color:_chartGrid } },
+          y: { ticks:{ color:_chartMuted, font:{ size:10 } }, grid:{ color:_chartGrid } }
+        }
+      }
+    });
+  }
+  var elAv = document.getElementById('chartAvoided');
+  var cav = st.cost_avoidance_daily_7d || {};
+  var cavDays = cav.days || [];
+  var cavLlm = cav.llm_calls_avoided || [];
+  var cavX = cav.x_calls_avoided_est || [];
+  if(elAv && cavDays.length && cavDays.length === cavLlm.length && cavDays.length === cavX.length){
+    _dashCharts.avoided = new Chart(elAv, {
+      type: 'line',
+      data: {
+        labels: cavDays,
+        datasets: [
+          {
+            label: 'llm_calls_avoided',
+            data: cavLlm,
+            borderColor: 'rgba(56,232,198,0.95)',
+            backgroundColor: 'rgba(56,232,198,0.12)',
+            fill: false,
+            tension: 0.2,
+            pointRadius: 2,
+          },
+          {
+            label: 'x_calls_avoided_est',
+            data: cavX,
+            borderColor: 'rgba(255,159,64,0.95)',
+            backgroundColor: 'rgba(255,159,64,0.12)',
+            fill: false,
+            tension: 0.2,
+            pointRadius: 2,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: Object.assign({ position:'bottom' }, commonLegend) },
+        scales: {
+          x: { ticks:{ color:_chartMuted }, grid:{ color:_chartGrid } },
+          y: { beginAtZero:true, ticks:{ color:_chartMuted, callback:function(v){ return Number.isFinite(v) ? v : ''; } }, grid:{ color:_chartGrid } }
+        }
+      }
+    });
+  }
 }
 function summarize(detail){
   if(!detail||typeof detail!=='object') return '';
@@ -3449,12 +3969,37 @@ async function load(){
       if(j && j.ok === false){ throw new Error((j.error||'error') + (j.detail ? ': '+j.detail : '')); }
       return j;
     }
+    async function jpost(rel, payload){
+      var u = apiUrl(rel);
+      var r = await fetch(u, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload || {})
+      });
+      if(!r.ok){ throw new Error(rel + ' HTTP '+r.status+' ('+u+')'); }
+      var j = await r.json();
+      if(j && j.ok === false){ throw new Error((j.error||'error') + (j.detail ? ': '+j.detail : '')); }
+      return j;
+    }
     var st = await jget('promoter.stats');
     var au = await jget('promoter.audit_tail?limit=60');
     var aus = await jget('promoter.audit_tail?limit=80&focus=scoring');
     var mem = await jget('promoter.memory_tail?limit=50');
     var u = st.llm_usage_last_24h || {};
+    var ps = st.policy_state || {};
+    var rh = st.run_health || {};
+    var ca = st.cost_avoidance_last_24h || {};
     var wh = (st.charts && st.charts.window_hours) ? ' · charts: last '+st.charts.window_hours+'h' : '';
+    var dailyBlockBadge = ps.daily_block_flag_set
+      ? '<span class="badge warn">daily block: ON</span>'
+      : '<span class="badge ok">daily block: off</span>';
+    var dailyFbBadge = ps.daily_fallback_active
+      ? '<span class="badge warn">daily fallback: ON</span>'
+      : '<span class="badge neutral">daily fallback: off</span>';
+    var replyFbBadge = ps.reply_fallback_active
+      ? '<span class="badge warn">reply fallback: ON</span>'
+      : '<span class="badge neutral">reply fallback: off</span>';
+    var skipBadge = '<span class="badge '+((Number(ps.active_skip_target_count||0) > 0) ? 'warn' : 'ok')+'">active skip-targets: '+esc(ps.active_skip_target_count||0)+'</span>';
     document.getElementById('cards').innerHTML =
       '<div class="card"><h2>LLM tokens (24h)</h2><div class="mono">total: '+esc(u.total_tokens)+'<br/>'+
       'prompt: '+esc(u.prompt_tokens)+' · completion: '+esc(u.completion_tokens)+'<br/>'+
@@ -3465,7 +4010,28 @@ async function load(){
       'dedupe rows: '+esc(st.replied_tweet_dedupe_rows)+'</div></div>'+
       '<div class="card"><h2>SQLite paths</h2><div class="mono">'+esc(st.promoter_state_db)+'<br/><br/>'+esc(st.memory_db_path)+'<br/>memory readable: '+esc(st.memory_db_readable)+'</div></div>'+
       '<div class="card"><h2>Audit actions (24h)</h2><div class="mono">'+
-      Object.keys(st.audit_actions_last_24h||{}).map(function(a){ return a+': '+(st.audit_actions_last_24h[a]); }).join('<br/>')+esc(wh)+'</div></div>';
+      Object.keys(st.audit_actions_last_24h||{}).map(function(a){ return a+': '+(st.audit_actions_last_24h[a]); }).join('<br/>')+esc(wh)+'</div></div>'+
+      '<div class="card"><h2>Run health</h2><div class="mono">'+
+      'last poll success: '+esc(rh.last_poll_success_utc || 'n/a')+'<br/>'+
+      'seconds since success: '+esc(rh.seconds_since_last_poll_success == null ? 'n/a' : rh.seconds_since_last_poll_success)+'<br/>'+
+      'poll commits last hour: '+esc(rh.poll_commits_last_hour || 0)+'<br/>'+
+      'classify error streak: '+esc(rh.classify_error_streak || 0)+
+      '</div></div>'+
+      '<div class="card"><h2>Policy actions (24h)</h2><div class="mono">'+
+      (Object.keys(st.policy_actions_normalized_last_24h||{}).length
+        ? Object.keys(st.policy_actions_normalized_last_24h||{}).map(function(a){ return a+': '+(st.policy_actions_normalized_last_24h[a]); }).join('<br/>')
+        : 'none recorded')+'</div></div>'+
+      '<div class="card"><h2>Cost avoidance (24h)</h2><div class="mono">'+
+      'llm calls avoided: '+esc(ca.llm_calls_avoided || 0)+'<br/>'+
+      'x calls avoided (est): '+esc(ca.x_calls_avoided_est || 0)+
+      '</div></div>'+
+      '<div class="card"><h2>Policy state (live)</h2><div class="mono">'+
+      dailyBlockBadge+' '+dailyFbBadge+' '+replyFbBadge+' '+skipBadge+'<br/>'+
+      'daily block until: '+esc(ps.daily_block_until_utc || 'n/a')+'<br/>'+
+      'daily fallback until: '+esc(ps.daily_fallback_until_utc || 'n/a')+'<br/>'+
+      'reply fallback until: '+esc(ps.reply_fallback_until_utc || 'n/a')+'<br/>'+
+      'skip-target keys scanned: '+esc(ps.skip_target_keys_scanned || 0)+
+      '</div></div>';
     renderCharts(st);
     var sb = document.querySelector('#audit_scoring tbody');
     sb.innerHTML = (aus.rows||[]).map(function(r){
@@ -3486,6 +4052,33 @@ async function load(){
     }).join('') : '<tr><td colspan="9" style="color:var(--muted)">No memory DB or no rows (run polls with --enable-adapter memory)</td></tr>';
   }catch(e){ document.getElementById('cards').innerHTML='<div class="card">Load error: '+esc(e)+'</div>'; _destroyDashCharts(); }
 }
+var _policyCleanupBusy = false;
+async function cleanupPolicyFlags(){
+  if(_policyCleanupBusy) return;
+  var ok = window.confirm('Clear stale policy flags now? This removes expired/legacy policy keys from promoter_kv.');
+  if(!ok) return;
+  var msg = document.getElementById('policyCleanupMsg');
+  _policyCleanupBusy = true;
+  if(msg) msg.textContent = 'running...';
+  try{
+    var r = await fetch(apiUrl('promoter.policy_cleanup'), {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:'{}'
+    });
+    if(!r.ok){ throw new Error('policy_cleanup HTTP '+r.status); }
+    var j = await r.json();
+    if(!j || j.ok === false){ throw new Error((j&&j.error)||'policy_cleanup failed'); }
+    if(msg) msg.textContent = 'done: cleared '+(j.cleared||0)+' / scanned '+(j.scanned||0);
+    await load();
+  }catch(e){
+    if(msg) msg.textContent = 'error: '+String(e);
+  }finally{
+    _policyCleanupBusy = false;
+  }
+}
+var _btnPolicyCleanup = document.getElementById('btnPolicyCleanup');
+if(_btnPolicyCleanup){ _btnPolicyCleanup.addEventListener('click', cleanupPolicyFlags); }
 load(); setInterval(load, 60000);
 </script>
 </body>
@@ -3524,6 +4117,7 @@ ROUTES = {
     "/v1/promoter.discovery_apply_batch": handle_promoter_discovery_apply_batch,
     "/v1/promoter.search_cursor_commit": handle_search_cursor_commit,
     "/v1/promoter.maybe_daily_post": handle_maybe_daily,
+    "/v1/promoter.policy_cleanup": handle_promoter_policy_cleanup,
     "/v1/x.follow": handle_x_follow,
     "/v1/x.search_users": handle_x_search_users,
     "/v1/x.like": handle_x_like,
@@ -3711,7 +4305,7 @@ def main() -> int:
     _load_local_dotenv()
     _log_auth_env_summary()
     host = os.environ.get("PROMOTER_GATEWAY_HOST", "127.0.0.1")
-    port = _env_int("PROMOTER_GATEWAY_PORT", 17301)
+    port = _env_int("PROMOTER_GATEWAY_PORT", 17302)
     state_path = _state_path()
     _STATE = PromoterState(state_path)
     try:
