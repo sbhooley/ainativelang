@@ -131,6 +131,7 @@ You can put variables in **`apollo-x-bot/.env`** (`KEY=value` per line). The gat
 | `PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC` | Minimum seconds between original posts (default **`10800`** = 3h) so polls spread posts across the day. |
 | `PROMOTER_DAILY_POST_TEMPERATURE` | Sampling temperature for **`llm.chat`** when `usage_context=daily_original_post` (graph default **`0.72`**; gateway default if temperature omitted). |
 | `PROMOTER_DAILY_SKIP_LLM` | If **`1`**, **`ainl-x-promoter.ainl`** skips **`llm.chat`** and sends only topic+link to **`maybe_daily_post`** (static body). |
+| `PROMOTER_PERSONA_PROFILE` | Personality profile for generated post/reply tone. `default` (current behavior) or `fity`. |
 | `PROMOTER_CODEBASE_ROOT` | Root directory for snippet files (default: repo root, parent of `apollo-x-bot`). |
 | `PROMOTER_DAILY_SNIPPET_FILES` | Comma-separated paths under codebase root (default `README.md,HOW_AINL_SAVES_MONEY.md,apollo-x-bot/README.md`). |
 | `PROMOTER_DAILY_SNIPPET_MAX_CHARS` | Max characters of snippets sent to the LLM (default **`12000`**). |
@@ -159,6 +160,13 @@ You can put variables in **`apollo-x-bot/.env`** (`KEY=value` per line). The gat
 | `PROMOTER_DISCOVERY_MIN_SCORE` | Integer **1–10** floor for discovery merge (default `7`). |
 
 Bind the gateway to **localhost** or protect it behind a reverse proxy; the executor bridge has no built-in auth.
+
+### Persona profiles
+
+Set `PROMOTER_PERSONA_PROFILE` in `.env` (or host env) to change style at runtime:
+
+- `default`: existing Apollo style.
+- `fity`: ultra-short, chill, motivational Web3-native voice with playful edge; ends with casual engagement questions; avoids using "Captain/Captains".
 
 ## Optional Apollo-X Growth Pack (v1.3)
 

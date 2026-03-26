@@ -39,6 +39,7 @@ Environment (production):
   PROMOTER_LLM_MAX_PROMPT_CHARS   If set, truncate chat messages to the last N characters (keeps most recent content).
   PROMOTER_LLM_MAX_COMPLETION_TOKENS  If set, pass max_tokens to the chat completions API.
   PROMOTER_LLM_EXTRA_BODY_JSON or OPENAI_CHAT_EXTRA_BODY_JSON  JSON object merged into the request body (provider-specific; e.g. sparse attention flags when supported).
+  PROMOTER_PERSONA_PROFILE   Style profile for generated daily posts/replies. Default: default; also supports: fity.
 
   Growth pack (v1.3, all default off):
   PROMOTER_MONITOR_ENABLED     If 1, monitor-poll graphs / x.follow list maintenance active
@@ -158,6 +159,51 @@ def _reply_system_with_canonical_link(base: str) -> str:
         "Do not use github.com/ainativelang/ainl or any other path."
     )
     return f"{base}{suffix}" if base else suffix.strip()
+
+
+def _promoter_persona_profile() -> str:
+    raw = (os.environ.get("PROMOTER_PERSONA_PROFILE") or "default").strip().lower()
+    if raw in ("", "default"):
+        return "default"
+    if raw == "fity":
+        return "fity"
+    return "default"
+
+
+def _promoter_persona_instructions(mode: str) -> str:
+    profile = _promoter_persona_profile()
+    if profile != "fity":
+        return ""
+    if mode == "post":
+        return (
+            "Persona profile: fity\n"
+            "- Ultra-punchy and short: 1-2 sentences max.\n"
+            "- Chill, relaxed, human motivational energy; playful edge; conversational and slightly imperfect.\n"
+            "- Strong crypto/Web3 conviction with casual everyday language.\n"
+            "- Start with a short observation or hot take; add a relatable human moment; add a playful/meme-friendly twist.\n"
+            "- End with a direct casual question that invites replies.\n"
+            "- Use light emojis naturally (for example: fire and 100).\n"
+            "- Never use the word Captain or Captains."
+        )
+    if mode == "reply":
+        return (
+            "Persona profile: fity\n"
+            "- Keep replies short, punchy, and conversational (1-2 sentences where possible).\n"
+            "- Confident but chill crypto/Web3-native tone with light playful energy.\n"
+            "- Sound human, natural, and slightly imperfect, never robotic.\n"
+            "- Use simple affirmations and light emoji naturally.\n"
+            "- End with a casual question when it helps drive conversation.\n"
+            "- Never use the word Captain or Captains."
+        )
+    return ""
+
+
+def _apply_persona_instructions(base: str, mode: str) -> str:
+    extra = _promoter_persona_instructions(mode).strip()
+    if not extra:
+        return base
+    b = (base or "").strip()
+    return f"{b}\n\n{extra}".strip()
 
 
 def _classify_score_floor() -> float:
@@ -2155,11 +2201,13 @@ def handle_promoter_daily_post_prompts(body: Dict[str, Any], state: PromoterStat
     su = (_load_prompt_file("daily_post_user_suffix") or "").strip()
     if not su:
         su = (_load_prompt_file("daily_post_user") or "").strip()
+    system_prompt = (_load_prompt_file("daily_post_system") or "").strip() or (
+        "You write short X posts promoting AINL from repo facts."
+    )
+    user_suffix = su or "Write exactly one X post under 260 chars. Energetic, accurate, include the link verbatim."
     return {
-        "system": (_load_prompt_file("daily_post_system") or "").strip()
-        or "You write short X posts promoting AINL from repo facts.",
-        "user_suffix": su
-        or "Write exactly one X post under 260 chars. Energetic, accurate, include the link verbatim.",
+        "system": system_prompt,
+        "user_suffix": user_suffix,
     }
 
 
@@ -2283,8 +2331,11 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
     if not isinstance(payload, dict):
         payload = body
     tweet = payload if isinstance(payload, dict) else {}
-    rs_raw = body.get("reply_system_prompt")
+    rs_raw = payload.get("reply_system_prompt")
+    if not (isinstance(rs_raw, str) and str(rs_raw).strip()):
+        rs_raw = body.get("reply_system_prompt")
     reply_system = str(rs_raw).strip() if isinstance(rs_raw, str) and str(rs_raw).strip() else ""
+    custom_reply_system = bool(reply_system)
     if not reply_system:
         reply_system = (_load_prompt_file("reply_system") or "").strip()
     if not reply_system:
@@ -2293,6 +2344,20 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
             "Max ~260 chars of guidance for the reply text itself."
         )
     reply_system = _reply_system_with_canonical_link(reply_system)
+    if not custom_reply_system:
+        reply_system = _apply_persona_instructions(reply_system, "reply")
+    ru_raw = payload.get("reply_user_prompt")
+    if not (isinstance(ru_raw, str) and str(ru_raw).strip()):
+        ru_raw = body.get("reply_user_prompt")
+    reply_user_prompt = (
+        str(ru_raw).strip()
+        if isinstance(ru_raw, str) and str(ru_raw).strip()
+        else f"Tweet:\n{tweet.get('text','')}\n\nDraft a helpful, expert reply from Apollo."
+    )
+    rf_raw = payload.get("reply_fallback_text")
+    if not (isinstance(rf_raw, str) and str(rf_raw).strip()):
+        rf_raw = body.get("reply_fallback_text")
+    reply_fallback_text = str(rf_raw).strip() if isinstance(rf_raw, str) and str(rf_raw).strip() else ""
     tweet_id = str(tweet.get("id", ""))
     user_id = str(tweet.get("user_id", ""))
     dry = _env_bool("PROMOTER_DRY_RUN", False)
@@ -2326,7 +2391,7 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
         return {"ok": True, "action": "skipped", "reason": "user_cooldown", "dry_run": dry, **ta}
 
     gh = _canonical_github_repo_url()
-    reply_text = (
+    reply_text = reply_fallback_text or (
         "If you are standardizing agent workflows, AINL compiles graphs to a deterministic runtime "
         f"(open graphs on GitHub: {gh}). Happy to compare notes on OpenClaw-style orchestration."
     )
@@ -2335,10 +2400,7 @@ def handle_process_tweet(body: Dict[str, Any], state: PromoterState) -> Dict[str
             reply_text = _openai_chat(
                 [
                     {"role": "system", "content": reply_system},
-                    {
-                        "role": "user",
-                        "content": f"Tweet:\n{tweet.get('text','')}\n\nDraft a helpful, expert reply from Apollo.",
-                    },
+                    {"role": "user", "content": reply_user_prompt},
                 ],
                 state=state,
                 usage_context="process_tweet_reply_draft",
@@ -2750,6 +2812,7 @@ def handle_promoter_thread_continue(body: Dict[str, Any], state: PromoterState) 
             "You are Apollo, an expert on AINL. Be accurate and concise; include a GitHub/docs CTA when natural."
         )
     reply_system = _reply_system_with_canonical_link(reply_system)
+    reply_system = _apply_persona_instructions(reply_system, "reply")
     transcript_bits: List[str] = []
     for t in tweets:
         if isinstance(t, dict):

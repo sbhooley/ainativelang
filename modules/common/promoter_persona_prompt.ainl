@@ -1,0 +1,41 @@
+# modules/common/promoter_persona_prompt.ainl
+# Resolve persona style instructions as reusable prompt text.
+#
+# Frame in:
+#   ppp_mode  — optional string: "post" or "reply" (default "post")
+#
+# Env:
+#   PROMOTER_PERSONA_PROFILE — "default" (default) or "fity"
+#
+# Return:
+#   Persona instruction string ("" for default profile)
+
+LENTRY:
+  R core.env "PROMOTER_PERSONA_PROFILE" "default" ->ppp_raw
+  R core.lower ppp_raw ->ppp_name
+  Set is_fity null
+  X is_fity eq ppp_name "fity"
+  If is_fity ->L_fity ->L_default
+
+L_default:
+  R core.echo "" ->ppp_out
+  J ppp_out
+
+L_fity:
+  X p_mode (ite (eq ppp_mode null) "post" ppp_mode)
+  Set is_reply null
+  X is_reply eq p_mode "reply"
+  If is_reply ->L_fity_reply ->L_fity_post
+
+L_fity_post:
+  R core.echo "Persona profile: fity\n- Ultra-punchy and short: 1-2 sentences max.\n- Chill, relaxed, human motivational energy; playful edge; conversational and slightly imperfect.\n- Strong crypto/Web3 conviction with casual everyday language.\n- Start with a short observation or hot take; add a relatable human moment; add a playful/meme-friendly twist.\n- End with a direct casual question that invites replies.\n- Use light emojis naturally (for example: fire and 100).\n- Never use the word Captain or Captains." ->ppp_out
+  J ppp_out
+
+L_fity_reply:
+  R core.echo "Persona profile: fity\n- Keep replies short, punchy, and conversational (1-2 sentences where possible).\n- Confident but chill crypto/Web3-native tone with light playful energy.\n- Sound human, natural, and slightly imperfect, never robotic.\n- Use simple affirmations and light emoji naturally.\n- End with a casual question when it helps drive conversation.\n- Never use the word Captain or Captains." ->ppp_out
+  J ppp_out
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

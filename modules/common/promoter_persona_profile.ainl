@@ -1,0 +1,25 @@
+# modules/common/promoter_persona_profile.ainl
+# Resolve active promoter persona profile from environment.
+#
+# Env:
+#   PROMOTER_PERSONA_PROFILE  supported: default, fity
+#
+# Return:
+#   profile string ("default" | "fity")
+
+LENTRY:
+  R core.env "PROMOTER_PERSONA_PROFILE" "default" ->pp_raw
+  Set pp_is_fity null
+  X pp_is_fity eq pp_raw "fity"
+  If pp_is_fity ->L_FITY ->L_DEFAULT
+
+L_FITY:
+  J "fity"
+
+L_DEFAULT:
+  J "default"
+
+LEXIT_OK:
+  J "ok"
+LEXIT_FAIL:
+  J "err"

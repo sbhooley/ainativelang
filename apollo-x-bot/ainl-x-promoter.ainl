@@ -15,6 +15,7 @@ include "../modules/common/heuristic_keyword_score.ainl" as hkw
 include "../modules/common/record_decision.ainl" as rd
 include "../modules/common/promoter_discover_from_tweets.ainl" as pdt
 include "../modules/llm/promoter_daily_post_payload.ainl" as pdpp
+include "../modules/llm/promoter_process_tweet_payload.ainl" as pptp
 
 S core cron "*/45 * * * *"
 
@@ -246,10 +247,10 @@ L_each_has_tid:
 
 L71:
   Set step_out null
-  R core.parse "\"payload\"" ->plkey
-  R core.parse "{}" ->pt_head
-  X pt_head put pt_head plkey tweet
-  R core.stringify pt_head ->executor_req_payload_json
+  R core.stringify tweet ->ppt_tweet_json
+  R core.parse ppt_tweet_json ->ppt_tweet
+  Call pptp/ENTRY ->pt_payload
+  R core.stringify pt_payload ->executor_req_payload_json
   R core.echo "promoter.process_tweet" ->executor_req_executor
   Set executor_req_run_id null
   R core.echo "_each" ->executor_req_step_id

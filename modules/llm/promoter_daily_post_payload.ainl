@@ -11,6 +11,7 @@
 # Frame out (return value): JSON string for the caller to bind to executor_req_payload_json for maybe_daily_post.
 
 include "modules/common/executor_bridge_request.ainl" as pd_br
+include "modules/common/promoter_persona_prompt.ainl" as ppp
 
 LENTRY:
   R core.env "PROMOTER_DAILY_SKIP_LLM" "0" ->sk_raw
@@ -32,6 +33,16 @@ L_pd_fetch:
   X d_sn2 (ite (eq d_sn null) empty_str d_sn)
   X d_sys2 (ite (eq d_sys null) empty_str d_sys)
   X d_suf2 (ite (eq d_suf null) empty_str d_suf)
+  R core.echo "post" ->ppp_mode
+  Call ppp/ENTRY ->pd_persona
+  R core.concat d_sys2 "\n\n" ->pd_sys_a
+  R core.concat pd_sys_a pd_persona ->pd_sys_with_persona
+  R core.concat d_suf2 "\n\n" ->pd_suf_a
+  R core.concat pd_suf_a pd_persona ->pd_suf_with_persona
+  Set pd_has_persona null
+  X pd_has_persona ne pd_persona ""
+  X d_sys3 (ite pd_has_persona pd_sys_with_persona d_sys2)
+  X d_suf3 (ite pd_has_persona pd_suf_with_persona d_suf2)
   R core.env "PROMOTER_DAILY_TOPIC" "AINL + OpenClaw deterministic graphs" ->d_topic
   R core.env "PROMOTER_DAILY_LINK" "https://github.com/sbhooley/ainativelang" ->d_link
   R core.concat "Topic: " d_topic ->pd_a
@@ -40,8 +51,8 @@ L_pd_fetch:
   R core.concat pd_c "\n\nRepository excerpts:\n" ->pd_d
   R core.concat pd_d d_sn2 ->pd_e
   R core.concat pd_e "\n\n" ->pd_f
-  R core.concat pd_f d_suf2 ->daily_user_full
-  R core.stringify d_sys2 ->sys_j
+  R core.concat pd_f d_suf3 ->daily_user_full
+  R core.stringify d_sys3 ->sys_j
   R core.stringify daily_user_full ->usr_j
   R core.concat "{\"role\":\"system\",\"content\":" sys_j "}" ->m0
   R core.concat "{\"role\":\"user\",\"content\":" usr_j "}" ->m1

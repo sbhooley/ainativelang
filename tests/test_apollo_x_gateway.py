@@ -180,6 +180,23 @@ def test_gateway_text_contains_any_and_gate_eval(tmp_path):
     assert g["proceed"] is True
 
 
+def test_apply_persona_instructions_respects_fity_profile(tmp_path):
+    state_path = tmp_path / "st.sqlite"
+    st = gw.PromoterState(state_path)
+    gw._STATE = st
+    old_prof = os.environ.get("PROMOTER_PERSONA_PROFILE")
+    os.environ["PROMOTER_PERSONA_PROFILE"] = "fity"
+    try:
+        s = gw._apply_persona_instructions("Base prompt", "reply")
+        assert "Persona profile: fity" in s
+        assert "Never use the word Captain or Captains." in s
+    finally:
+        if old_prof is None:
+            os.environ.pop("PROMOTER_PERSONA_PROFILE", None)
+        else:
+            os.environ["PROMOTER_PERSONA_PROFILE"] = old_prof
+
+
 def test_process_tweet_missing_tweet_id_skips_without_x_post(tmp_path):
     """Empty/missing tweet id must not call X post (avoids in_reply_to_tweet_id='' 400)."""
     state_path = tmp_path / "st.sqlite"
@@ -219,6 +236,46 @@ def test_gate_eval_missing_tweet_id_does_not_proceed(tmp_path):
     g = gw.handle_promoter_gate_eval({"tweet_id": "", "user_id": "u1"}, st)
     assert g["proceed"] is False
     assert g.get("reason") == "missing_tweet_id"
+
+
+def test_process_tweet_uses_payload_prompt_overrides(tmp_path):
+    state_path = tmp_path / "st.sqlite"
+    st = gw.PromoterState(state_path)
+    gw._STATE = st
+    old_dry = os.environ.get("PROMOTER_DRY_RUN")
+    old_key = os.environ.get("OPENAI_API_KEY")
+    os.environ["PROMOTER_DRY_RUN"] = "1"
+    os.environ["OPENAI_API_KEY"] = "test-key"
+    try:
+        with patch.object(gw, "_openai_chat", return_value="custom reply") as mock_chat:
+            out = gw.handle_process_tweet(
+                {
+                    "payload": {
+                        "id": "t1",
+                        "user_id": "u1",
+                        "text": "tweet text",
+                        "reply_system_prompt": "System override",
+                        "reply_user_prompt": "User override",
+                        "reply_fallback_text": "Fallback override",
+                    }
+                },
+                st,
+            )
+            assert out["ok"] is True
+            assert out["action"] == "dry_run_reply"
+            assert out["text"] == "custom reply"
+            sent = mock_chat.call_args.args[0]
+            assert sent[0]["content"].startswith("System override")
+            assert sent[1]["content"] == "User override"
+    finally:
+        if old_dry is None:
+            os.environ.pop("PROMOTER_DRY_RUN", None)
+        else:
+            os.environ["PROMOTER_DRY_RUN"] = old_dry
+        if old_key is None:
+            os.environ.pop("OPENAI_API_KEY", None)
+        else:
+            os.environ["OPENAI_API_KEY"] = old_key
 
 
 def test_gateway_discovery_track_a_preflight_skips_when_dry_run(tmp_path):
