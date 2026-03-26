@@ -3685,7 +3685,8 @@ a { color: var(--acc); }
 </head>
 <body>
 <h1>Apollo-X promoter</h1>
-<p class="mono" style="color:var(--muted);margin:0 0 0.4rem">Read-only · refreshes every 60s · JSON: <a href="promoter.stats">promoter.stats</a> · scoring audit: <a href="promoter.audit_tail?focus=scoring&amp;limit=80"><code>audit_tail?focus=scoring</code></a></p>
+<p class="mono" style="color:var(--muted);margin:0 0 0.4rem">Read-only · refreshes every 10s · JSON: <a href="promoter.stats">promoter.stats</a> · scoring audit: <a href="promoter.audit_tail?focus=scoring&amp;limit=80"><code>audit_tail?focus=scoring</code></a></p>
+<p id="lastRefresh" class="mono" style="color:var(--muted);margin:0 0 0.8rem">Last refresh: pending</p>
 <p class="mono" style="margin:0 0 1rem"><button id="btnPolicyCleanup" class="badge neutral" style="cursor:pointer;border:0">Clear stale policy flags</button> <span id="policyCleanupMsg" style="color:var(--muted)"></span></p>
 <div class="grid" id="cards"></div>
 <p id="chartJsWarn" class="mono" style="display:none;color:#e5756b;margin:0 0 0.75rem"></p>
@@ -3962,8 +3963,9 @@ function detailJsonBlock(obj){
 async function load(){
   try{
     async function jget(rel){
-      var u = apiUrl(rel);
-      var r = await fetch(u);
+      var sep = rel.indexOf('?') >= 0 ? '&' : '?';
+      var u = apiUrl(rel + sep + '_ts=' + Date.now());
+      var r = await fetch(u, { cache: 'no-store' });
       if(!r.ok){ throw new Error(rel + ' HTTP '+r.status+' ('+u+')'); }
       var j = await r.json();
       if(j && j.ok === false){ throw new Error((j.error||'error') + (j.detail ? ': '+j.detail : '')); }
@@ -4050,7 +4052,20 @@ async function load(){
       var det = r.detail || {};
       return '<tr><td class="mono">'+esc(r.created_at)+'</td><td><span class="badge">'+esc(r.action)+'</span></td><td>'+verdictSpan(r)+'</td><td class="mono">'+esc(h)+'</td><td class="mono">'+esc(r.user_id)+'</td><td class="mono">'+esc(r.tweet_id)+'</td><td>'+esc(r.score)+'</td><td class="mono">'+esc(r.reason||'')+'</td><td>'+detailJsonBlock(det)+'</td></tr>';
     }).join('') : '<tr><td colspan="9" style="color:var(--muted)">No memory DB or no rows (run polls with --enable-adapter memory)</td></tr>';
-  }catch(e){ document.getElementById('cards').innerHTML='<div class="card">Load error: '+esc(e)+'</div>'; _destroyDashCharts(); }
+    var lr = document.getElementById('lastRefresh');
+    if(lr){
+      lr.textContent = 'Last refresh: ' + new Date().toLocaleTimeString();
+      lr.style.color = 'var(--muted)';
+    }
+  }catch(e){
+    document.getElementById('cards').innerHTML='<div class="card">Load error: '+esc(e)+'</div>';
+    _destroyDashCharts();
+    var lrErr = document.getElementById('lastRefresh');
+    if(lrErr){
+      lrErr.textContent = 'Last refresh failed: ' + new Date().toLocaleTimeString();
+      lrErr.style.color = 'var(--warn)';
+    }
+  }
 }
 var _policyCleanupBusy = false;
 async function cleanupPolicyFlags(){
@@ -4079,7 +4094,7 @@ async function cleanupPolicyFlags(){
 }
 var _btnPolicyCleanup = document.getElementById('btnPolicyCleanup');
 if(_btnPolicyCleanup){ _btnPolicyCleanup.addEventListener('click', cleanupPolicyFlags); }
-load(); setInterval(load, 60000);
+load(); setInterval(load, 10000);
 </script>
 </body>
 </html>"""

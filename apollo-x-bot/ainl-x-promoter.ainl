@@ -208,7 +208,7 @@ L_each:
   X gate_tweet_id get tweet id
   X gate_user_id get tweet user_id
   Set has_tid null
-  X has_tid ne gate_tweet_id ""
+  X has_tid (ite (eq gate_tweet_id null) false (ne gate_tweet_id ""))
   If has_tid ->L_each_has_tid ->L_each_missing_tid
 
 L_each_missing_tid:
