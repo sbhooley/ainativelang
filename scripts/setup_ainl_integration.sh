@@ -1,121 +1,91 @@
 #!/usr/bin/env bash
-# One-command setup for AINL v1.2.8 OpenClaw integration.
-# Prerequisites: OpenClaw >= 2026.3.22 (includes native OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT support)
-# This script:
-#  - Sets required environment/config in OpenClaw (via gateway config.patch)
-#  - Reduces reserveTokens for more aggressive compaction
-#  - Enables embeddings and sets tight token budget for token-aware startup
-#  - Enforces graph-preferred execution mode
-#  - Copies/registers bridge wrappers (token-aware startup, token budget alerts, weekly trends, etc.)
-#  - Optionally adds cron jobs (pass --with-cron)
-#  - Restarts the gateway
+# setup_ainl_integration.sh — AINL v1.3.0 OpenClaw integration setup
+#
+# This script is a thin convenience wrapper around `ainl install openclaw`.
+# For most users, running `ainl install openclaw --workspace PATH` directly is
+# the recommended path (it handles env.shellEnv, SQLite, crons, and prints a
+# health table). This script adds --with-cron and --dry-run flags for
+# environments that prefer a single shell entry point.
 #
 # Usage:
-#   ./setup_ainl_integration.sh [--with-cron]
+#   ./setup_ainl_integration.sh [--workspace PATH] [--dry-run] [--with-cron] [--verbose]
 #
-# Requires: openclaw CLI on PATH, gateway running.
+# Options:
+#   --workspace PATH   OpenClaw workspace root (default: ~/.openclaw/workspace)
+#   --dry-run          Print what would happen; make no changes
+#   --with-cron        Also register gold-standard cron jobs (same as ainl install openclaw default)
+#   --verbose          Pass --verbose to ainl install openclaw
+#
+# Requires: ainl CLI on PATH (pip install 'ainativelang[mcp]')
+# Docs: docs/QUICKSTART_OPENCLAW.md
+# NOTE: openclaw gateway config.patch is no longer used — env.shellEnv keys
+#       are merged directly into openclaw.json (gateway config.patch rejects
+#       AINL-specific keys via schema validation).
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BRIDGE_DIR="$ROOT/openclaw/bridge"
-WRAPPERS_DIR="$BRIDGE_DIR/wrappers"
-RUNNER="$BRIDGE_DIR/run_wrapper_ainl.py"
+AINL_BIN="${AINL_BIN:-ainl}"
+WORKSPACE="${OPENCLAW_WORKSPACE:-$HOME/.openclaw/workspace}"
+DRY_RUN=0
+VERBOSE=0
 
-ADD_CRON=0
-if [[ "${1:-}" == "--with-cron" ]]; then
-  ADD_CRON=1
-fi
-
-echo "== AINL v1.2.8 OpenClaw Integration Setup =="
-
-# 1. Config patch via gateway (includes OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT=1)
-echo "-> Applying OpenClaw configuration (env vars + compaction)..."
-openclaw gateway config.patch "$ROOT/scripts/config_patch_ainl_integration.json" || {
-  echo "Applying config via direct gateway config.patch..."
-  openclaw gateway config.patch '{"env":{"vars":{"AINL_STARTUP_CONTEXT_TOKEN_MIN":"100","AINL_STARTUP_CONTEXT_TOKEN_MAX":"100","AINL_STARTUP_USE_EMBEDDINGS":"1","AINL_EMBEDDING_MODE":"lite","AINL_EXECUTION_MODE":"graph-preferred","OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT":"1"}},"agents":{"defaults":{"compaction":{"reserveTokens":30000}}}}'
-}
-
-# 2. Ensure wrappers directory exists
-mkdir -p "$WRAPPERS_DIR"
-
-# 3. Copy wrapper files (if not already present)
-echo "-> Registering bridge wrappers..."
-# Copy token_aware_startup_context.ainl if missing
-if [ ! -f "$WRAPPERS_DIR/token_aware_startup_context.ainl" ]; then
-  cp "$ROOT/intelligence/token_aware_startup_context.lang" "$WRAPPERS_DIR/token_aware_startup_context.ainl"
-  echo "  + token_aware_startup_context.ainl"
-fi
-# Other wrappers are part of the repo; just ensure they exist
-for w in token_budget_alert weekly_token_trends ttl_memory_tuner embedding_memory_pilot; do
-  if [ -f "$BRIDGE_DIR/wrappers/$w.ainl" ]; then
-    echo "  + $w.ainl (present)"
-  fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --workspace)  WORKSPACE="$2"; shift 2 ;;
+    --workspace=*) WORKSPACE="${1#*=}"; shift ;;
+    --dry-run)    DRY_RUN=1; shift ;;
+    --with-cron)  shift ;;   # cron registration is default in ainl install openclaw; accepted for compatibility
+    --verbose|-v) VERBOSE=1; shift ;;
+    -h|--help)
+      grep '^#' "$0" | head -25 | sed 's/^# \{0,2\}//'
+      exit 0
+      ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
+  esac
 done
 
-# 4. Update run_wrapper_ainl.py registry (idempotent)
-echo "-> Updating wrapper registry in run_wrapper_ainl.py..."
-python3 - <<'PY'
-import re, sys
-path = sys.argv[1]
-with open(path, 'r') as f:
-  content = f.read()
-# Ensure token-aware-startup entry
-if '"token-aware-startup":' not in content:
-  content = content.replace(
-    'WRAPPERS = {',
-    'WRAPPERS = {\n    "token-aware-startup": _BRIDGE_DIR / "wrappers" / "token_aware_startup_context.ainl",'
-  )
-# Comment out email-monitor if present
-if '"email-monitor":' in content:
-  content = re.sub(r'"email-monitor":.*,#?.*', '# "email-monitor": _BRIDGE_DIR / "wrappers" / "email_monitor.ainl",  # disabled: requires openclaw mail plugin', content)
-with open(path, 'w') as f:
-  f.write(content)
-print("Registry updated")
-PY "$RUNNER"
+echo "== AINL v1.3.0 OpenClaw Integration Setup =="
+echo ""
 
-# 5. No host patch needed for OpenClaw >= 2026.3.22 (native support)
-
-# 6. Add cron jobs if requested
-if [[ $ADD_CRON -eq 1 ]]; then
-  echo "-> Adding cron jobs..."
-  # Token-aware startup context
-  openclaw cron add \
-    --name "Token-Aware Startup Context" \
-    --cron "*/15 * * * *" \
-    --session-key "agent:default:ainl-advocate" \
-    --message "Run: cd $ROOT && python3 $RUNNER token-aware-startup" \
-    --description "AINL token-aware startup context generator" \
-    || echo "Cron add may have failed (job might exist already)."
-
-  # Token budget alert (daily 23:00 UTC)
-  openclaw cron add \
-    --name "AINL Token Budget Alert" \
-    --cron "0 23 * * *" \
-    --session-key "agent:default:ainl-advocate" \
-    --message "Run: cd $ROOT && python3 $RUNNER token-budget-alert" \
-    --description "Daily token usage report" \
-    || true
-
-  # Weekly token trends (Sunday 09:00 UTC)
-  openclaw cron add \
-    --name "AINL Weekly Token Trends" \
-    --cron "0 9 * * 0" \
-    --session-key "agent:default:ainl-advocate" \
-    --message "Run: cd $ROOT && python3 $RUNNER weekly-token-trends" \
-    --description "Weekly token usage trends" \
-    || true
+if ! command -v "$AINL_BIN" &>/dev/null; then
+  echo "ERROR: 'ainl' not found on PATH." >&2
+  echo "Install: pip install 'ainativelang[mcp]'" >&2
+  exit 1
 fi
 
-# 7. Restart gateway
-echo "-> Restarting OpenClaw gateway..."
-openclaw gateway restart
-
-echo "== Setup Complete =="
-echo "Next steps:"
-echo "- Verify: openclaw doctor --non-interactive"
-echo "- Check token-aware startup job: openclaw cron list | grep -i token"
-echo "- Inspect generated context: cat .openclaw/bootstrap/session_context.md"
-echo "- Monitor token usage in session status (/status) over next few hours."
+AINL_VER=$("$AINL_BIN" --version 2>/dev/null | head -1 || echo "unknown")
+echo "ainl: $AINL_VER"
+echo "workspace: $WORKSPACE"
 echo ""
-echo "Note: Requires OpenClaw >= 2026.3.22 for native OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT support."
+
+# Build ainl install openclaw args
+ARGS=("install" "openclaw" "--workspace" "$WORKSPACE")
+[[ $DRY_RUN -eq 1 ]] && ARGS+=("--dry-run")
+[[ $VERBOSE -eq 1 ]] && ARGS+=("--verbose")
+
+if [[ $DRY_RUN -eq 1 ]]; then
+  echo "-- DRY RUN (no changes will be made) --"
+  echo ""
+fi
+
+echo "Running: $AINL_BIN ${ARGS[*]}"
+echo ""
+"$AINL_BIN" "${ARGS[@]}"
+EXIT=$?
+
+echo ""
+if [[ $EXIT -eq 0 && $DRY_RUN -eq 0 ]]; then
+  echo "== Setup complete =="
+  echo ""
+  echo "Next steps:"
+  echo "  ainl status                    # unified health view"
+  echo "  ainl doctor --ainl             # integration diagnostics"
+  echo "  openclaw cron list             # verify cron jobs"
+  echo "  ainl status --json             # machine-readable output"
+  echo ""
+  echo "Docs: docs/QUICKSTART_OPENCLAW.md"
+elif [[ $DRY_RUN -eq 1 ]]; then
+  echo "== Dry run complete. Re-run without --dry-run to apply. =="
+fi
+
+exit $EXIT

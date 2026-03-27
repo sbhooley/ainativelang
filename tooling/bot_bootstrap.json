@@ -11,6 +11,7 @@
   "hermes_integration": "docs/HERMES_INTEGRATION.md",
   "hermes_agent_hub": "docs/integrations/hermes-agent.md",
   "mcp_host_integrations": "docs/getting_started/HOST_MCP_INTEGRATIONS.md",
+  "setup_script": "scripts/setup_ainl_integration.sh",
   "openclaw_commands": {
     "ainl_install_openclaw": {
       "command": "ainl install openclaw --workspace PATH [--dry-run] [--verbose]",
@@ -19,7 +20,7 @@
     },
     "ainl_status": {
       "command": "ainl status [--json]",
-      "description": "Unified health view: workspace, schema bootstrap, weekly budget (legacy weekly_remaining_v1 row preferred; memory_records aggregate fallback), cron presence, drift signal, 7-day token totals, caps, overall health",
+      "description": "Unified health view: workspace, schema bootstrap, weekly budget (legacy weekly_remaining_v1 row preferred; memory_records aggregate fallback), cron presence, drift signal, 7-day token totals, estimated cost avoided in USD, env caps, overall health",
       "doc": "docs/QUICKSTART_OPENCLAW.md"
     },
     "ainl_doctor_ainl": {
@@ -36,6 +37,11 @@
       "command": "ainl install-mcp --host openclaw|zeroclaw|hermes [--dry-run]",
       "description": "Bootstrap MCP wiring for a host: merges mcpServers.ainl into host config, installs ainl-run, PATH hint. Aliases: ainl install-openclaw, ainl install-zeroclaw, ainl hermes-install",
       "doc": "docs/getting_started/HOST_MCP_INTEGRATIONS.md"
+    },
+    "setup_script": {
+      "command": "./scripts/setup_ainl_integration.sh [--workspace PATH] [--dry-run] [--with-cron] [--verbose]",
+      "description": "Shell convenience wrapper around `ainl install openclaw`. Supports --dry-run to preview without changes. Now delegates to ainl CLI (no longer uses deprecated gateway config.patch). v1.3.0+.",
+      "doc": "docs/QUICKSTART_OPENCLAW.md"
     }
   },
   "safe_default_docs": [
