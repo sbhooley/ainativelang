@@ -33,6 +33,35 @@ If neither is set, runtime behaves exactly as before.
 Security profiles, effect analysis, adapter allowlists, and capability gates are unchanged in async mode.
 Async mode affects execution transport only, not policy semantics.
 
+## Observability (optional)
+
+Reactive observability hooks are available but disabled by default.
+
+- Env: `AINL_OBSERVABILITY=1`
+- CLI: `ainl run ... --observability`
+- Optional JSONL sink: `AINL_OBSERVABILITY_JSONL=/path/to/metrics.jsonl` or `--observability-jsonl /path/to/metrics.jsonl`
+
+When enabled, the runtime emits lightweight structured metric events (JSON lines, stderr) around adapter calls:
+
+- `adapter.call.duration_ms` (latency per adapter verb call)
+- `reactive.events_per_batch` (subscribe/replay batch size)
+- `reactive.lag_seconds` (where timestamped events are available, e.g. Supabase Realtime)
+- `reactive.sequence_gap` (best-effort sequence gap estimate)
+- `reactive.ack.total`, `reactive.ack.success`, `reactive.ack.success_rate`
+
+This path is intentionally lightweight and no-op when disabled.
+
+Example with file sink:
+
+```bash
+AINL_RUNTIME_ASYNC=1 AINL_OBSERVABILITY=1 AINL_OBSERVABILITY_JSONL=/tmp/ainl-metrics.jsonl \
+  ainl run examples/reactive/observability_reactive_smoke.ainl \
+  --runtime-async --observability --observability-jsonl /tmp/ainl-metrics.jsonl \
+  --enable-adapter redis --redis-allow-prefix events: --redis-allow-write
+```
+
+The JSONL sink is append-only and compatible with tools like `jq`, `vector`, `promtail`, or simple log shipping pipelines.
+
 ## Current limitations
 
 - Redis pub/sub remains intentionally bounded per call (timeout + max_messages), which is safer for workflow execution but not a permanent stream consumer model by default.

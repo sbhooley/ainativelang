@@ -1,0 +1,69 @@
+S durability core postgres_checkpoint_helpers
+
+# Postgres checkpoint durability helper template.
+# No new adapter code required: uses existing `postgres` + reactive adapters.
+#
+# Usage model:
+# 1) Ensure checkpoints table exists (CREATE TABLE shown below).
+# 2) Copy this template or include it as a module.
+# 3) Replace placeholder constants and wire `latest_seq` from your event payload.
+
+LENTRY:
+  # Default entry reads current durable cursor.
+  JUMP_LLOAD_CURSOR
+
+LINIT_CHECKPOINTS_TABLE:
+  # One-time bootstrap step.
+  R postgres.execute "CREATE TABLE IF NOT EXISTS checkpoints (adapter TEXT NOT NULL, stream TEXT NOT NULL, grp TEXT NOT NULL, consumer TEXT NOT NULL, shard TEXT NOT NULL, sequence TEXT NOT NULL, ts TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (adapter, stream, grp, consumer, shard))" [] ->ddl
+  J {"ok": true, "ddl": ddl}
+
+LLOAD_CURSOR:
+  # Load latest cursor for this adapter/stream/group/consumer/shard tuple.
+  R postgres.query "SELECT sequence FROM checkpoints WHERE adapter = %s AND stream = %s AND grp = %s AND consumer = %s AND shard = %s" ["dynamodb", "orders", "workers", "consumer-a", "shard-000"] ->rows
+  J {"ok": true, "rows": rows}
+
+LSTART_SUBSCRIBE_DYNAMODB:
+  # Subscribe from durable Postgres cursor (if present).
+  R postgres.query "SELECT sequence FROM checkpoints WHERE adapter = %s AND stream = %s AND grp = %s AND consumer = %s AND shard = %s" ["dynamodb", "orders", "workers", "consumer-a", "shard-000"] ->rows
+  R dynamodb.streams.subscribe "orders" {
+    "shard_iterator_type": "AT_SEQUENCE_NUMBER",
+    "filter": {"sequence_number": rows[0].sequence},
+    "checkpoint_mode": "memory",
+    "consumer_group": "workers",
+    "consumer_id": "consumer-a",
+    "timeout_s": 2,
+    "max_events": 50
+  } ->batch
+  J {"ok": true, "batch": batch, "loaded_cursor_rows": rows}
+
+LSTART_SUBSCRIBE_SUPABASE:
+  # Supabase variant: map stream/shard concepts to channel + logical partition key.
+  R postgres.query "SELECT sequence FROM checkpoints WHERE adapter = %s AND stream = %s AND grp = %s AND consumer = %s AND shard = %s" ["supabase", "realtime:public:orders", "workers", "consumer-a", "channel"] ->rows
+  R supabase.realtime.subscribe "realtime:public:orders" {
+    "table": "orders",
+    "events": ["INSERT", "UPDATE", "DELETE"],
+    "fanout_group": "workers",
+    "consumer": "consumer-a",
+    "replay_from": rows[0].sequence,
+    "timeout_s": 2,
+    "max_events": 50
+  } ->sub
+  J {"ok": true, "result": sub, "loaded_cursor_rows": rows}
+
+LACK_AND_UPSERT:
+  # Ack then persist durable cursor row with UPSERT.
+  R core.ID "REPLACE_WITH_LATEST_SEQUENCE" ->latest_seq
+  R dynamodb.streams.ack "orders" {
+    "consumer_group": "workers",
+    "consumer_id": "consumer-a",
+    "shard_id": "shard-000",
+    "sequence": latest_seq
+  } ->ack_out
+  R postgres.execute "INSERT INTO checkpoints (adapter, stream, grp, consumer, shard, sequence, ts) VALUES (%s,%s,%s,%s,%s,%s,NOW()) ON CONFLICT (adapter, stream, grp, consumer, shard) DO UPDATE SET sequence = EXCLUDED.sequence, ts = EXCLUDED.ts" ["dynamodb", "orders", "workers", "consumer-a", "shard-000", latest_seq] ->upsert_out
+  J {"ok": true, "ack": ack_out, "upsert": upsert_out, "sequence": latest_seq}
+
+LEXIT_OK:
+  J {"ok": true}
+
+LEXIT_FAIL:
+  J {"ok": false}

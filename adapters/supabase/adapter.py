@@ -11,6 +11,7 @@ from urllib.parse import quote
 
 from adapters.postgres import PostgresAdapter
 from runtime.adapters.base import AdapterError, RuntimeAdapter
+from runtime.observability import record_ack, record_metric
 
 
 class SupabaseAdapter(RuntimeAdapter):
@@ -513,7 +514,9 @@ class SupabaseAdapter(RuntimeAdapter):
             consumer = str(args[3]) if len(args) > 3 and args[3] is not None else "consumer"
             ck = self._cursor_key(channel, group, consumer)
             self._realtime_cursors[ck] = {"cursor": str(args[1]), "acked_at": time.time()}
-            return {"ok": True, "result": {"channel": channel, "group": group, "consumer": consumer, "cursor": self._realtime_cursors[ck]}}
+            out = {"ok": True, "result": {"channel": channel, "group": group, "consumer": consumer, "cursor": self._realtime_cursors[ck]}}
+            record_ack(context, True, labels={"adapter": "supabase", "target": "realtime_ack"})
+            return out
         if verb == "realtime_broadcast":
             # Sync path: acknowledge shape without attempting long-lived websocket usage.
             event_name = str(args[1]) if len(args) > 1 else "message"
@@ -630,7 +633,7 @@ class SupabaseAdapter(RuntimeAdapter):
                     events.append(evt)
                 except asyncio.TimeoutError:
                     break
-            return {
+            out = {
                 "ok": True,
                 "result": {
                     "channel": channel,
@@ -640,6 +643,13 @@ class SupabaseAdapter(RuntimeAdapter):
                     "consumer": consumer,
                 },
             }
+            record_metric(
+                context,
+                "reactive.events_per_batch",
+                len((out.get("result") or {}).get("events") or []),
+                labels={"adapter": "supabase", "target": "realtime_subscribe"},
+            )
+            return out
         if verb == "realtime_unsubscribe":
             if not args:
                 raise AdapterError("supabase realtime.unsubscribe requires channel")
@@ -675,7 +685,14 @@ class SupabaseAdapter(RuntimeAdapter):
             timeout_s = float(args[3]) if len(args) > 3 and args[3] is not None else 0.01
             if timeout_s > 0:
                 await asyncio.sleep(min(timeout_s, 0.05))
-            return {"ok": True, "result": {"channel": channel, "events": self._history_slice(channel, from_seq, max_events)}}
+            out = {"ok": True, "result": {"channel": channel, "events": self._history_slice(channel, from_seq, max_events)}}
+            record_metric(
+                context,
+                "reactive.events_per_batch",
+                len((out.get("result") or {}).get("events") or []),
+                labels={"adapter": "supabase", "target": "realtime_replay"},
+            )
+            return out
         if verb == "realtime_get_cursor":
             if not args:
                 raise AdapterError("supabase realtime.get_cursor requires channel")
@@ -694,7 +711,9 @@ class SupabaseAdapter(RuntimeAdapter):
             consumer = str(args[3]) if len(args) > 3 and args[3] is not None else "consumer"
             ck = self._cursor_key(channel, group, consumer)
             self._realtime_cursors[ck] = {"cursor": str(args[1]), "acked_at": time.time()}
-            return {"ok": True, "result": {"channel": channel, "group": group, "consumer": consumer, "cursor": self._realtime_cursors[ck]}}
+            out = {"ok": True, "result": {"channel": channel, "group": group, "consumer": consumer, "cursor": self._realtime_cursors[ck]}}
+            record_ack(context, True, labels={"adapter": "supabase", "target": "realtime_ack"})
+            return out
         if verb == "realtime_broadcast":
             if len(args) < 2:
                 raise AdapterError("supabase realtime.broadcast requires channel and event")

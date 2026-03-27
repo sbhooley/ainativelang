@@ -686,6 +686,9 @@ For implementation and shipped-capability status, see:
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
 - Whitepaper draft (architecture, benchmarks, OpenClaw v1.2.8 ops + token economics, async runtime, reactive DB/realtime adapters): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
+- Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
+- Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
+- Production starter templates (durability + observability-ready workers): `templates/production/`
 - AINL → HTTP workers (bridge envelope, schema, include): `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` · `schemas/executor_bridge_request.schema.json` · `modules/common/executor_bridge_request.ainl`
 - Getting started (3 integration paths): `docs/getting_started/README.md`
 - Primary docs hub: `docs/README.md`
@@ -1033,6 +1036,47 @@ ainl run examples/hello.ainl --enable-adapter postgres --runtime-async
 
 See `docs/runtime/ASYNC_RUNTIME.md` for adapter coverage and fallback behavior.
 Current async-capable adapters include postgres/mysql/supabase, redis (full async verb parity with bounded pub/sub listening), dynamodb streams (bounded async subscribe/unsubscribe batching), and airtable attachment/webhook extension verbs.
+
+### Reactive observability (optional)
+
+AINL can emit lightweight adapter timing + reactive batch metrics (off by default):
+
+```bash
+AINL_RUNTIME_ASYNC=1 AINL_OBSERVABILITY=1 \
+  ainl run examples/reactive/hybrid_stream_broadcast.ainl \
+  --runtime-async --observability --enable-adapter dynamodb --enable-adapter supabase --enable-adapter redis --enable-adapter memory
+```
+
+When enabled, runtime writes structured JSON metric lines to stderr (for example `adapter.call.duration_ms`, `reactive.events_per_batch`, `reactive.sequence_gap`, `reactive.ack.success_rate`).
+
+You can also persist metrics to a JSONL sink file:
+
+```bash
+AINL_RUNTIME_ASYNC=1 AINL_OBSERVABILITY=1 AINL_OBSERVABILITY_JSONL=/tmp/ainl-reactive-metrics.jsonl \
+  ainl run examples/reactive/hybrid_stream_broadcast.ainl \
+  --runtime-async --observability --observability-jsonl /tmp/ainl-reactive-metrics.jsonl \
+  --enable-adapter dynamodb --enable-adapter supabase --enable-adapter redis --enable-adapter memory
+```
+
+This makes it easy to consume metrics with `jq`, `vector`, `promtail`, or simple log tail/aggregation tools. Stderr and JSONL file sink can be used together.
+
+For production multi-node durability (shared checkpoints/cursors), see `docs/reactive/ADVANCED_DURABILITY.md` for Redis-backed, Postgres-backed, and hybrid patterns that require no new adapter code.
+
+## Status: Production Ready for Reactive Workflows
+
+AINL is now production-ready for reactive/event-driven graph workflows with a complete end-to-end stack:
+
+- **Full native async runtime** (`--runtime-async`) with async-capable adapter execution.
+- **Comprehensive database adapters** across `sqlite`, `postgres`, `mysql`, `redis`, `dynamodb`, `airtable`, and `supabase`.
+- **Reactive primitives** with bounded, practical semantics:
+  - DynamoDB Streams with checkpointing and ack flows
+  - Supabase Realtime with fan-out, replay, cursor, and ack helpers
+  - Redis pub/sub for low-latency internal fan-out
+- **Observability support** for reactive workloads, including structured metrics and JSONL sink output (`--observability-jsonl` / `AINL_OBSERVABILITY_JSONL`).
+- **Production starter templates** in `templates/production/` for immediate rollout patterns.
+- **Durability guidance** in `docs/reactive/ADVANCED_DURABILITY.md` for multi-process and multi-node checkpoint/cursor persistence using existing adapters.
+
+What's next: shared multi-node durability coordination beyond process-local helpers, runtime scheduling optimizations for very high-throughput pipelines, and optional advanced adapter features for specialized deployments.
 
 ### PostgreSQL adapter (runtime-native)
 

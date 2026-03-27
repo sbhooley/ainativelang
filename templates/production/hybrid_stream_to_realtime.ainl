@@ -1,0 +1,91 @@
+S production core hybrid_stream_to_realtime
+
+# Production starter template: DynamoDB Streams -> Supabase Realtime + Redis
+# Combines:
+# - durable checkpoint load (Redis)
+# - bounded DDB stream subscribe
+# - transform + realtime broadcast
+# - Redis publish fast internal path
+# - ack + checkpoint persist
+# - observability-friendly output fields
+#
+# Requires adapters: dynamodb, supabase, redis (and core, built-in)
+#
+# Suggested run:
+#   ainl run templates/production/hybrid_stream_to_realtime.ainl \
+#     --enable-adapter dynamodb --enable-adapter supabase --enable-adapter redis \
+#     --runtime-async --observability --observability-jsonl /tmp/ainl-metrics.jsonl
+
+LENTRY:
+  # -------------------------
+  # 1) Load Checkpoint (Redis)
+  # -------------------------
+  R redis.get "checkpoint:dynamodb:events:hybrid:consumer-1:shard-0" ->last_seq
+
+  # -------------------------
+  # 2) Subscribe (bounded)
+  # -------------------------
+  R dynamodb.streams.subscribe "events" {
+    "shard_iterator_type": "AT_SEQUENCE_NUMBER",
+    "filter": {"sequence_number": last_seq, "event_names": ["INSERT", "MODIFY", "REMOVE"]},
+    "consumer_group": "hybrid",
+    "consumer_id": "consumer-1",
+    "checkpoint_mode": "memory",
+    "timeout_s": 1,
+    "max_events": 25
+  } ->sub
+
+  If sub.events == [] ->LNO_EVENTS ->LPROCESS
+
+LNO_EVENTS:
+  J {
+    "ok": true,
+    "processed": 0,
+    "events_per_batch": 0,
+    "checkpoint_loaded": last_seq
+  }
+
+LPROCESS:
+  # -------------------------
+  # 3) Process / Transform (placeholder)
+  # -------------------------
+  # Replace this minimal transform with your business mapping/enrichment.
+  R core.GET sub.events 0 ->evt
+  R core.GET evt.dynamodb "SequenceNumber" ->seq
+  R core.LEN sub.events ->batch_size
+  R core.ID {
+    "kind": evt.eventName,
+    "keys": evt.dynamodb.Keys,
+    "sequence": seq
+  } ->payload
+
+  # -------------------------
+  # 4) Fan-out Outputs
+  # -------------------------
+  R supabase.realtime.broadcast "realtime:public:events" "ddb_event" $payload ->sb
+  R redis.publish "events:ddb" $payload ->rp
+
+  # -------------------------
+  # 5) Ack & Persist Checkpoint
+  # -------------------------
+  R dynamodb.streams.ack "events" {
+    "consumer_group": "hybrid",
+    "consumer_id": "consumer-1",
+    "shard_id": "shard-0",
+    "sequence": seq
+  } ->ack
+  R redis.set "checkpoint:dynamodb:events:hybrid:consumer-1:shard-0" seq 86400 ->saved
+
+  # -------------------------
+  # 6) Observability-friendly result fields
+  # -------------------------
+  J {
+    "ok": true,
+    "processed": 1,
+    "events_per_batch": batch_size,
+    "sequence": seq,
+    "ack_ok": ack.ok,
+    "checkpoint_saved": saved,
+    "broadcast_ok": sb.ok,
+    "published": rp
+  }

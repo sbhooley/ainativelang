@@ -492,35 +492,40 @@ def cmd_run(args: argparse.Namespace) -> int:
         avm_event_hasher=sandbox_client.event_hash if sandbox_client.connected else None,
         sandbox_metadata_provider=sandbox_client.trajectory_metadata if sandbox_client.connected else None,
         runtime_async=bool(getattr(args, "runtime_async", False)),
+        observability=bool(getattr(args, "observability", False)),
+        observability_jsonl_path=str(getattr(args, "observability_jsonl", "") or "").strip() or None,
     )
-    label = args.label or eng.default_entry_label()
     try:
-        if getattr(eng, "runtime_async", False):
-            result = asyncio.run(eng.run_label_async(label, frame={}))
-        else:
-            result = eng.run_label(label, frame={})
-        payload = {"ok": True, "label": str(label), "result": result, "runtime_version": eng.runtime_version}
-    except Exception as e:
-        payload = {"ok": False, "label": str(label), "error": str(e), "runtime_version": eng.runtime_version}
+        label = args.label or eng.default_entry_label()
+        try:
+            if getattr(eng, "runtime_async", False):
+                result = asyncio.run(eng.run_label_async(label, frame={}))
+            else:
+                result = eng.run_label(label, frame={})
+            payload = {"ok": True, "label": str(label), "result": result, "runtime_version": eng.runtime_version}
+        except Exception as e:
+            payload = {"ok": False, "label": str(label), "error": str(e), "runtime_version": eng.runtime_version}
+            if args.json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(_pretty_runtime_error(e))
+            return 1
+        if args.trace:
+            payload["trace"] = eng.trace_events
+            if args.trace_out:
+                Path(args.trace_out).write_text(json.dumps(eng.trace_events, indent=2), encoding="utf-8")
+        if reg is not None and args.record_adapters:
+            Path(args.record_adapters).write_text(json.dumps(getattr(reg, "call_log", []), indent=2), encoding="utf-8")
+            payload["adapter_calls_recorded"] = len(getattr(reg, "call_log", []))
+        if reg is not None and args.replay_adapters:
+            payload["adapter_calls_replayed"] = len(getattr(reg, "call_log", []))
         if args.json:
             print(json.dumps(payload, indent=2))
         else:
-            print(_pretty_runtime_error(e))
-        return 1
-    if args.trace:
-        payload["trace"] = eng.trace_events
-        if args.trace_out:
-            Path(args.trace_out).write_text(json.dumps(eng.trace_events, indent=2), encoding="utf-8")
-    if reg is not None and args.record_adapters:
-        Path(args.record_adapters).write_text(json.dumps(getattr(reg, "call_log", []), indent=2), encoding="utf-8")
-        payload["adapter_calls_recorded"] = len(getattr(reg, "call_log", []))
-    if reg is not None and args.replay_adapters:
-        payload["adapter_calls_replayed"] = len(getattr(reg, "call_log", []))
-    if args.json:
-        print(json.dumps(payload, indent=2))
-    else:
-        print(payload)
-    return 0
+            print(payload)
+        return 0
+    finally:
+        eng.close()
 
 
 def cmd_self_test_graph(args: argparse.Namespace) -> int:
@@ -1085,6 +1090,17 @@ def main() -> None:
         "--runtime-async",
         action="store_true",
         help="Enable async-capable adapter dispatch (or set AINL_RUNTIME_ASYNC=1).",
+    )
+    runp.add_argument(
+        "--observability",
+        action="store_true",
+        help="Enable lightweight runtime observability metrics (or set AINL_OBSERVABILITY=1).",
+    )
+    runp.add_argument(
+        "--observability-jsonl",
+        default="",
+        metavar="PATH",
+        help="Append observability metrics JSONL to PATH (or set AINL_OBSERVABILITY_JSONL).",
     )
     runp.add_argument("--trace-out", default="")
     runp.add_argument("--record-adapters", default="")

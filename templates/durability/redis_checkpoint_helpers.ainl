@@ -1,0 +1,76 @@
+S durability core redis_checkpoint_helpers
+
+# Redis checkpoint durability helper template.
+# No new adapter code required: uses existing `redis` + reactive adapters.
+#
+# Usage model:
+# 1) Copy this file into your graph, or include it as a module.
+# 2) Replace placeholder constants (table/channel/group/consumer/shard).
+# 3) Feed your computed `latest_seq` into LACK_AND_PERSIST.
+#
+# Include example:
+#   include "templates/durability/redis_checkpoint_helpers.ainl" as dredis
+#   L1:
+#     Call dredis/LOAD_CHECKPOINT ->cp
+#     # ... subscribe/process ...
+#     Call dredis/ACK_AND_PERSIST ->out
+#     J out
+
+LENTRY:
+  # Default entry uses load path; call other labels directly as needed.
+  JUMP_LLOAD_CHECKPOINT
+
+LLOAD_CHECKPOINT:
+  # Composite key pattern:
+  # checkpoint:<source>:<stream_or_table>:<group>:<consumer>:<shard_or_channel>
+  R redis.get "checkpoint:dynamodb:orders:workers:consumer-a:shard-000" ->last_checkpoint
+  J {"ok": true, "checkpoint": last_checkpoint}
+
+LSTART_SUBSCRIBE_DYNAMODB:
+  # Example DynamoDB subscribe using loaded checkpoint.
+  # Replace static values for your deployment.
+  R redis.get "checkpoint:dynamodb:orders:workers:consumer-a:shard-000" ->last_seq
+  R dynamodb.streams.subscribe "orders" {
+    "shard_iterator_type": "AT_SEQUENCE_NUMBER",
+    "filter": {"sequence_number": last_seq, "event_names": ["INSERT", "MODIFY", "REMOVE"]},
+    "checkpoint_mode": "memory",
+    "consumer_group": "workers",
+    "consumer_id": "consumer-a",
+    "timeout_s": 2,
+    "max_events": 50
+  } ->batch
+  J {"ok": true, "batch": batch, "loaded_checkpoint": last_seq}
+
+LSTART_SUBSCRIBE_SUPABASE:
+  # Example Supabase realtime subscribe with replay_from loaded from Redis.
+  R redis.get "checkpoint:supabase:realtime:public:orders:workers:consumer-a" ->cursor
+  R supabase.realtime.subscribe "realtime:public:orders" {
+    "table": "orders",
+    "events": ["INSERT", "UPDATE", "DELETE"],
+    "fanout_group": "workers",
+    "consumer": "consumer-a",
+    "replay_from": cursor,
+    "timeout_s": 2,
+    "max_events": 50
+  } ->sub
+  J {"ok": true, "result": sub, "loaded_cursor": cursor}
+
+LACK_AND_PERSIST:
+  # DynamoDB ack + Redis persist.
+  # Replace `latest_seq` wiring to your event-derived value in parent graph.
+  # This template keeps literal placeholder value so it compiles standalone.
+  R core.ID "REPLACE_WITH_LATEST_SEQUENCE" ->latest_seq
+  R dynamodb.streams.ack "orders" {
+    "consumer_group": "workers",
+    "consumer_id": "consumer-a",
+    "shard_id": "shard-000",
+    "sequence": latest_seq
+  } ->ack_out
+  R redis.set "checkpoint:dynamodb:orders:workers:consumer-a:shard-000" latest_seq 86400 ->saved
+  J {"ok": true, "ack": ack_out, "saved": saved, "sequence": latest_seq}
+
+LEXIT_OK:
+  J {"ok": true}
+
+LEXIT_FAIL:
+  J {"ok": false}

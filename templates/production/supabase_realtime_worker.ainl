@@ -1,0 +1,76 @@
+S production core supabase_realtime_worker
+
+# Production starter template: Supabase Realtime worker
+# Combines durability + observability-friendly outputs using existing adapters only.
+# Requires adapters: supabase, redis (optional postgres alternative), core
+#
+# Suggested run:
+#   ainl run templates/production/supabase_realtime_worker.ainl \
+#     --enable-adapter supabase --enable-adapter redis \
+#     --runtime-async --observability --observability-jsonl /tmp/ainl-metrics.jsonl
+
+LENTRY:
+  # -------------------------
+  # 1) Load Cursor
+  # -------------------------
+  # Redis-backed cursor (default path).
+  # Optional Postgres variant: query checkpoints table first and map sequence -> replay_from.
+  R redis.get "checkpoint:supabase:realtime:public:orders:workers:consumer-a" ->cursor
+
+  # -------------------------
+  # 2) Subscribe / Replay
+  # -------------------------
+  R supabase.realtime.subscribe "realtime:public:orders" {
+    "table": "orders",
+    "events": ["INSERT", "UPDATE", "DELETE"],
+    "fanout_group": "workers",
+    "consumer": "consumer-a",
+    "replay_from": cursor,
+    "timeout_s": 2,
+    "max_events": 50
+  } ->sub
+
+  If sub.result.events == [] ->LNO_EVENTS ->LPROCESS
+
+LNO_EVENTS:
+  J {
+    "ok": true,
+    "processed": 0,
+    "events_per_batch": 0,
+    "lag_hint": "idle",
+    "loaded_cursor": cursor
+  }
+
+LPROCESS:
+  # -------------------------
+  # 3) Process (placeholder)
+  # -------------------------
+  # Replace with your business logic. Starter keeps first event only.
+  R core.GET sub.result.events 0 ->evt
+  R core.GET evt "sequence" ->latest_cursor
+  R core.GET evt "timestamp" ->evt_ts
+  R core.LEN sub.result.events ->batch_size
+
+  # -------------------------
+  # 4) Ack & Persist
+  # -------------------------
+  R supabase.realtime.ack "realtime:public:orders" {
+    "fanout_group": "workers",
+    "consumer": "consumer-a",
+    "sequence": latest_cursor
+  } ->ack_out
+  R redis.set "checkpoint:supabase:realtime:public:orders:workers:consumer-a" latest_cursor 86400 ->saved
+
+  # -------------------------
+  # 5) Observability-friendly result fields
+  # -------------------------
+  J {
+    "ok": true,
+    "processed": 1,
+    "events_per_batch": batch_size,
+    "latest_cursor": latest_cursor,
+    "event_timestamp": evt_ts,
+    "lag_hint": "monitor with reactive.sequence_gap and timestamps",
+    "ack_ok": ack_out.ok,
+    "cursor_saved": saved
+  }

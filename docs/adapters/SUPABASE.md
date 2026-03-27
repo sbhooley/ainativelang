@@ -165,6 +165,7 @@ Related docs:
 - `docs/reference/ADAPTER_REGISTRY.md`
 - `tooling/adapter_manifest.json`
 - `tooling/security_profiles.json`
+- `docs/reactive/ADVANCED_DURABILITY.md` (Redis/Postgres-backed durable cursor patterns for multi-process and multi-node deployments)
 
 ---
 

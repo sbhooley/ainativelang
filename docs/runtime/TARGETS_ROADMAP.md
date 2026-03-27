@@ -1,6 +1,6 @@
 # AI Native Lang (AINL) targets roadmap — real-world and production
 
-Expanding targets so AI Native Lang is usable in production and for mass adoption. Tiers: **Today** (implemented), **Next** (high priority), **Production** (deploy, observe, scale), **Ecosystem** (other languages and platforms).
+Expanding targets so AI Native Lang is usable in production and for mass adoption. Major runtime/data/reactive lanes below are now production-ready, with a short future list retained for optional expansion.
 
 ---
 
@@ -47,6 +47,48 @@ Expanding targets so AI Native Lang is usable in production and for mass adoptio
 
 ---
 
+## ✅ Production Ready: Database Adapters
+
+Runtime-native adapters with established contracts and docs:
+
+- `sqlite`
+- `postgres`
+- `mysql`
+- `redis`
+- `dynamodb`
+- `airtable`
+- `supabase`
+
+These cover local SQL, cloud SQL, cache/pub-sub, managed NoSQL streams, and realtime SaaS workflows.
+
+---
+
+## ✅ Production Ready: Native Async Runtime
+
+AINL's native async runtime loop is production-ready for graph execution with async-capable adapters:
+
+- async execution path via `AINL_RUNTIME_ASYNC=1` or `--runtime-async`
+- bounded async reactive polling patterns for streams/realtime/pub-sub
+- optional observability integration (including JSONL sink) for production diagnostics
+
+See `docs/runtime/ASYNC_RUNTIME.md` for runtime behavior and adapter coverage details.
+
+---
+
+## ✅ Production Ready: Reactive / Event-Driven Features
+
+Reactive adapter primitives are production-ready:
+
+- DynamoDB Streams: `streams.subscribe`, `streams.ack`, checkpoint helpers
+- Supabase Realtime: `realtime.subscribe`, `realtime.replay`, `realtime.get_cursor`, `realtime.ack`, fan-out helpers
+- Redis pub/sub: async parity and bounded subscribe flows
+- Durability guidance + production starters:
+  - `docs/reactive/ADVANCED_DURABILITY.md`
+  - `templates/durability/`
+  - `templates/production/`
+
+---
+
 ## Tier 4: Ecosystem (other languages and platforms)
 
 | Target | Purpose |
@@ -78,3 +120,11 @@ Expanding targets so AI Native Lang is usable in production and for mass adoptio
 | Node/Java/.NET/Go | 🔲 Planned | New emitters + adapters |
 
 Adding OpenAPI and Docker to the compiler gives immediate production value: **documented, runnable API** and **one-command deploy** for the current stack.
+
+---
+
+## Future / Nice-to-Have
+
+- Multi-node/shared durability coordination primitives (beyond process-local helper maps).
+- Runtime scheduling optimizations for very high-throughput reactive pipelines.
+- Optional advanced adapter features for specialized deployments (for example deeper provider-specific admin helpers).

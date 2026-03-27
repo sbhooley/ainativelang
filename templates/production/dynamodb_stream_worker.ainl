@@ -1,0 +1,75 @@
+S production core dynamodb_stream_worker
+
+# Production starter template: DynamoDB Streams worker
+# Combines durability + observability-friendly outputs using existing adapters only.
+# Requires adapters: dynamodb, redis (and core, built-in)
+#
+# Suggested run:
+#   ainl run templates/production/dynamodb_stream_worker.ainl \
+#     --enable-adapter dynamodb --enable-adapter redis \
+#     --runtime-async --observability --observability-jsonl /tmp/ainl-metrics.jsonl
+
+LENTRY:
+  # -------------------------
+  # 1) Load Checkpoint (Redis)
+  # -------------------------
+  R redis.get "checkpoint:dynamodb:orders:workers:consumer-a:shard-000" ->last_seq
+
+  # -------------------------
+  # 2) Subscribe (bounded batch)
+  # -------------------------
+  R dynamodb.streams.subscribe "orders" {
+    "shard_iterator_type": "AT_SEQUENCE_NUMBER",
+    "filter": {"sequence_number": last_seq, "event_names": ["INSERT", "MODIFY", "REMOVE"]},
+    "consumer_group": "workers",
+    "consumer_id": "consumer-a",
+    "checkpoint_mode": "memory",
+    "timeout_s": 2,
+    "max_events": 50
+  } ->sub
+
+  If sub.events == [] ->LNO_EVENTS ->LPROCESS
+
+LNO_EVENTS:
+  # Observability section: emit useful envelope fields in output.
+  # Runtime-level observability (when enabled) will still capture adapter timing.
+  J {
+    "ok": true,
+    "processed": 0,
+    "events_per_batch": 0,
+    "lag_hint": "idle",
+    "checkpoint_loaded": last_seq
+  }
+
+LPROCESS:
+  # -------------------------
+  # 3) Process (placeholder)
+  # -------------------------
+  # Replace with your business logic (embedding call, write model, enrichment, etc).
+  # For starter clarity, process first event only.
+  R core.GET sub.events 0 ->evt
+  R core.GET evt.dynamodb "SequenceNumber" ->latest_seq
+  R core.LEN sub.events ->batch_size
+
+  # -------------------------
+  # 4) Ack & Persist
+  # -------------------------
+  R dynamodb.streams.ack "orders" {
+    "consumer_group": "workers",
+    "consumer_id": "consumer-a",
+    "shard_id": "shard-000",
+    "sequence": latest_seq
+  } ->ack_out
+  R redis.set "checkpoint:dynamodb:orders:workers:consumer-a:shard-000" latest_seq 86400 ->saved
+
+  # -------------------------
+  # 5) Observability-friendly result fields
+  # -------------------------
+  J {
+    "ok": true,
+    "processed": 1,
+    "events_per_batch": batch_size,
+    "latest_sequence": latest_seq,
+    "ack_ok": ack_out.ok,
+    "checkpoint_saved": saved
+  }

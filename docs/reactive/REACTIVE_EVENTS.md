@@ -148,4 +148,9 @@ For deeper adapter-specific details, see:
 - `docs/adapters/SUPABASE.md` (Realtime section)
 - `docs/adapters/REDIS.md` (Pub/Sub + async)
 - `docs/adapters/AIRTABLE.md` (Webhooks + attachments)
+- `docs/reactive/ADVANCED_DURABILITY.md` (multi-node and cross-process durable checkpoint/cursor patterns using existing adapters)
+- `templates/durability/` (packaged Redis/Postgres durability helper templates for include/copy-paste reuse)
+- `templates/production/` (combined production starters for durability + observability-ready reactive workers)
+
+This concludes the core reactive database support in AINL. The system is now ready for production event-driven AI workflows. See `docs/reactive/ADVANCED_DURABILITY.md` and `templates/production/` for scaling guidance.
 

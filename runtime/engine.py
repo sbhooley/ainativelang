@@ -16,6 +16,7 @@ from compiler_v2 import (
 from runtime.values import compare, deep_get, deep_put, json_safe, stable_sort, truthy
 from runtime.adapters.base import AdapterRegistry, AdapterError
 from runtime.adapters.builtins import CoreBuiltinAdapter
+from runtime.observability import RuntimeObservability
 
 
 class AinlRuntimeError(RuntimeError):
@@ -100,6 +101,8 @@ class RuntimeEngine:
         avm_event_hasher: Optional[Callable[[Dict[str, Any]], Optional[str]]] = None,
         sandbox_metadata_provider: Optional[Callable[[], Dict[str, Any]]] = None,
         runtime_async: bool = False,
+        observability: bool = False,
+        observability_jsonl_path: Optional[str] = None,
     ):
         self.ir = ir
         self.labels = ir.get("labels", {})
@@ -123,6 +126,7 @@ class RuntimeEngine:
         self.runtime_version = RUNTIME_VERSION
         env_async = str(os.environ.get("AINL_RUNTIME_ASYNC") or "").strip().lower() in {"1", "true", "yes", "on"}
         self.runtime_async = bool(runtime_async or env_async)
+        self.observability = RuntimeObservability.from_env_or_flag(observability, jsonl_path=observability_jsonl_path)
         self.limits = limits or {}
         self._run_started_at: float = 0.0
         self._steps_executed: int = 0
@@ -154,6 +158,8 @@ class RuntimeEngine:
         avm_event_hasher: Optional[Callable[[Dict[str, Any]], Optional[str]]] = None,
         sandbox_metadata_provider: Optional[Callable[[], Dict[str, Any]]] = None,
         runtime_async: bool = False,
+        observability: bool = False,
+        observability_jsonl_path: Optional[str] = None,
     ) -> "RuntimeEngine":
         c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
         ir = c.compile(code, emit_graph=True, source_path=source_path)
@@ -172,6 +178,8 @@ class RuntimeEngine:
             avm_event_hasher=avm_event_hasher,
             sandbox_metadata_provider=sandbox_metadata_provider,
             runtime_async=runtime_async,
+            observability=observability,
+            observability_jsonl_path=observability_jsonl_path,
         )
 
     @classmethod
@@ -190,6 +198,8 @@ class RuntimeEngine:
         limits: Optional[Dict[str, Any]] = None,
         trace_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
         runtime_async: bool = False,
+        observability: bool = False,
+        observability_jsonl_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         eng = cls.from_code(
             code,
@@ -202,16 +212,27 @@ class RuntimeEngine:
             limits=limits,
             trace_sink=trace_sink,
             runtime_async=runtime_async,
+            observability=observability,
+            observability_jsonl_path=observability_jsonl_path,
         )
-        lid = label or eng.default_entry_label()
-        if eng.runtime_async:
-            result = asyncio.run(eng.run_label_async(lid, frame=frame or {}))
-        else:
-            result = eng.run_label(lid, frame=frame or {})
-        payload = {"ok": True, "label": str(lid), "result": result, "runtime_version": eng.runtime_version}
-        if trace:
-            payload["trace"] = eng.trace_events
-        return payload
+        try:
+            lid = label or eng.default_entry_label()
+            if eng.runtime_async:
+                result = asyncio.run(eng.run_label_async(lid, frame=frame or {}))
+            else:
+                result = eng.run_label(lid, frame=frame or {})
+            payload = {"ok": True, "label": str(lid), "result": result, "runtime_version": eng.runtime_version}
+            if trace:
+                payload["trace"] = eng.trace_events
+            return payload
+        finally:
+            eng.close()
+
+    def close(self) -> None:
+        try:
+            self.observability.close()
+        except Exception:
+            pass
 
     def _steps(self, label_id: str) -> List[Dict[str, Any]]:
         b = self.labels.get(label_id, {})
@@ -272,6 +293,44 @@ class RuntimeEngine:
         lim = self._limit_int("max_adapter_calls")
         if lim is not None and self._adapter_calls > lim:
             raise AinlRuntimeError("max_adapter_calls exceeded", lid, idx, op, stack, code=ERROR_CODE_MAX_ADAPTER_CALLS)
+
+    def _record_reactive_metrics(self, adapter_name: str, target: str, result: Any) -> None:
+        if not self.observability.enabled:
+            return
+        a = str(adapter_name or "").lower()
+        t = str(target or "").lower()
+        labels = {"adapter": a, "target": t}
+        # Batch event counts for reactive subscriptions.
+        if a == "dynamodb" and t == "streams_subscribe":
+            events = result.get("events") if isinstance(result, dict) else None
+            if isinstance(events, list):
+                self.observability.emit("reactive.events_per_batch", len(events), labels=labels)
+                if events:
+                    seq = (((events[-1] or {}).get("dynamodb") or {}).get("SequenceNumber"))
+                    self.observability.sequence_gap("dynamodb:streams", seq, labels=labels)
+        elif a == "supabase" and t == "realtime_subscribe":
+            events = None
+            if isinstance(result, dict):
+                inner = result.get("result")
+                if isinstance(inner, dict):
+                    events = inner.get("events")
+            if isinstance(events, list):
+                self.observability.emit("reactive.events_per_batch", len(events), labels=labels)
+                if events:
+                    ts = (events[-1] or {}).get("timestamp")
+                    if ts:
+                        try:
+                            dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                            lag_s = max(0.0, time.time() - dt.timestamp())
+                            self.observability.emit("reactive.lag_seconds", round(lag_s, 6), labels=labels)
+                        except Exception:
+                            pass
+                    seq = (events[-1] or {}).get("sequence")
+                    self.observability.sequence_gap("supabase:realtime", seq, labels=labels)
+        elif a == "redis" and t == "subscribe":
+            messages = result.get("messages") if isinstance(result, dict) else None
+            if isinstance(messages, list):
+                self.observability.emit("reactive.events_per_batch", len(messages), labels=labels)
 
     def _resolve(self, token: Any, frame: Dict[str, Any]) -> Any:
         if isinstance(token, str):
@@ -627,6 +686,7 @@ class RuntimeEngine:
         self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
     ) -> Any:
         self._count_adapter_call(lid, idx, op, stack)
+        started = time.perf_counter()
         if "." in adapter:
             adp_name, verb = adapter.split(".", 1)
             # Graph-mode R steps put the first operand in `target` without pre-resolving; step-mode
@@ -635,22 +695,70 @@ class RuntimeEngine:
             t0 = self._resolve(target, frame) if isinstance(target, str) else target
             call_ctx = dict(frame)
             call_ctx["_runtime_async"] = self.runtime_async
-            return self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+            call_ctx["_observability"] = self.observability
+            try:
+                out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+                return out
+            finally:
+                duration_ms = round((time.perf_counter() - started) * 1000, 3)
+                self.observability.emit(
+                    "adapter.call.duration_ms",
+                    duration_ms,
+                    labels={"adapter": adp_name, "target": verb},
+                )
+                if "out" in locals():
+                    self._record_reactive_metrics(adp_name, verb, out)
         call_ctx = dict(frame)
         call_ctx["_runtime_async"] = self.runtime_async
-        return self.adapters.call(adapter, target, args, call_ctx)
+        call_ctx["_observability"] = self.observability
+        try:
+            out = self.adapters.call(adapter, target, args, call_ctx)
+            return out
+        finally:
+            duration_ms = round((time.perf_counter() - started) * 1000, 3)
+            self.observability.emit(
+                "adapter.call.duration_ms",
+                duration_ms,
+                labels={"adapter": adapter, "target": target},
+            )
+            if "out" in locals():
+                self._record_reactive_metrics(adapter, target, out)
 
     async def _exec_r_call_async(
         self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
     ) -> Any:
         self._count_adapter_call(lid, idx, op, stack)
+        started = time.perf_counter()
         call_ctx = dict(frame)
         call_ctx["_runtime_async"] = True
+        call_ctx["_observability"] = self.observability
         if "." in adapter:
             adp_name, verb = adapter.split(".", 1)
             t0 = self._resolve(target, frame) if isinstance(target, str) else target
-            return await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
-        return await self.adapters.call_async(adapter, target, args, call_ctx)
+            try:
+                out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
+                return out
+            finally:
+                duration_ms = round((time.perf_counter() - started) * 1000, 3)
+                self.observability.emit(
+                    "adapter.call.duration_ms",
+                    duration_ms,
+                    labels={"adapter": adp_name, "target": verb},
+                )
+                if "out" in locals():
+                    self._record_reactive_metrics(adp_name, verb, out)
+        try:
+            out = await self.adapters.call_async(adapter, target, args, call_ctx)
+            return out
+        finally:
+            duration_ms = round((time.perf_counter() - started) * 1000, 3)
+            self.observability.emit(
+                "adapter.call.duration_ms",
+                duration_ms,
+                labels={"adapter": adapter, "target": target},
+            )
+            if "out" in locals():
+                self._record_reactive_metrics(adapter, target, out)
 
     def _exec_r_step(self, step: Dict[str, Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]) -> Any:
         canon = runtime_canonicalize_r_step(step)

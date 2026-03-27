@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
+from runtime.observability import record_metric
 
 
 class RedisAdapter(RuntimeAdapter):
@@ -450,7 +451,8 @@ class RedisAdapter(RuntimeAdapter):
                 messages.append(msg)
             except asyncio.TimeoutError:
                 break
-        return {"channel": channel, "messages": messages, "active": True}
+        out = {"channel": channel, "messages": messages, "active": True}
+        return out
 
     async def _unsubscribe_async(self, channel: str) -> Dict[str, Any]:
         self._check_allowed_channel(channel)
@@ -577,7 +579,14 @@ class RedisAdapter(RuntimeAdapter):
             channel = str(args[0])
             timeout_s = float(args[1]) if len(args) > 1 and args[1] is not None else 1.0
             max_messages = self._as_int(args[2]) if len(args) > 2 and args[2] is not None else 10
-            return await self._subscribe_async(channel, timeout_s, max_messages)
+            out = await self._subscribe_async(channel, timeout_s, max_messages)
+            record_metric(
+                context,
+                "reactive.events_per_batch",
+                len(out.get("messages") or []),
+                labels={"adapter": "redis", "target": "subscribe"},
+            )
+            return out
         return self._normalize_result(await self._do_async(verb, args))
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
@@ -588,6 +597,14 @@ class RedisAdapter(RuntimeAdapter):
             if not args:
                 raise AdapterError("redis transaction missing ops argument")
             return self._transaction(args[0])
-        return self._normalize_result(self._do(verb, args))
+        out = self._normalize_result(self._do(verb, args))
+        if verb == "subscribe" and isinstance(out, dict):
+            record_metric(
+                context,
+                "reactive.events_per_batch",
+                len(out.get("messages") or []),
+                labels={"adapter": "redis", "target": "subscribe"},
+            )
+        return out
 
     # Async path supports full verb parity via redis.asyncio when available.

@@ -367,7 +367,7 @@ Examples include:
 - `memory`
 - OpenClaw-specific operational extensions
 
-Relational adapters (`sqlite`, `postgres`, `mysql`) and service adapters (`redis`, `dynamodb`, `airtable`, `supabase`) share a common contract surface exposed through `ADAPTER_REGISTRY.json` and `tooling/adapter_manifest.json` (verbs, privilege tiers, destructive/network-facing flags, async capability). Several of them also expose **reactive/event feeds**—DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, and Airtable webhooks—normalized into bounded, checkpointable event batches suitable for async graphs (see `docs/reactive/REACTIVE_EVENTS.md` and the `examples/reactive/` gallery).
+Relational adapters (`sqlite`, `postgres`, `mysql`) and service adapters (`redis`, `dynamodb`, `airtable`, `supabase`) share a common contract surface exposed through `ADAPTER_REGISTRY.json` and `tooling/adapter_manifest.json` (verbs, privilege tiers, destructive/network-facing flags, async capability). Several of them also expose **reactive/event feeds**—DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, and Airtable webhooks—normalized into bounded, checkpointable event batches suitable for async graphs (see `docs/reactive/REACTIVE_EVENTS.md` and the `examples/reactive/` gallery). For production deployments, AINL now ships explicit durability and rollout guidance with `docs/reactive/ADVANCED_DURABILITY.md`, reusable helpers in `templates/durability/`, and combined worker starters in `templates/production/`, all using existing adapters with no additional runtime code.
 
 ### 8.2 Capability-Aware Safety
 

@@ -56,6 +56,7 @@ Supporting detail:
 
 - **What is AINL?** **[`WHAT_IS_AINL.md`](WHAT_IS_AINL.md)** — canonical primer (narrative + v1.2+ capabilities). Repository root [`../WHAT_IS_AINL.md`](../WHAT_IS_AINL.md) is a short stub that points here.
 - **Long-form architecture / economics:** **[`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md)** (repo root) — v1.2.8 adds OpenClaw intelligence ops, token caps, graph pitfalls, and appendix file map.
+- **Reactive production workflows:** [`reactive/REACTIVE_EVENTS.md`](reactive/REACTIVE_EVENTS.md) + durability scale guidance [`reactive/ADVANCED_DURABILITY.md`](reactive/ADVANCED_DURABILITY.md) + ready-to-adopt starters in [`../templates/production/`](../templates/production/).
 - **Graph diagrams (Mermaid/images):** root `README.md` → *Visualize your workflow*; details in [`architecture/GRAPH_INTROSPECTION.md`](architecture/GRAPH_INTROSPECTION.md) §7 (`ainl visualize`, `ainl-visualize`, `--png`, `--svg`).
 - **Starter include demos:** `examples/timeout_demo.ainl` (minimal timeout include) and `examples/timeout_memory_prune_demo.ainl` (timeout + memory put/list/prune, used for PNG export docs).
 - **Trajectory logging (`ainl run`):** [`trajectory.md`](trajectory.md) — optional `<stem>.trajectory.jsonl` per step (`--log-trajectory` / `AINL_LOG_TRAJECTORY`); distinct from runner audit logs in [`operations/AUDIT_LOGGING.md`](operations/AUDIT_LOGGING.md).

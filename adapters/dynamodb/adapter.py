@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, Iterable, List, Optional
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
+from runtime.observability import record_metric
 
 
 class DynamoDBAdapter(RuntimeAdapter):
@@ -260,6 +261,7 @@ class DynamoDBAdapter(RuntimeAdapter):
         filter_spec: Optional[Dict[str, Any]],
         timeout_s: float,
         max_events: int,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         loop = asyncio.get_running_loop()
         if self._async_loop is not None and self._async_loop is not loop:
@@ -289,7 +291,9 @@ class DynamoDBAdapter(RuntimeAdapter):
                 events.append(evt)
             except asyncio.TimeoutError:
                 break
-        return {"table": table, "events": events, "active": True}
+        out = {"table": table, "events": events, "active": True}
+        record_metric(context or {}, "reactive.events_per_batch", len(events), labels={"adapter": "dynamodb", "target": "streams_subscribe"})
+        return out
 
     async def _streams_unsubscribe_async(self, table: str) -> Dict[str, Any]:
         self._check_table_allowed(table)
@@ -375,7 +379,9 @@ class DynamoDBAdapter(RuntimeAdapter):
             filter_spec = args[2] if len(args) > 2 and isinstance(args[2], dict) else None
             timeout_s = float(args[3]) if len(args) > 3 and args[3] is not None else 1.0
             max_events = int(args[4]) if len(args) > 4 and args[4] is not None else 10
-            return self._stream_subscribe_sync(table, iterator_type, filter_spec, timeout_s, max_events)
+            out = self._stream_subscribe_sync(table, iterator_type, filter_spec, timeout_s, max_events)
+            record_metric(context, "reactive.events_per_batch", len(out.get("events") or []), labels={"adapter": "dynamodb", "target": "streams_subscribe"})
+            return out
 
         if verb == "streams_unsubscribe":
             if not args:
@@ -584,7 +590,7 @@ class DynamoDBAdapter(RuntimeAdapter):
             filter_spec = args[2] if len(args) > 2 and isinstance(args[2], dict) else None
             timeout_s = float(args[3]) if len(args) > 3 and args[3] is not None else 0.5
             max_events = int(args[4]) if len(args) > 4 and args[4] is not None else 10
-            return await self._streams_subscribe_async(table, iterator_type, filter_spec, timeout_s, max_events)
+            return await self._streams_subscribe_async(table, iterator_type, filter_spec, timeout_s, max_events, context=context)
         if verb == "streams_unsubscribe":
             if not args:
                 raise AdapterError("dynamodb streams.unsubscribe requires table_name")

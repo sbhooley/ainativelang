@@ -1,0 +1,13 @@
+S app core reactive_observability_smoke
+
+# Example run (observability enabled):
+# AINL_RUNTIME_ASYNC=1 AINL_OBSERVABILITY=1 \
+#   ainl run examples/reactive/observability_reactive_smoke.ainl \
+#   --runtime-async --observability --observability-jsonl /tmp/ainl-observability.jsonl \
+#   --enable-adapter redis --redis-allow-prefix events: --redis-allow-write
+
+LENTRY:
+  # Bounded subscribe batch so metrics include events_per_batch.
+  R redis.subscribe "events:demo" 0.5 5 ->sub
+  J sub
+
