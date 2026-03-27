@@ -102,7 +102,7 @@ py-modules = [
 ]
 
 [tool.setuptools.package-data]
-tooling = ["*.json"]
+tooling = ["*.json", "*.yml"]
 
 [tool.setuptools.packages.find]
 where = ["."]

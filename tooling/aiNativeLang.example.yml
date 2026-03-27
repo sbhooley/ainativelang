@@ -1,0 +1,11 @@
+# Copy to your OpenClaw workspace root as aiNativeLang.yml (or let
+# `ainl install openclaw` create it from this example when missing).
+version: 1.0
+project: "OpenClaw"
+description: "OpenClaw integration with AINL — safe defaults"
+env:
+  AINL_EXECUTION_MODE: "graph-preferred"
+  OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT: 1
+  AINL_IR_CACHE: 1
+  AINL_OBSERVABILITY: 1
+providers: []
