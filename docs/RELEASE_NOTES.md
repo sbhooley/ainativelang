@@ -23,6 +23,11 @@
 
 See **`docs/CHANGELOG.md`** § **v1.3.0** for the same items in conventional-commit form.
 
+### Optional adapter: tiered code context (`code_context`)
+
+- **Adapter:** **`adapters/code_context.py`** — index a local tree to JSON, query TF–IDF tiered chunks (`INDEX`, `QUERY_CONTEXT`, `GET_FULL_SOURCE`, **`STATS`**). Enable: **`--enable-adapter code_context`**. Env: **`AINL_CODE_CONTEXT_STORE`**.
+- **Docs / demo:** **`docs/adapters/CODE_CONTEXT.md`**, **`examples/code_context_demo.ainl`**, catalog **`docs/reference/ADAPTER_REGISTRY.md`** §9. Concept credit: [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip), Brady Drexler.
+
 ## AINL v1.2.10 — PyPI visualize packaging fix (2026-03-27)
 
 **PyPI / runtime:** **`ainl` 1.2.10** — **`RUNTIME_VERSION` `1.2.10`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned.

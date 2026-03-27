@@ -168,6 +168,17 @@ ainl run app.ainl --json \
 
 Env overrides: **`AINL_VECTOR_MEMORY_PATH`**, **`AINL_TOOL_REGISTRY_PATH`**. Details: **`docs/adapters/README.md`**, **`docs/reference/ADAPTER_REGISTRY.md`** §9, **`docs/emitters/README.md`**.
 
+### Local `code_context` (tiered repo index)
+
+For ctxzip-style tiered codebase context (used by **`examples/code_context_demo.ainl`**), enable:
+
+```bash
+ainl run app.ainl --json \
+  --enable-adapter code_context
+```
+
+Env override: **`AINL_CODE_CONTEXT_STORE`**. Details: **`docs/adapters/CODE_CONTEXT.md`**, **`docs/reference/ADAPTER_REGISTRY.md`** §9.
+
 ### HTTP adapter
 
 ```bash

@@ -15,7 +15,7 @@ All schema-level docs should live together here to avoid splitting closely relat
 - [`IR_SCHEMA.md`](IR_SCHEMA.md) — canonical IR schema
 - [`GRAPH_SCHEMA.md`](GRAPH_SCHEMA.md) — graph schema
 - [`TOOL_API.md`](TOOL_API.md) — structured tool API contract
-- [`ADAPTER_REGISTRY.md`](ADAPTER_REGISTRY.md) — adapter inventory (includes **`vector_memory`**, **`tool_registry`**, **`memory`**)
+- [`ADAPTER_REGISTRY.md`](ADAPTER_REGISTRY.md) — adapter inventory (includes **`vector_memory`**, **`tool_registry`**, **`code_context`**, **`memory`**)
 - [`../trajectory.md`](../trajectory.md) — CLI trajectory JSONL (`ainl run --log-trajectory`)
 - [`CAPABILITY_REGISTRY.md`](CAPABILITY_REGISTRY.md) — capability metadata and Tool API v2 projection
 - [`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) — OpenClaw skill + **`ainl install-openclaw`** (pair with **`openclaw/bridge/`** + monitoring guide)

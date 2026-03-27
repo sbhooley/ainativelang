@@ -1,0 +1,22 @@
+# examples/code_context_demo.ainl
+# Tiered code index demo (ctxzip-style) via the optional code_context adapter.
+#
+# Run from repo root (indexes "." — this repository):
+#   python3 -m cli.main run examples/code_context_demo.ainl --json \
+#     --enable-adapter code_context
+#
+# Strict validate:
+#   python3 scripts/validate_ainl.py examples/code_context_demo.ainl --strict
+#
+# Requires: BradyD2003/ctxzip-inspired design; credit: Brady Drexler (see docs/adapters/CODE_CONTEXT.md).
+
+S app core noop
+
+L1:
+  # Build / refresh the JSON store (default: .ainl_code_context.json in cwd).
+  R code_context.INDEX "." ->_idx
+  # Tier 1: TF–IDF-ranked signatures + one-line summaries (limit 5 chunks).
+  R code_context.QUERY_CONTEXT "adapter" 1 5 ->context
+  # STATS has no logical args; "_" is a parse placeholder only (adapter ignores it).
+  R code_context.STATS "_" ->stats
+  J context

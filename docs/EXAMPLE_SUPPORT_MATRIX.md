@@ -46,6 +46,14 @@ strict-valid.
 | `examples/web/basic_web_api.ainl` | `strict-valid` | Best starter for server/OpenAPI path | API surface for ops tooling |
 | `examples/scraper/basic_scraper.ainl` | `strict-valid` | Scraper + cron + persistence path | Scraper + scheduled ops |
 
+### Optional local adapter demos (`--enable-adapter`)
+
+These are **strict-valid** graphs that require an **opt-in** adapter at run time (not enabled in minimal `ainl run` by default).
+
+| Example | Profile | Notes |
+|---------|---------|-------|
+| `examples/code_context_demo.ainl` | `strict-valid` | Tiered repo index via **`code_context`**; requires **`--enable-adapter code_context`** — see **`docs/adapters/CODE_CONTEXT.md`** |
+
 Recommended learning order:
 
 1. `examples/hello.ainl`

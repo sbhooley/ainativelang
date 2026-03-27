@@ -422,6 +422,18 @@
       "sandbox_safe": true,
       "notes": "Local JSON vector_memory store; keyword overlap search and upsert. Optional; enable via host --enable-adapter vector_memory."
     },
+    "code_context": {
+      "support_tier": "compatibility",
+      "strict_contract": true,
+      "recommended_lane": "noncanonical",
+      "verbs": ["INDEX", "QUERY_CONTEXT", "GET_FULL_SOURCE", "STATS"],
+      "effect_default": "io",
+      "privilege_tier": "local_state",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
+      "notes": "Tiered local code index (JSON); ctxzip-inspired. Optional; --enable-adapter code_context; AINL_CODE_CONTEXT_STORE. See docs/adapters/CODE_CONTEXT.md."
+    },
     "tool_registry": {
       "support_tier": "compatibility",
       "strict_contract": true,

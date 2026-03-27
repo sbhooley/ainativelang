@@ -73,6 +73,7 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "memory",
         "vector_memory",
         "embedding_memory",
+        "code_context",
         "tool_registry",
         "langchain_tool",
     ]
@@ -346,6 +347,10 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
         from adapters.embedding_memory import EmbeddingMemoryAdapter
 
         reg.register("embedding_memory", EmbeddingMemoryAdapter())
+    if "code_context" in enabled:
+        from adapters.code_context import CodeContextAdapter
+
+        reg.register("code_context", CodeContextAdapter())
     if "tool_registry" in enabled:
         from adapters.tool_registry import ToolRegistryAdapter
 
@@ -1574,6 +1579,7 @@ def main() -> None:
             "memory",
             "vector_memory",
             "embedding_memory",
+            "code_context",
             "tool_registry",
             "langchain_tool",
             "ptc_runner",

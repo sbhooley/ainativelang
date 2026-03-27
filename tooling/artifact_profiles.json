@@ -40,6 +40,7 @@
       "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
       "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
       "examples/hyperspace_demo.ainl",
+      "examples/code_context_demo.ainl",
       "examples/test_adapters_full.ainl",
       "examples/test_nested.ainl",
       "examples/test_phase2_common_modules.ainl"

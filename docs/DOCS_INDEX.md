@@ -110,6 +110,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Compile-once / run-many proof pack: `docs/architecture/COMPILE_ONCE_RUN_MANY.md`
   - Includes `scripts/summarize_runs.py` for aggregating `RuntimeEngine.run(..., trace=True)` JSON payloads into small health summaries.
 - **Hyperspace emitter** (`--emit hyperspace`, embedded IR agent): `docs/emitters/README.md` · demo `examples/hyperspace_demo.ainl` · adapters `adapters/vector_memory.py`, `adapters/tool_registry.py` · catalog `docs/reference/ADAPTER_REGISTRY.md` §9
+- **Tiered code context (optional):** `docs/adapters/CODE_CONTEXT.md` · `adapters/code_context.py` · demo `examples/code_context_demo.ainl` · enable `--enable-adapter code_context`
 - Launch copy pack: `docs/launch/SHORT_POST.md`, `docs/launch/TECHNICAL_POST.md`
 - Maintainer publish checklist snapshot: `docs/launch/PUBLISH_CHECKLIST.md`
 - Post-release issue drafts and migration templates:

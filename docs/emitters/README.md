@@ -25,6 +25,8 @@ python3 scripts/validate_ainl.py path/to/workflow.ainl --strict --emit hyperspac
 
 **Happy-path demo:** `examples/hyperspace_demo.ainl` — compare with `ainl run … --enable-adapter vector_memory --enable-adapter tool_registry --log-trajectory` as in root `README.md`.
 
+**Optional (not registered by this emitter):** tiered repo context via **`code_context`** — see [`../adapters/CODE_CONTEXT.md`](../adapters/CODE_CONTEXT.md) and `examples/code_context_demo.ainl`; enable with `--enable-adapter code_context` when running graphs that call it.
+
 ## Where to see emitters in action
 
 - Snapshot tests for emitted artifacts: `tests/test_snapshot_emitters.py`
@@ -35,4 +37,4 @@ python3 scripts/validate_ainl.py path/to/workflow.ainl --strict --emit hyperspac
 - Language definition: [`../language/README.md`](../language/README.md)
 - Architecture and IR: [`../architecture/README.md`](../architecture/README.md)
 - Example support framing: [`../examples/README.md`](../examples/README.md)
-- Adapters (memory, vector_memory, tool_registry): [`../adapters/README.md`](../adapters/README.md)
+- Adapters (memory, vector_memory, tool_registry, code_context): [`../adapters/README.md`](../adapters/README.md)

@@ -192,6 +192,10 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "vector_memory.SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.LIST_SIMILAR": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.UPSERT": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    "code_context.INDEX": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    "code_context.QUERY_CONTEXT": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "code_context.GET_FULL_SOURCE": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "code_context.STATS": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "tool_registry.LIST": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "tool_registry.DISCOVER": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "tool_registry.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
@@ -250,6 +254,15 @@ def strict_adapter_key_for_step(step: Dict[str, Any]) -> str:
         isinstance(adapter, str)
         and "." not in adapter
         and adapter.lower() == "llm_query"
+        and not str(req_op or "").strip()
+    ):
+        ent = (step.get("entity") or step.get("target") or "").strip()
+        if ent:
+            return strict_adapter_key(adapter, ent)
+    if (
+        isinstance(adapter, str)
+        and "." not in adapter
+        and adapter.lower() == "code_context"
         and not str(req_op or "").strip()
     ):
         ent = (step.get("entity") or step.get("target") or "").strip()
