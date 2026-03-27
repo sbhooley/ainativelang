@@ -81,53 +81,79 @@ It is designed for teams building AI workflows that need multiple steps, state a
 
 ---
 
-## TECHNICAL: Get Started
+## Get Started (3 minutes)
+
+**Requires Python 3.10+.** No git clone needed to try it.
 
 ```bash
-# 1. Clone and create an isolated env (match CI: Python 3.10 — see docs/INSTALL.md)
+# 1. Install the CLI
+pip install ainl-lang
+
+# 2. Create a new project (generates main.ainl + README)
+ainl init my-first-worker
+cd my-first-worker
+
+# 3. Check the program compiles cleanly (strict graph semantics)
+ainl check main.ainl --strict
+
+# 4. Run it
+ainl run main.ainl
+
+# 5. Visualise the control-flow graph
+ainl visualize main.ainl --output -    # paste into https://mermaid.live
+```
+
+That's it. Edit `main.ainl`, add adapter calls (cache, HTTP, LLM, memory), revalidate, run again.
+
+### write → check → visualize → run loop
+
+1. **Write** — author in AINL or have an LLM emit a `.ainl` program.
+2. **Check** strict graph semantics and get actionable errors:  
+   `ainl check your.ainl --strict`  
+   Failures include structured diagnostics (line, suggestion, optional `llm_repair_hint`).  
+   Use `--json-diagnostics` for CI/machine-readable output.
+3. **Visualize** control flow as Mermaid:  
+   `ainl visualize your.ainl --output - > graph.mmd` — paste into [mermaid.live](https://mermaid.live).
+4. **Run** locally: `ainl run your.ainl`
+5. **Inspect canonical IR** (for agent/meta-agent loops): `ainl inspect your.ainl --strict`
+6. **Emit JSONL execution tape** for grading/evolution: `ainl run your.ainl --trace-jsonl run.trace.jsonl`
+
+<details>
+<summary><strong>Advanced / contributors: clone + editable install + CI bootstrap</strong></summary>
+
+```bash
+# Clone and create an isolated env (match CI: Python 3.10)
 git clone https://github.com/sbhooley/ainativelang.git
 cd ainativelang
 
 PYTHON_BIN=python3.10 VENV_DIR=.venv-py310 bash scripts/bootstrap.sh
 source .venv-py310/bin/activate  # Windows: .venv-py310\Scripts\activate
 
-# Alternative: python -m venv .venv && source .venv/bin/activate, then pip install below
-
-# 2. Install with dev + web extras (bootstrap may already have done this)
+# Install with dev + web extras
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev,web]"
 
-# 3. Validate an example workflow
-python scripts/validate_ainl.py examples/hello.ainl --strict
+# Validate an example
+ainl check examples/hello.ainl --strict
 
-# 4. Inspect the compiled graph IR
-ainl-validate examples/hello.ainl --strict --emit ir
-
-# 5. Run the core test suite
+# Run the core test suite
 python scripts/run_test_profiles.py --profile core
 
-# 6. Run environment diagnostics (optional but recommended)
+# Environment diagnostics
 ainl doctor
 
-# 7. Start the runner service (optional — for API/orchestrator integration)
+# Full conformance matrix
+make conformance
+
+# Runner service (for API/orchestrator integration)
 python scripts/runtime_runner_service.py
-# Then (in another shell): GET http://localhost:8770/capabilities
-#                          POST http://localhost:8770/run  {"code": "S app api /api\nL1:\nR core.ADD 2 3 ->sum\nJ sum"}
+# GET http://localhost:8770/capabilities
+# POST http://localhost:8770/run  {"code": "S app api /api\nL1:\nR core.ADD 2 3 ->sum\nJ sum"}
 ```
 
-### Quick-start: write → validate → visualize → run
+See `docs/INSTALL.md` and `CONTRIBUTING.md` for full contributor setup.
 
-Typical loop for AI engineers and agent builders:
-
-1. **Write** a `.ainl` program (or have an agent emit one).
-2. **Validate** strict graph semantics and get actionable errors:  
-   `ainl-validate your.ainl --strict` (or `python scripts/validate_ainl.py your.ainl --strict`).  
-   Failures use **structured diagnostics** (lineno, optional source spans, suggestions). Install **`pip install -e ".[dev]"`** for optional **rich**-formatted stderr; use **`--diagnostics-format=json`** or legacy **`--json-diagnostics`** in CI for machine-readable output. See `docs/INSTALL.md` and `compiler_diagnostics.py`.
-3. **Visualize** control flow as **Mermaid**:  
-   `ainl visualize your.ainl --output - > graph.mmd` — paste into [mermaid.live](https://mermaid.live) or GitHub/Obsidian. Flags: **`--no-clusters`**, **`--labels-only`**, **`--output` / `-o`** (`-` = stdout). **`ainl-visualize`** is the same entry point without the `ainl` subcommand.
-4. **Run** locally: `ainl run your.ainl --json` (see [Choose Your Path](#choose-your-path)).
-5. **Inspect canonical IR** for agent loops: `ainl inspect your.ainl --strict`.
-6. **Emit JSONL execution tape** for grading/evolution: `ainl run your.ainl --trace-jsonl run.trace.jsonl`.
+</details>
 
 ### Research-loop quickstart (meta-agent)
 

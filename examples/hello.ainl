@@ -1,3 +1,26 @@
+# examples/hello.ainl
+# The simplest possible AINL program — a good starting point.
+#
+# AINL programs are compiled graphs. Each "label" (L1:, L2:, END) is a node.
+# Control flow is explicit: every node ends with a J (join/return) that passes
+# a value to the runtime, or an If (...) that branches to another label.
+#
+# Syntax cheat-sheet:
+#   S <scope> <adapter> <path>     — header: declares the program surface
+#   X <var> <literal>              — assign a literal to a variable
+#   R <adapter>.<op> [args] -><v>  — Request: call an adapter operation
+#   J <var>                        — Join: return the value and finish this node
+#   If (<expr>) -><then> -><else>  — conditional branch
+#
+# Run this file:
+#   ainl check examples/hello.ainl --strict
+#   ainl run   examples/hello.ainl
+#   ainl visualize examples/hello.ainl --output -   # Mermaid diagram
+
+S app core noop
+
 L1:
-  R core.ADD 2 3 ->x
-  J x
+  # Use the built-in core.ADD operation to add two numbers.
+  # The result is bound to the variable `sum`.
+  R core.ADD 2 3 ->sum
+  J sum
