@@ -105,6 +105,8 @@ ainl visualize main.ainl --output -    # paste into https://mermaid.live
 
 That's it. Edit `main.ainl`, add adapter calls (cache, HTTP, LLM, memory), revalidate, run again.
 
+The `ainl init` command creates a clean, well-commented `main.ainl` designed for newcomers. It demonstrates core concepts — graph labels (`L1:` = control-flow node), requests (`R cache get` = read from the cache adapter), joins (`J` = return a value and finish the node), and branching — while remaining production-ready. Open `main.ainl` after scaffolding; the comments tell you exactly what each line does.
+
 ### write → check → visualize → run loop
 
 1. **Write** — author in AINL or have an LLM emit a `.ainl` program.
@@ -119,7 +121,7 @@ That's it. Edit `main.ainl`, add adapter calls (cache, HTTP, LLM, memory), reval
 6. **Emit JSONL execution tape** for grading/evolution: `ainl run your.ainl --trace-jsonl run.trace.jsonl`
 
 <details>
-<summary><strong>Advanced / contributors: clone + editable install + CI bootstrap</strong></summary>
+<summary><strong>Advanced: Contributing or Custom Build (clone + editable install + CI bootstrap)</strong></summary>
 
 ```bash
 # Clone and create an isolated env (match CI: Python 3.10)
