@@ -1,0 +1,26 @@
+name: Notify ainativelangweb content sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "GROWTH-PLAN.md"
+      - "README.md"
+      - "docs/**"
+      - "pyproject.toml"
+      - "WHITEPAPERDRAFT.md"
+      - "WHAT_IS_AINL.md"
+      - "BENCHMARK.md"
+      - "HOW_AINL_SAVES_MONEY.md"
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger ainativelangweb sync workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_PAT }}
+          repository: sbhooley/ainativelangweb
+          event-type: ainl-docs-updated
