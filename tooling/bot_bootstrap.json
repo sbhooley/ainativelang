@@ -1,12 +1,43 @@
 {
-  "version": "1.0",
+  "version": "1.3.0",
   "project": "AINL",
   "description": "Discoverable bootstrap for bots and agents working in the AINL/OpenClaw repo. Pointers only; not an execution engine.",
   "primary_onboarding_doc": "docs/BOT_ONBOARDING.md",
   "implementation_preflight_doc": "docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md",
   "docs_index": "docs/DOCS_INDEX.md",
+  "openclaw_quickstart": "docs/QUICKSTART_OPENCLAW.md",
   "openclaw_ainl_gold_standard": "docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md",
   "openclaw_host_ainl_1_2_8": "docs/operations/OPENCLAW_HOST_AINL_1_2_8.md",
+  "hermes_integration": "docs/HERMES_INTEGRATION.md",
+  "hermes_agent_hub": "docs/integrations/hermes-agent.md",
+  "mcp_host_integrations": "docs/getting_started/HOST_MCP_INTEGRATIONS.md",
+  "openclaw_commands": {
+    "ainl_install_openclaw": {
+      "command": "ainl install openclaw --workspace PATH [--dry-run] [--verbose]",
+      "description": "One-command OpenClaw + AINL setup: merges env.shellEnv into openclaw.json (direct JSON — CLI rejects unknown keys), bootstraps SQLite weekly_remaining_v1, registers three gold-standard crons, prints health table",
+      "doc": "docs/QUICKSTART_OPENCLAW.md"
+    },
+    "ainl_status": {
+      "command": "ainl status [--json]",
+      "description": "Unified health view: workspace, schema bootstrap, weekly budget (legacy weekly_remaining_v1 row preferred; memory_records aggregate fallback), cron presence, drift signal, 7-day token totals, caps, overall health",
+      "doc": "docs/QUICKSTART_OPENCLAW.md"
+    },
+    "ainl_doctor_ainl": {
+      "command": "ainl doctor --ainl",
+      "description": "OpenClaw + AINL integration validator: checks env vars, SQLite schema, cron names, OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT; prints fix hints and openclaw_ainl_fix_suggestions copy-paste commands",
+      "doc": "docs/QUICKSTART_OPENCLAW.md"
+    },
+    "ainl_doctor": {
+      "command": "ainl doctor [--host hermes|openclaw|zeroclaw]",
+      "description": "General environment diagnostics: Python/import health, PATH checks, MCP config validation (recognizes OpenClaw JSON, ZeroClaw JSON, Hermes YAML automatically)",
+      "doc": "docs/QUICKSTART_OPENCLAW.md"
+    },
+    "ainl_install_mcp": {
+      "command": "ainl install-mcp --host openclaw|zeroclaw|hermes [--dry-run]",
+      "description": "Bootstrap MCP wiring for a host: merges mcpServers.ainl into host config, installs ainl-run, PATH hint. Aliases: ainl install-openclaw, ainl install-zeroclaw, ainl hermes-install",
+      "doc": "docs/getting_started/HOST_MCP_INTEGRATIONS.md"
+    }
+  },
   "safe_default_docs": [
     "docs/AINL_SPEC.md",
     "docs/AINL_CANONICAL_CORE.md",
