@@ -56,6 +56,12 @@ Please prefer changes that are:
 - backed by tests or diagnostics where appropriate
 - accompanied by documentation updates when behavior changes
 
+### Easy ways to contribute
+
+- Submit a new adapter
+- Improve an example workflow
+- Write a case study
+
 ## Quick Start
 
 A typical contribution flow is:

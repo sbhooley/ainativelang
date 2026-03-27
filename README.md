@@ -658,7 +658,7 @@ For implementation and shipped-capability status, see:
 - Formal prefix grammar orchestration in `compiler_grammar.py`
 - Graph normalization, diff, patch, and canonicalization tooling in `tooling/`
 - Server/OpenAPI emission and runtime-backed execution flow
-- Runtime-native adapters with contract tests: `http`, `sqlite`, `fs`, `tools`
+- Runtime-native adapters with contract tests: `http`, `sqlite`, `postgres`, `fs`, `tools`
 - Runner service with policy-gated `/run`, `/capabilities`, health/metrics: `scripts/runtime_runner_service.py`
 - Adapter privilege-tier metadata and security profiles: `tooling/adapter_manifest.json`, `tooling/security_profiles.json`
 - Security/privilege introspection tooling: `tooling/security_report.py`
@@ -992,7 +992,7 @@ Real output uses fully qualified IDs like `"retry/ENTRY/n1"` and clusters automa
 - **Strict literal policy**: in strict mode, bare identifier-like tokens in read positions are treated as variable refs; quote string literals explicitly (see `docs/RUNTIME_COMPILER_CONTRACT.md` and `docs/language/grammar.md`).
 - **Golden fixtures**: `ainl golden` validates `examples/*.ainl` against `*.expected.json`.
 - **Replay tooling**: `ainl run ... --record-adapters calls.json` and `ainl run ... --replay-adapters calls.json` for deterministic adapter replay.
-- **Reference adapters**: `http`, `sqlite`, `fs` (sandboxed), and `tools` bridge with contract tests. Optional network adapters include `ptc_runner` and `llm_query` (explicit enablement required).
+- **Reference adapters**: `http`, `sqlite`, `postgres`, `fs` (sandboxed), and `tools` bridge with contract tests. Optional network adapters include `ptc_runner` and `llm_query` (explicit enablement required).
 - **Runner service**: `ainl-runner-service` (FastAPI) with `/run`, `/enqueue`, `/result/{id}`, `/capabilities`, `/health`, `/ready`, and `/metrics`.
 - **MCP server**: `ainl-mcp` (stdio-only) exposes `ainl_validate`, `ainl_compile`, `ainl_run`, `ainl_capabilities`, `ainl_security_report`, `ainl_fitness_report`, and `ainl_ir_diff` as MCP tools for Gemini CLI, Claude Code, Codex, and other MCP-compatible agents. PTC-related tools (`ainl_ptc_signature_check`, `ainl_trace_export`, `ainl_ptc_run`, `ainl_ptc_health_check`, `ainl_ptc_audit`) are also available when your MCP exposure profile includes them. It is a thin workflow-level surface over the existing compiler/runtime, not a replacement for the runner service, and currently runs with safe-default restrictions (core-only adapters, hardcoded conservative limits). Requires `pip install -e ".[mcp]"`.
 - **Tool API schema**: `tooling/ainl_tool_api.schema.json` (structured compile/validate/emit loop contract).
@@ -1011,6 +1011,26 @@ Real output uses fully qualified IDs like `"retry/ENTRY/n1"` and clusters automa
 - **Docs contract guard**: `ainl-check-docs` for cross-link/staleness/coupling checks.
 - **Pre-commit**: `pre-commit install` to run docs/quality hooks locally.
 - **Test profiles**: `.venv-py310/bin/python scripts/run_test_profiles.py --profile <name>` — `core` (default), `emits`, `lsp`, `integration`, `full`.
+
+### PostgreSQL adapter (runtime-native)
+
+Enable `postgres` explicitly and configure credentials via environment variables (preferred) or CLI flags:
+
+```bash
+export AINL_POSTGRES_URL='postgresql://user:pass@localhost:5432/appdb'
+ainl run examples/hello.ainl --enable-adapter postgres --postgres-allow-table users --postgres-allow-write
+```
+
+AINL graph syntax:
+
+```ainl
+S app core noop
+L1:
+  R postgres.query "SELECT id, email FROM users WHERE id = %s" [42] ->rows
+  J rows
+```
+
+Supported verbs: `query`, `execute`, and `transaction` (`R postgres.transaction [{verb, sql, params}] ->out`). For production, keep `allow_write` off unless needed, use parameterized SQL, and scope table access with `--postgres-allow-table`.
 
 ---
 
@@ -1037,6 +1057,17 @@ For full attribution context, see [docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md](docs/
 - Security reporting: `SECURITY.md`
 - Support expectations and channels: `SUPPORT.md`
 - Commercial/licensing inquiries: `COMMERCIAL.md`
+
+---
+
+## Community & Growth
+
+Join the conversation:
+- [GitHub Discussions](https://github.com/sbhooley/ainativelang/discussions) (enable if not already)
+- [Discord](https://discord.gg/ainativelang) (create link once set up)
+- [X / Twitter](https://x.com/AINativeLang)
+
+See [GROWTH-PLAN.md](GROWTH-PLAN.md) for how we're scaling sustainably.
 
 ---
 
