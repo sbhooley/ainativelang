@@ -181,8 +181,8 @@ For the full conformance matrix in one command (tokenizer, IR canonicalization, 
 - Growth strategy and milestones: [`GROWTH-PLAN.md`](GROWTH-PLAN.md)
 - Validation transparency: [`docs/validation-deep-dive.md`](docs/validation-deep-dive.md)
 - GitHub Discussions: <https://github.com/sbhooley/ainativelang/discussions>
-- Discord: <https://discord.gg/ainativelang>
-- X / Twitter: <https://x.com/AINativeLang>
+- Telegram: <https://t.me/AINL_Portal>
+- X / Twitter: <https://x.com/ainativelang>
 
 Short primer for stakeholders: **[`docs/WHAT_IS_AINL.md`](docs/WHAT_IS_AINL.md)** (canonical). [`WHAT_IS_AINL.md`](WHAT_IS_AINL.md) at repo root is a **stub** that points to the same content.
 
@@ -1073,8 +1073,8 @@ For full attribution context, see [docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md](docs/
 
 Join the conversation:
 - [GitHub Discussions](https://github.com/sbhooley/ainativelang/discussions) (enable if not already)
-- [Discord](https://discord.gg/ainativelang) (create link once set up)
-- [X / Twitter](https://x.com/AINativeLang)
+- [Telegram](https://t.me/AINL_Portal)
+- [X / Twitter](https://x.com/ainativelang)
 
 See [GROWTH-PLAN.md](GROWTH-PLAN.md) for how we're scaling sustainably.
 
