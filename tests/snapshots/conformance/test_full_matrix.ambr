@@ -1547,11 +1547,18 @@
       'resource_profile': 'default',
     }),
     'graph_schema_version': '1.0',
-    'graph_semantic_checksum': 'sha256:2d5729c189251dc777847203cda58b02e101b0b25b53355a1f037aab3431e29e',
+    'graph_semantic_checksum': 'sha256:bbff243bc2952b2a7374efa6f85d67c0ebc7b31562b8cb267e2a25b8ee904c14',
     'ir_version': '1.0.0',
     'labels': dict({
       '1': dict({
         'edges': list([
+          dict({
+            'analysis_only': True,
+            'from': 'n1',
+            'port': 'next',
+            'to': 'retry/ENTRY',
+            'to_kind': 'label',
+          }),
           dict({
             'from': 'n1',
             'port': 'next',
@@ -1593,7 +1600,7 @@
         'entry': 'n1',
         'exits': list([
         ]),
-        'id_hash': 'sha256:5104476ecf9a8138be070fb97e9b59928384abce0538c749c183c351b818de09',
+        'id_hash': 'sha256:acc97f28575a08919ea6249dfe4599c55a7a709cce10bf6e66cc3dd3ed643eef',
         'legacy': dict({
           'steps': list([
             dict({
@@ -1691,6 +1698,13 @@
       '2': dict({
         'edges': list([
           dict({
+            'analysis_only': True,
+            'from': 'n1',
+            'port': 'next',
+            'to': 'timeout/ENTRY',
+            'to_kind': 'label',
+          }),
+          dict({
             'from': 'n1',
             'port': 'next',
             'to': 'n2',
@@ -1715,7 +1729,7 @@
             'var': 't',
           }),
         ]),
-        'id_hash': 'sha256:b4a49254b75f85723608905561adfee86855bbd6429cea9d8cc9d67fb432009d',
+        'id_hash': 'sha256:01d06300c4192a241dc536339cc2603b789fca8d70ceff921735a44ad3ef8dd6',
         'legacy': dict({
           'steps': list([
             dict({
@@ -2063,6 +2077,13 @@
             'to_kind': 'node',
           }),
           dict({
+            'analysis_only': True,
+            'from': 'n2',
+            'port': 'next',
+            'to': 'timeout/WORK',
+            'to_kind': 'label',
+          }),
+          dict({
             'from': 'n2',
             'port': 'next',
             'to': 'n3',
@@ -2089,7 +2110,7 @@
             'var': 'work_out',
           }),
         ]),
-        'id_hash': 'sha256:09ea496da61c1dea4ff9d8cece0680573e1b9a3c20c5b494897cdcf2c59dc529',
+        'id_hash': 'sha256:30c1e1e08a913f6a180b2d26b9693581a0dce9df187fc8437af6b55f3553dc0e',
         'legacy': dict({
           'steps': list([
             dict({

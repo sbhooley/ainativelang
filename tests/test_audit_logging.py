@@ -10,12 +10,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import scripts.runtime_runner_service as _runner_mod
 from scripts.runtime_runner_service import _run_guarded, PolicyViolationError
 
+_ORIG_SERVER_GRANT = None
+
 
 def _trace_id():
     return str(uuid.uuid4())
 
 
 def setup_module():
+    global _ORIG_SERVER_GRANT
+    if _ORIG_SERVER_GRANT is None:
+        _ORIG_SERVER_GRANT = _runner_mod._SERVER_GRANT
     _runner_mod._SERVER_GRANT = {
         "allowed_adapters": ["core", "ext"],
         "forbidden_adapters": [],
@@ -25,6 +30,13 @@ def setup_module():
         "limits": {"max_steps": 500},
         "adapter_constraints": {},
     }
+
+
+def teardown_module():
+    global _ORIG_SERVER_GRANT
+    if _ORIG_SERVER_GRANT is not None:
+        _runner_mod._SERVER_GRANT = _ORIG_SERVER_GRANT
+        _ORIG_SERVER_GRANT = None
 
 
 class _LogCapture(logging.Handler):

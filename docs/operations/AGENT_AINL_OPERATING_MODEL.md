@@ -26,7 +26,7 @@ Use this order unless measurement says otherwise:
 
 1. **Profiles** — `ainl profile list` / [`AINL_PROFILES.md`](AINL_PROFILES.md); isolate paths per workspace — [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md).
 2. **Observability** — identify which **layer** dominates spend — [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md).
-3. **Rolling budget + hydration** — bridge publishes `weekly_remaining_v1`; `run_intelligence.py` merges into cache — [`INTELLIGENCE_PROGRAMS.md`](../INTELLIGENCE_PROGRAMS.md), [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md).
+3. **Rolling budget + hydration** — bridge publishes the rolling aggregate to **`memory_records`** (`workflow` / `budget.aggregate` / record id **`weekly_remaining_v1`**); `run_intelligence.py` merges into cache — [`INTELLIGENCE_PROGRAMS.md`](../INTELLIGENCE_PROGRAMS.md), [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> A legacy **`weekly_remaining_v1`** SQLite table may still exist from install; **`ainl status`** prefers it when non-null, else reads **`weekly_remaining_tokens`** from the memory row. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 4. **Caps** — bridge (`AINL_BRIDGE_REPORT_MAX_CHARS`) then gateway (`PROMOTER_LLM_*`) — [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md).
 5. **Intelligence programs** — token-aware startup + summarizer on a real schedule.
 6. **Optional accelerants** — one path at a time: embedding pilot — [`EMBEDDING_RETRIEVAL_PILOT.md`](EMBEDDING_RETRIEVAL_PILOT.md); WASM — [`WASM_OPERATOR_NOTES.md`](WASM_OPERATOR_NOTES.md); TTL — [`TTL_MEMORY_TUNER.md`](TTL_MEMORY_TUNER.md).

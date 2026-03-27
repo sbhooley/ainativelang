@@ -18,4 +18,8 @@ CORE_EMIT_TARGET_ORDER = [
 
 # Full multitarget set including standalone hybrid wrapper scripts
 # (``scripts/emit_langgraph.py``, ``scripts/emit_temporal.py``).
+#
+# Host-specific outputs (e.g. Hermes skill bundles) are supported via dedicated
+# CLI emitters and are intentionally excluded from this multi-target set so
+# capability planning and emission ordering remain stable.
 FULL_EMIT_TARGET_ORDER = list(CORE_EMIT_TARGET_ORDER) + ["langgraph", "temporal"]

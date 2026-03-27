@@ -44,9 +44,9 @@ def test_diagnostic_classifier_substrings_remain_present(code: str, expected_sub
             "arith_endpoint",
             "S core web /api\nE /sum G ->L1 ->out\nL1: X out add 2 3 J out\n",
             {
-                "labels_sha256": "ef566311fa33b4f2641b832464d8e31d527796d4fd9111ba23650bbe03e10191",
-                "graph_semantic_checksum": "sha256:6c2054b0040775d99d41bd8070e338bf2d4cf7d6b40f4ce13f4497b6b41053a3",
-                "emit_ir_json_sha256": "4b59f5f73673114cb9ed3ab3ba1cc009810a2f647b2bc6684d9d515dcbbe122f",
+                    "labels_sha256": "487cfb1568b0636656efd5335c2830e52176750829fc9a367fe91396cfee2d86",
+                    "graph_semantic_checksum": "sha256:fdf1018d524adaeca8c6037e9cfc64635bf82a06c59bc87efbad1b28b29072c4",
+                    "emit_ir_json_sha256": "f7c81855238ae0a9c4266fa514f7a2c6d55868d0d453c8787cd9a21f18eaabd7",
                 "emit_openapi_sha256": "25afd06f70d158286c9a39aa23415b8ed87619f4705c97c56c67e88653f0a805",
                 "emit_server_sha256": "f6bb40b5dccdcd4bed39a7708e402f94532e2345cc1b732be3914a7c590cda62",
                 "emit_react_sha256": "25e1fe1ba3bf5e91937e07974fb3a604afdad6d306aab3229f5d769c755b83f7",

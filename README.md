@@ -25,6 +25,9 @@
   <a href="https://github.com/sbhooley/ainativelang/tree/main/skills/openclaw">
     <img src="https://img.shields.io/badge/OpenClaw%20Skill-AINL-blue" alt="OpenClaw Skill: AINL" />
   </a>
+  <a href="https://github.com/NousResearch/hermes-agent">
+    <img src="https://img.shields.io/badge/Hermes%20Agent-AINL-blue" alt="Hermes Agent: AINL" />
+  </a>
   <img src="https://img.shields.io/badge/graph--first-deterministic%20IR-orange" alt="Graph-first deterministic IR" />
   <img src="https://img.shields.io/badge/AI%20workflow-language-brightgreen" alt="AI workflow language" />
 </p>
@@ -58,9 +61,11 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **Read the docs hub:** [`docs/README.md`](docs/README.md)
 > - **See updated benchmarks (tiktoken cl100k_base, viable subset, minimal_emit fallback stub):** [`BENCHMARK.md`](BENCHMARK.md) · [`docs/benchmarks.md`](docs/benchmarks.md#benchmark-highlights-march-2026) · comparative methodology [`docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
 > - **ZeroClaw skill (one-command install → deterministic graphs):** [`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md) · [`skills/ainl/`](skills/ainl/) · curated trees **[`examples/ecosystem/`](examples/ecosystem/)**
-> - **MCP host hub:** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) · **`ainl install-mcp --host openclaw|zeroclaw`**
+> - **MCP host hub:** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) · **`ainl install-mcp --host openclaw|zeroclaw|hermes`**
+> - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · **`ainl install openclaw`**, **`ainl status`**, **`ainl doctor --ainl`** · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 > - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-mcp --host openclaw`**
 > - **OpenClaw + AINL unified integration (v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
+> - **Hermes Agent support (official; self-improving agents with deterministic graphs):** [`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md) · [`skills/hermes/`](skills/hermes/) · **`ainl install-mcp --host hermes`** · **`ainl compile --emit hermes-skill`**
 > - **PTC-Lisp integration (opt-in):** [`docs/adapters/PTC_RUNNER.md`](docs/adapters/PTC_RUNNER.md) · quick start: `ainl run-hybrid-ptc` · examples:
 >   - [`examples/hybrid_order_processor.ainl`](examples/hybrid_order_processor.ainl) — hybrid order processor (parallel batches, signatures, firewall, LangGraph bridge)
 >   - [`examples/price_monitor.ainl`](examples/price_monitor.ainl) — PTC price monitor with parallel/recovery patterns
@@ -204,9 +209,11 @@ See **Includes & modules** below for `timeout.ainl`, strict rules, and the start
 
 ---
 
-## Ecosystem & OpenClaw integration
+## Ecosystem & agent hosts (OpenClaw, ZeroClaw, Hermes)
 
 Import **Clawflows**-style `WORKFLOW.md` or **Agency-Agents**-style personality Markdown into a **deterministic** `.ainl` graph (cron trigger, sequential `Call` steps or agent gates, optional `memory` / `queue` hooks for OpenClaw-style bridges). If structured parsing cannot extract steps or agent fields, the importer **falls back** to a compiling **minimal_emit fallback stub** (Phase‑1 style) so you still get valid, reviewable graph source.
+
+**Host quick links:** [OpenClaw](https://openclaw.ai/) · [ZeroClaw skill (AINL)](https://github.com/sbhooley/ainativelang/tree/main/skills/ainl) · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** — AINL wiring for all three is in [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) (**`ainl install-mcp --host openclaw|zeroclaw|hermes`**).
 
 The same path is exposed over MCP as **`ainl_list_ecosystem`**, **`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, and **`ainl_import_markdown`** (stdio **`ainl-mcp`**). **Weekly auto-sync** ( **[`.github/workflows/sync-ecosystem.yml`](.github/workflows/sync-ecosystem.yml)** ) refreshes **[`examples/ecosystem/`](examples/ecosystem/)** from upstream public Markdown; community additions use **[`.github/PULL_REQUEST_TEMPLATE/`](.github/PULL_REQUEST_TEMPLATE/)** (workflow / agent templates).
 
@@ -263,6 +270,14 @@ rm -rf /tmp/ainl-repo /data/.openclaw/workspace/skills/ainl /data/.local/lib/pyt
 Details: **[`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md)** · skill files: **[`skills/openclaw/README.md`](skills/openclaw/README.md)**.
 
 **Standalone skill repo (optional, later):** publish the contents of **[`skills/openclaw/`](skills/openclaw/)** as the root of **[github.com/sbhooley/ainl-openclaw-skill](https://github.com/sbhooley/ainl-openclaw-skill)** so users can clone or vendor a single-purpose tree (same three files: `SKILL.md`, `install.sh`, `README.md`).
+
+### Install AINL for Hermes Agent
+
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) is a skill-native runtime with a closed learning loop. AINL pairs **deterministic compiled graphs** with Hermes via **`ainl-mcp`** (`ainl_run`) and **`--emit hermes-skill`** bundles (agentskills-style `SKILL.md` + `workflow.ainl` + `ir.json`).
+
+**Bootstrap:** **`pip install 'ainativelang[mcp]'`** then **`ainl install-mcp --host hermes`** (alias **`ainl hermes-install`**), or run **`skills/hermes/install.sh`**. Emit skills to **`~/.hermes/skills/ainl-imports/<name>/`**.
+
+Details: **[`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md)** · hub one-pager: **[`docs/integrations/hermes-agent.md`](docs/integrations/hermes-agent.md)** · skill pack: **[`skills/hermes/README.md`](skills/hermes/README.md)**.
 
 Curated templates with `original.md`, `converted.ainl`, and notes: **[`examples/ecosystem/README.md`](examples/ecosystem/README.md)**.
 

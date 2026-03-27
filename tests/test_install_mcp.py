@@ -11,7 +11,7 @@ from tooling.mcp_host_install import list_mcp_host_ids, run_install_mcp_host, ru
 def test_list_mcp_host_ids_sorted() -> None:
     ids = list_mcp_host_ids()
     assert ids == tuple(sorted(ids))
-    assert "openclaw" in ids and "zeroclaw" in ids
+    assert "openclaw" in ids and "zeroclaw" in ids and "hermes" in ids
 
 
 def test_run_install_mcp_main_list_hosts(capsys) -> None:
@@ -36,3 +36,15 @@ def test_run_install_mcp_openclaw_dry_run_no_writes(tmp_path: Path) -> None:
     rc = run_install_mcp_host("openclaw", dry_run=True, verbose=False, home=home, run_pip=fake_pip)
     assert rc == 0
     assert not (home / ".openclaw").exists()
+
+
+def test_run_install_mcp_hermes_dry_run_no_writes(tmp_path: Path) -> None:
+    home = tmp_path / "h"
+    home.mkdir()
+
+    def fake_pip(verbose: bool) -> int:
+        raise AssertionError("pip should not run in dry_run")
+
+    rc = run_install_mcp_host("hermes", dry_run=True, verbose=False, home=home, run_pip=fake_pip)
+    assert rc == 0
+    assert not (home / ".hermes").exists()

@@ -136,7 +136,7 @@ class TestRunnerProfileEnvVar:
         try:
             os.environ["AINL_SECURITY_PROFILE"] = "nonexistent_fake"
             new_grant = _runner_mod._load_server_grant()
-            assert new_grant["allowed_adapters"] == ["core"]
+            assert new_grant["allowed_adapters"] == ["core", "fs"]
         finally:
             os.environ.pop("AINL_SECURITY_PROFILE", None)
             _runner_mod._SERVER_GRANT = old

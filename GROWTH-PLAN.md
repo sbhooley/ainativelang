@@ -26,6 +26,7 @@ AINL has strong product-market fit with cost-sensitive monitoring teams and audi
 - Publish roadmap
 - Create persona landing pages
 - Seed "Built with AINL" showcase
+- Ship official Hermes Agent integration (deterministic graphs + self-improving loop + Honcho memory) as an ecosystem credibility win
 
 ## Long-term Levers
 - ROI calculator widget

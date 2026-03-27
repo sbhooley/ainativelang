@@ -62,7 +62,7 @@ _SERVER_DEFAULT_LIMITS: Dict[str, int] = {
     "max_adapter_calls": 200,
     "max_time_ms": 30000,
 }
-_SERVER_DEFAULT_ALLOWED: List[str] = ["core"]
+_SERVER_DEFAULT_ALLOWED: List[str] = ["core", "fs"]
 
 def _load_server_grant() -> Dict[str, Any]:
     """Build the server-level capability grant from env/defaults."""
@@ -82,6 +82,9 @@ def _load_server_grant() -> Dict[str, Any]:
         "adapter_constraints": {},
     }
 
+# Cached default grant; request execution refreshes from env to keep tests and
+# long-lived runner processes aligned with dynamic profile changes.
+_SERVER_GRANT_PROFILE: Optional[str] = os.environ.get("AINL_SECURITY_PROFILE")
 _SERVER_GRANT: Dict[str, Any] = _load_server_grant()
 
 _COMPILE_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -334,7 +337,21 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
         ir = _get_ir_from_code(str(code), strict=strict)
 
     # Merge server grant with caller request (restrictive-only).
-    effective = merge_grants(_SERVER_GRANT, _caller_grant_from_request(req))
+    # Refresh the cached server grant if the env profile changed since import.
+    global _SERVER_GRANT_PROFILE, _SERVER_GRANT
+    cur_profile = os.environ.get("AINL_SECURITY_PROFILE")
+    if cur_profile != _SERVER_GRANT_PROFILE:
+        _SERVER_GRANT_PROFILE = cur_profile
+        _SERVER_GRANT = _load_server_grant()
+
+    server = dict(_SERVER_GRANT or {})
+    # Defensive: tests may override `_SERVER_GRANT` with partial dicts.
+    if not isinstance(server.get("limits"), dict) or not server.get("limits"):
+        server["limits"] = dict(_SERVER_DEFAULT_LIMITS)
+    if "allowed_adapters" not in server:
+        server["allowed_adapters"] = list(_SERVER_DEFAULT_ALLOWED)
+
+    effective = merge_grants(server, _caller_grant_from_request(req))
     effective_policy = grant_to_policy(effective)
     replay_artifact_id = str(req.get("replay_artifact_id") or "")
 

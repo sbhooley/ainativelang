@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.3.0 (March 27, 2026) — Official Hermes Agent integration + OpenClaw integration improvements (MCP bootstrap + skill pack + hermes-skill emitter)
+
+- **feat(hermes)**: add official Hermes Agent host support to `ainl install-mcp --host hermes` / `ainl hermes-install` (writes `~/.hermes/config.yaml` `mcp_servers.ainl`, installs `~/.hermes/bin/ainl-run`, PATH hint).
+- **feat(skills/hermes)**: ship a Hermes-native skills pack under `skills/hermes/` (installer + bridge helpers for ingest/export loops).
+- **feat(emitter)**: add `--emit hermes-skill` (and `--target hermes` alias) to compile a `.ainl` workflow into a drop-in Hermes skill bundle (`SKILL.md`, `workflow.ainl`, `ir.json`) that runs deterministically via MCP `ainl_run`.
+- **feat(doctor)**: `ainl doctor` now recognizes Hermes’ YAML host config (`~/.hermes/config.yaml` `mcp_servers:`) and validates `ainl` MCP registration without requiring a YAML dependency.
+- **docs(hermes)**: new docs: `docs/integrations/hermes-agent.md` (high-level) and `docs/HERMES_INTEGRATION.md` (full guide, quickstarts, loop contract, troubleshooting).
+- **docs(discovery)**: README badge + “Start here” + `docs/README.md` + `docs/DOCS_INDEX.md` + MCP host hub cross-link **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** next to OpenClaw / ZeroClaw so humans and agents can find the upstream host.
+- **feat(openclaw)**: `ainl install openclaw --workspace PATH` for true one-command setup with health check, `--dry-run` support, and core gold-standard cron registration.
+- **feat(openclaw)**: `ainl status` as a unified view for budget, cron health, and token usage (legacy `weekly_remaining_v1` table plus `memory_records` fallback via `_read_weekly_remaining_rollup`).
+- **feat(openclaw)**: self-healing validator and `ainl doctor --ainl` for OpenClaw + AINL integration checks.
+- **fix(ux)**: improved error messages with actionable fix suggestions.
+- **docs(openclaw)**: updated OpenClaw docs with progressive disclosure — quickstart-first, gold-standard depth preserved.
+- **fix(openclaw)**: weekly budget display in `ainl status` correctly reads from modern `memory_records` primary storage (legacy table remains bootstrapped for compatibility).
+
 ## v1.2.10 (March 27, 2026) — Wheel packaging fix, LLM adapter/monitoring pack, and release/docs sync
 
 - **fix(packaging)**: include `intelligence` and `intelligence.*` in setuptools package discovery and add `intelligence/__init__.py` so wheel/PyPI installs include `intelligence.signature_enforcer` for CLI paths that import validator utilities.

@@ -64,15 +64,15 @@ def test_unterminated_string_line_col():
 
 
 def test_string_decode_only_quote_and_backslash_escapes():
-    """AINL 1.0: only \\\" and \\\\ are decoded; \\n and \\t remain literal."""
+    """AINL 1.0: common escapes are decoded in strings."""
     c = AICodeCompiler()
     code = r'Desc /x "a\n\tb \" q \\ end"'
     ir = c.compile(code)
     # Desc strips quotes from the slot value. Expected decoded result:
-    # - \\n and \\t stay as two characters
+    # - \\n and \\t decode to newline and tab
     # - \\\" becomes "
     # - \\\\ becomes \
-    assert ir["desc"]["endpoints"]["/x"] == r'a\n\tb " q \ end'
+    assert ir["desc"]["endpoints"]["/x"] == 'a\n\tb " q \\ end'
 
 
 def test_unknown_op_meta_has_raw_line_and_tokens():

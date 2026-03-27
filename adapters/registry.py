@@ -1,4 +1,4 @@
-class AdapterRegistry:
+class LLMAdapterRegistry:
     _llm_adapters = {}
     
     @classmethod
@@ -23,3 +23,6 @@ try:
 except Exception:
     # Adapters are optional; registry can still be used without them.
     pass
+
+# Backward compatibility: older modules import AdapterRegistry from this file.
+AdapterRegistry = LLMAdapterRegistry

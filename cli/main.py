@@ -624,6 +624,41 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_compile(args: argparse.Namespace) -> int:
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
+        code = f.read()
+
+    c = AICodeCompiler(strict_mode=bool(args.strict))
+    ir = c.compile(code, emit_graph=True, source_path=src_path)
+    if ir.get("errors"):
+        print(json.dumps({"ok": False, "errors": ir.get("errors", [])}, indent=2))
+        return 1
+
+    emit = str(getattr(args, "emit", "ir") or "ir").strip().lower()
+    if emit == "ir":
+        print(json.dumps(ir, indent=2))
+        return 0
+
+    if emit in ("hermes-skill", "hermes"):
+        stem = Path(src_path).stem
+        out_raw = str(getattr(args, "output", "") or "").strip()
+        out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_hermes_skill"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        bundle = c.emit_hermes_skill_bundle(ir, ainl_source=code, skill_name=stem, source_stem=stem)
+        written = []
+        for rel, content in sorted(bundle.items()):
+            p = out_dir / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(content, encoding="utf-8")
+            written.append(str(p.resolve()))
+        print(json.dumps({"ok": True, "emit": "hermes-skill", "dir": str(out_dir.resolve()), "files": written}, indent=2))
+        return 0
+
+    print(json.dumps({"ok": False, "error": f"unknown --emit target: {emit!r}"}, indent=2))
+    return 2
+
+
 def cmd_inspect(args: argparse.Namespace) -> int:
     src_path = str(Path(args.file).resolve())
     with open(src_path, "r", encoding="utf-8") as f:
@@ -1047,7 +1082,24 @@ def cmd_init(args: argparse.Namespace) -> int:
     with open(main_ainl, "w") as fh:
         fh.write(_INIT_MAIN_AINL.format(name=name))
     with open(readme, "w") as fh:
-        fh.write(_INIT_README.format(name=name))
+        target_kind = str(getattr(args, "target", "") or "").strip().lower()
+        body = _INIT_README.format(name=name)
+        if target_kind in ("hermes", "hermes-agent"):
+            body += "\n".join(
+                [
+                    "",
+                    "## Hermes Agent target",
+                    "",
+                    "Emit this project as a Hermes skill bundle:",
+                    "",
+                    "```bash",
+                    "ainl compile main.ainl --strict --emit hermes-skill -o ./dist/hermes-skill",
+                    "# Copy ./dist/hermes-skill into ~/.hermes/skills/ainl-imports/<skill-name>/",
+                    "```",
+                    "",
+                ]
+            )
+        fh.write(body)
 
     print(f"\n✓  Created AINL project: {target}/")
     print(f"   main.ainl   — starter workflow")
@@ -1061,8 +1113,323 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _openclaw_default_workspace() -> Path:  # AINL-OPENCLAW-TOP5
+    env = str(os.getenv("OPENCLAW_WORKSPACE", "")).strip()  # AINL-OPENCLAW-TOP5
+    if env:  # AINL-OPENCLAW-TOP5
+        return Path(env).expanduser().resolve()  # AINL-OPENCLAW-TOP5
+    ws = Path.home() / ".openclaw" / "workspace"  # AINL-OPENCLAW-TOP5
+    return ws if ws.is_dir() else Path.cwd()  # AINL-OPENCLAW-TOP5
+
+def _write_ai_native_lang_yml_if_missing(workspace: Path) -> bool:  # AINL-OPENCLAW-TOP5
+    """Return True if written; safe defaults only."""  # AINL-OPENCLAW-TOP5
+    path = workspace / "aiNativeLang.yml"  # AINL-OPENCLAW-TOP5
+    if path.is_file():  # AINL-OPENCLAW-TOP5
+        return False  # AINL-OPENCLAW-TOP5
+    body = "\n".join(  # AINL-OPENCLAW-TOP5
+        [  # AINL-OPENCLAW-TOP5
+            "version: 1.0",  # AINL-OPENCLAW-TOP5
+            'project: "OpenClaw"',  # AINL-OPENCLAW-TOP5
+            'description: "OpenClaw integration with AINL — safe defaults"',  # AINL-OPENCLAW-TOP5
+            "env:",  # AINL-OPENCLAW-TOP5
+            "  AINL_EXECUTION_MODE: \"graph-preferred\"",  # AINL-OPENCLAW-TOP5
+            "  OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT: 1",  # AINL-OPENCLAW-TOP5
+            "  AINL_IR_CACHE: 1",  # AINL-OPENCLAW-TOP5
+            "  AINL_OBSERVABILITY: 1",  # AINL-OPENCLAW-TOP5
+            "providers: []",  # AINL-OPENCLAW-TOP5
+        ]  # AINL-OPENCLAW-TOP5
+    ) + "\n"  # AINL-OPENCLAW-TOP5
+    path.write_text(body, encoding="utf-8")  # AINL-OPENCLAW-TOP5
+    return True  # AINL-OPENCLAW-TOP5
+
+
+def _openclaw_json_path_for_workspace(workspace: Path) -> Path:  # AINL-OPENCLAW-TOP5
+    # Prefer host-global config; allow workspace-local override if present.  # AINL-OPENCLAW-TOP5
+    home_cfg = Path.home() / ".openclaw" / "openclaw.json"  # AINL-OPENCLAW-TOP5
+    ws_cfg = workspace / ".openclaw" / "openclaw.json"  # AINL-OPENCLAW-TOP5
+    return ws_cfg if ws_cfg.is_file() else home_cfg  # AINL-OPENCLAW-TOP5
+
+
+def _merge_openclaw_json_shellenv(workspace: Path, env: Dict[str, str]) -> Optional[str]:  # AINL-OPENCLAW-TOP5
+    """Merge keys into ``<workspace>/.openclaw/openclaw.json`` under ``env.shellEnv``.  # AINL-OPENCLAW-TOP5
+    OpenClaw's ``config set`` rejects AINL-specific keys (schema whitelist); file merge is authoritative.  # AINL-OPENCLAW-TOP5
+    """  # AINL-OPENCLAW-TOP5
+    oc_dir = workspace / ".openclaw"  # AINL-OPENCLAW-TOP5
+    cfg_path = oc_dir / "openclaw.json"  # AINL-OPENCLAW-TOP5
+    try:  # AINL-OPENCLAW-TOP5
+        oc_dir.mkdir(parents=True, exist_ok=True)  # AINL-OPENCLAW-TOP5
+        if cfg_path.is_file():  # AINL-OPENCLAW-TOP5
+            raw = cfg_path.read_text(encoding="utf-8")  # AINL-OPENCLAW-TOP5
+            data: Dict[str, Any] = json.loads(raw) if raw.strip() else {}  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            data = {}  # AINL-OPENCLAW-TOP5
+        if not isinstance(data, dict):  # AINL-OPENCLAW-TOP5
+            return f"{cfg_path}: root must be a JSON object"  # AINL-OPENCLAW-TOP5
+        env_block = data.setdefault("env", {})  # AINL-OPENCLAW-TOP5
+        if not isinstance(env_block, dict):  # AINL-OPENCLAW-TOP5
+            env_block = {}  # AINL-OPENCLAW-TOP5
+            data["env"] = env_block  # AINL-OPENCLAW-TOP5
+        shell = env_block.setdefault("shellEnv", {})  # AINL-OPENCLAW-TOP5
+        if not isinstance(shell, dict):  # AINL-OPENCLAW-TOP5
+            shell = {}  # AINL-OPENCLAW-TOP5
+            env_block["shellEnv"] = shell  # AINL-OPENCLAW-TOP5
+        for k, v in sorted(env.items()):  # AINL-OPENCLAW-TOP5
+            shell[k] = str(v)  # AINL-OPENCLAW-TOP5
+        cfg_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")  # AINL-OPENCLAW-TOP5
+    except OSError as e:  # AINL-OPENCLAW-TOP5
+        return f"openclaw.json shellEnv merge failed: {e}"  # AINL-OPENCLAW-TOP5
+    except json.JSONDecodeError as e:  # AINL-OPENCLAW-TOP5
+        return f"{cfg_path}: invalid JSON: {e}"  # AINL-OPENCLAW-TOP5
+    return None  # AINL-OPENCLAW-TOP5
+
+
+def _patch_openclaw_env_shellenv(workspace: Path, env: Dict[str, str]) -> Optional[str]:  # AINL-OPENCLAW-TOP5
+    """Return error string if patch fails, else None."""  # AINL-OPENCLAW-TOP5
+    return _merge_openclaw_json_shellenv(workspace, env)  # AINL-OPENCLAW-TOP5
+
+
+def _read_weekly_remaining_rollup(db_path: Path) -> tuple[Optional[int], str, Optional[str]]:  # AINL-OPENCLAW-TOP5
+    """Rolling budget: legacy ``weekly_remaining_v1`` row, else ``memory_records`` workflow aggregate."""  # AINL-OPENCLAW-TOP5
+    import sqlite3  # AINL-OPENCLAW-TOP5
+
+    try:  # AINL-OPENCLAW-TOP5
+        con = sqlite3.connect(str(db_path))  # AINL-OPENCLAW-TOP5
+        cur = con.cursor()  # AINL-OPENCLAW-TOP5
+        cur.execute(  # AINL-OPENCLAW-TOP5
+            "SELECT week_start, remaining_budget FROM weekly_remaining_v1 ORDER BY week_start DESC LIMIT 1"  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+        row = cur.fetchone()  # AINL-OPENCLAW-TOP5
+        if row is not None and row[1] is not None:  # AINL-OPENCLAW-TOP5
+            rem = int(row[1])  # AINL-OPENCLAW-TOP5
+            ws = str(row[0] or "")  # AINL-OPENCLAW-TOP5
+            con.close()  # AINL-OPENCLAW-TOP5
+            return rem, ws, None  # AINL-OPENCLAW-TOP5
+        cur.execute(  # AINL-OPENCLAW-TOP5
+            "SELECT payload_json FROM memory_records "  # AINL-OPENCLAW-TOP5
+            "WHERE namespace='workflow' AND record_kind='budget.aggregate' AND record_id='weekly_remaining_v1' "  # AINL-OPENCLAW-TOP5
+            "ORDER BY updated_at DESC LIMIT 1"  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+        mrow = cur.fetchone()  # AINL-OPENCLAW-TOP5
+        con.close()  # AINL-OPENCLAW-TOP5
+        if not mrow or not mrow[0]:  # AINL-OPENCLAW-TOP5
+            return None, "", None  # AINL-OPENCLAW-TOP5
+        payload = json.loads(mrow[0])  # AINL-OPENCLAW-TOP5
+        if not isinstance(payload, dict):  # AINL-OPENCLAW-TOP5
+            return None, "", None  # AINL-OPENCLAW-TOP5
+        wr = payload.get("weekly_remaining_tokens")  # AINL-OPENCLAW-TOP5
+        if wr is None:  # AINL-OPENCLAW-TOP5
+            return None, "", None  # AINL-OPENCLAW-TOP5
+        rem = int(wr)  # AINL-OPENCLAW-TOP5
+        ws = str(payload.get("week_start") or payload.get("updated_at_utc") or "")  # AINL-OPENCLAW-TOP5
+        return rem, ws, None  # AINL-OPENCLAW-TOP5
+    except Exception as e:  # AINL-OPENCLAW-TOP5
+        return None, "", str(e)  # AINL-OPENCLAW-TOP5
+
+
+def _cron_payload_message(job: Dict[str, Any]) -> str:  # AINL-OPENCLAW-TOP5
+    p = job.get("payload") or {}  # AINL-OPENCLAW-TOP5
+    if isinstance(p, dict):  # AINL-OPENCLAW-TOP5
+        return str(p.get("message") or "")  # AINL-OPENCLAW-TOP5
+    return ""  # AINL-OPENCLAW-TOP5
+
+
+def _gold_standard_cron_add_argv(job: Dict[str, Any]) -> List[str]:  # AINL-OPENCLAW-TOP5
+    """Build argv for `openclaw cron add` (OpenClaw 2026+ flag style; gold-standard payloads)."""  # AINL-OPENCLAW-TOP5
+    name = str(job.get("name") or "")  # AINL-OPENCLAW-TOP5
+    p = job.get("payload") if isinstance(job.get("payload"), dict) else {}  # AINL-OPENCLAW-TOP5
+    msg = str(p.get("message") or "")  # AINL-OPENCLAW-TOP5
+    agent = str(p.get("agentId") or "ainl-advocate")  # AINL-OPENCLAW-TOP5
+    session = str(job.get("sessionTarget") or "isolated")  # AINL-OPENCLAW-TOP5
+    argv: List[str] = [  # AINL-OPENCLAW-TOP5
+        "openclaw",  # AINL-OPENCLAW-TOP5
+        "cron",  # AINL-OPENCLAW-TOP5
+        "add",  # AINL-OPENCLAW-TOP5
+        "--name",  # AINL-OPENCLAW-TOP5
+        name,  # AINL-OPENCLAW-TOP5
+        "--message",  # AINL-OPENCLAW-TOP5
+        msg,  # AINL-OPENCLAW-TOP5
+        "--agent",  # AINL-OPENCLAW-TOP5
+        agent,  # AINL-OPENCLAW-TOP5
+        "--session",  # AINL-OPENCLAW-TOP5
+        session,  # AINL-OPENCLAW-TOP5
+    ]  # AINL-OPENCLAW-TOP5
+    if (job.get("delivery") or {}).get("mode") == "announce":  # AINL-OPENCLAW-TOP5
+        argv.append("--announce")  # AINL-OPENCLAW-TOP5
+    sched = job.get("schedule") if isinstance(job.get("schedule"), dict) else {}  # AINL-OPENCLAW-TOP5
+    sk = str(sched.get("kind") or "")  # AINL-OPENCLAW-TOP5
+    if sk == "every":  # AINL-OPENCLAW-TOP5
+        every_ms = int(sched.get("everyMs") or 300000)  # AINL-OPENCLAW-TOP5
+        minutes = max(1, every_ms // 60000)  # AINL-OPENCLAW-TOP5
+        argv.extend(["--every", f"{minutes}m"])  # AINL-OPENCLAW-TOP5
+    elif sk == "cron":  # AINL-OPENCLAW-TOP5
+        expr = str(sched.get("expr") or "")  # AINL-OPENCLAW-TOP5
+        argv.extend(["--cron", expr])  # AINL-OPENCLAW-TOP5
+    return argv  # AINL-OPENCLAW-TOP5
+
+
+def _openclaw_cron_list_json() -> tuple[Optional[List[Dict[str, Any]]], Optional[str]]:  # AINL-OPENCLAW-TOP5
+    import subprocess  # AINL-OPENCLAW-TOP5
+    try:  # AINL-OPENCLAW-TOP5
+        proc = subprocess.run(  # AINL-OPENCLAW-TOP5
+            ["openclaw", "cron", "list", "--json"],  # AINL-OPENCLAW-TOP5
+            capture_output=True,  # AINL-OPENCLAW-TOP5
+            text=True,  # AINL-OPENCLAW-TOP5
+            timeout=30,  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+    except FileNotFoundError:  # AINL-OPENCLAW-TOP5
+        return None, "openclaw CLI not found on PATH"  # AINL-OPENCLAW-TOP5
+    except Exception as e:  # AINL-OPENCLAW-TOP5
+        return None, str(e)[:300]  # AINL-OPENCLAW-TOP5
+    if proc.returncode != 0:  # AINL-OPENCLAW-TOP5
+        return None, (proc.stderr or proc.stdout or "cron list failed")[:400]  # AINL-OPENCLAW-TOP5
+    try:  # AINL-OPENCLAW-TOP5
+        data = json.loads(proc.stdout)  # AINL-OPENCLAW-TOP5
+    except json.JSONDecodeError as e:  # AINL-OPENCLAW-TOP5
+        return None, f"invalid JSON from openclaw cron list: {e}"  # AINL-OPENCLAW-TOP5
+    jobs = data.get("jobs") if isinstance(data, dict) else None  # AINL-OPENCLAW-TOP5
+    return (jobs if isinstance(jobs, list) else []), None  # AINL-OPENCLAW-TOP5
+
+
+def _ensure_gold_standard_crons_idempotent(  # AINL-OPENCLAW-TOP5
+    jobs: List[Dict[str, Any]], *, dry_run: bool, verbose: bool  # AINL-OPENCLAW-TOP5
+) -> tuple[List[str], List[str]]:  # AINL-OPENCLAW-TOP5
+    """Return (errors, notes). Skips add when same name or same payload message exists."""  # AINL-OPENCLAW-TOP5
+    import subprocess  # AINL-OPENCLAW-TOP5
+    import sys  # AINL-OPENCLAW-TOP5
+    errs: List[str] = []  # AINL-OPENCLAW-TOP5
+    notes: List[str] = []  # AINL-OPENCLAW-TOP5
+    existing, err = _openclaw_cron_list_json()  # AINL-OPENCLAW-TOP5
+    if err:  # AINL-OPENCLAW-TOP5
+        return [err], notes  # AINL-OPENCLAW-TOP5
+    names = {str(j.get("name")) for j in (existing or []) if isinstance(j, dict) and j.get("name")}  # AINL-OPENCLAW-TOP5
+    msgs = {_cron_payload_message(j) for j in (existing or []) if isinstance(j, dict)}  # AINL-OPENCLAW-TOP5
+    for job in jobs:  # AINL-OPENCLAW-TOP5
+        jn = str(job.get("name") or "")  # AINL-OPENCLAW-TOP5
+        jm = _cron_payload_message(job)  # AINL-OPENCLAW-TOP5
+        if jn in names or (jm and jm in msgs):  # AINL-OPENCLAW-TOP5
+            notes.append(f"already registered (skipped): {jn or jm[:48]}")  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+        if dry_run:  # AINL-OPENCLAW-TOP5
+            notes.append(f"[dry-run] would openclaw cron add: {jn!r}")  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+        argv = _gold_standard_cron_add_argv(job)  # AINL-OPENCLAW-TOP5
+        if verbose:  # AINL-OPENCLAW-TOP5
+            print("+ " + " ".join(argv), file=sys.stderr)  # AINL-OPENCLAW-TOP5
+        try:  # AINL-OPENCLAW-TOP5
+            proc = subprocess.run(argv, capture_output=True, text=True, timeout=60)  # AINL-OPENCLAW-TOP5
+        except Exception as e:  # AINL-OPENCLAW-TOP5
+            errs.append(f"cron add {jn!r}: {e}")  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+
+        def _register_success() -> None:  # AINL-OPENCLAW-TOP5
+            notes.append(f"added: {jn}")  # AINL-OPENCLAW-TOP5
+            if jn:  # AINL-OPENCLAW-TOP5
+                names.add(jn)  # AINL-OPENCLAW-TOP5
+            if jm:  # AINL-OPENCLAW-TOP5
+                msgs.add(jm)  # AINL-OPENCLAW-TOP5
+
+        if proc.returncode == 0:  # AINL-OPENCLAW-TOP5
+            _register_success()  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+        msg = (proc.stderr or proc.stdout or "").strip()  # AINL-OPENCLAW-TOP5
+        if "already" in msg.lower() or "duplicate" in msg.lower() or "exists" in msg.lower():  # AINL-OPENCLAW-TOP5
+            notes.append(f"host reported existing job: {jn!r}")  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+        try:  # AINL-OPENCLAW-TOP5
+            proc = subprocess.run(  # AINL-OPENCLAW-TOP5
+                ["openclaw", "cron", "add", json.dumps(job)],  # AINL-OPENCLAW-TOP5 — legacy JSON  # AINL-OPENCLAW-TOP5
+                capture_output=True,  # AINL-OPENCLAW-TOP5
+                text=True,  # AINL-OPENCLAW-TOP5
+                timeout=60,  # AINL-OPENCLAW-TOP5
+            )  # AINL-OPENCLAW-TOP5
+        except Exception as e2:  # AINL-OPENCLAW-TOP5
+            errs.append(f"cron add {jn!r} exit={proc.returncode} (flags), legacy failed: {e2}")  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+        if proc.returncode == 0:  # AINL-OPENCLAW-TOP5
+            _register_success()  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+        msg = (proc.stderr or proc.stdout or "").strip()  # AINL-OPENCLAW-TOP5
+        if "already" in msg.lower() or "duplicate" in msg.lower() or "exists" in msg.lower():  # AINL-OPENCLAW-TOP5
+            notes.append(f"host reported existing job: {jn!r}")  # AINL-OPENCLAW-TOP5
+            continue  # AINL-OPENCLAW-TOP5
+        errs.append(f"cron add {jn!r} exit={proc.returncode}: {msg[:220]}")  # AINL-OPENCLAW-TOP5
+    return errs, notes  # AINL-OPENCLAW-TOP5
+
+
+def _openclaw_gateway_restart() -> Optional[str]:  # AINL-OPENCLAW-TOP5
+    import subprocess  # AINL-OPENCLAW-TOP5
+    try:  # AINL-OPENCLAW-TOP5
+        proc = subprocess.run(  # AINL-OPENCLAW-TOP5
+            ["openclaw", "gateway", "restart"],  # AINL-OPENCLAW-TOP5
+            capture_output=True,  # AINL-OPENCLAW-TOP5
+            text=True,  # AINL-OPENCLAW-TOP5
+            timeout=60,  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+    except FileNotFoundError:  # AINL-OPENCLAW-TOP5
+        return "openclaw CLI not found on PATH"  # AINL-OPENCLAW-TOP5
+    except Exception as e:  # AINL-OPENCLAW-TOP5
+        return f"openclaw gateway restart failed: {e}"  # AINL-OPENCLAW-TOP5
+    if proc.returncode != 0:  # AINL-OPENCLAW-TOP5
+        msg = (proc.stderr or proc.stdout or "").strip()  # AINL-OPENCLAW-TOP5
+        return f"openclaw gateway restart exit={proc.returncode}: {msg[:300]}"  # AINL-OPENCLAW-TOP5
+    return None  # AINL-OPENCLAW-TOP5
+
+
+def _markdown_health_table(rows: List[tuple[str, str, str]]) -> str:  # AINL-OPENCLAW-TOP5
+    # rows: (emoji, item, detail)  # AINL-OPENCLAW-TOP5
+    out = ["| | Check | Detail |", "|---|---|---|"]  # AINL-OPENCLAW-TOP5
+    out += [f"| {e} | {c} | {d} |" for (e, c, d) in rows]  # AINL-OPENCLAW-TOP5
+    return "\n".join(out) + "\n"  # AINL-OPENCLAW-TOP5
+
+
+def _openclaw_gold_standard_shell_env(ws: Path, ainl_root: Path) -> Dict[str, str]:  # AINL-OPENCLAW-TOP5
+    """Full `env.shellEnv` map aligned with docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md."""  # AINL-OPENCLAW-TOP5
+    return {  # AINL-OPENCLAW-TOP5
+        "OPENCLAW_WORKSPACE": str(ws),  # AINL-OPENCLAW-TOP5
+        "OPENCLAW_MEMORY_DIR": str(ws / "memory"),  # AINL-OPENCLAW-TOP5
+        "OPENCLAW_DAILY_MEMORY_DIR": str(ws / "memory"),  # AINL-OPENCLAW-TOP5
+        "AINL_FS_ROOT": str(ainl_root),  # AINL-OPENCLAW-TOP5
+        "AINL_MEMORY_DB": str(ws / ".ainl" / "ainl_memory.sqlite3"),  # AINL-OPENCLAW-TOP5
+        "MONITOR_CACHE_JSON": str(ws / ".ainl" / "monitor_state.json"),  # AINL-OPENCLAW-TOP5
+        "AINL_EMBEDDING_MEMORY_DB": str(ws / ".ainl" / "embedding_memory.sqlite3"),  # AINL-OPENCLAW-TOP5
+        "AINL_IR_CACHE_DIR": str(ws / ".cache" / "ainl" / "ir"),  # AINL-OPENCLAW-TOP5
+        "OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT": "true",  # AINL-OPENCLAW-TOP5
+        "AINL_BRIDGE_REPORT_MAX_CHARS": "500",  # AINL-OPENCLAW-TOP5
+        "AINL_WEEKLY_TOKEN_BUDGET_CAP": "100000",  # AINL-OPENCLAW-TOP5
+        "AINL_EXECUTION_MODE": "graph-preferred",  # AINL-OPENCLAW-TOP5
+    }  # AINL-OPENCLAW-TOP5
+
+
+def _emit_openclaw_install_dry_run_preview(  # AINL-OPENCLAW-TOP5
+    workspace: Path,  # AINL-OPENCLAW-TOP5
+    env: Dict[str, str],  # AINL-OPENCLAW-TOP5
+    core_jobs: List[Dict[str, Any]],  # AINL-OPENCLAW-TOP5
+    db_path: Path,  # AINL-OPENCLAW-TOP5
+) -> None:  # AINL-OPENCLAW-TOP5
+    import sys  # AINL-OPENCLAW-TOP5
+
+    from openclaw.bridge.schema_bootstrap import dry_run_sql_preview  # AINL-OPENCLAW-TOP5
+
+    cfg_path = workspace / ".openclaw" / "openclaw.json"  # AINL-OPENCLAW-TOP5
+    patch_obj = {"env": {"shellEnv": {k: str(v) for k, v in sorted(env.items())}}}  # AINL-OPENCLAW-TOP5
+    sys.stderr.write(  # AINL-OPENCLAW-TOP5
+        "--- ainl install openclaw --dry-run: would merge env.shellEnv into " + str(cfg_path) + " (file merge; CLI rejects unknown keys)\n"  # AINL-OPENCLAW-TOP5
+    )  # AINL-OPENCLAW-TOP5
+    sys.stderr.write(json.dumps(patch_obj, indent=2) + "\n")  # AINL-OPENCLAW-TOP5
+    sys.stderr.write("--- SQLite: bootstrap_tables (CREATE IF NOT EXISTS) ---\n")  # AINL-OPENCLAW-TOP5
+    sys.stderr.write(f"db_path: {db_path}\n")  # AINL-OPENCLAW-TOP5
+    sys.stderr.write(dry_run_sql_preview())  # AINL-OPENCLAW-TOP5
+    sys.stderr.write("\n--- would `openclaw cron add` (2026+ argv; legacy JSON after) ---\n")  # AINL-OPENCLAW-TOP5
+    for job in core_jobs:  # AINL-OPENCLAW-TOP5
+        sys.stderr.write(" ".join(_gold_standard_cron_add_argv(job)) + "\n")  # AINL-OPENCLAW-TOP5
+        sys.stderr.write(json.dumps(job) + "\n")  # AINL-OPENCLAW-TOP5
+    sys.stderr.write("--- skipped: aiNativeLang.yml write, gateway restart ---\n")  # AINL-OPENCLAW-TOP5
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser(description="AINL runtime CLI")
+    ap = argparse.ArgumentParser(  # AINL-OPENCLAW-TOP5
+        description="AINL runtime CLI",  # AINL-OPENCLAW-TOP5
+        epilog="OpenClaw helpers: `ainl install openclaw [--workspace PATH] [--dry-run]`, `ainl status [--json]`, `ainl doctor --ainl`. See docs/QUICKSTART_OPENCLAW.md.",  # AINL-OPENCLAW-TOP5
+    )  # AINL-OPENCLAW-TOP5
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     runp = sub.add_parser("run", help="Run AINL file")
@@ -1255,10 +1622,17 @@ def main() -> None:
     chk.add_argument("--strict", action="store_true")
     chk.set_defaults(func=cmd_check)
 
-    cmp = sub.add_parser("compile", help="Same as check: compile/validate an .ainl file to IR JSON")
+    cmp = sub.add_parser("compile", help="Compile an .ainl file and optionally emit artifacts")
     cmp.add_argument("file")
     cmp.add_argument("--strict", action="store_true")
-    cmp.set_defaults(func=cmd_check)
+    cmp.add_argument(
+        "--emit",
+        choices=["ir", "hermes-skill", "hermes"],
+        default="ir",
+        help="Emit target (ir or host bundle). Use hermes-skill for ~/.hermes/skills/ bundles.",
+    )
+    cmp.add_argument("-o", "--output", default="", help="Output directory for bundle emitters")
+    cmp.set_defaults(func=cmd_compile)
 
     isp = sub.add_parser("inspect", help="Compile an .ainl file and dump full canonical IR JSON")
     isp.add_argument("file")
@@ -1312,6 +1686,22 @@ def main() -> None:
     mcp_inst.add_argument("--verbose", "-v", action="store_true", help="Log each step to stderr")
     mcp_inst.set_defaults(func=cmd_install_mcp)
 
+    def cmd_install_hermes(args: argparse.Namespace) -> int:
+        # Shortcut alias for `ainl install-mcp --host hermes`
+        return run_install_mcp_host(
+            "hermes",
+            dry_run=bool(args.dry_run),
+            verbose=bool(args.verbose),
+        )
+
+    hms = sub.add_parser(
+        "hermes-install",
+        help="Bootstrap AINL for Hermes Agent: pip upgrade, ~/.hermes/config.yaml MCP, bin/ainl-run, PATH hint",
+    )
+    hms.add_argument("--dry-run", action="store_true", help="Print actions only; no pip or file writes")
+    hms.add_argument("--verbose", "-v", action="store_true", help="Log each step to stderr")
+    hms.set_defaults(func=cmd_install_hermes)
+
     def cmd_install_zeroclaw(args: argparse.Namespace) -> int:
         from tooling.zeroclaw_install import run_install_zeroclaw
 
@@ -1345,6 +1735,7 @@ def main() -> None:
             host=(args.host or None),
             json_output=bool(args.json),
             verbose=bool(args.verbose),
+            ainl_openclaw=bool(getattr(args, "ainl_openclaw", False)),  # AINL-OPENCLAW-TOP5
         )
 
     doc = sub.add_parser(
@@ -1357,9 +1748,340 @@ def main() -> None:
         default="",
         help="Limit MCP checks to one host (default: check all known hosts)",
     )
+    doc.add_argument(  # AINL-OPENCLAW-TOP5
+        "--ainl",  # AINL-OPENCLAW-TOP5
+        dest="ainl_openclaw",  # AINL-OPENCLAW-TOP5
+        action="store_true",  # AINL-OPENCLAW-TOP5
+        help="Also validate OpenClaw AINL integration (env, schema, core cron drift hints)",  # AINL-OPENCLAW-TOP5
+    )  # AINL-OPENCLAW-TOP5
     doc.add_argument("--json", action="store_true", help="Emit JSON diagnostics output")
     doc.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     doc.set_defaults(func=cmd_doctor)
+
+    def cmd_install_openclaw_one_command(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
+        from openclaw.bridge.cron_drift_check import run_report as _cron_drift_report_install  # AINL-OPENCLAW-TOP5
+        from openclaw.bridge.schema_bootstrap import bootstrap_tables  # AINL-OPENCLAW-TOP5
+        from openclaw.bridge.user_friendly_error import INIT_INSTALL_OPENCLAW, user_friendly_ainl_error  # AINL-OPENCLAW-TOP5
+
+        dry = bool(getattr(args, "install_openclaw_dry_run", False))  # AINL-OPENCLAW-TOP5
+        verbose = bool(getattr(args, "install_openclaw_verbose", False))  # AINL-OPENCLAW-TOP5
+        ws = Path(args.workspace).expanduser().resolve() if getattr(args, "workspace", "") else _openclaw_default_workspace()  # AINL-OPENCLAW-TOP5
+        ws.mkdir(parents=True, exist_ok=True)  # AINL-OPENCLAW-TOP5
+        wrote_yml = False  # AINL-OPENCLAW-TOP5
+        if not dry:  # AINL-OPENCLAW-TOP5
+            wrote_yml = _write_ai_native_lang_yml_if_missing(ws)  # AINL-OPENCLAW-TOP5
+
+        ainl_root = _repo_root()  # AINL-OPENCLAW-TOP5
+        env = _openclaw_gold_standard_shell_env(ws, ainl_root)  # AINL-OPENCLAW-TOP5
+        db_path = Path(env["AINL_MEMORY_DB"])  # AINL-OPENCLAW-TOP5
+
+        # Three gold-standard crons only (OPENCLAW_AINL_GOLD_STANDARD.md §3).  # AINL-OPENCLAW-TOP5
+        core_jobs: List[Dict[str, Any]] = [  # AINL-OPENCLAW-TOP5
+            {  # AINL-OPENCLAW-TOP5
+                "name": "AINL Context Injection",  # AINL-OPENCLAW-TOP5
+                "schedule": {"kind": "every", "everyMs": 300000},  # AINL-OPENCLAW-TOP5
+                "payload": {"kind": "agentTurn", "agentId": "ainl-advocate", "message": "run intelligence: context"},  # AINL-OPENCLAW-TOP5
+                "delivery": {"mode": "announce"},  # AINL-OPENCLAW-TOP5
+                "sessionTarget": "isolated",  # AINL-OPENCLAW-TOP5
+                "enabled": True,  # AINL-OPENCLAW-TOP5
+            },  # AINL-OPENCLAW-TOP5
+            {  # AINL-OPENCLAW-TOP5
+                "name": "AINL Session Summarizer",  # AINL-OPENCLAW-TOP5
+                "schedule": {"kind": "cron", "expr": "0 3 * * *"},  # AINL-OPENCLAW-TOP5
+                "payload": {"kind": "agentTurn", "agentId": "ainl-advocate", "message": "run intelligence: summarizer"},  # AINL-OPENCLAW-TOP5
+                "delivery": {"mode": "announce"},  # AINL-OPENCLAW-TOP5
+                "sessionTarget": "isolated",  # AINL-OPENCLAW-TOP5
+                "enabled": True,  # AINL-OPENCLAW-TOP5
+            },  # AINL-OPENCLAW-TOP5
+            {  # AINL-OPENCLAW-TOP5
+                "name": "AINL Weekly Token Trends",  # AINL-OPENCLAW-TOP5
+                "schedule": {"kind": "cron", "expr": "0 9 * * 0"},  # AINL-OPENCLAW-TOP5
+                "payload": {"kind": "agentTurn", "agentId": "ainl-advocate", "message": "run bridge: weekly-token-trends"},  # AINL-OPENCLAW-TOP5
+                "delivery": {"mode": "announce"},  # AINL-OPENCLAW-TOP5
+                "sessionTarget": "isolated",  # AINL-OPENCLAW-TOP5
+                "enabled": True,  # AINL-OPENCLAW-TOP5
+            },  # AINL-OPENCLAW-TOP5
+        ]  # AINL-OPENCLAW-TOP5
+        core_cron_names = [str(j.get("name") or "") for j in core_jobs]  # AINL-OPENCLAW-TOP5
+
+        if dry:  # AINL-OPENCLAW-TOP5
+            _emit_openclaw_install_dry_run_preview(ws, env, core_jobs, db_path)  # AINL-OPENCLAW-TOP5
+
+        patch_err: Optional[str] = None  # AINL-OPENCLAW-TOP5
+        if dry:  # AINL-OPENCLAW-TOP5
+            patch_err = None  # AINL-OPENCLAW-TOP5 — skipped  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            patch_err = _patch_openclaw_env_shellenv(ws, env)  # AINL-OPENCLAW-TOP5
+
+        schema_ok = True  # AINL-OPENCLAW-TOP5
+        schema_detail = "skipped (dry-run)" if dry else ""  # AINL-OPENCLAW-TOP5
+        if not dry:  # AINL-OPENCLAW-TOP5
+            schema_ok, schema_detail = bootstrap_tables(db_path)  # AINL-OPENCLAW-TOP5
+
+        cron_errs, cron_notes = _ensure_gold_standard_crons_idempotent(core_jobs, dry_run=dry, verbose=verbose)  # AINL-OPENCLAW-TOP5
+
+        drift_note = "skipped (dry-run)"  # AINL-OPENCLAW-TOP5
+        if not dry:  # AINL-OPENCLAW-TOP5
+            try:  # AINL-OPENCLAW-TOP5
+                dr = _cron_drift_report_install()  # AINL-OPENCLAW-TOP5
+                drift_note = "ok" if dr.get("ok") else "see `python3 openclaw/bridge/cron_drift_check.py`"  # AINL-OPENCLAW-TOP5
+            except Exception as e:  # AINL-OPENCLAW-TOP5
+                drift_note = user_friendly_ainl_error(e)[:200]  # AINL-OPENCLAW-TOP5
+
+        restart_err: Optional[str] = None  # AINL-OPENCLAW-TOP5
+        if dry:  # AINL-OPENCLAW-TOP5
+            restart_err = None  # AINL-OPENCLAW-TOP5 — skipped  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            restart_err = _openclaw_gateway_restart()  # AINL-OPENCLAW-TOP5
+
+        rows: List[tuple[str, str, str]] = []  # AINL-OPENCLAW-TOP5
+        rows.append(("📁", "Workspace", str(ws) + (" (dry-run)" if dry else "")))  # AINL-OPENCLAW-TOP5
+        rows.append(  # AINL-OPENCLAW-TOP5
+            ("➖" if dry else ("✅" if wrote_yml else "➖"), "aiNativeLang.yml", ("[dry-run] would write if missing" if dry else ("written" if wrote_yml else "already present")))  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+        rows.append(  # AINL-OPENCLAW-TOP5
+            (  # AINL-OPENCLAW-TOP5
+                "➖" if dry and not patch_err else ("✅" if not patch_err else "❌"),  # AINL-OPENCLAW-TOP5
+                "env.shellEnv (+" + str(len(env)) + " keys)",  # AINL-OPENCLAW-TOP5
+                "[dry-run] preview on stderr"  # AINL-OPENCLAW-TOP5
+                if dry  # AINL-OPENCLAW-TOP5
+                else ("ok" if not patch_err else user_friendly_ainl_error(RuntimeError(patch_err or ""))),  # AINL-OPENCLAW-TOP5
+            )  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+        rows.append(("✅" if schema_ok else "❌", "SQLite: weekly_remaining_v1", schema_detail))  # AINL-OPENCLAW-TOP5
+        cron_detail = "ok"  # AINL-OPENCLAW-TOP5
+        if cron_errs:  # AINL-OPENCLAW-TOP5
+            cron_detail = user_friendly_ainl_error(RuntimeError("; ".join(cron_errs)))  # AINL-OPENCLAW-TOP5
+        elif cron_notes:  # AINL-OPENCLAW-TOP5
+            cron_detail = "; ".join(cron_notes[:6]) + ("…" if len(cron_notes) > 6 else "")  # AINL-OPENCLAW-TOP5
+        rows.append(("✅" if not cron_errs else "❌", "Gold-standard crons (summary)", cron_detail))  # AINL-OPENCLAW-TOP5
+        job_list: Optional[List[Dict[str, Any]]] = None  # AINL-OPENCLAW-TOP5
+        jl, _jerr = _openclaw_cron_list_json()  # AINL-OPENCLAW-TOP5
+        if jl is not None:  # AINL-OPENCLAW-TOP5
+            job_list = [j for j in jl if isinstance(j, dict)]  # AINL-OPENCLAW-TOP5
+        for cn in core_cron_names:  # AINL-OPENCLAW-TOP5
+            if not cn:  # AINL-OPENCLAW-TOP5
+                continue  # AINL-OPENCLAW-TOP5
+            present = bool(job_list and any(str(j.get("name")) == cn for j in job_list))  # AINL-OPENCLAW-TOP5
+            if dry:  # AINL-OPENCLAW-TOP5
+                rows.append(("➖", f"Cron: {cn}", "[dry-run] would openclaw cron add if missing"))  # AINL-OPENCLAW-TOP5
+            else:  # AINL-OPENCLAW-TOP5
+                rows.append(("✅" if present else "❌", f"Cron: {cn}", "registered" if present else user_friendly_ainl_error(RuntimeError(f"Cron job {cn!r} not found"))))  # AINL-OPENCLAW-TOP5
+        if cron_errs:  # AINL-OPENCLAW-TOP5
+            three_core_detail = user_friendly_ainl_error(RuntimeError("; ".join(cron_errs)))[:160]  # AINL-OPENCLAW-TOP5
+            rows.append(("❌", "3 core cron jobs (gold-standard)", three_core_detail))  # AINL-OPENCLAW-TOP5
+        elif dry:  # AINL-OPENCLAW-TOP5
+            rows.append(("➖", "3 core cron jobs (gold-standard)", "preview — see stderr JSON (no `openclaw cron add`)"))  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            three_ok = bool(  # AINL-OPENCLAW-TOP5
+                job_list  # AINL-OPENCLAW-TOP5
+                and all(  # AINL-OPENCLAW-TOP5
+                    any(str(j.get("name")) == cn for j in job_list)  # AINL-OPENCLAW-TOP5
+                    for cn in core_cron_names  # AINL-OPENCLAW-TOP5
+                    if cn  # AINL-OPENCLAW-TOP5
+                )  # AINL-OPENCLAW-TOP5
+            )  # AINL-OPENCLAW-TOP5
+            rows.append(  # AINL-OPENCLAW-TOP5
+                (  # AINL-OPENCLAW-TOP5
+                    "✅" if three_ok else "❌",  # AINL-OPENCLAW-TOP5
+                    "3 core cron jobs (gold-standard)",  # AINL-OPENCLAW-TOP5
+                    "registered (or already present)" if three_ok else INIT_INSTALL_OPENCLAW,  # AINL-OPENCLAW-TOP5
+                )  # AINL-OPENCLAW-TOP5
+            )  # AINL-OPENCLAW-TOP5
+        rows.append(("➖" if dry else ("✅" if drift_note == "ok" else "⚠️"), "Cron drift (read-only)", drift_note))  # AINL-OPENCLAW-TOP5
+        rows.append(  # AINL-OPENCLAW-TOP5
+            (  # AINL-OPENCLAW-TOP5
+                "➖" if dry and not restart_err else ("✅" if not restart_err else "❌"),  # AINL-OPENCLAW-TOP5
+                "openclaw gateway restart",  # AINL-OPENCLAW-TOP5
+                "[dry-run] skipped" if dry else ("ok" if not restart_err else user_friendly_ainl_error(RuntimeError(restart_err or ""))),  # AINL-OPENCLAW-TOP5
+            )  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+
+        try:  # AINL-OPENCLAW-TOP5
+            ir_dir = Path(env["AINL_IR_CACHE_DIR"])  # AINL-OPENCLAW-TOP5
+            if dry:  # AINL-OPENCLAW-TOP5
+                rows.append(("➖", "IR cache writable", f"[dry-run] would ensure {ir_dir}"))  # AINL-OPENCLAW-TOP5
+            else:  # AINL-OPENCLAW-TOP5
+                ir_dir.mkdir(parents=True, exist_ok=True)  # AINL-OPENCLAW-TOP5
+                test = ir_dir / ".ainl_write_test"  # AINL-OPENCLAW-TOP5
+                test.write_text("ok\n", encoding="utf-8")  # AINL-OPENCLAW-TOP5
+                test.unlink(missing_ok=True)  # type: ignore[arg-type]  # AINL-OPENCLAW-TOP5
+                rows.append(("✅", "IR cache writable", str(ir_dir)))  # AINL-OPENCLAW-TOP5
+        except Exception as e:  # AINL-OPENCLAW-TOP5
+            rows.append(("⚠️", "IR cache writable", user_friendly_ainl_error(e)))  # AINL-OPENCLAW-TOP5
+
+        print(_markdown_health_table(rows))  # AINL-OPENCLAW-TOP5
+        if dry:  # AINL-OPENCLAW-TOP5
+            print("\n✅ Dry-run complete — no config/cron/restart writes. Run without `--dry-run` to apply.\n")  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            print("\n✅ OpenClaw integration step finished. Check `ainl status` and `openclaw cron list`.\n")  # AINL-OPENCLAW-TOP5
+        if dry:  # AINL-OPENCLAW-TOP5
+            return 0 if not cron_errs else 1  # AINL-OPENCLAW-TOP5
+        ok = (patch_err is None) and schema_ok and (not cron_errs) and (restart_err is None)  # AINL-OPENCLAW-TOP5
+        return 0 if ok else 1  # AINL-OPENCLAW-TOP5
+
+    inst = sub.add_parser("install", help="Install helpers (additive; does not replace install-mcp)")  # AINL-OPENCLAW-TOP5
+    inst_sub = inst.add_subparsers(dest="install_cmd", required=True)  # AINL-OPENCLAW-TOP5
+    inst_oc = inst_sub.add_parser("openclaw", help="One-command OpenClaw install + health check")  # AINL-OPENCLAW-TOP5
+    inst_oc.add_argument(  # AINL-OPENCLAW-TOP5
+        "--workspace",  # AINL-OPENCLAW-TOP5
+        default="",  # AINL-OPENCLAW-TOP5
+        metavar="PATH",  # AINL-OPENCLAW-TOP5
+        help="OpenClaw workspace root (default: ~/.openclaw/workspace if present, else cwd)",  # AINL-OPENCLAW-TOP5
+    )  # AINL-OPENCLAW-TOP5
+    inst_oc.add_argument("--dry-run", dest="install_openclaw_dry_run", action="store_true", help="Print actions only; no patch/cron/restart/SQLite writes")  # AINL-OPENCLAW-TOP5
+    inst_oc.add_argument("--verbose", "-v", dest="install_openclaw_verbose", action="store_true", help="Log steps to stderr")  # AINL-OPENCLAW-TOP5
+    inst_oc.set_defaults(func=cmd_install_openclaw_one_command)  # AINL-OPENCLAW-TOP5
+
+    def cmd_status(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
+        import sqlite3  # AINL-OPENCLAW-TOP5
+        import subprocess  # AINL-OPENCLAW-TOP5
+        import sys  # AINL-OPENCLAW-TOP5
+        from datetime import datetime, timezone  # AINL-OPENCLAW-TOP5
+
+        from openclaw.bridge.cron_drift_check import run_report as _cron_drift_report  # AINL-OPENCLAW-TOP5
+        from openclaw.bridge.schema_bootstrap import bootstrap_tables  # AINL-OPENCLAW-TOP5
+        from openclaw.bridge.user_friendly_error import INIT_INSTALL_OPENCLAW, user_friendly_ainl_error  # AINL-OPENCLAW-TOP5
+
+        json_out = bool(getattr(args, "status_json", False))  # AINL-OPENCLAW-TOP5
+        ws = _openclaw_default_workspace()  # AINL-OPENCLAW-TOP5
+        db_path = Path(os.getenv("AINL_MEMORY_DB", str(ws / ".ainl" / "ainl_memory.sqlite3"))).expanduser()  # AINL-OPENCLAW-TOP5
+        schema_ok, schema_detail = bootstrap_tables(db_path)  # AINL-OPENCLAW-TOP5
+
+        weekly_remaining: Optional[int]  # AINL-OPENCLAW-TOP5
+        week_start: str  # AINL-OPENCLAW-TOP5
+        sql_err: Optional[str]  # AINL-OPENCLAW-TOP5
+        weekly_remaining, week_start, sql_err = _read_weekly_remaining_rollup(db_path)  # AINL-OPENCLAW-TOP5
+        if sql_err:  # AINL-OPENCLAW-TOP5
+            sql_err = user_friendly_ainl_error(RuntimeError(sql_err))  # AINL-OPENCLAW-TOP5
+
+        cron_jobs: Dict[str, Dict[str, Any]] = {}  # AINL-OPENCLAW-TOP5
+        cron_err: Optional[str] = None  # AINL-OPENCLAW-TOP5
+        try:  # AINL-OPENCLAW-TOP5
+            proc = subprocess.run(["openclaw", "cron", "list", "--json"], capture_output=True, text=True, timeout=30)  # AINL-OPENCLAW-TOP5
+            if proc.returncode != 0:  # AINL-OPENCLAW-TOP5
+                cron_err = user_friendly_ainl_error(RuntimeError((proc.stderr or proc.stdout or "").strip() or "cron list failed"))[:240]  # AINL-OPENCLAW-TOP5
+            else:  # AINL-OPENCLAW-TOP5
+                data = json.loads(proc.stdout)  # AINL-OPENCLAW-TOP5
+                jobs = data.get("jobs") if isinstance(data, dict) else None  # AINL-OPENCLAW-TOP5
+                if isinstance(jobs, list):  # AINL-OPENCLAW-TOP5
+                    for j in jobs:  # AINL-OPENCLAW-TOP5
+                        if isinstance(j, dict) and j.get("name"):  # AINL-OPENCLAW-TOP5
+                            cron_jobs[str(j["name"])] = j  # AINL-OPENCLAW-TOP5
+        except FileNotFoundError:  # AINL-OPENCLAW-TOP5
+            cron_err = user_friendly_ainl_error(RuntimeError("openclaw not found"))[:240]  # AINL-OPENCLAW-TOP5
+        except Exception as e:  # AINL-OPENCLAW-TOP5
+            cron_err = user_friendly_ainl_error(e)[:240]  # AINL-OPENCLAW-TOP5
+
+        drift_ok: Optional[bool] = None  # AINL-OPENCLAW-TOP5
+        try:  # AINL-OPENCLAW-TOP5
+            drift = _cron_drift_report()  # AINL-OPENCLAW-TOP5
+            drift_ok = bool(drift.get("ok"))  # AINL-OPENCLAW-TOP5
+        except Exception as e:  # AINL-OPENCLAW-TOP5
+            drift_ok = None  # AINL-OPENCLAW-TOP5
+
+        def _last_run(job: Dict[str, Any]) -> str:  # AINL-OPENCLAW-TOP5
+            for k in ("lastRunAt", "last_run_at", "lastRun", "last_run"):  # AINL-OPENCLAW-TOP5
+                v = job.get(k)  # AINL-OPENCLAW-TOP5
+                if v:  # AINL-OPENCLAW-TOP5
+                    return str(v)  # AINL-OPENCLAW-TOP5
+            return "—"  # AINL-OPENCLAW-TOP5
+
+        core_names = [  # AINL-OPENCLAW-TOP5 — gold-standard §3  # AINL-OPENCLAW-TOP5
+            "AINL Context Injection",  # AINL-OPENCLAW-TOP5
+            "AINL Session Summarizer",  # AINL-OPENCLAW-TOP5
+            "AINL Weekly Token Trends",  # AINL-OPENCLAW-TOP5
+        ]  # AINL-OPENCLAW-TOP5
+
+        caps = {  # AINL-OPENCLAW-TOP5
+            "AINL_BRIDGE_REPORT_MAX_CHARS": os.getenv("AINL_BRIDGE_REPORT_MAX_CHARS", ""),  # AINL-OPENCLAW-TOP5
+            "AINL_WEEKLY_TOKEN_BUDGET_CAP": os.getenv("AINL_WEEKLY_TOKEN_BUDGET_CAP", ""),  # AINL-OPENCLAW-TOP5
+            "OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT": os.getenv("OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT", ""),  # AINL-OPENCLAW-TOP5
+        }  # AINL-OPENCLAW-TOP5
+
+        week_tokens: Optional[int] = None  # AINL-OPENCLAW-TOP5
+        token_usage_error: Optional[str] = None  # AINL-OPENCLAW-TOP5
+        try:  # AINL-OPENCLAW-TOP5
+            proc = subprocess.run(  # AINL-OPENCLAW-TOP5
+                [sys.executable, str(_repo_root() / "openclaw" / "bridge" / "ainl_bridge_main.py"), "token-usage", "--dry-run", "--json-output", "--days-back", "7"],  # AINL-OPENCLAW-TOP5
+                capture_output=True,  # AINL-OPENCLAW-TOP5
+                text=True,  # AINL-OPENCLAW-TOP5
+                timeout=60,  # AINL-OPENCLAW-TOP5
+            )  # AINL-OPENCLAW-TOP5
+            if proc.returncode == 0 and (proc.stdout or "").strip():  # AINL-OPENCLAW-TOP5
+                data = json.loads(proc.stdout)  # AINL-OPENCLAW-TOP5
+                if isinstance(data, dict) and data.get("total_tokens") is not None:  # AINL-OPENCLAW-TOP5
+                    week_tokens = int(data["total_tokens"])  # AINL-OPENCLAW-TOP5
+            elif proc.returncode != 0:  # AINL-OPENCLAW-TOP5
+                token_usage_error = user_friendly_ainl_error(  # AINL-OPENCLAW-TOP5
+                    RuntimeError((proc.stderr or proc.stdout or "token-usage failed").strip()[:400])  # AINL-OPENCLAW-TOP5
+                )  # AINL-OPENCLAW-TOP5
+        except Exception as e:  # AINL-OPENCLAW-TOP5
+            week_tokens = None  # AINL-OPENCLAW-TOP5
+            token_usage_error = user_friendly_ainl_error(e)  # AINL-OPENCLAW-TOP5
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")  # AINL-OPENCLAW-TOP5
+        fix_hint = INIT_INSTALL_OPENCLAW + " Or `ainl install openclaw --workspace " + str(ws) + "`."  # AINL-OPENCLAW-TOP5
+
+        not_init_budget = (not sql_err) and weekly_remaining is None  # AINL-OPENCLAW-TOP5
+        payload: Dict[str, Any] = {  # AINL-OPENCLAW-TOP5
+            "checked_at": now,  # AINL-OPENCLAW-TOP5
+            "workspace": str(ws),  # AINL-OPENCLAW-TOP5
+            "db_path": str(db_path),  # AINL-OPENCLAW-TOP5
+            "schema_ok": schema_ok,  # AINL-OPENCLAW-TOP5
+            "schema_detail": schema_detail,  # AINL-OPENCLAW-TOP5
+            "weekly_remaining": weekly_remaining,  # AINL-OPENCLAW-TOP5
+            "week_start": week_start or None,  # AINL-OPENCLAW-TOP5
+            "weekly_budget_not_initialized": not_init_budget,  # AINL-OPENCLAW-TOP5
+            "sql_error": sql_err,  # AINL-OPENCLAW-TOP5
+            "cron_error": cron_err,  # AINL-OPENCLAW-TOP5
+            "cron_jobs": {k: cron_jobs[k] for k in core_names if k in cron_jobs},  # AINL-OPENCLAW-TOP5
+            "cron_drift_ok": drift_ok,  # AINL-OPENCLAW-TOP5
+            "token_usage_7d": week_tokens,  # AINL-OPENCLAW-TOP5
+            "token_usage_error": token_usage_error,  # AINL-OPENCLAW-TOP5
+            "caps": caps,  # AINL-OPENCLAW-TOP5
+            "fix_hint": fix_hint,  # AINL-OPENCLAW-TOP5
+        }  # AINL-OPENCLAW-TOP5
+
+        rows: List[tuple[str, str, str]] = []  # AINL-OPENCLAW-TOP5
+        rows.append(("📁", "Workspace", str(ws)))  # AINL-OPENCLAW-TOP5
+        rows.append(("✅" if schema_ok else "❌", "SQLite schema", schema_detail if schema_ok else (sql_err or schema_detail)))  # AINL-OPENCLAW-TOP5
+        if sql_err:  # AINL-OPENCLAW-TOP5
+            rows.append(("⚠️", "weekly_remaining_v1", sql_err + " " + fix_hint))  # AINL-OPENCLAW-TOP5
+        elif weekly_remaining is None:  # AINL-OPENCLAW-TOP5
+            rows.append(("⚠️", "Weekly budget remaining", "Not initialized — " + INIT_INSTALL_OPENCLAW))  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            rows.append(("✅", "Weekly budget remaining", f"{weekly_remaining} (week_start={week_start or '—'})"))  # AINL-OPENCLAW-TOP5
+        if drift_ok is not None:  # AINL-OPENCLAW-TOP5
+            rows.append(("✅" if drift_ok else "⚠️", "Cron drift (registry vs OpenClaw)", "ok" if drift_ok else "see `python3 openclaw/bridge/cron_drift_check.py`"))  # AINL-OPENCLAW-TOP5
+        if cron_err:  # AINL-OPENCLAW-TOP5
+            rows.append(("❌", "OpenClaw cron list", cron_err + " " + fix_hint))  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            for name in core_names:  # AINL-OPENCLAW-TOP5
+                j = cron_jobs.get(name)  # AINL-OPENCLAW-TOP5
+                if not j:  # AINL-OPENCLAW-TOP5
+                    rows.append(("❌", f"Cron: {name}", user_friendly_ainl_error(RuntimeError(f"Cron job {name!r} not found")) + " " + fix_hint))  # AINL-OPENCLAW-TOP5
+                else:  # AINL-OPENCLAW-TOP5
+                    rows.append(("✅" if j.get("enabled") else "⚠️", f"Cron: {name}", f"enabled={bool(j.get('enabled'))} last_run={_last_run(j)}"))  # AINL-OPENCLAW-TOP5
+        tu_detail = str(week_tokens) if week_tokens is not None else ("unknown" + ((" — " + token_usage_error) if token_usage_error else ""))  # AINL-OPENCLAW-TOP5
+        rows.append(("✅" if week_tokens is not None else "⚠️", "Token usage (7d) via token_usage_reporter --json-output", tu_detail))  # AINL-OPENCLAW-TOP5
+        for k, v in caps.items():  # AINL-OPENCLAW-TOP5
+            rows.append(("✅" if str(v).strip() else "⚠️", f"Cap: {k}", str(v).strip() or "not set in this shell (gateway may still set via shellEnv)"))  # AINL-OPENCLAW-TOP5
+
+        missing_cron = not cron_err and any(n not in cron_jobs for n in core_names)  # AINL-OPENCLAW-TOP5
+        ok = bool(schema_ok and not cron_err and not missing_cron and (drift_ok is not False))  # AINL-OPENCLAW-TOP5
+        rows.append(("✅" if ok else "⚠️", "Overall health", ("All green" if ok else "Needs attention — " + fix_hint) + f" ({now})"))  # AINL-OPENCLAW-TOP5
+        payload["ok"] = ok  # AINL-OPENCLAW-TOP5
+
+        if json_out:  # AINL-OPENCLAW-TOP5
+            print(json.dumps(payload, indent=2))  # AINL-OPENCLAW-TOP5
+        else:  # AINL-OPENCLAW-TOP5
+            print(_markdown_health_table(rows))  # AINL-OPENCLAW-TOP5
+        return 0 if ok else 1  # AINL-OPENCLAW-TOP5
+
+    st = sub.add_parser("status", help="Unified OpenClaw + AINL status view")  # AINL-OPENCLAW-TOP5
+    st.add_argument("--json", dest="status_json", action="store_true", help="Emit machine-readable JSON (same fields as table)")  # AINL-OPENCLAW-TOP5
+    st.set_defaults(func=cmd_status)  # AINL-OPENCLAW-TOP5
 
     def cmd_bridge_sizing_probe(args: argparse.Namespace) -> int:
         import json
@@ -1574,6 +2296,12 @@ def main() -> None:
         help="Create a new AINL project directory with a starter main.ainl and README",
     )
     initp.add_argument("name", help="Project name (also becomes the directory name)")
+    initp.add_argument(
+        "--target",
+        choices=["generic", "hermes"],
+        default="generic",
+        help="Initialize templates for a specific host target (default: generic)",
+    )
     initp.add_argument(
         "--output-dir",
         default="",

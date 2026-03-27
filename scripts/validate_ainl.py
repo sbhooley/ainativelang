@@ -286,7 +286,18 @@ def main() -> None:
     ap.add_argument("file", nargs="?", help="Path to .lang file (default: stdin)")
     ap.add_argument(
         "--emit",
-        choices=["ir", "server", "react", "openapi", "prisma", "sql", "hyperspace", "langgraph", "temporal"],
+        choices=[
+            "ir",
+            "server",
+            "react",
+            "openapi",
+            "prisma",
+            "sql",
+            "hyperspace",
+            "langgraph",
+            "temporal",
+            "hermes-skill",
+        ],
         default="ir",
         help=(
             "Emit artifact instead of IR JSON. "
@@ -461,6 +472,19 @@ def main() -> None:
                 indent=2,
             )
         )
+    elif args.emit == "hermes-skill":
+        stem = Path(args.file).stem if args.file else "ainl_graph"
+        out_dir = Path(args.output).expanduser() if args.output else Path.cwd() / f"{stem}_hermes_skill"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        bundle = c.emit_hermes_skill_bundle(ir, ainl_source=code, skill_name=stem, source_stem=stem)
+        written = []
+        for rel, content in sorted(bundle.items()):
+            p = out_dir / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(content, encoding="utf-8")
+            written.append(str(p.resolve()))
+        print(json.dumps({"ok": True, "emit": "hermes-skill", "dir": str(out_dir.resolve()), "files": written}, indent=2))
     sys.exit(0)
 
 

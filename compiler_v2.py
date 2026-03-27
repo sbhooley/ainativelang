@@ -1890,7 +1890,18 @@ class AICodeCompiler:
                 return
             if _is_runtime_literal(tok):
                 return
-            reads.append(str(tok))
+            s3 = str(tok).strip()
+            # Only treat identifier-like atoms as frame variables. This avoids
+            # strict false positives for expression tokens like "(eq", "null)",
+            # and for literal-ish atoms like "ainl-x-promoter" (should be quoted,
+            # but is not a frame variable).
+            if not s3:
+                return
+            if not (s3[0].isalpha() or s3[0] == "_"):
+                return
+            if not all(ch.isalnum() or ch == "_" for ch in s3):
+                return
+            reads.append(s3)
 
         if op == "R":
             out_var = s.get("out", "res")
@@ -1932,7 +1943,18 @@ class AICodeCompiler:
                 if "=" in base:
                     base = base.split("=", 1)[0]
                 if base:
-                    reads.append(base.strip())
+                    _add_read_if_var(base.strip(), "cond")
+        elif op == "X":
+            dst = s.get("dst")
+            if dst:
+                writes.append(str(dst))
+            # Strict-safe heuristic: only `$var` tokens are treated as reads.
+            # Bare atoms in X expressions are treated as literals by default in many
+            # canonical graphs (keys, enums, short flags) and produce false positives
+            # when treated as frame variables.
+            for a in list(s.get("args") or []):
+                if isinstance(a, str) and a.startswith("$") and len(a) > 1:
+                    reads.append(a[1:])
         elif op == "CacheGet":
             key = s.get("key")
             fallback = s.get("fallback")
@@ -2039,6 +2061,17 @@ class AICodeCompiler:
                 if after_id:
                     edges.append({"from": nid, "to": after_id, "port": "after", "to_kind": "label"})
                 last_nid = None
+            elif op == "Call":
+                if last_nid:
+                    edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+                callee_id = self._norm_lid(s.get("label"))
+                if callee_id:
+                    # Analysis-only edge: model Call as a label hop so strict dataflow and effect
+                    # checking can reason about the callee label's reads/writes/effects.
+                    edges.append(
+                        {"from": nid, "to": callee_id, "port": "next", "to_kind": "label", "analysis_only": True}
+                    )
+                last_nid = nid
             elif op == "While":
                 if last_nid:
                     edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
@@ -2282,6 +2315,8 @@ class AICodeCompiler:
                 caller_effects = set((body.get("effect_summary") or {}).get("effects") or [])
                 for e in edges:
                     if e.get("to_kind") != "label":
+                        continue
+                    if e.get("analysis_only"):
                         continue
                     callee_lid = self._norm_lid(e.get("to", ""))
                     if not callee_lid or callee_lid not in self.labels:
@@ -4294,6 +4329,27 @@ class AICodeCompiler:
         py += "    print(result)\n"
 
         return py
+
+    def emit_hermes_skill_bundle(
+        self,
+        ir: Dict[str, Any],
+        *,
+        ainl_source: str,
+        skill_name: Optional[str] = None,
+        source_stem: str = "ainl_graph",
+    ) -> Dict[str, str]:
+        """Emit a Hermes skill bundle as a mapping of relative paths -> contents.
+
+        The output is intended to be written to a directory that Hermes Agent can
+        load as a skill (e.g. ~/.hermes/skills/ainl-imports/<name>/).
+        """
+
+        # Import locally to keep Hermes integration optional for core compiler usage.
+        from hermes.hermes_skill_importer import build_hermes_skill_bundle
+
+        name = (skill_name or source_stem or "ainl-skill").strip()
+        bundle = build_hermes_skill_bundle(ir, ainl_source=ainl_source, skill_name=name, source_stem=source_stem)
+        return dict(bundle.files)
 
     def emit_server(self, ir: Dict[str, Any]) -> str:
         """Emit server that runs labels via RuntimeEngine + pluggable adapters."""

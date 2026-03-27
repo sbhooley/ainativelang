@@ -60,6 +60,8 @@ These wrappers run via **`openclaw/bridge/run_wrapper_ainl.py`** and write to Op
 | `weekly-token-trends` | `0 9 * * 0` (Sun) | Scans recent `YYYY-MM-DD.md` files, appends **`## Weekly Token Trends`** |
 | `email-monitor` (optional) | `*/15 * * * *` (default) | Checks Gmail for unread emails via the `email` adapter and sends a Telegram notification if any are found. **Requires** `openclaw mail` plugin (not included in default installs). See [`docs/openclaw/EMAIL_MONITOR.md`](openclaw/EMAIL_MONITOR.md) for details and enabling instructions. Currently disabled in `run_wrapper_ainl.py` by default. |
 
+**Rolling budget storage:** the bridge publishes the rolling aggregate primarily to SQLite **`memory_records`** (`namespace='workflow'`, `record_kind='budget.aggregate'`, `record_id='weekly_remaining_v1'`); the legacy **`weekly_remaining_v1`** *table* is bootstrapped for compatibility. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> **`ainl status`** uses **`_read_weekly_remaining_rollup`** (legacy row first, else **`memory_records`**) — canonical narrative in **[`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md)** §c. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
+
 **Single operator guide:** [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](operations/UNIFIED_MONITORING_GUIDE.md)  
 **Token budget detail:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md)  
 **Bridge README:** [`openclaw/bridge/README.md`](../openclaw/bridge/README.md)

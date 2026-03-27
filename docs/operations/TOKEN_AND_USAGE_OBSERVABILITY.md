@@ -28,13 +28,15 @@ After **`weekly-token-trends`** runs (live), the bridge may write:
 
 - **namespace** `workflow`
 - **record_kind** `budget.aggregate`
-- **record_id** `weekly_remaining_v1`
+- **record_id** `weekly_remaining_v1` <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
 **Read:** `memory.get` on that key, or **`R bridge rolling_budget_json`** (JSON string). Prefer this over re-scanning many days of markdown when you only need a single number.
 
+**CLI:** **`ainl status`** surfaces **`weekly_remaining_tokens`** via **`_read_weekly_remaining_rollup`**: it prefers the legacy **`weekly_remaining_v1`** table when a non-null row exists, otherwise the latest **`memory_records`** aggregate above. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
+
 ### Intelligence runner + cache (`scripts/run_intelligence.py`)
 
-Before each non–dry-run execution, the runner calls **`tooling/intelligence_budget_hydrate.hydrate_budget_cache_from_rolling_memory`**: it reads **`workflow` / `budget.aggregate` / `weekly_remaining_v1`** from SQLite (when present) and **merges** rolling fields into **`MONITOR_CACHE_JSON`** under **`workflow` → `token_budget`**, which `token_aware_startup_context` and `proactive_session_summarizer` already read via **`R cache get "workflow" "token_budget"`**.
+Before each non–dry-run execution, the runner calls **`tooling/intelligence_budget_hydrate.hydrate_budget_cache_from_rolling_memory`**: it reads **`workflow` / `budget.aggregate` / `weekly_remaining_v1`** from the SQLite-backed **memory** adapter (**`memory_records`**; when present) and **merges** rolling fields into **`MONITOR_CACHE_JSON`** under **`workflow` → `token_budget`**, which `token_aware_startup_context` and `proactive_session_summarizer` already read via **`R cache get "workflow" "token_budget"`**. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> (This is distinct from the legacy **`weekly_remaining_v1`** *table* used only for older checks and **`ainl status`**’s first-choice read.) <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
 - Disable with **`AINL_INTELLIGENCE_SKIP_ROLLING_HYDRATE=1`**.  
 - Merge policy for **`daily_remaining`**: see **`docs/operations/TOKEN_CAPS_STAGING.md`**.

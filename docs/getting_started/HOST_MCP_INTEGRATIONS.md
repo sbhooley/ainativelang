@@ -1,13 +1,13 @@
-# MCP host integrations (OpenClaw, ZeroClaw, …)
+# MCP host integrations (OpenClaw, ZeroClaw, Hermes Agent, …)
 
-Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcpServers.ainl`**, install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
+Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcpServers.ainl`** (or YAML **`mcp_servers.ainl`** on Hermes), install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
 
 ## Two-step pattern (every host)
 
-1. **Install and onboard the agent runtime** using that product’s official docs (e.g. OpenClaw → [openclaw.ai](https://openclaw.ai/)).
+1. **Install and onboard the agent runtime** using that product’s official docs (e.g. OpenClaw → [openclaw.ai](https://openclaw.ai/) · Hermes Agent → [github.com/NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)).
 2. **Add AINL** using either:
    - **Skill folder:** copy **`skills/<host>/`** from this repo, then **`chmod +x install.sh && ./install.sh`**, or  
-   - **CLI:** **`pip install 'ainativelang[mcp]'`** then **`ainl install-mcp --host openclaw`** or **`zeroclaw`** (see **`ainl install-mcp --list-hosts`**).
+   - **CLI:** **`pip install 'ainativelang[mcp]'`** then **`ainl install-mcp --host openclaw`**, **`zeroclaw`**, or **`hermes`** (see **`ainl install-mcp --list-hosts`**).
 
 Legacy per-host commands remain aliases:
 
@@ -15,6 +15,7 @@ Legacy per-host commands remain aliases:
 |------|-------------|----------------|
 | OpenClaw | `ainl install-mcp --host openclaw` | `ainl install-openclaw` |
 | ZeroClaw | `ainl install-mcp --host zeroclaw` | `ainl install-zeroclaw` |
+| Hermes Agent | `ainl install-mcp --host hermes` | `ainl hermes-install` |
 
 List supported ids: **`ainl install-mcp --list-hosts`**.
 
@@ -31,4 +32,5 @@ Older **`ainl`** wheels may only expose **`install-openclaw`** / **`install-zero
 
 - **OpenClaw:** [`OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) — **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**. Cron/bridge (non-MCP): [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md). **Unified bridge & workspace automation:** [`../ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md).
 - **ZeroClaw:** [`ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md) — **`~/.zeroclaw/mcp.json`**, optional **`[ainl_bridge]`** when run from a git checkout.
+- **Hermes Agent:** [`HERMES_INTEGRATION.md`](../HERMES_INTEGRATION.md) — upstream **[github.com/NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)** · **`~/.hermes/config.yaml`** (`mcp_servers.ainl`), **`~/.hermes/bin/ainl-run`**, and **`--emit hermes-skill`** bundles under **`~/.hermes/skills/ainl-imports/`**.
 - **Operators / MCP templates:** [`operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](../operations/EXTERNAL_ORCHESTRATION_GUIDE.md).

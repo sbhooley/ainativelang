@@ -1,4 +1,4 @@
-"""Shared MCP host bootstrap for OpenClaw, ZeroClaw, and future stacks (pip, mcpServers.ainl, ainl-run, PATH)."""
+"""Shared MCP host bootstrap for OpenClaw, ZeroClaw, Hermes Agent, and future stacks (pip, MCP config, ainl-run, PATH)."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ class McpHostProfile:
     id: str
     dot_rel: Path
     config_filename: str
+    config_kind: str  # "json_mcpServers" | "yaml_mcp_servers"
     path_line: str
     path_marker: str
     success_tip: str
@@ -34,6 +35,7 @@ PROFILES: dict[str, McpHostProfile] = {
         id="openclaw",
         dot_rel=Path(".openclaw"),
         config_filename="openclaw.json",
+        config_kind="json_mcpServers",
         path_line='export PATH="$HOME/.openclaw/bin:$PATH"',
         path_marker=".openclaw/bin",
         success_tip='Now say in OpenClaw: "Import the morning briefing using AINL"',
@@ -42,9 +44,28 @@ PROFILES: dict[str, McpHostProfile] = {
         id="zeroclaw",
         dot_rel=Path(".zeroclaw"),
         config_filename="mcp.json",
+        config_kind="json_mcpServers",
         path_line='export PATH="$HOME/.zeroclaw/bin:$PATH"',
         path_marker=".zeroclaw/bin",
         success_tip='Now say in ZeroClaw: "Import the morning briefing using AINL"',
+    ),
+    "hermes": McpHostProfile(
+        id="hermes",
+        dot_rel=Path(".hermes"),
+        config_filename="config.yaml",
+        config_kind="yaml_mcp_servers",
+        path_line='export PATH="$HOME/.hermes/bin:$PATH"',
+        path_marker=".hermes/bin",
+        success_tip='Now say in Hermes: "Import the morning briefing using AINL" (or run: hermes chat)',
+    ),
+    "hermes-gateway": McpHostProfile(
+        id="hermes-gateway",
+        dot_rel=Path(".hermes"),
+        config_filename="config.yaml",
+        config_kind="yaml_mcp_servers",
+        path_line='export PATH="$HOME/.hermes/bin:$PATH"',
+        path_marker=".hermes/bin",
+        success_tip='Now say in Hermes Gateway: "Import the morning briefing using AINL"',
     ),
 }
 
@@ -96,11 +117,23 @@ def ensure_mcp_registration(
     dry_run: bool,
     verbose: bool,
 ) -> None:
-    """Merge AINL stdio MCP server into host JSON config (idempotent by resolved command)."""
+    """Merge AINL stdio MCP server into host config (idempotent by resolved command)."""
     host_dir = home / profile.dot_rel
     cfg_path = host_dir / profile.config_filename
     ainl_mcp = _which_or_fallback("ainl-mcp", "ainl-mcp")
     desired = {"command": ainl_mcp, "args": []}
+
+    if profile.config_kind == "yaml_mcp_servers":
+        _ensure_mcp_registration_yaml_mcp_servers(
+            cfg_path,
+            server_key=MCP_SERVER_KEY,
+            desired=desired,
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+        if not dry_run:
+            print(f"Wrote MCP config: {cfg_path}")
+        return
 
     if cfg_path.is_file():
         try:
@@ -135,6 +168,74 @@ def ensure_mcp_registration(
     host_dir.mkdir(parents=True, exist_ok=True)
     cfg_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote MCP config: {cfg_path}")
+
+
+def _ensure_mcp_registration_yaml_mcp_servers(
+    cfg_path: Path,
+    *,
+    server_key: str,
+    desired: dict,
+    dry_run: bool,
+    verbose: bool,
+) -> None:
+    """
+    Hermes Agent uses ~/.hermes/config.yaml with a top-level `mcp_servers:` mapping.
+    We do a minimal, idempotent text merge without a YAML dependency:
+    - if `mcp_servers:` is absent, append a new block
+    - if `mcp_servers:` exists and `ainl:` is already present under it, do nothing
+    - otherwise, insert the `ainl:` block directly under `mcp_servers:`
+    """
+    desired_block = (
+        "mcp_servers:\n"
+        f"  {server_key}:\n"
+        f"    command: \"{desired['command']}\"\n"
+        "    args: []\n"
+    )
+
+    if not cfg_path.exists():
+        if dry_run:
+            print(f"[dry-run] would write {cfg_path} with mcp_servers.{server_key}")
+            _log(verbose, desired_block)
+            return
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        cfg_path.write_text(desired_block, encoding="utf-8")
+        return
+
+    text = cfg_path.read_text(encoding="utf-8")
+    if "mcp_servers:" in text:
+        # best-effort check: a server key under mcp_servers with two-space indent
+        needle = f"\n  {server_key}:"
+        if needle in text or text.lstrip().startswith(f"mcp_servers:\n  {server_key}:"):
+            _log(verbose, f"MCP: {server_key!r} already registered in {cfg_path}")
+            return
+
+        lines = text.splitlines(keepends=True)
+        out: list[str] = []
+        inserted = False
+        for i, line in enumerate(lines):
+            out.append(line)
+            if not inserted and line.strip() == "mcp_servers:":
+                # Insert immediately after the key line.
+                out.append(f"  {server_key}:\n")
+                out.append(f"    command: \"{desired['command']}\"\n")
+                out.append("    args: []\n")
+                inserted = True
+        if not inserted:
+            # Fallback: append block (should be rare)
+            out.append("\n" + desired_block if not text.endswith("\n") else desired_block)
+        new_text = "".join(out)
+    else:
+        new_text = text
+        if not new_text.endswith("\n"):
+            new_text += "\n"
+        new_text += "\n" + desired_block
+
+    if dry_run:
+        print(f"[dry-run] would update {cfg_path} with mcp_servers.{server_key}")
+        _log(verbose, desired_block)
+        return
+
+    cfg_path.write_text(new_text, encoding="utf-8")
 
 
 def ensure_ainl_run_wrapper(
@@ -221,6 +322,9 @@ def run_install_mcp_host(
     home = home if home is not None else Path.home()
     pip_fn: Callable[[bool], int] = run_pip if run_pip is not None else default_run_pip_install
 
+    if hid.startswith("hermes"):
+        _warn_if_hermes_missing(home=home, dry_run=dry_run, verbose=verbose)
+
     if dry_run:
         print(f"[dry-run] would run: python -m pip install --upgrade '{PIP_SPEC}'")
     else:
@@ -251,6 +355,8 @@ def run_install_mcp_host(
             )
 
     ensure_path_hint_in_shell_rc(profile, home=home, dry_run=dry_run, verbose=verbose)
+    if hid.startswith("hermes"):
+        _run_skills_hermes_install(home=home, dry_run=dry_run, verbose=verbose, log=_log)
 
     tip = profile.success_tip
     if dry_run:
@@ -258,6 +364,51 @@ def run_install_mcp_host(
     else:
         print(f"AINL {profile.id} MCP bootstrap complete. {tip}")
     return 0
+
+
+def _warn_if_hermes_missing(*, home: Path, dry_run: bool, verbose: bool) -> None:
+    from shutil import which
+
+    cfg_json = home / ".hermes" / "config.json"
+    cfg_yaml = home / ".hermes" / "config.yaml"
+    hermes_exe = which("hermes")
+    if hermes_exe or cfg_json.exists() or cfg_yaml.exists():
+        _log(verbose, "Hermes detection: found hermes CLI or ~/.hermes config")
+        return
+    msg = "Hermes detection: hermes not found on PATH and ~/.hermes/config.{json,yaml} missing"
+    if dry_run:
+        print(f"[dry-run] {msg}")
+    else:
+        print(f"Warning: {msg}", file=sys.stderr)
+
+
+def _run_skills_hermes_install(*, home: Path, dry_run: bool, verbose: bool, log: Callable[[bool, str], None]) -> None:
+    """
+    Hermes install additionally runs skills/hermes/install.sh from this repo if present.
+    This mirrors the OpenClaw skill pack flow, but the CLI triggers it automatically.
+    """
+    repo_root = Path(__file__).resolve().parent.parent
+    script = repo_root / "skills" / "hermes" / "install.sh"
+    if not script.is_file():
+        if dry_run:
+            print(f"[dry-run] would run skills/hermes/install.sh if present at {script}")
+        else:
+            print(
+                "Tip: skills/hermes/install.sh not found in this checkout; install Hermes skill pack by "
+                "updating to a repo version that includes skills/hermes/",
+                file=sys.stderr,
+            )
+        return
+
+    env = dict(**{"AINL_HERMES_INSTALL_MCP_ALREADY": "1"}, **{})
+    cmd = ["bash", str(script)]
+    if dry_run:
+        print(f"[dry-run] would run: {' '.join(shlex.quote(c) for c in cmd)}")
+        return
+    log(verbose, "+ " + " ".join(shlex.quote(c) for c in cmd))
+    proc = subprocess.run(cmd, check=False, env={**env, **dict(**{})})
+    if proc.returncode != 0:
+        print(f"Warning: skills/hermes/install.sh failed (exit={proc.returncode})", file=sys.stderr)
 
 
 def run_install_mcp_main(argv: Optional[list[str]] = None) -> int:

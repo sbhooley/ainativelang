@@ -177,4 +177,15 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:  # AINL-OPENCLAW-TOP5
+        main()  # AINL-OPENCLAW-TOP5
+    except SystemExit:  # AINL-OPENCLAW-TOP5
+        raise  # AINL-OPENCLAW-TOP5
+    except BaseException as _e:  # AINL-OPENCLAW-TOP5
+        try:  # AINL-OPENCLAW-TOP5
+            from openclaw.bridge.user_friendly_error import user_friendly_ainl_error  # AINL-OPENCLAW-TOP5
+
+            print(user_friendly_ainl_error(_e), file=sys.stderr)  # AINL-OPENCLAW-TOP5
+        except Exception:  # AINL-OPENCLAW-TOP5
+            print(str(_e), file=sys.stderr)  # AINL-OPENCLAW-TOP5
+        raise SystemExit(1) from _e  # AINL-OPENCLAW-TOP5

@@ -1,4 +1,7 @@
 # OpenClaw + AINL — gold standard (install / upgrade)
+> **Start here if you are new:** [`docs/QUICKSTART_OPENCLAW.md`](../QUICKSTART_OPENCLAW.md) — `ainl install openclaw`, `ainl status`, and `ainl doctor --ainl` before you tune caps or cron.  <!-- AINL-OPENCLAW-TOP5 -->
+
+> **Fastest onboarding:** use **`ainl install openclaw`** — see [`AI_AGENT_QUICKSTART_OPENCLAW.md`](../../AI_AGENT_QUICKSTART_OPENCLAW.md) or §1 *Quickstart (5 minutes)* below. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
 **Purpose:** Canonical reference for **agents and operators** after **`pip install`** / **`ainl install-mcp --host openclaw`** (or similar). Follow this to align **profiles**, **caps**, **cron**, **shared paths**, and **verification** so token savings and **`budget_hydrate`** behavior show up in real sessions. **Adapt numbers** to your measured workload (`bridge-sizing-probe`); the structure stays the same.
 
@@ -13,6 +16,78 @@
 - OpenClaw installed and running
 - AINL repository cloned and available at `$WORKSPACE/AI_Native_Lang`
 - `ainl` CLI in PATH (from AINL install)
+
+## 1. Progressive Disclosure (Recommended Learning Path)
+
+The AINL + OpenClaw integration has many moving parts. To avoid overwhelm, follow the tier that matches your needs.
+
+### Quickstart (5 minutes)
+
+Goal: Get AINL working with safe defaults.
+
+1. Run the all‑in‑one setup script (provided in this repo):
+   ```bash
+   cd $WORKSPACE/AI_Native_Lang
+   ./scripts/setup_ainl_integration.sh
+   ```
+2. Restart OpenClaw: `openclaw gateway restart`
+3. Run health check: `ainl status`
+   - Should show “All checks green” or list any missing items
+4. Wait for the next context injection (every 5 minutes) and confirm `session_context.md` appears.
+5. Done. Let the system run; revisit tuning only if you hit caps.
+
+### Standard (15 minutes)
+
+Goal: Understand and tune caps, verify cron jobs, interpret trends.
+
+1. Complete Quickstart.
+2. Read §2 (Critical caps) and adjust `AINL_BRIDGE_REPORT_MAX_CHARS` based on your `session_context.md` size.
+3. Check weekly trends: `sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 "SELECT * FROM weekly_remaining_v1 ORDER BY week_start DESC LIMIT 4;"` (legacy table; optional — confirms schema or older direct rows). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> (`ainl status` now shows the value automatically via legacy-first + memory_records fallback <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->) The rolling budget is published primarily to **`memory_records`** (`namespace='workflow'`, `record_kind='budget.aggregate'`, `record_id='weekly_remaining_v1'`); you can inspect the latest payload with a `SELECT payload_json … FROM memory_records …` query on that key if needed. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> **`ainl status`** reflects this automatically: it prefers the legacy table when a non-null row exists, otherwise falls back to **`weekly_remaining_tokens`** from the memory aggregate. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
+4. Adjust `AINL_WEEKLY_TOKEN_BUDGET_CAP` if you’re consistently >80% used.
+5. Verify all cron jobs present: `openclaw cron list`
+6. Review Token Cost Tracker Telegram messages; ensure they’re arriving.
+7. Optional: run `ainl bridge-sizing-probe --json` to get empirical report sizes.
+
+### Advanced (60 minutes)
+
+Goal: Customize workflows, enable embeddings, tune performance.
+
+1. Complete Standard.
+2. Explore `intelligence/` programs; read `AGENT_AINL_OPERATING_MODEL.md`.
+3. Enable embedding retrieval pilot (see `EMBEDDING_RETRIEVAL_PILOT.md`).
+4. Experiment with custom adapters or WASM steps.
+5. Set up cap auto‑tuner: `python3 scripts/run_intelligence.py auto_tune_ainl_caps` (dry‑run first).
+6. Review `TOKEN_AND_USAGE_OBSERVABILITY.md` for alerting and dashboards.
+7. Consider moving from `env.shellEnv` to profile emission if you run many ad‑hoc `ainl` commands.
+
+---
+
+## 1. (renumbered) Critical caps (start here, then tighten)
+
+Set **after** you understand your gateway; **adjust** after `ainl bridge-sizing-probe` (see §5).
+
+| Variable | Example start | Notes |
+|----------|----------------|--------|
+| `AINL_BRIDGE_REPORT_MAX_CHARS` | `500` | Bridge report size; raise only if evidence shows truncation pain. |
+| `AINL_WEEKLY_TOKEN_BUDGET_CAP` | `200000` | Match **your** real weekly budget. |
+| `PROMOTER_LLM_MAX_PROMPT_CHARS` | `2000` | **Gateway (Apollo)** — not in `ainl_profiles.json`; set on the promoter process. |
+| `PROMOTER_LLM_MAX_COMPLETION_TOKENS` | `500` | **Gateway** — same. |
+
+Staging order and hydrate flags: [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md).
+
+### Startup bootstrap caps (AINL token-aware context)
+
+These clamp the *allocation* used by `intelligence/token_aware_startup_context.lang` when it builds `session_context.md`:
+
+- `AINL_STARTUP_CONTEXT_TOKEN_MIN` / `AINL_STARTUP_CONTEXT_TOKEN_MAX`
+- `AINL_STARTUP_USE_EMBEDDINGS` (embedding top-k candidate path; safe fallback enabled)
+
+Important activation rules:
+
+- Embedding top-k only triggers when `AINL_EMBEDDING_MODE` is **not** `stub` (so profiles can leave `AINL_STARTUP_USE_EMBEDDINGS=1` while still being safe by default).
+- When embeddings are real, run the embedding pilot at least once so `workflow.session_summary` text is indexed (see [`EMBEDDING_RETRIEVAL_PILOT.md`](EMBEDDING_RETRIEVAL_PILOT.md)).
+
+To tune startup tokens, start from your profile values, then adjust based on measured `session_context.md` length and user-visible behavior.
 
 ## 1. Environment profile
 
@@ -130,6 +205,8 @@ openclaw cron add '{
 
 ### c) AINL Weekly Token Trends Bridge (Sunday; publishes `weekly_remaining_v1`)
 
+The weekly bridge publishes the rolling budget **primarily** to **`memory_records`** (`namespace='workflow'`, `record_kind='budget.aggregate'`, `record_id='weekly_remaining_v1'`). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> **`ainl install openclaw`** still bootstraps the legacy **`weekly_remaining_v1`** SQLite table for compatibility; **`ainl status`** reads that table when present and non-null, otherwise shows **`weekly_remaining_tokens`** from the latest memory aggregate. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
+
 ```bash
 openclaw cron add '{
   "name": "AINL Weekly Token Trends",
@@ -199,7 +276,7 @@ Details: [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) · [`W
    ls -la $OPENCLAW_WORKSPACE/.openclaw/bootstrap/session_context.md
    ```
 3. **New session check:** verify the agent loads `session_context.md` when present (bootstrap preference works).
-4. **After first weekly bridge run:** confirm `weekly_remaining_v1` exists in SQLite.
+4. **After first weekly bridge run:** confirm rolling budget data exists — the legacy **`weekly_remaining_v1`** table may be empty while **`memory_records`** already holds the aggregate (modern path). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> Use **`ainl status`** to verify the weekly budget line: **ainl status now shows the correct value via fallback** to **`memory_records`** when the legacy row is missing or null. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> You may still run the §Standard `sqlite3` checks on the legacy table (legacy table; modern data lives in memory_records). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 5. **After `run_intelligence.py` (non–dry-run):** confirm JSON includes `budget_hydrate` with `ok: true` when a rolling row exists (not permanently skipped).
 6. **Monthly:** run `ainl bridge-sizing-probe --json` and tighten `AINL_BRIDGE_REPORT_MAX_CHARS` from evidence.
 
@@ -279,7 +356,26 @@ Run it once after installing/upgrading AINL.
 
 ---
 
-## 7. Apollo's Working Configuration (Case Study)
+## 7. Common Pitfalls & Fixes
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `weekly_remaining_v1` table not found | Schema not initialized (fresh DB) | Run `sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 \"CREATE TABLE IF NOT EXISTS weekly_remaining_v1 (week_start TEXT PRIMARY KEY, remaining_budget INTEGER, updated_at TEXT);\"` (`ainl status` now shows the value automatically via legacy-first + memory_records fallback <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->) |
+| Token Cost Tracker Telegram messages are empty or missing token counts | `IntelligenceReport` table missing or script error | Ensure `IntelligenceReport` table exists, check `~/.openclaw/logs/gateway.log` for errors. Re‑run: `python3 scripts/run_token_cost_tracker.py` |
+| AINL cron jobs not running | Jobs not added or disabled | `openclaw cron list`; if missing, add with `openclaw cron add` using payloads from §3. |
+| `session_context.md` not generated / full MEMORY loaded | `OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT` not set | Set to `true` in `openclaw.json` `env.shellEnv` and restart gateway. Verify via log grep. |
+| “RPCWireError” from CodexBar CLI | CodexBar macOS app not running | Start CodexBar.app: `open -a CodexBar`. Ensure provider added in UI. |
+| `ainl status` shows missing tables even after setup | Workspace path mismatch | Confirm `AINL_MEMORY_DB` path; ensure DB initialized at that location. |
+| Embedding retrieval fails / “no such table: embedding_memory” | Embedding DB not created | Install embedding pilot (`EMBEDDING_RETRIEVAL_PILOT.md`) or set `AINL_EMBEDDING_MODE=stub`. |
+| Caps not applied to cron jobs | Caps set via shell profile, jobs under Gateway | Use `env.shellEnv` in `openclaw.json` or wrap cron payloads to source profile. |
+| Weekly trends job fails silently | `weekly_remaining_v1` missing or permission issue | Check logs; create table; ensure DB writable. (`ainl status` now shows the value automatically via legacy-first + memory_records fallback <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->) |
+| **`ainl status`** weekly budget still “Not initialized” but bridge ran | Legacy **`weekly_remaining_v1`** row empty; aggregate only in **`memory_records`** | Run **`ainl status`** again — it uses **`_read_weekly_remaining_rollup`** (legacy row first, else **`weekly_remaining_tokens`** from **`memory_records`**). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> Confirm cap **`AINL_WEEKLY_TOKEN_BUDGET_CAP`** so remaining tokens can be computed. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> |
+| Bridge report exceeds model’s context window | `AINL_BRIDGE_REPORT_MAX_CHARS` too high | Lower the cap or use a larger‑context model. |
+| “Prompt too long” from provider | `PROMOTER_LLM_MAX_PROMPT_CHARS` too high | Reduce cap or use a model with larger context. |
+
+---
+
+## 8. Apollo's Working Configuration (Case Study)
 
 This section documents a proven, production-ready setup that diverges slightly from the gold standard's profile emission approach while maintaining full AINL compliance and token savings.
 
@@ -326,9 +422,11 @@ CREATE TABLE IF NOT EXISTS weekly_remaining_v1 (
 );
 ```
 
-Run via: `sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 "CREATE TABLE ..."`
+Run via: `sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 "CREATE TABLE ..."` (`ainl status` now shows the value automatically via legacy-first + memory_records fallback <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->)
 
 The `AINL Weekly Token Trends` cron job will populate this on its next run (Sundays 9 AM).
+
+**Primary vs legacy:** Direct SQLite writes targeting only the legacy table are secondary; **real** rolling values flow **bridge → `memory_records`** (same logical key **`weekly_remaining_v1`**). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> Install still creates the empty legacy table so older tooling and schema checks keep working. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
 ### 7.4 Project-Lock File (`aiNativeLang.yml`)
 
@@ -450,12 +548,12 @@ OpenRouter is configured as a **factory provider** in `openclaw.json`:
 ### 7.9 Reproduction Steps for Other Hosts
 
 1. Set the `env.shellEnv` keys in `openclaw.json` as shown in §7.2.
-2. Create `weekly_remaining_v1` table if missing (SQL).
+2. Create `weekly_remaining_v1` table if missing (SQL; legacy compatibility — **`ainl install openclaw`** bootstraps this too). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 3. Place `aiNativeLang.yml` at workspace root (optional but recommended).
 4. Ensure cron jobs for AINL are present (use `openclaw cron add` or copy from §7.5).
 5. Verify `OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT=true` is set (it is in `shellEnv`).
 6. Restart the Gateway: `openclaw gateway restart`.
-7. Wait for the next weekly token trends run (Sunday 9 AM) to confirm `weekly_remaining_v1` populates.
+7. Wait for the next weekly token trends run (Sunday 9 AM) to confirm data appears — either legacy **`weekly_remaining_v1`** rows and/or the **`memory_records`** aggregate (primary). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> **`ainl status`** should move off “Not initialized” for weekly budget once the aggregate exists (ainl status now shows correct value via fallback). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 8. Check that new sessions load `.openclaw/bootstrap/session_context.md` once generated.
 
 This configuration is **fully compliant** with AINL v1.2.8 gold standard semantics, with only a **profile emission** deviation that is **safe and scoped**.
@@ -465,8 +563,13 @@ This configuration is **fully compliant** with AINL v1.2.8 gold standard semanti
 ## Appendix A: Verification Commands
 
 ```bash
-# Check that weekly_remaining_v1 exists
+# Check that weekly_remaining_v1 exists (legacy table; modern data lives in memory_records)
 sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 ".tables"
+# (`ainl status` now shows the value automatically via legacy-first + memory_records fallback <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->)
+
+# Optional: latest rolling budget aggregate (memory_records — primary store for hydration / ainl status fallback)
+sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 "SELECT updated_at, substr(payload_json,1,120) FROM memory_records WHERE namespace='workflow' AND record_kind='budget.aggregate' AND record_id='weekly_remaining_v1' ORDER BY updated_at DESC LIMIT 1;"
+# (`ainl status` now shows the value automatically via legacy-first + memory_records fallback <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->)
 
 # List cron jobs
 openclaw cron list

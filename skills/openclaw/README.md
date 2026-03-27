@@ -1,6 +1,6 @@
 # AINL — OpenClaw skill
 
-Deterministic compiled graphs for [OpenClaw](https://openclaw.ai/): **importer**, **CLI**, **`ainl-mcp`** merged into **`~/.openclaw/openclaw.json`**, and a **`~/.openclaw/bin/ainl-run`** compile-then-run wrapper after bootstrap.
+Deterministic compiled graphs for [OpenClaw](https://openclaw.ai/): **importer**, **CLI**, **`ainl-mcp`** merged into **`~/.openclaw/openclaw.json`**, and a **`~/.openclaw/bin/ainl-run`** compile-then-run wrapper after bootstrap. **Operator quickstart:** [`docs/QUICKSTART_OPENCLAW.md`](../../docs/QUICKSTART_OPENCLAW.md) (`ainl install openclaw`, `ainl status`, `ainl doctor --ainl`). **Rolling budget / storage:** [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](../../docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
 OpenClaw is normally installed with **npm** and **`openclaw onboard`**. This skill adds the **Python** **`ainl`** toolchain and wires **MCP** + **`ainl-run`** for OpenClaw’s config layout.
 
@@ -88,7 +88,12 @@ Add **`~/.openclaw/bin`** to **PATH** if you want to invoke **`ainl-run`** witho
 | `ainl import …` | Import Markdown or ecosystem sources into `.ainl` |
 | `ainl compile <file.ainl>` | Compile / validate |
 | `ainl run <file.ainl>` | Run via CLI where the graph supports it |
+| `ainl install openclaw [--workspace PATH] [--dry-run]` | Patch gateway `env.shellEnv`, bootstrap SQLite, register three gold-standard crons, restart gateway |
+| `ainl status [--json]` | Markdown (or JSON) health: workspace, weekly budget (legacy **`weekly_remaining_v1`** row or **`memory_records`** fallback), crons, token usage, caps <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> |
+| `ainl doctor --ainl` | Validate OpenClaw + AINL integration (env, schema, crons, bootstrap flag) |
 | `~/.openclaw/bin/ainl-run <file.ainl>` | After MCP bootstrap: shim entrypoint |
+
+Quickstart: [`docs/QUICKSTART_OPENCLAW.md`](../../docs/QUICKSTART_OPENCLAW.md) (repo root).
 
 ## Try in OpenClaw
 

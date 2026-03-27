@@ -32,7 +32,7 @@
     {
       "path": "examples/rag_pipeline.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:d71d1158b04cff42218d971b1c4b1810877975a0606c7700a030002a28a567c3",
+      "graph_semantic_checksum": "sha256:ca3dba6752c7656d2135f6135571389fcabf9a2e90711e045d364f5ebf569adc",
       "labels": [
         "1",
         "9"
@@ -58,7 +58,7 @@
     {
       "path": "examples/if_call_workflow.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:98a946e0bb92413ffbf291cf276613942ef444f3eab7eb658653b5c328a8987f",
+      "graph_semantic_checksum": "sha256:c7c80bfe7f15c4448c3e05dd1b5071461fe5d2712e95e1ee133a22bca0667fbf",
       "labels": [
         "1",
         "2",
@@ -134,7 +134,7 @@
     {
       "path": "examples/openclaw/daily_digest.lang",
       "strict": false,
-      "graph_semantic_checksum": "sha256:9a22ca1af4dcc94edd8a5369c19c1843be079552a15a2ab3bb3b0ebdded8026a",
+      "graph_semantic_checksum": "sha256:0f7355b24cc333001574d86837dd040fd643679e80bc31a5bcbdbb1885f784ae",
       "labels": [
         "0",
         "1",
@@ -164,7 +164,7 @@
     {
       "path": "examples/golden/01_web_server.ainl",
       "strict": false,
-      "graph_semantic_checksum": "sha256:67e912ada3d41b34073b8242877814ab1efecb932d92ae5454defe0fb495b938",
+      "graph_semantic_checksum": "sha256:09d15ed179d6d411fd2b851f4d720655cde652edbc11eeeb62a4fdc07c7acb51",
       "labels": [
         "0",
         "1",

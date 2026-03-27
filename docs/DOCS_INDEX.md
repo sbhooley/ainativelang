@@ -69,13 +69,14 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **CLI trajectory JSONL** (`ainl run --log-trajectory`, `AINL_LOG_TRAJECTORY`): `docs/trajectory.md` (per-step trace beside the `.ainl` source; not runner HTTP audit)
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — includes MCP agent role templates, desktop-safe recipe, end-to-end validator/inspector/runner example, and Claude Code / Cowork / Dispatch guidance
-- **MCP host hub (OpenClaw, ZeroClaw, future):** `docs/getting_started/HOST_MCP_INTEGRATIONS.md` — **`ainl install-mcp --host …`**, skill + CLI pattern, maintainer notes (`tooling/mcp_host_install.py`); stub at `docs/HOST_MCP_INTEGRATIONS.md` for old links
-- **AINL → external workers (HTTP bridge contract):** `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` — generic `http.Post` / optional `bridge.Post` envelope for non-MCP executors; **OpenClaw / NemoClaw / ZeroClaw should prefer `ainl-mcp` first** (see doc); **OpenClaw skill:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw skill:** `docs/ZEROCLAW_INTEGRATION.md`
+- **MCP host hub (OpenClaw, ZeroClaw, Hermes Agent):** `docs/getting_started/HOST_MCP_INTEGRATIONS.md` — **`ainl install-mcp --host …`**, skill + CLI pattern, maintainer notes (`tooling/mcp_host_install.py`); stub at `docs/HOST_MCP_INTEGRATIONS.md` for old links
+- **AINL → external workers (HTTP bridge contract):** `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` — generic `http.Post` / optional `bridge.Post` envelope for non-MCP executors; **OpenClaw / NemoClaw / ZeroClaw / Hermes should prefer `ainl-mcp` first** (see doc); **OpenClaw skill:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw skill:** `docs/ZEROCLAW_INTEGRATION.md` · **Hermes:** `docs/HERMES_INTEGRATION.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
   - **Artifacts:** JSON Schema `schemas/executor_bridge_request.schema.json`; Python `schemas/executor_bridge_validate.validate_executor_bridge_request`; AINL include `modules/common/executor_bridge_request.ainl`; tests `tests/test_executor_bridge_envelope.py`, `tests/test_executor_bridge_integration.py`
 - Batch repo-automation guide: `docs/operations/BATCH_AUTOMATION_GUIDE.md` — inspect-first, worktree-safe, deterministic, auditable batch flows for Dispatch-style environments
 - Integration story (AINL in agent stacks): `docs/INTEGRATION_STORY.md`
 - **OpenClaw skill + bootstrap (`ainl install-mcp --host openclaw`, `~/.openclaw/openclaw.json`, `examples/ecosystem/`):** `docs/OPENCLAW_INTEGRATION.md`
 - **ZeroClaw skill + bootstrap (`ainl install-mcp --host zeroclaw`, `~/.zeroclaw/mcp.json`, `examples/ecosystem/`):** `docs/ZEROCLAW_INTEGRATION.md`
+- **Hermes Agent + bootstrap (`ainl install-mcp --host hermes`, `~/.hermes/config.yaml`, `--emit hermes-skill`, `skills/hermes/`):** `docs/HERMES_INTEGRATION.md` · hub `docs/integrations/hermes-agent.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 - Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage, long-context memory
 - OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
 - Workflow patterns: `docs/PATTERNS.md`
@@ -98,7 +99,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Competitive framing + vs LangGraph/Temporal methodology: `docs/competitive/README.md` · `docs/competitive/OVERVIEW.md` (synced to site) · `docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md` · `docs/competitive/COMPARISON_TABLE.md`
 - Hybrid emitters (LangGraph / Temporal / `S hybrid`): `docs/HYBRID_GUIDE.md`
 - Runner emitter discovery (MCP / HTTP): `GET /capabilities/langgraph`, `GET /capabilities/temporal` on `scripts/runtime_runner_service.py`
-- Ecosystem examples (Clawflows / Agency-Agents, weekly auto-sync, OpenClaw / ZeroClaw hooks, MCP pointers): `docs/ECOSYSTEM_OPENCLAW.md` · **OpenClaw:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw:** `docs/ZEROCLAW_INTEGRATION.md`
+- Ecosystem examples (Clawflows / Agency-Agents, weekly auto-sync, OpenClaw / ZeroClaw hooks, MCP pointers): `docs/ECOSYSTEM_OPENCLAW.md` · **OpenClaw:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw:** `docs/ZEROCLAW_INTEGRATION.md` · **Hermes:** `docs/HERMES_INTEGRATION.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 - Benchmark generator script: `scripts/benchmark_size.py`
 - Machine-readable benchmark output: `tooling/benchmark_size.json`
 - Runtime benchmark script: `scripts/benchmark_runtime.py`
@@ -144,7 +145,7 @@ entry point for new users or unsupervised agents.
 - **Unified AINL + OpenClaw bridge monitoring** (token budget alert, weekly trends, sentinel, daily memory path): `docs/operations/UNIFIED_MONITORING_GUIDE.md` — **OpenClaw** MCP + skill: `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw** uses `docs/ZEROCLAW_INTEGRATION.md` (`~/.zeroclaw/`, not `~/.openclaw/` memory)
 - OpenClaw bridge runner reference: `openclaw/bridge/README.md`
 - Token budget wrapper (bridge): `docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`
-- AINL ↔ OpenClaw integration (wrappers, env): `docs/ainl_openclaw_unified_integration.md` — **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw:** `docs/ZEROCLAW_INTEGRATION.md`
+- AINL ↔ OpenClaw integration (wrappers, env): `docs/ainl_openclaw_unified_integration.md` — **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw:** `docs/ZEROCLAW_INTEGRATION.md` · **Hermes:** `docs/HERMES_INTEGRATION.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 - Cron orchestration / drift: `docs/CRON_ORCHESTRATION.md` — **`S`+`cron` IR guardrail:** `scripts/validate_s_cron_schedules.py` (console script **`ainl-validate-s-cron`**), `tests/test_s_cron_schedule_lines.py`
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`

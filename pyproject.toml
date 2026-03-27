@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ainativelang"
-version = "1.2.10"
+version = "1.3.0"
 description = "AINL compiler, runtime, validator, and tooling"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -51,6 +51,7 @@ dev = [
   "rich>=13.0.0",
   "pytest-xdist",
   "syrupy",
+  "responses>=0.25.0",
   "playwright>=1.46.0",
   "fastapi",
   "uvicorn[standard]",
@@ -110,7 +111,7 @@ include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*",
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra -m 'not integration and not emits and not lsp'"
+addopts = "-ra -m 'not integration and not emits and not lsp' --snapshot-dirname=../snapshots/conformance"
 norecursedirs = [".git", ".venv", ".venv-py310", ".venv-ci-smoke", "venv-py310", "tests/emits", "scripts"]
 markers = [
   "core: stable core compiler/runtime/tooling tests",

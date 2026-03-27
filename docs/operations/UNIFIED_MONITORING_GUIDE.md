@@ -4,7 +4,7 @@
 
 **Audience:** operators who run OpenClaw cron, the AINL bridge runner, and daily markdown memory.
 
-**Cross-links:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) (token budget deep dive) · [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md) (commands, env, cron patterns) · [`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md) (drift + registry + **`S` cron shape** + **notify/queue security**) · **[`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md)** (single map: `llm.usage`, markdown, rolling budget key, caps, embedding pilot — for evidence-based savings)
+**Cross-links:** [`docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) (token budget deep dive) · [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md) (commands, env, cron patterns) · [`docs/CRON_ORCHESTRATION.md`](../CRON_ORCHESTRATION.md) (drift + registry + **`S` cron shape** + **notify/queue security**) · **[`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md)** (single map: `llm.usage`, markdown, rolling budget key, caps, embedding pilot — for evidence-based savings) · **[`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md)** §c (rolling budget: **`memory_records`** primary, legacy table secondary; **`ainl status`** fallback). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
 **Narrative:** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents) — how **bridge daily markdown** relates to AINL’s tiered state and the SQLite **`memory`** adapter ([`docs/adapters/MEMORY_CONTRACT.md`](../adapters/MEMORY_CONTRACT.md)).
 

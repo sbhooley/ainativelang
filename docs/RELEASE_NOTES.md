@@ -1,5 +1,28 @@
 # Release notes
 
+## AINL v1.3.0 — Hermes Agent + OpenClaw integration improvements (2026-03-27)
+
+**PyPI / runtime:** **`ainl` 1.3.0** — **`RUNTIME_VERSION` `1.3.0`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned.
+
+### Hermes Agent (official host)
+
+- **`ainl install-mcp --host hermes`** / **`ainl hermes-install`** writes **`~/.hermes/config.yaml`** **`mcp_servers.ainl`**, installs **`~/.hermes/bin/ainl-run`**, and prints a PATH hint.
+- **Skill pack:** **`skills/hermes/`** — installer plus bridge helpers for ingest/export loops.
+- **Emitter:** **`ainl compile --emit hermes-skill`** (and **`--target hermes`**) produces a drop-in Hermes skill bundle (**`SKILL.md`**, **`workflow.ainl`**, **`ir.json`**) for deterministic runs via MCP **`ainl_run`**.
+- **`ainl doctor`** recognizes Hermes YAML (**`~/.hermes/config.yaml`** **`mcp_servers:`**) and validates **`ainl`** MCP registration without a YAML parser dependency.
+- **Docs:** **`docs/integrations/hermes-agent.md`**, **`docs/HERMES_INTEGRATION.md`**; README / docs hub cross-link **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**.
+
+### OpenClaw integration improvements (Top 5)
+
+- **`ainl install openclaw --workspace PATH`** — one-command setup with a health table, **`--dry-run`** preview, and idempotent gold-standard cron registration.
+- **`ainl status`** — unified view of workspace, weekly budget, cron health, drift, and 7-day token usage; weekly budget uses **`_read_weekly_remaining_rollup`** (legacy **`weekly_remaining_v1`** table when non-null, else **`memory_records`** aggregate).
+- **Self-healing bootstrap** and **`ainl doctor --ainl`** for OpenClaw + AINL integration validation.
+- **Clearer errors** with actionable fix suggestions.
+- **Docs:** progressive disclosure — **`docs/QUICKSTART_OPENCLAW.md`** first, full depth in **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** and related ops guides.
+- **Fix:** weekly budget in **`ainl status`** reads modern **`memory_records`** primary storage correctly (legacy table still bootstrapped for compatibility).
+
+See **`docs/CHANGELOG.md`** § **v1.3.0** for the same items in conventional-commit form.
+
 ## AINL v1.2.10 — PyPI visualize packaging fix (2026-03-27)
 
 **PyPI / runtime:** **`ainl` 1.2.10** — **`RUNTIME_VERSION` `1.2.10`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned.

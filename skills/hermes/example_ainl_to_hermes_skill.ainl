@@ -1,0 +1,10 @@
+# Example: AINL workflow intended to be imported as a Hermes-evolvable skill.
+#
+# Keep this strict-safe and deterministic. Hermes can wrap this in its learning
+# loop while AINL remains the source of truth for validation and replay.
+
+S app api /api
+L1:
+  R core.ECHO "good_morning" ->msg
+  J msg
+

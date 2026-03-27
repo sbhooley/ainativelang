@@ -2,7 +2,7 @@
 
 This is the primary navigation hub for the `docs/` tree.
 
-**Current `ainl` release:** **v1.2.10** — [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (PyPI / **`RUNTIME_VERSION`** / citation metadata).
+**Current `ainl` release:** **v1.3.0** — [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (PyPI / **`RUNTIME_VERSION`** / citation metadata).
 
 AINL docs are organized by user intent and conceptual layer rather than by file creation history. Start here if you want the shortest path to the right section. Use [`DOCS_INDEX.md`](DOCS_INDEX.md) as the exhaustive reference map.
 
@@ -20,7 +20,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 - [`case_studies/`](case_studies/README.md) — narrative proof, production lessons, and applied explanations
 - [`competitive/`](competitive/README.md) — comparative framing, LangGraph/Temporal onboarding, benchmark methodology vs other stacks
 - [`operations/`](operations/README.md) — autonomous ops, monitors, and deployment-style operational docs
-- [`advanced/`](advanced/README.md) — operator-only, OpenClaw / ZeroClaw-adjacent ops, and advanced coordination surfaces
+- [`advanced/`](advanced/README.md) — operator-only, OpenClaw / ZeroClaw / Hermes-adjacent ops, and advanced coordination surfaces
 - [`reference/`](reference/README.md) — schemas, contracts, indexes, and reference-style maps
 
 ## Recommended paths
@@ -28,22 +28,23 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 - New to the project: start with [`overview/`](overview/README.md), then [`getting_started/`](getting_started/README.md). **Strict vs non-strict compile:** [`getting_started/STRICT_AND_NON_STRICT.md`](getting_started/STRICT_AND_NON_STRICT.md) (strict is **opt-in**; default is permissive).
 - Trying to understand the category: read [`fundamentals/`](fundamentals/README.md)
 - Implementing or extending AINL: read [`language/`](language/README.md), [`architecture/`](architecture/README.md), and [`runtime/`](runtime/README.md)
-- Working with integrations, **OpenClaw**, or **ZeroClaw**: read **[`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)** (**`ainl install-mcp --host …`**, one table for all stacks), then [`adapters/`](adapters/README.md) and [`advanced/`](advanced/README.md); **OpenClaw skill** onboarding is **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** (**`~/.openclaw/openclaw.json`**); **ZeroClaw skill** onboarding is **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**. Generic external executors via HTTP bridge (multi-backend capable): [`integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](integrations/EXTERNAL_EXECUTOR_BRIDGE.md) — **MCP (`ainl-mcp`) first** for OpenClaw / NemoClaw / ZeroClaw.
-- **MCP hosts hub:** [`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md) — **`ainl install-mcp --host openclaw|zeroclaw`** (aliases **`install-openclaw`** / **`install-zeroclaw`**).
+- Working with integrations, **OpenClaw**, **ZeroClaw**, or **Hermes Agent**: read **[`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)** (**`ainl install-mcp --host …`**, one table for all stacks), then [`adapters/`](adapters/README.md) and [`advanced/`](advanced/README.md); **OpenClaw skill** onboarding is **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** (**`~/.openclaw/openclaw.json`**); **ZeroClaw skill** onboarding is **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**; **Hermes** onboarding is **[`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md)** · hub **[`integrations/hermes-agent.md`](integrations/hermes-agent.md)** · upstream **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**. Generic external executors via HTTP bridge (multi-backend capable): [`integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](integrations/EXTERNAL_EXECUTOR_BRIDGE.md) — **MCP (`ainl-mcp`) first** for OpenClaw / NemoClaw / ZeroClaw / Hermes.
+- **MCP hosts hub:** [`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md) — **`ainl install-mcp --host openclaw|zeroclaw|hermes`** (aliases **`install-openclaw`** / **`install-zeroclaw`** / **`hermes-install`**).
 - **OpenClaw skill:** [`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md) — ClawHub or manual copy, **`~/.openclaw/`** MCP + **`ainl-run`**; links **[`examples/ecosystem/`](../examples/ecosystem/)** and benchmarks (**viable subset**, **~1.02×** context).
 - **ZeroClaw skill:** [`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md) — one-command skill install, **`~/.zeroclaw/`** MCP + **`ainl-run`** shim; links **[`examples/ecosystem/`](../examples/ecosystem/)** and benchmarks (**viable subset**, **~1.02×** context).
+- **Hermes Agent:** [`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md) — **`~/.hermes/config.yaml`** MCP + **`--emit hermes-skill`**; skill pack [`skills/hermes/`](../skills/hermes/) · **`ainl compile --emit hermes-skill`**
 - Looking for proof and practical examples: read [`case_studies/`](case_studies/README.md) and [`operations/`](operations/README.md)
 - **Performance & benchmarks:** reproducible **tiktoken cl100k_base** size tables in **[`BENCHMARK.md`](../BENCHMARK.md)**; narrative hub **[`benchmarks.md`](benchmarks.md)** (highlights, `make benchmark` / `make benchmark-ci`, runtime + LLM eval links)
 - **Energy pattern framing:** [`case_studies/DESIGNING_ENERGY_CONSUMPTION_PATTERNS.md`](case_studies/DESIGNING_ENERGY_CONSUMPTION_PATTERNS.md) — mapping AINL to explicit inference/compute budget design
-- **Clawflows / Agency-Agents ecosystem & OpenClaw / ZeroClaw hooks:** **[`ECOSYSTEM_OPENCLAW.md`](ECOSYSTEM_OPENCLAW.md)** — `examples/ecosystem/` (weekly auto-sync), CLI, MCP, PR templates; **OpenClaw** path **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** · **ZeroClaw** path **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**
+- **Clawflows / Agency-Agents ecosystem & OpenClaw / ZeroClaw hooks:** **[`ECOSYSTEM_OPENCLAW.md`](ECOSYSTEM_OPENCLAW.md)** — `examples/ecosystem/` (weekly auto-sync), CLI, MCP, PR templates; **OpenClaw** path **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** · **ZeroClaw** path **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)** · **Hermes** path **[`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md)** · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 
-## Operations & monitoring (OpenClaw bridge; see also ZeroClaw)
+## Operations & monitoring (OpenClaw bridge; see also ZeroClaw; Hermes uses [`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md))
 
 **OpenClaw + AINL gold standard (install / upgrade):** [`operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md) (**`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**). **Host briefing — AINL v1.2.8:** [`operations/OPENCLAW_HOST_AINL_1_2_8.md`](operations/OPENCLAW_HOST_AINL_1_2_8.md) (**`openclaw_host_ainl_1_2_8`**). **Token / usage observability (evidence-based savings, agent-friendly map):** [`operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md). **Named env profiles** (scale-out defaults): [`operations/AINL_PROFILES.md`](operations/AINL_PROFILES.md) · **workspace isolation:** [`operations/WORKSPACE_ISOLATION.md`](operations/WORKSPACE_ISOLATION.md) · **agent + AINL operating model:** [`operations/AGENT_AINL_OPERATING_MODEL.md`](operations/AGENT_AINL_OPERATING_MODEL.md).
 
 Production token/budget monitoring, daily memory appends, weekly trends, cron examples, and troubleshooting are documented in one place:
 
-- **[`operations/UNIFIED_MONITORING_GUIDE.md`](operations/UNIFIED_MONITORING_GUIDE.md)** — *Unified AINL + OpenClaw Monitoring Guide* (memory path **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**, `token-budget-alert`, `weekly-token-trends`, sentinel guard, env vars). **OpenClaw** MCP + skill bootstrap: **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **ZeroClaw** does not use that memory layout; use **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)** for **`~/.zeroclaw/`** MCP + **`ainl install-mcp --host zeroclaw`**.
+- **[`operations/UNIFIED_MONITORING_GUIDE.md`](operations/UNIFIED_MONITORING_GUIDE.md)** — *Unified AINL + OpenClaw Monitoring Guide* (memory path **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**, `token-budget-alert`, `weekly-token-trends`, sentinel guard, env vars). **OpenClaw** MCP + skill bootstrap: **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **ZeroClaw** does not use that memory layout; use **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)** for **`~/.zeroclaw/`** MCP + **`ainl install-mcp --host zeroclaw`**. **Hermes** learning loop + Honcho memory: **[`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md)** · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**.
 
 Supporting detail:
 

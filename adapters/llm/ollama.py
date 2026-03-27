@@ -53,5 +53,5 @@ class OllamaAdapter(AbstractLLMAdapter):
     def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
         return 0.0
 
-from ..registry import AdapterRegistry
-AdapterRegistry.register_llm("ollama", OllamaAdapter)
+from ..registry import LLMAdapterRegistry
+LLMAdapterRegistry.register_llm("ollama", OllamaAdapter)

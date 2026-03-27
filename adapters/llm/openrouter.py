@@ -72,5 +72,5 @@ class OpenRouterAdapter(AbstractLLMAdapter):
         inp_rate, out_rate = self.COST_PER_1K_TOKENS[self.model]
         return (prompt_tokens / 1000) * inp_rate + (completion_tokens / 1000) * out_rate
 
-from ..registry import AdapterRegistry
-AdapterRegistry.register_llm("openrouter", OpenRouterAdapter)
+from ..registry import LLMAdapterRegistry
+LLMAdapterRegistry.register_llm("openrouter", OpenRouterAdapter)

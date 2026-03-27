@@ -11,7 +11,7 @@
 | Capability | What it is |
 |------------|------------|
 | **Evidence + sizing** | `ainl bridge-sizing-probe` (and `scripts/bridge_sizing_probe.py`) samples SQLite namespace counts and sizes of `## Token Usage Report` sections in daily memory, and suggests an **`AINL_BRIDGE_REPORT_MAX_CHARS`** target. CI exercises the probe. |
-| **Rolling budget → intelligence cache** | After the bridge publishes **`workflow` / `budget.aggregate` / `weekly_remaining_v1`**, `scripts/run_intelligence.py` merges that into **`MONITOR_CACHE_JSON`** under **`workflow` → `token_budget`** before each run (unless **`AINL_INTELLIGENCE_SKIP_ROLLING_HYDRATE=1`**). JSON output includes **`budget_hydrate`**. This matches a **single aggregate read** instead of scanning many days of markdown. |
+| **Rolling budget → intelligence cache** | After the bridge publishes **`workflow` / `budget.aggregate` / `weekly_remaining_v1`** (SQLite **`memory_records`** row; same record id as the legacy table name), `scripts/run_intelligence.py` merges that into **`MONITOR_CACHE_JSON`** under **`workflow` → `token_budget`** before each run (unless **`AINL_INTELLIGENCE_SKIP_ROLLING_HYDRATE=1`**). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> JSON output includes **`budget_hydrate`**. This matches a **single aggregate read** instead of scanning many days of markdown. **`ainl install openclaw`** still creates the legacy **`weekly_remaining_v1`** table for compatibility; operational truth for rolling JSON is the memory row. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> |
 | **Caps documentation** | [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md) and [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md): staging order — bridge (`AINL_BRIDGE_REPORT_MAX_CHARS`), then gateway (`PROMOTER_LLM_*`), with **measurement first**. |
 | **Named env profiles** | `tooling/ainl_profiles.json` + `ainl profile list | show | emit-shell` — **`dev`**, **`staging`**, **`openclaw-default`**, **`cost-tight`** so installs share a baseline without one-off env drift. |
 | **Operator docs** | Embedding pilot, WASM notes, TTL tuner, workspace isolation, [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md), and [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) (agent vs AINL roles; **curated bootstrap must be loaded**). |
@@ -35,7 +35,7 @@ See [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md). Prefer an 
 
 - **Cron / jobs** that actually run:
   - **`python3 scripts/run_intelligence.py context`** (and **`summarizer`** on your chosen cadence — see [gold standard](OPENCLAW_AINL_GOLD_STANDARD.md) for suggested times).
-  - Bridge: at minimum **weekly token trends** (or equivalent) so **`rolling_budget_publish`** can write **`weekly_remaining_v1`** to SQLite.
+  - Bridge: at minimum **weekly token trends** (or equivalent) so **`rolling_budget_publish`** can write the rolling aggregate to **`memory_records`** (`workflow` / `budget.aggregate` / **`weekly_remaining_v1`**). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> (Legacy **`weekly_remaining_v1`** table remains optional/secondary; install bootstraps it empty.) <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 - Use the **same** **`OPENCLAW_WORKSPACE`**, **`OPENCLAW_MEMORY_DIR`**, **`AINL_MEMORY_DB`**, **`MONITOR_CACHE_JSON`** (and siblings from [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md)) as **`run_wrapper_ainl.py`** and intelligence — one workspace, one truth.
 
 ### 3. Environment
@@ -51,7 +51,7 @@ See [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md). Prefer an 
 
 ### 4. Verification
 
-- After a **weekly** bridge run: confirm **`weekly_remaining_v1`** exists in SQLite and that **`run_intelligence.py`** prints **`budget_hydrate`** with **`ok: true`** (not permanently **`skipped`** / **`no_rolling_record`** only).
+- After a **weekly** bridge run: confirm the aggregate exists — either inspect **`memory_records`** for **`workflow` / `budget.aggregate` / `weekly_remaining_v1`**, and/or run **`ainl status`** (legacy table when non-null, else **`memory_records`** fallback for **Weekly budget remaining**). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> Confirm **`run_intelligence.py`** prints **`budget_hydrate`** with **`ok: true`** (not permanently **`skipped`** / **`no_rolling_record`** only). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> You may still verify the legacy **`weekly_remaining_v1`** table with `sqlite3` (legacy table; modern data lives in memory_records). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 - Use **`ainl bridge-sizing-probe --json`** **before** tightening **`AINL_BRIDGE_REPORT_MAX_CHARS`**.
 
 ---

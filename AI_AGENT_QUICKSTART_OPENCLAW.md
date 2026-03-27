@@ -6,6 +6,12 @@ This guide gets you from zero to generating OpenClaw automations in AINL within 
 
 ---
 
+## OpenClaw operator path (≈5 minutes)
+
+Use **`ainl install openclaw`**, then **`ainl status`** / **`ainl doctor --ainl`**. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> The **Weekly budget remaining** line may reflect **`weekly_remaining_tokens`** from **`memory_records`** (`workflow` / `budget.aggregate` / `weekly_remaining_v1`) when the legacy **`weekly_remaining_v1`** SQLite table has no non-null row — see **[`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md)** and **[`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md)** (Weekly Token Trends). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
+
+---
+
 ## 1. Environment Setup (One-Time)
 
 ```bash
