@@ -422,10 +422,8 @@ L_after_loop:
   Call exreq/ENTRY ->req_daily_block
   R bridge.POST kv.get req_daily_block ->daily_block_http
   X daily_block_raw get daily_block_http body value
-  X daily_block_raw2 get daily_block_http value
-  X daily_block_value (ite (eq daily_block_raw null) daily_block_raw2 daily_block_raw)
   Set daily_block_active null
-  X daily_block_active ne daily_block_value ""
+  X daily_block_active (ite (eq daily_block_raw null) false (ne daily_block_raw ""))
   If daily_block_active ->L_daily_blocked ->L_daily_run
 
 L_daily_blocked:
@@ -437,7 +435,7 @@ L_daily_blocked:
   Call exreq/ENTRY ->req_daily_block_clear
   R bridge.POST kv.set req_daily_block_clear ->daily_block_clear_http
   R core.parse "{}" ->rd_db
-  X rd_db put rd_db "block_flag" daily_block_value
+  X rd_db put rd_db "block_flag" daily_block_raw
   R core.stringify rd_db ->record_rd_detail_json
   R core.echo "daily_post_deferred_rate_limit" ->record_rd_action
   Set record_rd_tweet_id null

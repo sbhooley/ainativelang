@@ -72,6 +72,7 @@ Python handlers should treat these prompt fields as first-class payload inputs a
 - AINL short-circuit behavior:
   - `ainl-x-promoter` checks skip-target and fallback flags before `promoter.gate_eval` in the reply loop to avoid unnecessary calls.
   - Daily fallback flag causes static daily payload path and records `daily_post_fallback_model_active`.
+  - Daily block guard treats `kv.get(...).body.value = null` as **not blocked**; only non-empty flag values activate the defer path.
 - Dashboard/ops:
   - `GET /v1/promoter.stats` includes:
     - `policy_actions_normalized_last_24h`
