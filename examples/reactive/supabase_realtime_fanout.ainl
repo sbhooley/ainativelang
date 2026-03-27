@@ -1,0 +1,28 @@
+S app core supabase_realtime_fanout
+
+LENTRY:
+  # Subscribe to a Supabase Realtime channel with fan-out semantics.
+  R supabase.realtime.subscribe "realtime:public:events" "events" ["INSERT","UPDATE"] null 0.5 20 "latest" "group-a" "consumer-1" ->sub
+
+  If sub.result.events == [] ->LNO_EVENTS ->LHAS_EVENTS
+
+LNO_EVENTS:
+  J {"processed": 0}
+
+LHAS_EVENTS:
+  # Take the most recent event for this consumer.
+  R core.LEN sub.result.events ->n
+  R core.SUB sub.result.events (n - 1) 1 ->last_list
+  R core.GET last_list 0 ->evt
+
+  # Do some application-specific processing (placeholder).
+  R core.ID evt.record ->payload
+
+  # Broadcast a simplified notification to another Supabase channel.
+  R supabase.realtime.broadcast "realtime:public:notifications" "event_processed" {"table": evt.table, "sequence": evt.sequence} ->_b
+
+  # Record a cursor for this fan-out group/consumer.
+  R supabase.realtime.ack "realtime:public:events" evt.sequence "group-a" "consumer-1" ->ack
+
+  J {"processed": 1, "cursor": ack.result.cursor}
+

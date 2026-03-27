@@ -1,0 +1,21 @@
+S app api /webhooks/airtable
+
+L1:
+  # Assume the host delivers Airtable webhook payloads into this endpoint.
+  # Normalize the incoming HTTP body using the http adapter (envelope is host-specific).
+  R core.GET ctx "body" ->body
+
+  # Extract a stable idempotency key from the webhook payload when present.
+  R core.GET body "timestamp" ->ts
+  If ts == null ->LNO_TS ->LHAS_TS
+
+LNO_TS:
+  R core.NOW ->ts
+
+LHAS_TS:
+  # Persist a minimal record so we can dedupe or replay later.
+  R memory.put "airtable" "webhook" ts body null ->_m
+
+  # Optionally fan out to another worker via Redis or HTTP; kept minimal here.
+  J {"ok": true, "stored_at": ts}
+

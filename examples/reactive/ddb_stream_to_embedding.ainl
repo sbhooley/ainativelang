@@ -1,0 +1,40 @@
+S app core ddb_stream_to_embedding
+
+LENTRY:
+  # Poll a bounded batch of DynamoDB stream events for a single table.
+  R dynamodb.streams.subscribe "events" "LATEST" null 0.5 10 "embedding" "consumer-1" "memory" ->sub
+
+  # If there are no events, just return.
+  If sub.events == [] ->LNO_EVENTS ->LHAS_EVENTS
+
+LNO_EVENTS:
+  J {"processed": 0, "checkpointed": false}
+
+LHAS_EVENTS:
+  # For simplicity, take the first event; real graphs usually loop.
+  R core.GET sub.events 0 ->evt
+
+  # Extract the NewImage payload; fall back to Keys.
+  R core.GET evt.dynamodb "NewImage" ->maybe_new
+  If maybe_new != null ->LUSE_NEW ->LUSE_KEYS
+
+LUSE_NEW:
+  R core.ID maybe_new ->doc
+  JUMP_LPROCESS
+
+LUSE_KEYS:
+  R core.ID evt.dynamodb.Keys ->doc
+
+JUMP_LPROCESS:
+  # Call an embedding workflow (adapter name illustrative).
+  R embedding.embed "ddb_event" doc ->emb
+
+  # Persist embedding with an idempotency key based on SequenceNumber.
+  R core.GET evt.dynamodb "SequenceNumber" ->seq
+  R memory.put "ddb" "embedding" seq {"embedding": $emb, "doc": $doc} null ->_m
+
+  # Acknowledge the checkpoint so the next poll can resume.
+  R dynamodb.streams.ack "events" "shard-0" seq "embedding" "consumer-1" ->ack
+
+  J {"processed": 1, "checkpointed": ack.ok}
+

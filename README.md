@@ -666,7 +666,7 @@ For implementation and shipped-capability status, see:
 - Formal prefix grammar orchestration in `compiler_grammar.py`
 - Graph normalization, diff, patch, and canonicalization tooling in `tooling/`
 - Server/OpenAPI emission and runtime-backed execution flow
-- Runtime-native adapters with contract tests: `http`, `sqlite`, `postgres`, `fs`, `tools`
+- Runtime-native adapters with contract tests: `http`, `sqlite`, `postgres`, `mysql`, `redis`, `dynamodb`, `airtable`, `supabase`, `fs`, `tools`
 - Runner service with policy-gated `/run`, `/capabilities`, health/metrics: `scripts/runtime_runner_service.py`
 - Adapter privilege-tier metadata and security profiles: `tooling/adapter_manifest.json`, `tooling/security_profiles.json`
 - Security/privilege introspection tooling: `tooling/security_report.py`
@@ -684,7 +684,8 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw v1.2.8 ops + token economics): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw v1.2.8 ops + token economics, async runtime, reactive DB/realtime adapters): **`WHITEPAPERDRAFT.md`**
+- Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - AINL → HTTP workers (bridge envelope, schema, include): `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` · `schemas/executor_bridge_request.schema.json` · `modules/common/executor_bridge_request.ainl`
 - Getting started (3 integration paths): `docs/getting_started/README.md`
 - Primary docs hub: `docs/README.md`
@@ -1000,7 +1001,7 @@ Real output uses fully qualified IDs like `"retry/ENTRY/n1"` and clusters automa
 - **Strict literal policy**: in strict mode, bare identifier-like tokens in read positions are treated as variable refs; quote string literals explicitly (see `docs/RUNTIME_COMPILER_CONTRACT.md` and `docs/language/grammar.md`).
 - **Golden fixtures**: `ainl golden` validates `examples/*.ainl` against `*.expected.json`.
 - **Replay tooling**: `ainl run ... --record-adapters calls.json` and `ainl run ... --replay-adapters calls.json` for deterministic adapter replay.
-- **Reference adapters**: `http`, `sqlite`, `postgres`, `fs` (sandboxed), and `tools` bridge with contract tests. Optional network adapters include `ptc_runner` and `llm_query` (explicit enablement required).
+- **Reference adapters**: `http`, `sqlite`, `postgres`, `mysql`, `redis`, `dynamodb`, `airtable`, `supabase`, `fs` (sandboxed), and `tools` bridge with contract tests. Optional network adapters include `ptc_runner` and `llm_query` (explicit enablement required).
 - **Runner service**: `ainl-runner-service` (FastAPI) with `/run`, `/enqueue`, `/result/{id}`, `/capabilities`, `/health`, `/ready`, and `/metrics`.
 - **MCP server**: `ainl-mcp` (stdio-only) exposes `ainl_validate`, `ainl_compile`, `ainl_run`, `ainl_capabilities`, `ainl_security_report`, `ainl_fitness_report`, and `ainl_ir_diff` as MCP tools for Gemini CLI, Claude Code, Codex, and other MCP-compatible agents. PTC-related tools (`ainl_ptc_signature_check`, `ainl_trace_export`, `ainl_ptc_run`, `ainl_ptc_health_check`, `ainl_ptc_audit`) are also available when your MCP exposure profile includes them. It is a thin workflow-level surface over the existing compiler/runtime, not a replacement for the runner service, and currently runs with safe-default restrictions (core-only adapters, hardcoded conservative limits). Requires `pip install -e ".[mcp]"`.
 - **Tool API schema**: `tooling/ainl_tool_api.schema.json` (structured compile/validate/emit loop contract).
@@ -1019,6 +1020,19 @@ Real output uses fully qualified IDs like `"retry/ENTRY/n1"` and clusters automa
 - **Docs contract guard**: `ainl-check-docs` for cross-link/staleness/coupling checks.
 - **Pre-commit**: `pre-commit install` to run docs/quality hooks locally.
 - **Test profiles**: `.venv-py310/bin/python scripts/run_test_profiles.py --profile <name>` — `core` (default), `emits`, `lsp`, `integration`, `full`.
+
+### Async runtime (optional)
+
+AINL keeps sync runtime behavior by default. To run with the native async engine path:
+
+```bash
+AINL_RUNTIME_ASYNC=1 ainl run examples/hello.ainl --enable-adapter postgres
+# or
+ainl run examples/hello.ainl --enable-adapter postgres --runtime-async
+```
+
+See `docs/runtime/ASYNC_RUNTIME.md` for adapter coverage and fallback behavior.
+Current async-capable adapters include postgres/mysql/supabase, redis (full async verb parity with bounded pub/sub listening), dynamodb streams (bounded async subscribe/unsubscribe batching), and airtable attachment/webhook extension verbs.
 
 ### PostgreSQL adapter (runtime-native)
 
@@ -1040,6 +1054,118 @@ L1:
 
 Supported verbs: `query`, `execute`, and `transaction` (`R postgres.transaction [{verb, sql, params}] ->out`). For production, keep `allow_write` off unless needed, use parameterized SQL, and scope table access with `--postgres-allow-table`.
 Full contract and security guidance: `docs/adapters/POSTGRES.md`.
+
+### MySQL adapter (runtime-native)
+
+Enable `mysql` explicitly and configure credentials via environment variables (preferred) or CLI flags:
+
+```bash
+export AINL_MYSQL_URL='mysql://user:pass@localhost:3306/appdb'
+ainl run examples/hello.ainl --enable-adapter mysql --mysql-allow-table users --mysql-allow-write
+```
+
+AINL graph syntax:
+
+```ainl
+S app core noop
+L1:
+  R mysql.query "SELECT id, email FROM users WHERE id = %s" [42] ->rows
+  J rows
+```
+
+Supported verbs: `query`, `execute`, and `transaction` (`R mysql.transaction [{verb, sql, params}] ->out`). For production, keep `allow_write` off unless needed, use parameterized SQL, and scope table access with `--mysql-allow-table`.
+Full contract and security guidance: `docs/adapters/MYSQL.md`.
+
+### Redis adapter (runtime-native)
+
+Enable `redis` explicitly and configure via environment variables (preferred) or CLI flags:
+
+```bash
+export AINL_REDIS_URL='redis://localhost:6379/0'
+ainl run examples/hello.ainl --enable-adapter redis --redis-allow-write --redis-allow-prefix session:
+```
+
+AINL graph syntax:
+
+```ainl
+S app core noop
+L1:
+  R redis.set "session:42" "{\"state\":\"active\"}" 300 ->ok
+  R redis.get "session:42" ->value
+  J value
+```
+
+Supported verbs include key/value (`get/set/delete/incr/decr`), hashes (`hget/hset/hdel/hmget`), lists (`lpush/rpush/lpop/rpop/llen`), pub/sub (`publish/subscribe`), health (`ping/info`), and `transaction`.
+Full contract and security guidance: `docs/adapters/REDIS.md`.
+
+### DynamoDB adapter (runtime-native)
+
+Enable `dynamodb` explicitly and configure endpoint/region via environment variables (preferred) or CLI flags:
+
+```bash
+export AINL_DYNAMODB_URL='http://127.0.0.1:8000'
+export AWS_ACCESS_KEY_ID='dummy'
+export AWS_SECRET_ACCESS_KEY='dummy'
+export AWS_DEFAULT_REGION='us-east-1'
+ainl run examples/hello.ainl --enable-adapter dynamodb --dynamodb-allow-table users --dynamodb-allow-write
+```
+
+AINL graph syntax:
+
+```ainl
+S app core noop
+L1:
+  R dynamodb.get "users" {"pk":"u#42","sk":"profile"} ->out
+  J out
+```
+
+Supported verbs include single-item (`get/put/update/delete`), collection (`query/scan`), batch/transaction (`batch_get/batch_write/transact_get/transact_write`), health (`describe_table/list_tables`), and bounded streams (`streams.subscribe/streams.unsubscribe`).
+Full contract and security guidance: `docs/adapters/DYNAMODB.md`.
+
+### Airtable adapter (runtime-native)
+
+Enable `airtable` explicitly with scoped API key + base id:
+
+```bash
+export AINL_AIRTABLE_API_KEY='pat_xxx'
+export AINL_AIRTABLE_BASE_ID='app_xxx'
+ainl run examples/hello.ainl --enable-adapter airtable --airtable-allow-table users --airtable-allow-write
+```
+
+AINL graph syntax:
+
+```ainl
+S app core noop
+L1:
+  R airtable.list "users" {"maxRecords": 20, "pageSize": 20} ->rows
+  J rows
+```
+
+Supported verbs include `list/find/create/update/delete`, discovery (`get_table/list_tables/list_bases`), `upsert`, plus scoped attachment and webhook helpers (`attachment.upload/attachment.download`, `webhook.create/webhook.list/webhook.delete`).
+Full contract and security guidance: `docs/adapters/AIRTABLE.md`.
+
+### Supabase adapter (runtime-native wrapper)
+
+Enable `supabase` explicitly with Supabase DB + project credentials:
+
+```bash
+export AINL_SUPABASE_DB_URL='postgresql://user:pass@localhost:5432/appdb'
+export AINL_SUPABASE_URL='https://your-project.supabase.co'
+export AINL_SUPABASE_SERVICE_ROLE_KEY='ey...'
+ainl run examples/hello.ainl --enable-adapter supabase --supabase-allow-table users --supabase-allow-write
+```
+
+AINL graph syntax:
+
+```ainl
+S app core noop
+L1:
+  R supabase.select "users" {"id": 42} ["id","email"] ->out
+  J out
+```
+
+Supported verbs include DB wrapper operations (`from/select/query/insert/update/upsert/delete/rpc`) plus auth (`auth.*`), storage (`storage.*`), and advanced realtime helpers (`realtime.subscribe/unsubscribe/broadcast/replay/get_cursor/ack`) for lightweight fan-out/replay/checkpoint flows.
+Full contract and security guidance: `docs/adapters/SUPABASE.md`.
 
 ---
 

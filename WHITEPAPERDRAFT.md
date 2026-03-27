@@ -261,6 +261,8 @@ The runtime enforces operational limits such as:
 
 This makes it suitable for recurring and semi-autonomous workflows.
 
+When async mode is enabled (`AINL_RUNTIME_ASYNC=1` or `ainl run --runtime-async`), these limits apply equally to the **native async runtime loop**: the same canonical IR is executed via `asyncio`, adapter calls use `call_async` where available, and independent labels can run concurrently. The synchronous engine remains the default and behaves identically to prior releases; async mode is an opt-in execution optimization, not a semantic fork.
+
 ### 6.4 Label routing after `include` (bare vs qualified ids)
 
 Merged IR stores most label keys as **`alias/LABEL`**. Branch and loop steps sometimes still name a target as a **short** id (e.g. a child of the same module). The reference runtime resolves **`Call`**, **Jump**, and graph edges to **`labels`** keys by: (1) using the name as-is when it is already a key; (2) if the name contains no `/` and is missing, prepending the **`alias/`** segment taken from the innermost stacked label id that contains **`/`** (e.g. executing under **`accmem/LACCESS_LIST`** qualifies **`_child`** to **`accmem/_child`** when that key exists). This is deterministic, preserves programs that already use fully qualified names, and keeps nested control flow inside included subgraphs aligned with graph-preferred execution. Spec pointer: `docs/RUNTIME_COMPILER_CONTRACT.md`.
@@ -348,6 +350,12 @@ Examples include:
 - `core`
 - `http`
 - `sqlite`
+- `postgres`
+- `mysql`
+- `redis`
+- `dynamodb`
+- `airtable`
+- `supabase`
 - `fs`
 - `email`
 - `calendar`
@@ -358,6 +366,8 @@ Examples include:
 - `wasm`
 - `memory`
 - OpenClaw-specific operational extensions
+
+Relational adapters (`sqlite`, `postgres`, `mysql`) and service adapters (`redis`, `dynamodb`, `airtable`, `supabase`) share a common contract surface exposed through `ADAPTER_REGISTRY.json` and `tooling/adapter_manifest.json` (verbs, privilege tiers, destructive/network-facing flags, async capability). Several of them also expose **reactive/event feeds**—DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, and Airtable webhooks—normalized into bounded, checkpointable event batches suitable for async graphs (see `docs/reactive/REACTIVE_EVENTS.md` and the `examples/reactive/` gallery).
 
 ### 8.2 Capability-Aware Safety
 

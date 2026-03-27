@@ -1,0 +1,35 @@
+S app core hybrid_stream_broadcast
+
+LENTRY:
+  # 1) Poll DynamoDB Streams for a bounded batch.
+  R dynamodb.streams.subscribe "events" "LATEST" null 0.5 10 "hybrid" "consumer-1" "memory" ->sub
+
+  If sub.events == [] ->LNO_EVENTS ->LHAS_EVENTS
+
+LNO_EVENTS:
+  J {"processed": 0}
+
+LHAS_EVENTS:
+  # For illustration, process a single event.
+  R core.GET sub.events 0 ->evt
+
+  # Normalize a compact payload for cross-adapter broadcast.
+  R core.GET evt.dynamodb "SequenceNumber" ->seq
+  R core.ID {
+    "kind": evt.eventName,
+    "keys": evt.dynamodb.Keys,
+    "sequence": seq
+  } ->payload
+
+  # 2) Broadcast into Supabase Realtime for frontend consumers.
+  R supabase.realtime.broadcast "realtime:public:events" "ddb_event" $payload ->_sb
+
+  # 3) Publish a lightweight notification into Redis for infra-local consumers.
+  R redis.publish "events:ddb" $payload ->_r
+
+  # 4) Persist idempotency state in memory and ack the checkpoint.
+  R memory.put "ddb" "hybrid_last_seq" "consumer-1" {"sequence": $seq} null ->_m
+  R dynamodb.streams.ack "events" "shard-0" seq "hybrid" "consumer-1" ->ack
+
+  J {"processed": 1, "sequence": seq, "checkpointed": ack.ok}
+
