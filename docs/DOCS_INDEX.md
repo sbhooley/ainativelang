@@ -28,7 +28,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Agent field reports (OpenClaw / ops narratives)**: `agent_reports/README.md` (e.g. `ainl-king-openclaw-2026-03-19.md`)
 - **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
 - **OpenClaw + AINL gold standard (install / upgrade, agent checklist):** `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md` — also `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`**
-- **OpenClaw host briefing — AINL v1.2.8 (what ships vs host obligations):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
+- **OpenClaw host briefing — AINL v1.2.8/v1.3.0 (what ships vs host obligations):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
 - **Token / usage observability (gateway, markdown, rolling budget, caps, embedding pilot):** `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
 - **Token caps (staging order, intelligence hydrate env):** `docs/operations/TOKEN_CAPS_STAGING.md`
 - **Embedding retrieval pilot:** `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`
@@ -41,7 +41,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Contributor entrypoint: `CONTRIBUTING.md`
 - Audience quickstart: `docs/AUDIENCE_GUIDE.md`
 - What is AINL (canonical primer + v1.2+ snapshot): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- **Whitepaper draft (long-form architecture, v1.2.8 OpenClaw + token economics):** **`WHITEPAPERDRAFT.md`** (repository root)
+- **Whitepaper draft (long-form architecture, v1.2.8/v1.3.0 OpenClaw + token economics):** **`WHITEPAPERDRAFT.md`** (repository root)
 - Install and environment setup: `docs/INSTALL.md` (includes `ainl-validate` strict / `--json-diagnostics` / optional **rich**)
 - **Strict vs non-strict (opt-in strict):** `docs/getting_started/STRICT_AND_NON_STRICT.md` — default permissive compile; `--strict` / `strict_mode=True` for stronger static checks; how that relates to `demo/` and `examples/`
 - Compiler structured diagnostics module: `compiler_diagnostics.py` (used by `compiler_v2.py`, `langserver.py`, `scripts/validate_ainl.py`; tests in `tests/test_diagnostics.py`)
@@ -150,7 +150,7 @@ entry point for new users or unsupervised agents.
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`
   - v1.1 additive RFC (deterministic metadata/filtering only): `docs/adapters/MEMORY_CONTRACT_V1_1_RFC.md`
-  - Opt-in **`last_accessed` / `access_count`** helpers (include module; graph-safe list path **`LACCESS_LIST_SAFE`**): `modules/common/access_aware_memory.ainl`, `modules/common/README.md`, `docs/RELEASE_NOTES.md` (**shipped v1.2.4**; **latest release v1.2.8**)
+  - Opt-in **`last_accessed` / `access_count`** helpers (include module; graph-safe list path **`LACCESS_LIST_SAFE`**): `modules/common/access_aware_memory.ainl`, `modules/common/README.md`, `docs/RELEASE_NOTES.md` (**shipped v1.2.4**; **latest release v1.3.0**)
   - Memory v1 bridge and CLI tools (JSON/JSONL): `tooling/memory_bridge.py`, `scripts/export_memory_records.py`, `scripts/import_memory_records.py`
   - One-way markdown daily-log export (human-facing): `tooling/memory_markdown_bridge.py`, `scripts/export_memory_daily_log_markdown.py`
   - Curated markdown import (long-term facts/preferences): `tooling/memory_markdown_import.py`, `scripts/import_memory_markdown.py`

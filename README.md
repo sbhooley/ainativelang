@@ -64,7 +64,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **MCP host hub:** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) · **`ainl install-mcp --host openclaw|zeroclaw|hermes`**
 > - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · **`ainl install openclaw`**, **`ainl status`**, **`ainl doctor --ainl`** · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 > - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-mcp --host openclaw`**
-> - **OpenClaw + AINL unified integration (v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
+> - **OpenClaw + AINL unified integration (v1.3.0: ainl install openclaw, ainl status, Hermes; v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
 > - **Hermes Agent support (official; self-improving agents with deterministic graphs):** [`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md) · [`skills/hermes/`](skills/hermes/) · **`ainl install-mcp --host hermes`** · **`ainl compile --emit hermes-skill`**
 > - **PTC-Lisp integration (opt-in):** [`docs/adapters/PTC_RUNNER.md`](docs/adapters/PTC_RUNNER.md) · quick start: `ainl run-hybrid-ptc` · examples:
 >   - [`examples/hybrid_order_processor.ainl`](examples/hybrid_order_processor.ainl) — hybrid order processor (parallel batches, signatures, firewall, LangGraph bridge)
@@ -699,7 +699,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw v1.2.8 ops + token economics, async runtime, reactive DB/realtime adapters): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw v1.3.0/v1.2.8 ops + token economics, async runtime, reactive DB/realtime adapters): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`

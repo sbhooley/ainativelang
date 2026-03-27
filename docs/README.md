@@ -40,7 +40,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 
 ## Operations & monitoring (OpenClaw bridge; see also ZeroClaw; Hermes uses [`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md))
 
-**OpenClaw + AINL gold standard (install / upgrade):** [`operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md) (**`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**). **Host briefing — AINL v1.2.8:** [`operations/OPENCLAW_HOST_AINL_1_2_8.md`](operations/OPENCLAW_HOST_AINL_1_2_8.md) (**`openclaw_host_ainl_1_2_8`**). **Token / usage observability (evidence-based savings, agent-friendly map):** [`operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md). **Named env profiles** (scale-out defaults): [`operations/AINL_PROFILES.md`](operations/AINL_PROFILES.md) · **workspace isolation:** [`operations/WORKSPACE_ISOLATION.md`](operations/WORKSPACE_ISOLATION.md) · **agent + AINL operating model:** [`operations/AGENT_AINL_OPERATING_MODEL.md`](operations/AGENT_AINL_OPERATING_MODEL.md).
+**OpenClaw + AINL gold standard (install / upgrade):** [`operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md) (**`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**). **Host briefing — AINL v1.3.0:** [`operations/OPENCLAW_HOST_AINL_1_2_8.md`](operations/OPENCLAW_HOST_AINL_1_2_8.md) (**`openclaw_host_ainl_1_2_8`**). **Token / usage observability (evidence-based savings, agent-friendly map):** [`operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md). **Named env profiles** (scale-out defaults): [`operations/AINL_PROFILES.md`](operations/AINL_PROFILES.md) · **workspace isolation:** [`operations/WORKSPACE_ISOLATION.md`](operations/WORKSPACE_ISOLATION.md) · **agent + AINL operating model:** [`operations/AGENT_AINL_OPERATING_MODEL.md`](operations/AGENT_AINL_OPERATING_MODEL.md).
 
 Production token/budget monitoring, daily memory appends, weekly trends, cron examples, and troubleshooting are documented in one place:
 
@@ -56,7 +56,7 @@ Supporting detail:
 ## Notes
 
 - **What is AINL?** **[`WHAT_IS_AINL.md`](WHAT_IS_AINL.md)** — canonical primer (narrative + v1.2+ capabilities). Repository root [`../WHAT_IS_AINL.md`](../WHAT_IS_AINL.md) is a short stub that points here.
-- **Long-form architecture / economics:** **[`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md)** (repo root) — v1.2.8 adds OpenClaw intelligence ops, token caps, graph pitfalls, and appendix file map.
+- **Long-form architecture / economics:** **[`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md)** (repo root) — v1.2.8/v1.3.0 — OpenClaw intelligence ops, token caps, Hermes Agent support, ainl install openclaw, ainl status.
 - **Reactive production workflows:** [`reactive/REACTIVE_EVENTS.md`](reactive/REACTIVE_EVENTS.md) + durability scale guidance [`reactive/ADVANCED_DURABILITY.md`](reactive/ADVANCED_DURABILITY.md) + ready-to-adopt starters in [`../templates/production/`](../templates/production/).
 - **Graph diagrams (Mermaid/images):** root `README.md` → *Visualize your workflow*; details in [`architecture/GRAPH_INTROSPECTION.md`](architecture/GRAPH_INTROSPECTION.md) §7 (`ainl visualize`, `ainl-visualize`, `--png`, `--svg`).
 - **Starter include demos:** `examples/timeout_demo.ainl` (minimal timeout include) and `examples/timeout_memory_prune_demo.ainl` (timeout + memory put/list/prune, used for PNG export docs).

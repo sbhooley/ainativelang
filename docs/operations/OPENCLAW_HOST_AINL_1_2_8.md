@@ -1,4 +1,4 @@
-# OpenClaw host briefing — AINL **v1.2.8** (install / update)
+# OpenClaw host briefing — AINL **v1.2.8 / v1.3.0** (install / update)
 
 **Audience:** You are the **OpenClaw host** — the process that owns config, cron, workspace paths, and **what gets injected into the agent** at session start.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## What the AINL **v1.2.8** repo includes (you consume; you don’t reimplement)
+## What the AINL **v1.2.8 / v1.3.0** repo includes (you consume; you don’t reimplement)
 
 | Capability | What it is |
 |------------|------------|
@@ -58,7 +58,7 @@ See [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md). Prefer an 
 
 ## Bottom line
 
-The AINL **v1.2.8** tree delivers **measurement**, **rolling-budget → cache hydration**, **profiles**, **caps staging docs**, and **clear host responsibilities**.
+The AINL **v1.3.0** tree delivers **measurement**, **rolling-budget → cache hydration**, **profiles**, **caps staging docs**, and **clear host responsibilities**.
 
 The remaining gap for **~85–90%** usage/cost savings on **session bootstrap** is **host behavior**: **load curated context** + **run scheduled intelligence + bridge jobs on shared paths**. Without that, savings stay in files and subprocesses the **model never reads**.
 

@@ -86,7 +86,7 @@ Response:
 ```json
 {
   "schema_version": "1.0",
-  "runtime_version": "1.2.8",
+  "runtime_version": "1.3.0",
   "policy_support": true,
   "adapters": {
     "core": {
@@ -180,7 +180,7 @@ step) and sends the IR directly. This separates compilation from execution.
   "trace_id": "...",
   "label": "L1",
   "out": "...",
-  "runtime_version": "1.2.8",
+  "runtime_version": "1.3.0",
   "ir_version": "1.0",
   "duration_ms": 12.5,
   "adapter_p95_ms": { "core": 0.02 }
