@@ -21,7 +21,7 @@ pip install -e ".[dev,benchmark,interop]"
 For Python 3.13 sandboxed hosts (PEP 668/no-sudo environments), use the tested MCP constraints:
 
 ```bash
-python -m pip install --constraint constraints/py313-mcp.txt "ainl[mcp]"
+python -m pip install --constraint constraints/py313-mcp.txt "ainativelang[mcp]"
 ```
 
 ## Consuming emitted hybrid modules

@@ -1,6 +1,6 @@
 # Tested constraints for Python 3.13+ sandbox installs (MCP stack).
 # Usage:
-#   python -m pip install --constraint constraints/py313-mcp.txt "ainl[mcp]"
+#   python -m pip install --constraint constraints/py313-mcp.txt "ainativelang[mcp]"
 #
 # These pins are validated in CI install smoke/wheel jobs.
 mcp==1.26.0

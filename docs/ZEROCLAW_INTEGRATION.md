@@ -36,7 +36,7 @@ This installs the AINL importer, runtime shim, and MCP tools directly into ZeroC
 2. **Or run the bootstrap directly**:
 
    ```bash
-   pip install 'ainl[mcp]'
+   pip install 'ainativelang[mcp]'
    ainl install-mcp --host zeroclaw
    ```
 
@@ -54,7 +54,7 @@ Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import cla
 
 | Artifact | Purpose |
 |----------|---------|
-| `pip install --upgrade 'ainl[mcp]'` | Latest compiler, importer extras, MCP dependencies |
+| `pip install --upgrade 'ainativelang[mcp]'` | Latest compiler, importer extras, MCP dependencies |
 | `~/.zeroclaw/mcp.json` | Merges an **`ainl`** stdio server entry pointing at **`ainl-mcp`** (skipped if already present with the same command) |
 | `~/.zeroclaw/bin/ainl-run` | Shell wrapper: **`ainl compile "$1" && ainl run "$1"`** (plus extra args forwarded to **`ainl run`**) |
 | `~/.bashrc` / `~/.zshrc` | Appends **`export PATH="$HOME/.zeroclaw/bin:$PATH"`** when those files exist and do not already mention **`~/.zeroclaw/bin`** |

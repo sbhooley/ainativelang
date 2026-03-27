@@ -23,7 +23,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 echo "==> Upgrading ainl[mcp] via python3 -m pip"
-python3 -m pip install --upgrade 'ainl[mcp]'
+python3 -m pip install --upgrade 'ainativelang[mcp]'
 
 if ! command -v ainl >/dev/null 2>&1; then
   echo "install.sh: 'ainl' not found on PATH after pip install." >&2

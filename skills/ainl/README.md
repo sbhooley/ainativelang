@@ -53,7 +53,7 @@ chmod +x install.sh
 ### Option C — Manual (no skill checkout)
 
 ```bash
-pip install 'ainl[mcp]'
+pip install 'ainativelang[mcp]'
 ainl install-mcp --host zeroclaw
 ```
 
@@ -72,7 +72,7 @@ rm -rf /tmp/ainl-repo /data/.openclaw/workspace/skills/ainl /data/.local/lib/pyt
 
 ## What gets set up
 
-1. **`pip install --upgrade 'ainl[mcp]'`** (with PEP 668-safe fallbacks in `install.sh`) — compiler, importer extras, MCP dependencies.  
+1. **`pip install --upgrade 'ainativelang[mcp]'`** (with PEP 668-safe fallbacks in `install.sh`) — compiler, importer extras, MCP dependencies.  
 2. **`ainl install-mcp --host zeroclaw`** (alias **`install-zeroclaw`**) — self-upgrade path, MCP registration for ZeroClaw-style hosts, and **`~/.zeroclaw/bin/ainl-run`** so **`zeroclaw ainl run <file.ainl>`** can delegate to a compile/run wrapper.
 
 ## Typical commands

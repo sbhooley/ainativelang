@@ -85,7 +85,7 @@ def _require_psutil():
     except Exception as exc:  # pragma: no cover
         raise RuntimeError(
             "psutil is required for runtime benchmark RSS metrics. "
-            "Install with: pip install 'ainl[benchmark]' or pip install psutil"
+            "Install with: pip install 'ainativelang[benchmark]' or pip install psutil"
         ) from exc
     return psutil
 

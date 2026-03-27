@@ -35,7 +35,7 @@ OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) 
 2. **Or run the bootstrap directly** (Python only):
 
    ```bash
-   pip install 'ainl[mcp]'
+   pip install 'ainativelang[mcp]'
    ainl install-mcp --host openclaw
    ```
 
@@ -53,7 +53,7 @@ Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import cla
 
 | Artifact | Purpose |
 |----------|---------|
-| `pip install --upgrade 'ainl[mcp]'` | Latest compiler, importer extras, MCP dependencies |
+| `pip install --upgrade 'ainativelang[mcp]'` | Latest compiler, importer extras, MCP dependencies |
 | `~/.openclaw/openclaw.json` | Merges **`mcpServers.ainl`** stdio entry pointing at **`ainl-mcp`** (skipped if already present with the same resolved command); other top-level keys preserved |
 | `~/.openclaw/bin/ainl-run` | Shell wrapper: compile then **`exec ainl run`** with extra args forwarded |
 | `~/.bashrc` / `~/.zshrc` | Appends **`export PATH="$HOME/.openclaw/bin:$PATH"`** when those files exist and do not already mention **`~/.openclaw/bin`** |

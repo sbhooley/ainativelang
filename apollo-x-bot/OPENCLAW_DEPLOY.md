@@ -12,7 +12,7 @@ Optional: keep using **`ainl install-mcp --host openclaw`** so the agent can com
 ## 1. Install toolchain on the host
 
 ```bash
-pip install 'ainl[mcp]'
+pip install 'ainativelang[mcp]'
 # Optional: MCP + ~/.openclaw/openclaw.json + ~/.openclaw/bin/ainl-run
 ainl install-mcp --host openclaw
 ```

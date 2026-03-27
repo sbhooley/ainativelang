@@ -12,7 +12,7 @@ fi
 
 install_ainl() {
   echo "Installing ainl[mcp]..."
-  PIP_BASE=("$PYTHON" -m pip install --upgrade --no-input "ainl[mcp]")
+  PIP_BASE=("$PYTHON" -m pip install --upgrade --no-input "ainativelang[mcp]")
 
   if [ -n "${VIRTUAL_ENV:-}" ]; then
     echo "Detected active virtualenv: $VIRTUAL_ENV"

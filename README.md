@@ -87,7 +87,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 
 ```bash
 # 1. Install the CLI
-pip install ainl
+pip install ainativelang
 
 # 2. Create a new project (generates main.ainl + README)
 ainl init my-first-worker

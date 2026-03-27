@@ -7,7 +7,7 @@ Single entry point for wiring **AINL** into agent stacks that consume **stdio `a
 1. **Install and onboard the agent runtime** using that product’s official docs (e.g. OpenClaw → [openclaw.ai](https://openclaw.ai/)).
 2. **Add AINL** using either:
    - **Skill folder:** copy **`skills/<host>/`** from this repo, then **`chmod +x install.sh && ./install.sh`**, or  
-   - **CLI:** **`pip install 'ainl[mcp]'`** then **`ainl install-mcp --host openclaw`** or **`zeroclaw`** (see **`ainl install-mcp --list-hosts`**).
+   - **CLI:** **`pip install 'ainativelang[mcp]'`** then **`ainl install-mcp --host openclaw`** or **`zeroclaw`** (see **`ainl install-mcp --list-hosts`**).
 
 Legacy per-host commands remain aliases:
 

@@ -54,7 +54,7 @@ Before tagging/uploading, ensure **`Release Gates`** GitHub workflow passes:
 For Python 3.13 sandbox compatibility, use:
 
 ```bash
-python -m pip install --constraint constraints/py313-mcp.txt "ainl[mcp]"
+python -m pip install --constraint constraints/py313-mcp.txt "ainativelang[mcp]"
 ```
 
 ## Git tag
