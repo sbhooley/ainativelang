@@ -176,6 +176,14 @@ For the full conformance matrix in one command (tokenizer, IR canonicalization, 
 
 `make conformance` (or `SNAPSHOT_UPDATE=1 make conformance` when intentionally updating snapshots).
 
+### Community & Growth (start here too)
+
+- Growth strategy and milestones: [`GROWTH-PLAN.md`](GROWTH-PLAN.md)
+- Validation transparency: [`docs/validation-deep-dive.md`](docs/validation-deep-dive.md)
+- GitHub Discussions: <https://github.com/sbhooley/ainativelang/discussions>
+- Discord: <https://discord.gg/ainativelang>
+- X / Twitter: <https://x.com/AINativeLang>
+
 Short primer for stakeholders: **[`docs/WHAT_IS_AINL.md`](docs/WHAT_IS_AINL.md)** (canonical). [`WHAT_IS_AINL.md`](WHAT_IS_AINL.md) at repo root is a **stub** that points to the same content.
 
 ### Getting started with includes
@@ -1031,6 +1039,7 @@ L1:
 ```
 
 Supported verbs: `query`, `execute`, and `transaction` (`R postgres.transaction [{verb, sql, params}] ->out`). For production, keep `allow_write` off unless needed, use parameterized SQL, and scope table access with `--postgres-allow-table`.
+Full contract and security guidance: `docs/adapters/POSTGRES.md`.
 
 ---
 
