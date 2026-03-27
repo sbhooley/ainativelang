@@ -24,7 +24,7 @@
 ## v1.2.8 (March 25, 2026) — OpenClaw ops, intelligence hydration, graph-runtime docs
 
 - **docs(whitepaper)**: **`WHITEPAPERDRAFT.md`** (v1.2.8 positioning, §6.6 graph pitfalls, §10.5 intelligence, §13.5 token caps, §17.1 shipped, appendix OpenClaw file map); supporting updates: **`docs/WHAT_IS_AINL.md`**, **`docs/DOCS_INDEX.md`**, **`docs/overview/README.md`**, **`docs/POST_RELEASE_ROADMAP.md`**
-- **packaging**: **`pyproject.toml` / `ainl-lang` 1.2.8**; **`RUNTIME_VERSION`** **`1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** aligned. Reinstall or **`pip install -U -e .`** so CLI/MCP/runner **`runtime_version`** matches and **`__pycache__`** from older trees does not shadow updated modules.
+- **packaging**: **`pyproject.toml` / `ainl` 1.2.8**; **`RUNTIME_VERSION`** **`1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** aligned. Reinstall or **`pip install -U -e .`** so CLI/MCP/runner **`runtime_version`** matches and **`__pycache__`** from older trees does not shadow updated modules.
 - **feat(ops)**: rolling budget hydration for **`scripts/run_intelligence.py`**, **`tooling/intelligence_budget_hydrate.py`**, workspace env pin **`tooling/openclaw_workspace_env.example.sh`**, ops docs (**`docs/operations/*`**: profiles, token observability, workspace isolation, WASM/TTL/embedding notes).
 - **docs(openclaw)**: **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** — agent-discoverable install/upgrade checklist (profiles, caps, cron, host bootstrap, verification); indexed from **`tooling/bot_bootstrap.json`**, **`HOST_PACK_OPENCLAW.md`**, **`DOCS_INDEX.md`**.
 - **docs(openclaw)**: **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`** — host briefing for **v1.2.8** (repo capabilities vs OpenClaw obligations: probe, rolling hydrate, profiles, bootstrap contract); **`openclaw_host_ainl_1_2_8`** in **`tooling/bot_bootstrap.json`**.
@@ -95,7 +95,7 @@
 - **fix(demo)**: **`demo/infrastructure_watchdog.lang`** — restart services when down; verify after restart before alerting.
 - **docs**: **`docs/reference/ADAPTER_REGISTRY.md`** §2.4.3 (**bridge** client timeout); **`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`** §7 (timeouts + **`llm.classify`** envelope rule); **`docs/OPENCLAW_INTEGRATION.md`** (Apollo promoter + **`openclaw-poll.sh`** pointer); **`apollo-x-bot/OPENCLAW_DEPLOY.md`** (**`AINL_HTTP_TIMEOUT_S`** / **`--http-timeout-s`**).
 
-- **packaging**: **`pyproject.toml` / `ainl-lang`** **1.2.4**; **`RUNTIME_VERSION`** (`runtime/engine.py`, mirrored `tests/emits/server/runtime/engine.py`) **1.2.4**; language server **`serverInfo.version`** and runner service **FastAPI** `app.version` follow **`RUNTIME_VERSION`** (runner: `scripts/runtime_runner_service.py`; LSP: `langserver.py`)
+- **packaging**: **`pyproject.toml` / `ainl`** **1.2.4**; **`RUNTIME_VERSION`** (`runtime/engine.py`, mirrored `tests/emits/server/runtime/engine.py`) **1.2.4**; language server **`serverInfo.version`** and runner service **FastAPI** `app.version` follow **`RUNTIME_VERSION`** (runner: `scripts/runtime_runner_service.py`; LSP: `langserver.py`)
 - **feat(modules)**: `modules/common/access_aware_memory.ainl` — opt-in **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, **`LACCESS_LIST_SAFE`** (graph-safe list touches via While + index); header warnings and usage notes for graph vs ForEach
 - **fix(runtime)**: resolve bare label targets against include **alias** from call stack (`_resolve_label_key` in `runtime/engine.py`) so nested **If** / **Loop** / **Call** / **While** reach **`alias/label`** keys after merge
 - **docs**: `modules/common/README.md`; refresh root **`README.md`**, **`WHAT_IS_AINL.md`**, **`docs/WHAT_IS_AINL.md`**, **`WHITEPAPERDRAFT.md`**, **`docs/RELEASE_NOTES.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/README.md`**, **`docs/adapters/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`** (sample `runtime_version` in JSON)
@@ -150,7 +150,7 @@
 
 ### Packaging (v1.2.0)
 
-- **`pyproject.toml` / `ainl-lang`:** version **1.2.0**.
+- **`pyproject.toml` / `ainl`:** version **1.2.0**.
 - **`RUNTIME_VERSION`** (`runtime/engine.py`, mirrored `tests/emits/server/runtime/engine.py`): **1.2.0** (runner/MCP payloads, `/capabilities`, `ainl run --json`).
 - **Language server** initialize `serverInfo.version` and **runner service** OpenAPI app version: **1.2.0**.
 

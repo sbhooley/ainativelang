@@ -2,7 +2,7 @@
 
 ## AINL v1.2.8 — OpenClaw intelligence ops + graph-runtime alignment (2026-03-25)
 
-**PyPI / runtime:** **`ainl-lang` 1.2.8** — **`RUNTIME_VERSION` `1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned. After pulling, reinstall the package (**`pip install -U -e .`**) or recreate the venv if you see stale **`runtime_version`** or import shadowing from **`__pycache__`**.
+**PyPI / runtime:** **`ainl` 1.2.8** — **`RUNTIME_VERSION` `1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned. After pulling, reinstall the package (**`pip install -U -e .`**) or recreate the venv if you see stale **`runtime_version`** or import shadowing from **`__pycache__`**.
 
 - Rolling budget → monitor cache hydration for **`scripts/run_intelligence.py`**; workspace path pin script; expanded **`docs/operations/`** (profiles, token usage, workspace isolation, host pack).
 - **OpenClaw + AINL gold standard:** **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** — install/upgrade checklist (profiles, caps, cron, bootstrap, verification); **`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**.
@@ -23,7 +23,7 @@
 
 ## AINL v1.2.6 — install hardening + wheel/release gates + doctor diagnostics (2026-03-24)
 
-**PyPI / runtime:** **`ainl-lang` 1.2.6** — **`RUNTIME_VERSION` `1.2.6`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**).
+**PyPI / runtime:** **`ainl` 1.2.6** — **`RUNTIME_VERSION` `1.2.6`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**).
 
 - **Wheel packaging fix:** setuptools package discovery now includes `runtime` and `runtime.*` so wheel installs ship `runtime.compat` and avoid wheel-only import failures.
 - **Sandbox/no-root install hardening:** `skills/ainl/install.sh` now uses safe pip fallback modes for restricted hosts (venv/default, then `--user`, then `--break-system-packages`), avoids `eval`, and applies idempotent PATH hints across common shell rc files.
@@ -40,7 +40,7 @@
 
 ## AINL v1.2.5 — Hyperspace + hybrid interop + CI baselines (2026-03-23)
 
-**PyPI / runtime:** **`ainl-lang` 1.2.5** — **`RUNTIME_VERSION` `1.2.5`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** **`version` / `date-released`** aligned. Oversight / schema fixtures (e.g. **`tests/test_oversight.py`**, **`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`** samples) use **`1.2.5`**.
+**PyPI / runtime:** **`ainl` 1.2.5** — **`RUNTIME_VERSION` `1.2.5`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** **`version` / `date-released`** aligned. Oversight / schema fixtures (e.g. **`tests/test_oversight.py`**, **`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`** samples) use **`1.2.5`**.
 
 ### Trajectory, modules, local adapters, Hyperspace emit
 
@@ -98,7 +98,7 @@ Follow-up to v1.2.3 focused on **opt-in access metadata** on top of Memory Contr
 - **Runtime (`runtime/engine.py`):** **`_resolve_label_key`** qualifies bare branch / loop / call targets (e.g. `_child`) against the current **`alias/…`** stack frame so graph (and step) execution reaches merged **`alias/child`** labels after `include`. Preserves behavior for programs that already use fully qualified ids.
 - **Demos:** `demo/session_budget_enforcer.lang` and `demo/memory_distill_example.lang` keep **`include` lines before the first top-level `S` / `E`** so module labels merge; access-aware usage remains documented in-module.
 - **Tests:** `tests/test_demo_enforcer.py` — compile + memory adapter checks; regression for bare child label resolution in graph-only mode.
-- **Packaging / version surfaces:** **`pyproject.toml` / PyPI `ainl-lang` 1.2.4**; **`RUNTIME_VERSION` 1.2.4** in `runtime/engine.py` (mirrored under `tests/emits/server/runtime/engine.py`) for run payloads, MCP, and **`/capabilities`**; language server **`serverInfo.version`** (`langserver.py`) and HTTP runner **OpenAPI** `app.version` (`scripts/runtime_runner_service.py`) use the same **`RUNTIME_VERSION`** string; **`CITATION.cff`** sets software **`version`** / **`date-released`** to match.
+- **Packaging / version surfaces:** **`pyproject.toml` / PyPI `ainl` 1.2.4**; **`RUNTIME_VERSION` 1.2.4** in `runtime/engine.py` (mirrored under `tests/emits/server/runtime/engine.py`) for run payloads, MCP, and **`/capabilities`**; language server **`serverInfo.version`** (`langserver.py`) and HTTP runner **OpenAPI** `app.version` (`scripts/runtime_runner_service.py`) use the same **`RUNTIME_VERSION`** string; **`CITATION.cff`** sets software **`version`** / **`date-released`** to match.
 - **Docs:** `modules/common/README.md` indexes shared helpers (include-before-`S`, `LACCESS_LIST` vs `LACCESS_LIST_SAFE`). Root **`README.md`**, **`WHAT_IS_AINL.md`**, **`docs/WHAT_IS_AINL.md`**, **`WHITEPAPERDRAFT.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/README.md`**, **`docs/adapters/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/CHANGELOG.md`**, and this file updated to match.
 
 ---

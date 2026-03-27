@@ -11,8 +11,8 @@ if ! command -v "$PYTHON" >/dev/null 2>&1; then
 fi
 
 install_ainl() {
-  echo "Installing ainl-lang[mcp]..."
-  PIP_BASE=("$PYTHON" -m pip install --upgrade --no-input "ainl-lang[mcp]")
+  echo "Installing ainl[mcp]..."
+  PIP_BASE=("$PYTHON" -m pip install --upgrade --no-input "ainl[mcp]")
 
   if [ -n "${VIRTUAL_ENV:-}" ]; then
     echo "Detected active virtualenv: $VIRTUAL_ENV"

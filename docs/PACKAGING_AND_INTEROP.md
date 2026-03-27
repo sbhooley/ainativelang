@@ -1,6 +1,6 @@
 # Packaging and ecosystem interop
 
-AINL ships as the **`ainl-lang`** distribution ([`pyproject.toml`](../pyproject.toml)). The **compiler and deterministic runtime** have no mandatory third-party dependencies (`dependencies = []` in the project table). Optional stacks are pulled in via **extras** so downstream apps only install what they use.
+AINL ships as the **`ainl`** distribution ([`pyproject.toml`](../pyproject.toml)). The **compiler and deterministic runtime** have no mandatory third-party dependencies (`dependencies = []` in the project table). Optional stacks are pulled in via **extras** so downstream apps only install what they use.
 
 ## Optional extras
 
@@ -21,7 +21,7 @@ pip install -e ".[dev,benchmark,interop]"
 For Python 3.13 sandboxed hosts (PEP 668/no-sudo environments), use the tested MCP constraints:
 
 ```bash
-python -m pip install --constraint constraints/py313-mcp.txt "ainl-lang[mcp]"
+python -m pip install --constraint constraints/py313-mcp.txt "ainl[mcp]"
 ```
 
 ## Consuming emitted hybrid modules

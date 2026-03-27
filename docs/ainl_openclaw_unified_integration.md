@@ -160,7 +160,7 @@ The **token_aware_startup_context** wrapper automatically generates a compact `s
 
 - Reads your full `MEMORY.md`
 - Filters for high-signal lines (decisions, preferences, todos, lessons, settings)
-- Respects a configurable token budget (default: 5% of remaining daily budget, clamped **100–150** tokens, typically **~115**)
+- Respects a configurable token budget (default: 5% of remaining daily budget, clamped **100–150** tokens, typically **~140**)
 - Writes optimized context to `.openclaw/bootstrap/session_context.md`
 - Persists generation stats to AINL memory and cache
 
@@ -232,8 +232,8 @@ See [`scripts/setup_ainl_integration.sh`](../../scripts/setup_ainl_integration.s
 ### Verification
 
 - Check the file modification time updates with each run.
-- Compare token counts: the generated file should be ~100–150 tokens (~10–15 lines, ~400–500 bytes).
-- Ensure your regular sessions now bootstrap with the smaller context (observe token count in `/status`; ~115 tokens expected).
+- Compare token counts: the generated file should be ~100–150 tokens (~13–18 lines, ~500–600 bytes). Target typically ~140 tokens.
+- Ensure your regular sessions now bootstrap with the smaller context (observe token count in `/status`; ~140 tokens expected).
 
 ### Notes
 

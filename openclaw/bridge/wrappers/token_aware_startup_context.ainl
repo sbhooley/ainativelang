@@ -50,7 +50,7 @@ L3a:
   Call accmem/LACCESS_READ ->_
   # Use same low allocation as no-snapshot path (ensure budget stays low even with snapshot).
   R core env "AINL_STARTUP_CONTEXT_TOKEN_MIN" 100 ->tokenMin
-  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 150 ->tokenMax
+  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 100 ->tokenMax
   # Use fixed 5% allocation (avoid env-read instability)
   Set pct 0.05
   X raw (mul tokenCap pct)
@@ -74,7 +74,7 @@ L3a:
 L3b:
   # Allocate tokens: 5% of remaining, then clamp (env-tunable).
   R core env "AINL_STARTUP_CONTEXT_TOKEN_MIN" 100 ->tokenMin
-  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 150 ->tokenMax
+  R core env "AINL_STARTUP_CONTEXT_TOKEN_MAX" 100 ->tokenMax
   # Use fixed 5% allocation (avoid env-read instability)
   Set pct 0.05
   X raw (mul tokenCap pct)
@@ -143,15 +143,16 @@ L5:
   X kw7 (core.contains lower "setting")
   X kw8 (core.contains lower "cron")
   X hasKeyword (or kw1 (or kw2 (or kw3 (or kw4 (or kw5 (or kw6 (or kw7 kw8)))))))
-  X isLong (gt lineLen 60)
+  X isLong (gt lineLen 100)
   X keyLine (and isLong hasKeyword)
-  X bulletLine (and hasBullet isLong)
+  # Require bullets to also contain a keyword to keep (prevents long generic bullets)
+  X bulletLine (and hasBullet isLong hasKeyword)
   X keep (or isTerse (or keyLine bulletLine))
   If keep ->L8 ->L6
 
-# ── Skip this line (no-op body for Loop) ──
+# ── Skip this line (loop next) ──
 L6:
-  Set _skip 1
+  J L4
 
 # ── Budget check and add ──
 L8:
@@ -166,6 +167,12 @@ L8:
 L9:
   X selected (push selected trimmed)
   Set usedTokens wouldUse
+  # Debug: log tokenCap and usedTokens
+  R core log "tokenCap=" tokenCap " usedTokens=" usedTokens
+  # Hard cap: stop after reaching 100 tokens to ensure budget adherence
+  If (ge usedTokens 100) ->L7
+  # Continue looping
+  J L4
 
 # ── Assemble output ──
 L7:

@@ -12,7 +12,7 @@ Use this as the **done** baseline when opening new work; do not re-plan these wi
 
 | Area | Shipped | Pointers |
 |------|---------|----------|
-| **Release line** | **PyPI / runtime `ainl-lang` 1.2.8** (`pyproject.toml`, **`RUNTIME_VERSION`**, **`CITATION.cff`**) — see **`docs/RELEASE_NOTES.md`** / **`docs/CHANGELOG.md`** | `docs/RELEASING.md` |
+| **Release line** | **PyPI / runtime `ainl` 1.2.8** (`pyproject.toml`, **`RUNTIME_VERSION`**, **`CITATION.cff`**) — see **`docs/RELEASE_NOTES.md`** / **`docs/CHANGELOG.md`** | `docs/RELEASING.md` |
 | **Hybrid interop + `S hybrid`** | LangGraph / Temporal wrappers, **`validate_ainl.py --emit langgraph|temporal`**, **`langchain_tool`** adapter, **`S hybrid langgraph|temporal`** for **`minimal_emit`** / planners | `docs/HYBRID_GUIDE.md`, `docs/AINL_SPEC.md` §2.3.1, `runtime/wrappers/`, `examples/hybrid/`, `docs/hybrid/OPERATOR_RUNBOOK.md`, `docs/PACKAGING_AND_INTEROP.md` |
 | **CI benchmark regression** | **`benchmark-regression`** prefers committed **`tooling/benchmark_*_ci.json`** on baseline SHA; **Python 3.10** jobs; **`make benchmark-ci`** echoes **`PYTHON`** | `.github/workflows/ci.yml`, `BENCHMARK.md` § *CI regression baselines*, `docs/benchmarks.md` § CI |
 | **Runtime label resolution (includes + graph)** | Bare subgraph targets in **If** / **Loop** / **While** / **Call** are qualified with the **`alias/`** prefix from the runtime stack when **`labels`** keys are merged as **`alias/child`** | `runtime/engine.py` (`_resolve_label_key`), `tests/test_demo_enforcer.py` (`test_graph_mode_nested_if_resolves_bare_child_labels`) |

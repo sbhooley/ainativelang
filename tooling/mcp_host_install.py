@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
-PIP_SPEC = "ainl-lang[mcp]"
+PIP_SPEC = "ainl[mcp]"
 MCP_SERVER_KEY = "ainl"
 _WRAPPER_NAME = "ainl-run"
 

@@ -87,7 +87,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 
 ```bash
 # 1. Install the CLI
-pip install ainl-lang
+pip install ainl
 
 # 2. Create a new project (generates main.ainl + README)
 ainl init my-first-worker
@@ -246,7 +246,7 @@ For restricted Python sandboxes (PEP 668 externally-managed environments, common
 If you need a clean uninstall in managed sandboxes:
 
 ```bash
-pip3 uninstall -y ainl-lang mcp aiohttp langgraph temporalio
+pip3 uninstall -y ainl mcp aiohttp langgraph temporalio
 rm -rf /tmp/ainl-repo /data/.openclaw/workspace/skills/ainl /data/.local/lib/python3.13/site-packages/*ainl*
 ```
 
@@ -728,7 +728,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainl-lang` 1.2.8** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainl` 1.2.8** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

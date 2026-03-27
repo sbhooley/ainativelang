@@ -2,7 +2,7 @@
 name: AINL
 description: Deterministic compiled graphs for ZeroClaw (importer, runtime, MCP tools)
 install: ./install.sh
-install_alt: pip install 'ainl-lang[mcp]' && ainl install-mcp --host zeroclaw
+install_alt: pip install 'ainl[mcp]' && ainl install-mcp --host zeroclaw
 commands:
   - ainl import <source> — convert Markdown / ecosystem packs into `.ainl` graphs
   - ainl compile <file.ainl> — compile and validate deterministic graph IR
@@ -21,7 +21,7 @@ tags:
 
 ## Agent instructions
 
-Follow this skill when the user is on **ZeroClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** after `zeroclaw skills install …`, or the manual **`pip install 'ainl-lang[mcp]' && ainl install-mcp --host zeroclaw`** path (alias **`ainl install-zeroclaw`**). After bootstrap, suggest the **morning briefing** prompt example below when it fits.
+Follow this skill when the user is on **ZeroClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** after `zeroclaw skills install …`, or the manual **`pip install 'ainl[mcp]' && ainl install-mcp --host zeroclaw`** path (alias **`ainl install-zeroclaw`**). After bootstrap, suggest the **morning briefing** prompt example below when it fits.
 
 ## When to use this skill
 
@@ -32,10 +32,10 @@ Follow this skill when the user is on **ZeroClaw** (or wants **deterministic `.a
 ## Install (pick one)
 
 1. **From this skill directory (recommended with `zeroclaw skills install`):** run `./install.sh`  
-   That upgrades `ainl-lang[mcp]` and runs **`ainl install-mcp --host zeroclaw`** (pip self-upgrade, MCP registration hints, `~/.zeroclaw/bin/ainl-run` shim).
+   That upgrades `ainl[mcp]` and runs **`ainl install-mcp --host zeroclaw`** (pip self-upgrade, MCP registration hints, `~/.zeroclaw/bin/ainl-run` shim).
 
 2. **Manual:**  
-   `pip install 'ainl-lang[mcp]' && ainl install-mcp --host zeroclaw`
+   `pip install 'ainl[mcp]' && ainl install-mcp --host zeroclaw`
 
 ### Restricted environments (OpenClaw, Clawbot, webchat sandboxes)
 
@@ -46,7 +46,7 @@ This skill is designed for environments with **PEP 668 externally-managed Python
 - Clean uninstall (if needed):
 
 ```bash
-pip3 uninstall -y ainl-lang mcp aiohttp langgraph temporalio
+pip3 uninstall -y ainl mcp aiohttp langgraph temporalio
 rm -rf /tmp/ainl-repo /data/.openclaw/workspace/skills/ainl /data/.local/lib/python3.13/site-packages/*ainl*
 ```
 
@@ -74,4 +74,4 @@ Configure the host to run **`ainl-mcp`** as a stdio MCP server (see AINL docs: *
 ## References
 
 - Upstream: [github.com/sbhooley/ainativelang](https://github.com/sbhooley/ainativelang)
-- Package: **`ainl-lang`** on PyPI
+- Package: **`ainl`** on PyPI

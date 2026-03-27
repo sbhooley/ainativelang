@@ -294,7 +294,7 @@ def _embedding_workflow_index(context: Dict[str, Any], args: List[Any]) -> Dict[
 
     em = EmbeddingMemoryAdapter()
     ma = _memory_adapter_bridge()
-    listed = ma.call("list", [ns, None, None, None, {"limit": limit}])
+    listed = ma.call("list", [ns, None, None, None, {"limit": limit}], context)
     items = listed.get("items") if isinstance(listed, dict) else None
     if not items:
         return {"ok": True, "indexed": 0, "scanned": 0, "namespace": ns}
@@ -304,7 +304,7 @@ def _embedding_workflow_index(context: Dict[str, Any], args: List[Any]) -> Dict[
         rid = str(it.get("record_id") or "")
         if not rk or not rid:
             continue
-        got = ma.call("get", [ns, rk, rid])
+        got = ma.call("get", [ns, rk, rid], context)
         if not isinstance(got, dict) or not got.get("found"):
             continue
         rec = got.get("record") or {}
@@ -349,7 +349,7 @@ def _embedding_workflow_search(args: List[Any], _context: Dict[str, Any]) -> Dic
         rid = h.get("memory_record_id")
         if not ns or not rk or not rid:
             continue
-        got = ma.call("get", [str(ns), str(rk), str(rid)])
+        got = ma.call("get", [str(ns), str(rk), str(rid)], _context)
         payload_snap: Any = None
         if isinstance(got, dict) and got.get("found"):
             payload_snap = (got.get("record") or {}).get("payload")
@@ -386,6 +386,7 @@ def _rolling_budget_publish(context: Dict[str, Any]) -> Dict[str, Any]:
             86400 * 14,
             {"tags": ["rolling_budget", "openclaw"], "source": "bridge"},
         ],
+        context,
     )
     return {"ok": True, "record_id": "weekly_remaining_v1", "payload": body}
 
@@ -396,7 +397,7 @@ def _ttl_memory_tuner_run(context: Dict[str, Any]) -> Dict[str, Any]:
         return {"ok": True, "dry_run": True, "updated": 0}
     require_tag = os.environ.get("AINL_TTL_TUNER_TAG", "ttl_managed").strip() or "ttl_managed"
     ma = _memory_adapter_bridge()
-    listed = ma.call("list", ["workflow", None, None, None, {"limit": 200}])
+    listed = ma.call("list", ["workflow", None, None, None, {"limit": 200}], context)
     items = listed.get("items") if isinstance(listed, dict) else None
     if not items:
         return {"ok": True, "updated": 0, "scanned": 0}
@@ -404,7 +405,7 @@ def _ttl_memory_tuner_run(context: Dict[str, Any]) -> Dict[str, Any]:
     for it in items:
         rk = str(it.get("record_kind") or "")
         rid = str(it.get("record_id") or "")
-        got = ma.call("get", ["workflow", rk, rid])
+        got = ma.call("get", ["workflow", rk, rid], context)
         if not isinstance(got, dict) or not got.get("found"):
             continue
         rec = got.get("record") or {}
@@ -446,6 +447,7 @@ def _ttl_memory_tuner_run(context: Dict[str, Any]) -> Dict[str, Any]:
                 new_ttl,
                 meta,
             ],
+            context,
         )
         updated += 1
     return {"ok": True, "updated": updated, "scanned": len(items)}

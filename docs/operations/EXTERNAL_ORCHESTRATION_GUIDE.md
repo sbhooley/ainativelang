@@ -477,7 +477,7 @@ Users on **[ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw)** can install t
 zeroclaw skills install https://github.com/sbhooley/ainativelang/tree/main/skills/ainl
 ```
 
-Then run **`./install.sh`** from the skill checkout or **`ainl install-mcp --host zeroclaw`** to merge **`ainl-mcp`** into **`~/.zeroclaw/mcp.json`**, install **`~/.zeroclaw/bin/ainl-run`**, and refresh **`ainl-lang[mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/ZEROCLAW_INTEGRATION.md`**.
+Then run **`./install.sh`** from the skill checkout or **`ainl install-mcp --host zeroclaw`** to merge **`ainl-mcp`** into **`~/.zeroclaw/mcp.json`**, install **`~/.zeroclaw/bin/ainl-run`**, and refresh **`ainl[mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/ZEROCLAW_INTEGRATION.md`**.
 
 #### ZeroClaw-native bridge (optional, parity with `openclaw/bridge/`)
 
@@ -498,7 +498,7 @@ Drift report (read-only): **`python3 zeroclaw/bridge/cron_drift_check.py --json`
 
 Users on **[OpenClaw](https://openclaw.ai/)** can add the **AINL skill** from this repository by copying **[`skills/openclaw/`](../../skills/openclaw/)** into **`~/.openclaw/skills/`** or **`<workspace>/skills/`**, or via **ClawHub** when listed (OpenClaw does not use **`zeroclaw skills install`**).
 
-Then run **`./install.sh`** from the skill directory or **`ainl install-mcp --host openclaw`** to merge **`mcpServers.ainl`** into **`~/.openclaw/openclaw.json`** (stdio **`ainl-mcp`**), install **`~/.openclaw/bin/ainl-run`**, and refresh **`ainl-lang[mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/OPENCLAW_INTEGRATION.md`**.
+Then run **`./install.sh`** from the skill directory or **`ainl install-mcp --host openclaw`** to merge **`mcpServers.ainl`** into **`~/.openclaw/openclaw.json`** (stdio **`ainl-mcp`**), install **`~/.openclaw/bin/ainl-run`**, and refresh **`ainl[mcp]`** from PyPI. **Example prompt:** *“Import the morning briefing using AINL.”* Full walkthrough: **`docs/OPENCLAW_INTEGRATION.md`**.
 
 ### Exposed MCP resources
 

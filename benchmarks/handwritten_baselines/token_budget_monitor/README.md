@@ -43,4 +43,4 @@ python langgraph_version.py   # runs the exhaustive grid check; requires langgra
 ## Dependencies
 
 - **Pure**: stdlib + `asyncio`.
-- **LangGraph**: `pip install langgraph` (not a declared dependency of `ainl-lang`; used only for this baseline).
+- **LangGraph**: `pip install langgraph` (not a declared dependency of `ainl`; used only for this baseline).

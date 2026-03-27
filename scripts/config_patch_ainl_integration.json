@@ -5,8 +5,11 @@
       "AINL_STARTUP_CONTEXT_TOKEN_MIN": "100",
       "AINL_STARTUP_CONTEXT_TOKEN_MAX": "100",
       "AINL_STARTUP_USE_EMBEDDINGS": "1",
-      "AINL_EMBEDDING_MODE": "lite",
-      "AINL_EXECUTION_MODE": "graph-preferred"
+      "AINL_EMBEDDING_MODE": "local",
+      "AINL_EXECUTION_MODE": "graph-preferred",
+      "AINL_WRAPPER_MIN_DAILY_REMAINING": "1000",
+      "AINL_WRAPPER_MIN_WEEKLY_REMAINING": "5000",
+      "AINL_WRAPPER_BUDGET_GUARDS_JSON": "{\"token-aware-startup\":{\"min_daily_remaining\":500}}"
     }
   },
   "agents": {

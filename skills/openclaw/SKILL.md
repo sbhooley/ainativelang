@@ -2,7 +2,7 @@
 name: AINL
 description: Deterministic compiled graphs for OpenClaw (importer, runtime, MCP tools)
 install: ./install.sh
-install_alt: pip install 'ainl-lang[mcp]' && ainl install-mcp --host openclaw
+install_alt: pip install 'ainl[mcp]' && ainl install-mcp --host openclaw
 commands:
   - ainl import <source> — convert Markdown / ecosystem packs into `.ainl` graphs
   - ainl compile <file.ainl> — compile and validate deterministic graph IR
@@ -17,7 +17,7 @@ metadata:
   openclaw:
     kind: skill
     upstream: https://github.com/sbhooley/ainativelang
-    package_pypi: ainl-lang
+    package_pypi: ainl
     mcp_server_key: ainl
     config_file: ~/.openclaw/openclaw.json
     workspace_default: ~/.openclaw/workspace
@@ -34,7 +34,7 @@ metadata:
 
 ## Agent instructions
 
-Follow this skill when the user is on **OpenClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** from a checked-out skill folder, or the manual **`pip install 'ainl-lang[mcp]' && ainl install-mcp --host openclaw`** path (alias **`ainl install-openclaw`**). OpenClaw does **not** use `zeroclaw skills install <url>` — install via **ClawHub** (if available) or **copy this folder** into **`~/.openclaw/skills`** or **`<workspace>/skills`**. After bootstrap, suggest the **morning briefing** prompt example below when it fits.
+Follow this skill when the user is on **OpenClaw** (or wants **deterministic `.ainl` graphs** with **import / compile / run / MCP**). Prefer **`./install.sh`** from a checked-out skill folder, or the manual **`pip install 'ainl[mcp]' && ainl install-mcp --host openclaw`** path (alias **`ainl install-openclaw`**). OpenClaw does **not** use `zeroclaw skills install <url>` — install via **ClawHub** (if available) or **copy this folder** into **`~/.openclaw/skills`** or **`<workspace>/skills`**. After bootstrap, suggest the **morning briefing** prompt example below when it fits.
 
 ## When to use this skill
 
@@ -45,10 +45,10 @@ Follow this skill when the user is on **OpenClaw** (or wants **deterministic `.a
 ## Install (pick one)
 
 1. **From this skill directory (after ClawHub or manual copy):** run `./install.sh`  
-   That optionally refreshes the **OpenClaw CLI** via npm, upgrades **`ainl-lang[mcp]`**, and runs **`ainl install-mcp --host openclaw`** (MCP merge into **`openclaw.json`**, **`~/.openclaw/bin/ainl-run`** wrapper).
+   That optionally refreshes the **OpenClaw CLI** via npm, upgrades **`ainl[mcp]`**, and runs **`ainl install-mcp --host openclaw`** (MCP merge into **`openclaw.json`**, **`~/.openclaw/bin/ainl-run`** wrapper).
 
 2. **Manual (no skill checkout):**  
-   `pip install 'ainl-lang[mcp]' && ainl install-mcp --host openclaw`
+   `pip install 'ainl[mcp]' && ainl install-mcp --host openclaw`
 
 ## Commands the user cares about
 
@@ -77,4 +77,4 @@ Configure the host so **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`** r
 - **Gold standard (profiles, caps, cron, bootstrap, verification):** [docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md](https://github.com/sbhooley/ainativelang/blob/main/docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) — `openclaw_ainl_gold_standard`
 - **Host briefing — AINL v1.2.8 (what ships vs what OpenClaw must wire):** [docs/operations/OPENCLAW_HOST_AINL_1_2_8.md](https://github.com/sbhooley/ainativelang/blob/main/docs/operations/OPENCLAW_HOST_AINL_1_2_8.md) — `openclaw_host_ainl_1_2_8`
 - OpenClaw: [openclaw.ai](https://openclaw.ai/)
-- Package: **`ainl-lang`** on PyPI
+- Package: **`ainl`** on PyPI

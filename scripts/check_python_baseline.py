@@ -11,7 +11,7 @@ def main() -> int:
     v = sys.version_info
     if v[:2] < MIN:
         print(
-            "ERROR: ainl-lang requires Python 3.10+ "
+            "ERROR: ainl requires Python 3.10+ "
             "(project baseline; matches pyproject.toml requires-python)."
         )
         print("       Current: Python %d.%d.%d" % (v.major, v.minor, v.micro))

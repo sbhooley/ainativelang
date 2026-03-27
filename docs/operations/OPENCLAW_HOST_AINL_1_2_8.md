@@ -17,7 +17,7 @@
 | **Operator docs** | Embedding pilot, WASM notes, TTL tuner, workspace isolation, [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md), and [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) (agent vs AINL roles; **curated bootstrap must be loaded**). |
 | **Intelligence programs** | In-tree: [`intelligence/token_aware_startup_context.lang`](../../intelligence/token_aware_startup_context.lang) writes **`.openclaw/bootstrap/session_context.md`**; [`intelligence/proactive_session_summarizer.lang`](../../intelligence/proactive_session_summarizer.lang) summarizes prior days. Run via **`python3 scripts/run_intelligence.py context`** \| **`summarizer`** \| … |
 
-Upgrade path: **`pip install -U 'ainl-lang[mcp]'`** (or editable install from this repo), then **`ainl install-mcp --host openclaw`** if you use MCP. See [`../INSTALL.md`](../INSTALL.md) for **`RUNTIME_VERSION`** / **`__pycache__`** after upgrades.
+Upgrade path: **`pip install -U 'ainl[mcp]'`** (or editable install from this repo), then **`ainl install-mcp --host openclaw`** if you use MCP. See [`../INSTALL.md`](../INSTALL.md) for **`RUNTIME_VERSION`** / **`__pycache__`** after upgrades.
 
 ---
 

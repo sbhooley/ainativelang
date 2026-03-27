@@ -1,6 +1,6 @@
-# Releasing `ainl-lang`
+# Releasing `ainl`
 
-This document describes how to cut a **PyPI-ready** release of the **`ainl-lang`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
+This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
 **Latest version in this tree:** **1.2.8** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
@@ -54,7 +54,7 @@ Before tagging/uploading, ensure **`Release Gates`** GitHub workflow passes:
 For Python 3.13 sandbox compatibility, use:
 
 ```bash
-python -m pip install --constraint constraints/py313-mcp.txt "ainl-lang[mcp]"
+python -m pip install --constraint constraints/py313-mcp.txt "ainl[mcp]"
 ```
 
 ## Git tag
@@ -62,7 +62,7 @@ python -m pip install --constraint constraints/py313-mcp.txt "ainl-lang[mcp]"
 After upload:
 
 ```bash
-git tag -a vX.Y.Z -m "ainl-lang X.Y.Z"
+git tag -a vX.Y.Z -m "ainl X.Y.Z"
 git push origin vX.Y.Z
 ```
 

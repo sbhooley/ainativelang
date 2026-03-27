@@ -35,7 +35,7 @@ Emitted modules search upward for a directory containing **`runtime/engine.py`**
 
 - Run with **cwd = repo root**, or  
 - Set **`PYTHONPATH`** to the AINL checkout root, or  
-- Install **`ainl-lang`** editable from that tree.
+- Install **`ainl`** editable from that tree.
 
 ## 4. Opt-in hybrid targets in IR (`S hybrid`)
 

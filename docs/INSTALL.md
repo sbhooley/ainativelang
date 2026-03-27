@@ -61,25 +61,25 @@ When `sudo` is unavailable or Python is externally managed, use this order:
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install "ainl-lang[mcp]"
+python -m pip install "ainl[mcp]"
 ```
 
 2. **Fallback:** user install (no root)
 
 ```bash
-python -m pip install --user "ainl-lang[mcp]"
+python -m pip install --user "ainl[mcp]"
 ```
 
 3. **Last resort:** break-system-packages (only if your platform requires it)
 
 ```bash
-python -m pip install --break-system-packages "ainl-lang[mcp]"
+python -m pip install --break-system-packages "ainl[mcp]"
 ```
 
 For Python 3.13 sandbox hosts, you can use the tested MCP constraints file:
 
 ```bash
-python -m pip install --constraint constraints/py313-mcp.txt "ainl-lang[mcp]"
+python -m pip install --constraint constraints/py313-mcp.txt "ainl[mcp]"
 ```
 
 ### Host/container responsibilities (outside AINL package scope)

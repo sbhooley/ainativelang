@@ -1,13 +1,13 @@
 # MCP host integrations (OpenClaw, ZeroClaw, …)
 
-Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl-lang[mcp]`** from PyPI, merge **`mcpServers.ainl`**, install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
+Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcpServers.ainl`**, install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
 
 ## Two-step pattern (every host)
 
 1. **Install and onboard the agent runtime** using that product’s official docs (e.g. OpenClaw → [openclaw.ai](https://openclaw.ai/)).
 2. **Add AINL** using either:
    - **Skill folder:** copy **`skills/<host>/`** from this repo, then **`chmod +x install.sh && ./install.sh`**, or  
-   - **CLI:** **`pip install 'ainl-lang[mcp]'`** then **`ainl install-mcp --host openclaw`** or **`zeroclaw`** (see **`ainl install-mcp --list-hosts`**).
+   - **CLI:** **`pip install 'ainl[mcp]'`** then **`ainl install-mcp --host openclaw`** or **`zeroclaw`** (see **`ainl install-mcp --list-hosts`**).
 
 Legacy per-host commands remain aliases:
 
@@ -18,7 +18,7 @@ Legacy per-host commands remain aliases:
 
 List supported ids: **`ainl install-mcp --list-hosts`**.
 
-Older **`ainl-lang`** wheels may only expose **`install-openclaw`** / **`install-zeroclaw`**; those are equivalent—upgrade PyPI when you want **`install-mcp`**.
+Older **`ainl`** wheels may only expose **`install-openclaw`** / **`install-zeroclaw`**; those are equivalent—upgrade PyPI when you want **`install-mcp`**.
 
 ## Adding a new host (maintainers)
 

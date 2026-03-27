@@ -4,7 +4,7 @@
 
 ## Overview
 
-The `token_aware_startup_context` wrapper (AINL) reads your full `MEMORY.md`, filters for high-signal lines (decisions, preferences, todos, lessons, settings), and writes an optimized bootstrap file targeted to a configurable token budget (tuned to **100-150** tokens, typically **~115**).
+The `token_aware_startup_context` wrapper (AINL) reads your full `MEMORY.md`, filters for high-signal lines (decisions, preferences, todos, lessons, settings), and writes an optimized bootstrap file targeted to a configurable token budget (tuned to **100-150** tokens, typically **~140**).
 
 This reduces session bootstrap tokens from ~3,200 (full MEMORY.md) to ~150 tokens (>95% reduction), preventing context max-outs during high-frequency usage. It is part of the AINL v1.2.8 enhancements for OpenClaw.
 

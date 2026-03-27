@@ -10,7 +10,7 @@ AINL ships an **OpenClaw skill** under [`skills/openclaw/`](../skills/openclaw/)
 
 **Why this matters:** AINL is **compile-once, run-many**—you pay authoring or import cost once, then execute a validated graph repeatedly. Size economics use **tiktoken cl100k_base**; on the **viable subset** of representative workloads, **minimal_emit** lands near **~1.02×** leverage vs unstructured baselines (see **[`BENCHMARK.md`](../BENCHMARK.md)** and **[`benchmarks.md`](benchmarks.md)** for methodology and legacy-inclusive transparency).
 
-OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) and **`openclaw onboard`**. This skill adds the **Python** **`ainl-lang`** toolchain and merges **stdio `ainl-mcp`** into the host MCP table. OpenClaw does **not** use ZeroClaw’s **`zeroclaw skills install <url>`** — prefer **ClawHub** (when listed) or **manual copy** into **`~/.openclaw/skills`** or **`<workspace>/skills`** (default workspace is often **`~/.openclaw/workspace`**).
+OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) and **`openclaw onboard`**. This skill adds the **Python** **`ainl`** toolchain and merges **stdio `ainl-mcp`** into the host MCP table. OpenClaw does **not** use ZeroClaw’s **`zeroclaw skills install <url>`** — prefer **ClawHub** (when listed) or **manual copy** into **`~/.openclaw/skills`** or **`<workspace>/skills`** (default workspace is often **`~/.openclaw/workspace`**).
 
 **Official OpenClaw source:** use **[openclaw.ai](https://openclaw.ai/)** for the installer and docs (e.g. `curl -fsSL https://openclaw.ai/install.sh | bash`). There is no stable public **`openclaw/openclaw`** GitHub repo advertised as the primary home.
 
@@ -20,7 +20,7 @@ OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) 
 
 **Memory surfaces:** durable **structured** workflow state uses the SQLite **`memory`** adapter (see [`docs/adapters/MEMORY_CONTRACT.md`](adapters/MEMORY_CONTRACT.md)). OpenClaw **bridge** cron may append **daily markdown** under **`~/.openclaw/workspace/memory/`**, which is **orthogonal** to that adapter. **ZeroClaw** uses the same AINL memory/MCP path—not OpenClaw’s markdown layout. Narrative: [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
 
-**CLI:** **`ainl install-mcp --host openclaw`** (same as **`install-openclaw`**) ships in current **`ainl-lang`** releases; upgrade from PyPI if your install reports an unknown command.
+**CLI:** **`ainl install-mcp --host openclaw`** (same as **`install-openclaw`**) ships in current **`ainl`** releases; upgrade from PyPI if your install reports an unknown command.
 
 ## Quickstart
 
@@ -30,12 +30,12 @@ OpenClaw normally uses **`npm install -g openclaw`** (or project-local install) 
    cd /path/to/skill && chmod +x install.sh && ./install.sh
    ```
 
-   `install.sh` optionally refreshes the OpenClaw CLI via npm, upgrades **`ainl-lang[mcp]`**, and runs **`ainl install-mcp --host openclaw`**. To skip the global npm step: **`OPENCLAW_SKIP_NPM=1 ./install.sh`**.
+   `install.sh` optionally refreshes the OpenClaw CLI via npm, upgrades **`ainl[mcp]`**, and runs **`ainl install-mcp --host openclaw`**. To skip the global npm step: **`OPENCLAW_SKIP_NPM=1 ./install.sh`**.
 
 2. **Or run the bootstrap directly** (Python only):
 
    ```bash
-   pip install 'ainl-lang[mcp]'
+   pip install 'ainl[mcp]'
    ainl install-mcp --host openclaw
    ```
 
@@ -53,7 +53,7 @@ Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import cla
 
 | Artifact | Purpose |
 |----------|---------|
-| `pip install --upgrade 'ainl-lang[mcp]'` | Latest compiler, importer extras, MCP dependencies |
+| `pip install --upgrade 'ainl[mcp]'` | Latest compiler, importer extras, MCP dependencies |
 | `~/.openclaw/openclaw.json` | Merges **`mcpServers.ainl`** stdio entry pointing at **`ainl-mcp`** (skipped if already present with the same resolved command); other top-level keys preserved |
 | `~/.openclaw/bin/ainl-run` | Shell wrapper: compile then **`exec ainl run`** with extra args forwarded |
 | `~/.bashrc` / `~/.zshrc` | Appends **`export PATH="$HOME/.openclaw/bin:$PATH"`** when those files exist and do not already mention **`~/.openclaw/bin`** |
