@@ -18,6 +18,14 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
+      - name: Verify token can access target repo
+        run: |
+          set -euo pipefail
+          curl -sS \
+            -H "Authorization: Bearer ${{ secrets.GH_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/sbhooley/ainativelangweb \
+            | jq -r '.full_name, .private, .permissions'
       - name: Trigger ainativelangweb sync workflow
         uses: peter-evans/repository-dispatch@v3
         with:
