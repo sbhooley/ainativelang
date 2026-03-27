@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ainl
+      POSTGRES_PASSWORD: ainl_test_pw_change_me
+      POSTGRES_DB: ainl_test
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ainl -d ainl_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  postgres_init:
+    image: postgres:16
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ainl_test_pw_change_me
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >
+        psql "postgresql://ainl:ainl_test_pw_change_me@postgres:5432/ainl_test" -v ON_ERROR_STOP=1
+        -c "CREATE TABLE IF NOT EXISTS orders (id SERIAL PRIMARY KEY, external_id TEXT UNIQUE NOT NULL, status TEXT NOT NULL, amount_cents INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"

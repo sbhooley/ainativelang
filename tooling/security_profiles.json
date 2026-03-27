@@ -32,7 +32,7 @@
         "stateful workflows without network access"
       ],
       "adapter_allowlist": ["core", "sqlite", "fs", "wasm", "memory", "cache"],
-      "forbidden_adapters": ["http", "agent", "svc", "extras", "tiktok", "email", "calendar", "social", "queue", "tools", "db"],
+      "forbidden_adapters": ["http", "postgres", "mysql", "redis", "dynamodb", "airtable", "supabase", "agent", "svc", "extras", "tiktok", "email", "calendar", "social", "queue", "tools", "db"],
       "forbidden_effects": [],
       "forbidden_effect_tiers": [],
       "forbidden_privilege_tiers": ["network", "operator_sensitive"],
@@ -54,7 +54,7 @@
         "operator-controlled runtimes with limited network egress",
         "workloads that must call a small set of approved HTTP APIs"
       ],
-      "adapter_allowlist": ["core", "sqlite", "fs", "wasm", "memory", "cache", "http", "tools", "queue"],
+      "adapter_allowlist": ["core", "sqlite", "postgres", "mysql", "redis", "dynamodb", "airtable", "supabase", "fs", "wasm", "memory", "cache", "http", "tools", "queue"],
       "forbidden_adapters": ["agent", "svc", "extras", "tiktok", "email", "calendar", "social"],
       "forbidden_effects": [],
       "forbidden_effect_tiers": [],

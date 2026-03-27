@@ -72,3 +72,6 @@ class SimpleSqliteAdapter(SqliteAdapter):
             return {"rows_affected": int(cur.rowcount), "lastrowid": cur.lastrowid}
         except sqlite3.Error as e:
             raise AdapterError(f"sqlite error: {e}") from e
+
+    # Async-ready note: sqlite remains sync-first in runtime for deterministic
+    # local-state behavior; async wrappers can be added later if needed.

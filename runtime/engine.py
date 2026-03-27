@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import asyncio
+import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
@@ -97,6 +99,7 @@ class RuntimeEngine:
         trajectory_log_path: Optional[str] = None,
         avm_event_hasher: Optional[Callable[[Dict[str, Any]], Optional[str]]] = None,
         sandbox_metadata_provider: Optional[Callable[[], Dict[str, Any]]] = None,
+        runtime_async: bool = False,
     ):
         self.ir = ir
         self.labels = ir.get("labels", {})
@@ -118,6 +121,8 @@ class RuntimeEngine:
         self._trajectory_seq: int = 0
         self._trace_lineno: Optional[int] = None
         self.runtime_version = RUNTIME_VERSION
+        env_async = str(os.environ.get("AINL_RUNTIME_ASYNC") or "").strip().lower() in {"1", "true", "yes", "on"}
+        self.runtime_async = bool(runtime_async or env_async)
         self.limits = limits or {}
         self._run_started_at: float = 0.0
         self._steps_executed: int = 0
@@ -148,6 +153,7 @@ class RuntimeEngine:
         trajectory_log_path: Optional[str] = None,
         avm_event_hasher: Optional[Callable[[Dict[str, Any]], Optional[str]]] = None,
         sandbox_metadata_provider: Optional[Callable[[], Dict[str, Any]]] = None,
+        runtime_async: bool = False,
     ) -> "RuntimeEngine":
         c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
         ir = c.compile(code, emit_graph=True, source_path=source_path)
@@ -165,6 +171,7 @@ class RuntimeEngine:
             trajectory_log_path=trajectory_log_path,
             avm_event_hasher=avm_event_hasher,
             sandbox_metadata_provider=sandbox_metadata_provider,
+            runtime_async=runtime_async,
         )
 
     @classmethod
@@ -182,6 +189,7 @@ class RuntimeEngine:
         unknown_op_policy: Optional[str] = None,
         limits: Optional[Dict[str, Any]] = None,
         trace_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
+        runtime_async: bool = False,
     ) -> Dict[str, Any]:
         eng = cls.from_code(
             code,
@@ -193,9 +201,13 @@ class RuntimeEngine:
             unknown_op_policy=unknown_op_policy,
             limits=limits,
             trace_sink=trace_sink,
+            runtime_async=runtime_async,
         )
         lid = label or eng.default_entry_label()
-        result = eng.run_label(lid, frame=frame or {})
+        if eng.runtime_async:
+            result = asyncio.run(eng.run_label_async(lid, frame=frame or {}))
+        else:
+            result = eng.run_label(lid, frame=frame or {})
         payload = {"ok": True, "label": str(lid), "result": result, "runtime_version": eng.runtime_version}
         if trace:
             payload["trace"] = eng.trace_events
@@ -621,8 +633,24 @@ class RuntimeEngine:
             # does the same via _exec_r_step. Resolve here so frame variables (e.g. core.PARSE var)
             # work consistently with JSON literals that pass through _resolve unchanged.
             t0 = self._resolve(target, frame) if isinstance(target, str) else target
-            return self.adapters.call(adp_name, verb, [t0] + args, frame)
-        return self.adapters.call(adapter, target, args, frame)
+            call_ctx = dict(frame)
+            call_ctx["_runtime_async"] = self.runtime_async
+            return self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+        call_ctx = dict(frame)
+        call_ctx["_runtime_async"] = self.runtime_async
+        return self.adapters.call(adapter, target, args, call_ctx)
+
+    async def _exec_r_call_async(
+        self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
+    ) -> Any:
+        self._count_adapter_call(lid, idx, op, stack)
+        call_ctx = dict(frame)
+        call_ctx["_runtime_async"] = True
+        if "." in adapter:
+            adp_name, verb = adapter.split(".", 1)
+            t0 = self._resolve(target, frame) if isinstance(target, str) else target
+            return await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
+        return await self.adapters.call_async(adapter, target, args, call_ctx)
 
     def _exec_r_step(self, step: Dict[str, Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]) -> Any:
         canon = runtime_canonicalize_r_step(step)
@@ -1712,6 +1740,244 @@ class RuntimeEngine:
 
     def run_label(self, label_id: str, frame: Optional[Dict[str, Any]] = None) -> Any:
         return self._run_label(_norm_lid(label_id), dict(frame or {}), [], force_steps=False)
+
+    async def _run_label_async(self, label_id: str, frame: Dict[str, Any], stack: List[str], force_steps: bool = False) -> Any:
+        if not stack:
+            self._start_run()
+        lid = self._resolve_label_key(label_id, stack)
+        stack = stack + [lid]
+        self._guard_depth(stack)
+        body = self.labels.get(lid, {})
+        has_graph = bool(body.get("nodes")) and body.get("edges") is not None and bool(body.get("entry"))
+        if self.execution_mode == "steps-only":
+            force_steps = True
+        if self.execution_mode == "graph-only" and not force_steps and has_graph:
+            return await self._run_label_graph_async(lid, frame, stack)
+        if self.execution_mode == "graph-only" and not force_steps and not has_graph:
+            raise AinlRuntimeError(
+                "graph-only mode requires graph label data",
+                lid,
+                0,
+                "GRAPH",
+                stack,
+                code=ERROR_CODE_GRAPH_ONLY_REQUIRES_GRAPH,
+            )
+        if not force_steps and has_graph:
+            return await self._run_label_graph_async(lid, frame, stack)
+
+        steps = self._steps(lid)
+        i = 0
+        while i < len(steps):
+            s = steps[i]
+            op = s.get("op", "")
+            t0 = time.perf_counter()
+            self._trace_lineno = s.get("lineno")
+            self._guard_tick(lid, i, op, stack, frame)
+            try:
+                if op == "R":
+                    canon = runtime_canonicalize_r_step(s)
+                    adapter = str(canon.get("adapter") or "").strip()
+                    target = canon.get("target", "")
+                    args = [self._resolve(x, frame) for x in list(canon.get("args") or [])]
+                    out_var = str(canon.get("out") or "res")
+                    frame[out_var] = await self._exec_r_call_async(adapter, target, args, frame, lid, i, op, stack)
+                    self._emit_trace(lid, op, i, t0, frame, frame.get(out_var), trajectory_step=s)
+                    i += 1
+                    continue
+                if op == "If":
+                    cond = self._eval_cond(s.get("cond", ""), frame)
+                    tgt = _norm_lid(s.get("then") if cond else s.get("else"))
+                    out = await self._run_label_async(tgt, frame, stack, force_steps=False) if tgt else None
+                    self._emit_trace(lid, op, i, t0, frame, out, trajectory_step=s)
+                    if out is not None:
+                        return out
+                    i += 1
+                    continue
+                if op == "Call":
+                    tgt = _norm_lid(s.get("label"))
+                    out = await self._run_label_async(tgt, frame, stack, force_steps=False)
+                    self._store_call_result(s, frame, out)
+                    self._emit_trace(lid, op, i, t0, frame, out, trajectory_step=s)
+                    i += 1
+                    continue
+                if op == "J":
+                    out = self._resolve(s.get("var") or s.get("data"), frame)
+                    self._emit_trace(lid, op, i, t0, frame, out, trajectory_step=s)
+                    return out
+                if op == "Loop":
+                    ref = self._resolve(s.get("ref"), frame)
+                    item_var = s.get("item", "item")
+                    body_l = _norm_lid(s.get("body"))
+                    after = _norm_lid(s.get("after"))
+                    arr = ref if isinstance(ref, list) else []
+                    for it in arr:
+                        frame[item_var] = it
+                        out = await self._run_label_async(body_l, frame, stack, force_steps=False)
+                        if out is not None:
+                            frame["_loop_last"] = out
+                    if after:
+                        out = await self._run_label_async(after, frame, stack, force_steps=False)
+                        if out is not None:
+                            return out
+                    self._emit_trace(lid, op, i, t0, frame, frame.get("_loop_last"), trajectory_step=s)
+                    i += 1
+                    continue
+                if op == "While":
+                    cond_tok = s.get("cond")
+                    body_l = _norm_lid(s.get("body"))
+                    after = _norm_lid(s.get("after"))
+                    limit = int(s.get("limit", 10000))
+                    n = 0
+                    while self._eval_cond(cond_tok, frame):
+                        out = await self._run_label_async(body_l, frame, stack, force_steps=False)
+                        n += 1
+                        if n > limit:
+                            raise AinlRuntimeError(
+                                "while loop iteration limit exceeded",
+                                lid,
+                                i,
+                                op,
+                                stack,
+                                code=ERROR_CODE_WHILE_LIMIT,
+                            )
+                        if out is not None:
+                            frame["_while_last"] = out
+                    if after:
+                        out = await self._run_label_async(after, frame, stack, force_steps=False)
+                        if out is not None:
+                            return out
+                    self._emit_trace(lid, op, i, t0, frame, frame.get("_while_last"), trajectory_step=s)
+                    i += 1
+                    continue
+                shared = self._exec_step(
+                    s,
+                    frame,
+                    lid,
+                    i,
+                    stack,
+                    force_steps_for_call=False,
+                    if_runner=None,
+                    if_target_resolver=None,
+                )
+                if shared is not None and shared.get("action") == "return":
+                    self._emit_trace(lid, op, i, t0, frame, shared.get("out"), trajectory_step=s)
+                    return shared.get("out")
+                self._emit_trace(lid, op, i, t0, frame, shared.get("out") if shared else None, trajectory_step=s)
+                i += 1
+            except Exception as e:
+                self._raise_runtime_error(e, lid, i, op, stack, frame, s)
+        return None
+
+    async def _run_label_graph_async(self, lid: str, frame: Dict[str, Any], stack: List[str]) -> Any:
+        body = self.labels.get(lid, {})
+        nodes = body.get("nodes") or []
+        edges = body.get("edges") or []
+        entry = body.get("entry")
+        node_by_id = {n.get("id"): n for n in nodes if isinstance(n, dict)}
+        out_by_from: Dict[str, List[Dict[str, Any]]] = {}
+        for e in edges:
+            out_by_from.setdefault(e.get("from"), []).append(e)
+        edge_by_from_port_kind: Dict[tuple, Dict[str, Any]] = {}
+        for e in edges:
+            k = (e.get("from"), e.get("port"), e.get("to_kind"))
+            if k not in edge_by_from_port_kind:
+                edge_by_from_port_kind[k] = e
+        cur = entry
+        guard = 0
+        while cur and cur in node_by_id:
+            guard += 1
+            n = node_by_id[cur]
+            step = n.get("data") or {}
+            op = step.get("op", n.get("op", ""))
+            idx = guard - 1
+            t0 = time.perf_counter()
+            self._trace_lineno = step.get("lineno")
+            self._guard_tick(lid, idx, op, stack, frame)
+            try:
+                if op == "R":
+                    adapter = step.get("adapter", "")
+                    target = step.get("target", "")
+                    args = [self._resolve(x, frame) for x in (step.get("args") or [])]
+                    out_var = step.get("out", "res")
+                    frame[out_var] = await self._exec_r_call_async(adapter, target, args, frame, lid, idx, op, stack)
+                    self._emit_trace(lid, op, idx, t0, frame, frame.get(out_var), node_id=cur, trajectory_step=step)
+                elif op == "If":
+                    then_edge = edge_by_from_port_kind.get((cur, "then", "label"))
+                    else_edge = edge_by_from_port_kind.get((cur, "else", "label"))
+                    cond = self._eval_cond(step.get("cond"), frame)
+                    tgt = _norm_lid(then_edge.get("to") if (then_edge and cond) else (else_edge.get("to") if else_edge else None))
+                    out = await self._run_label_async(tgt, frame, stack, force_steps=False) if tgt else None
+                    self._emit_trace(lid, op, idx, t0, frame, out, node_id=cur, trajectory_step=step)
+                    return out
+                elif op == "Call":
+                    tgt = _norm_lid(step.get("label"))
+                    out = await self._run_label_async(tgt, frame, stack, force_steps=False)
+                    self._store_call_result(step, frame, out)
+                    self._emit_trace(lid, op, idx, t0, frame, out, node_id=cur, trajectory_step=step)
+                elif op == "Loop":
+                    ref = self._resolve(step.get("ref"), frame)
+                    item_var = step.get("item", "item")
+                    body_edge = edge_by_from_port_kind.get((cur, "body", "label"))
+                    after_edge = edge_by_from_port_kind.get((cur, "after", "label"))
+                    arr = ref if isinstance(ref, list) else []
+                    for it in arr:
+                        frame[item_var] = it
+                        if body_edge:
+                            out = await self._run_label_async(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            if out is not None:
+                                frame["_loop_last"] = out
+                    if after_edge:
+                        out = await self._run_label_async(_norm_lid(after_edge.get("to")), frame, stack, force_steps=False)
+                        if out is not None:
+                            return out
+                    self._emit_trace(lid, op, idx, t0, frame, frame.get("_loop_last"), node_id=cur, trajectory_step=step)
+                    cur = None
+                    continue
+                elif op == "While":
+                    cond_tok = step.get("cond")
+                    body_edge = edge_by_from_port_kind.get((cur, "body", "label"))
+                    after_edge = edge_by_from_port_kind.get((cur, "after", "label"))
+                    limit = int(step.get("limit", 10000))
+                    n_iter = 0
+                    while self._eval_cond(cond_tok, frame):
+                        n_iter += 1
+                        if n_iter > limit:
+                            raise AinlRuntimeError(
+                                "while loop iteration limit exceeded",
+                                lid,
+                                idx,
+                                op,
+                                stack,
+                                code=ERROR_CODE_WHILE_LIMIT,
+                            )
+                        if body_edge:
+                            out = await self._run_label_async(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            if out is not None:
+                                frame["_while_last"] = out
+                    if after_edge:
+                        out = await self._run_label_async(_norm_lid(after_edge.get("to")), frame, stack, force_steps=False)
+                        if out is not None:
+                            return out
+                    self._emit_trace(lid, op, idx, t0, frame, frame.get("_while_last"), node_id=cur, trajectory_step=step)
+                    cur = None
+                    continue
+                elif op == "J":
+                    out = self._resolve(step.get("var") or step.get("data"), frame)
+                    self._emit_trace(lid, op, idx, t0, frame, out, node_id=cur, trajectory_step=step)
+                    return out
+                else:
+                    shared = self._exec_step(step, frame, lid, idx, stack, force_steps_for_call=False)
+                    self._emit_trace(lid, op, idx, t0, frame, shared.get("out") if shared else None, node_id=cur, trajectory_step=step)
+                    if shared and shared.get("action") == "return":
+                        return shared.get("out")
+                nxt = self._next_linear_node_edge(out_by_from.get(cur, []), lid, idx, op, stack)
+                cur = nxt.get("to") if nxt else None
+            except Exception as e:
+                self._raise_runtime_error(e, lid, idx, op, stack, frame, step, node_id=cur)
+        return None
+
+    async def run_label_async(self, label_id: str, frame: Optional[Dict[str, Any]] = None) -> Any:
+        return await self._run_label_async(_norm_lid(label_id), dict(frame or {}), [], force_steps=False)
 
     # ---- Public trace / step helpers for agents ----
 

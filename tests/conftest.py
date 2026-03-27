@@ -3,6 +3,57 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def pytest_addoption(parser) -> None:
+    parser.addoption(
+        "--postgres-url",
+        action="store",
+        default="",
+        help="Optional PostgreSQL DSN for postgres integration tests (fallback: AINL_POSTGRES_URL).",
+    )
+    parser.addoption(
+        "--mysql-url",
+        action="store",
+        default="",
+        help="Optional MySQL DSN for mysql integration tests (fallback: AINL_MYSQL_URL).",
+    )
+    parser.addoption(
+        "--redis-url",
+        action="store",
+        default="",
+        help="Optional Redis URL for redis integration tests (fallback: AINL_REDIS_URL).",
+    )
+    parser.addoption(
+        "--dynamodb-url",
+        action="store",
+        default="",
+        help="Optional DynamoDB endpoint URL for dynamodb integration tests (fallback: AINL_DYNAMODB_URL).",
+    )
+    parser.addoption(
+        "--airtable-api-key",
+        action="store",
+        default="",
+        help="Optional Airtable API key for airtable integration tests (fallback: AINL_AIRTABLE_API_KEY).",
+    )
+    parser.addoption(
+        "--airtable-base-id",
+        action="store",
+        default="",
+        help="Optional Airtable base id for airtable integration tests (fallback: AINL_AIRTABLE_BASE_ID).",
+    )
+    parser.addoption(
+        "--supabase-url",
+        action="store",
+        default="",
+        help="Optional Supabase project URL for supabase integration tests (fallback: AINL_SUPABASE_URL).",
+    )
+    parser.addoption(
+        "--supabase-service-role-key",
+        action="store",
+        default="",
+        help="Optional Supabase service role key for supabase integration tests (fallback: AINL_SUPABASE_SERVICE_ROLE_KEY).",
+    )
+
+
 def pytest_configure(config) -> None:
     """
     Syrupy resolves snapshot_dirname relative to each test file. Conformance snapshots

@@ -244,7 +244,7 @@ That file now describes the full adapter surface, including:
 
 - `core`, `db`, `api`, `email`, `calendar`, `social`, `ext`,
 - `wasm`, `cache`, `queue`, `txn`, `auth`,
-- `http`, `sqlite`, `fs`, `tools`,
+- `http`, `sqlite`, `postgres`, `mysql`, `redis`, `dynamodb`, `airtable`, `fs`, `tools`,
 - `svc`, `extras`, `agent`, `tiktok`, `web`, `memory`.
 
 Each adapter entry carries:
@@ -447,6 +447,18 @@ and `ADAPTER_REGISTRY.json` but do not require long-form slot schemas here:
 - **`core`** (tier: `core`, lane: `canonical`): arithmetic, string, JSON, time, and environment helpers (`ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MIN`, `MAX`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `SUBSTR`, `ENV`, `PARSE`, `STRINGIFY`, `NOW`, `ISO`, `SLEEP`, `ECHO`). `IDIV` performs integer division (truncates toward zero). `SUBSTR` takes `(s, start, length)`. `ENV` reads `os.environ` (`ENV name` or `ENV name default`). In X expressions, these are also available as lowercase `core.*` aliases (e.g. `core.add`, `core.idiv`, `core.substr`, `core.env`).
 - **`api`** (tier: `compatibility`, lane: `noncanonical`): legacy HTTP/API surface used by older step‑list forms (`G`, `P`, `POST`).
 - **`sqlite`** (tier: `core`, lane: `canonical`): direct SQLite access (`Execute`, `Query`) with allow‑list and timeout controls.
+- **`postgres`** (tier: `core`, lane: `canonical`): PostgreSQL access (`Query`, `Execute`, `Transaction`) for Postgres/Supabase/RDS/Neon-style DSNs; requires explicit enablement (`--enable-adapter postgres`) and secure connection config (`AINL_POSTGRES_URL` or host/db/user envs).
+  - Contract: [`../adapters/POSTGRES.md`](../adapters/POSTGRES.md)
+- **`mysql`** (tier: `core`, lane: `canonical`): MySQL access (`Query`, `Execute`, `Transaction`) for MySQL 8.x deployments; requires explicit enablement (`--enable-adapter mysql`) and secure connection config (`AINL_MYSQL_URL` or host/db/user envs).
+  - Contract: [`../adapters/MYSQL.md`](../adapters/MYSQL.md)
+- **`redis`** (tier: `core`, lane: `canonical`): Redis access for key/value, hash, list/queue, pub/sub, health, and transaction pipeline operations; requires explicit enablement (`--enable-adapter redis`) and secure connection config (`AINL_REDIS_URL` or host/port/db envs).
+  - Contract: [`../adapters/REDIS.md`](../adapters/REDIS.md)
+- **`dynamodb`** (tier: `core`, lane: `canonical`): DynamoDB access for single-item CRUD, query/scan, batch, and transactional operations; requires explicit enablement (`--enable-adapter dynamodb`) and secure AWS config (`AINL_DYNAMODB_URL` endpoint override + standard AWS credentials/region envs).
+  - Contract: [`../adapters/DYNAMODB.md`](../adapters/DYNAMODB.md)
+- **`airtable`** (tier: `core`, lane: `canonical`): Airtable table/record operations (`list/find/create/update/delete/upsert`) plus discovery verbs; requires explicit enablement (`--enable-adapter airtable`) and scoped PAT/base config (`AINL_AIRTABLE_API_KEY`, `AINL_AIRTABLE_BASE_ID`).
+  - Contract: [`../adapters/AIRTABLE.md`](../adapters/AIRTABLE.md)
+- **`supabase`** (tier: `core`, lane: `canonical`): Supabase convenience wrapper; DB/table verbs delegate to postgres semantics while auth/storage/realtime verbs map to Supabase REST surfaces; requires explicit enablement (`--enable-adapter supabase`) and scoped config (`AINL_SUPABASE_DB_URL` or `AINL_POSTGRES_URL`, `AINL_SUPABASE_URL`, key envs).
+  - Contract: [`../adapters/SUPABASE.md`](../adapters/SUPABASE.md)
 - **`fs`** (tier: `core`, lane: `canonical`): sandboxed filesystem operations (`Read`, `Write`, `List`, `Delete`) with size and extension guards.
 - **`tools`** (tier: `core`, lane: `canonical`): bridge to external tool calls (`Call`) as defined in `docs/reference/TOOL_API.md`.
 - **`txn`** (tier: `core`, lane: `canonical`): transaction namespace (`Begin`, `Commit`, `Rollback`) on supported backends.

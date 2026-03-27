@@ -258,6 +258,300 @@
         "table allowlist enforced by regex"
       ]
     },
+    "postgres": {
+      "description": "PostgreSQL database access with allowlist and transaction support",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "async_capable": true,
+      "targets": {
+        "query": {
+          "args": [
+            "sql",
+            "params?"
+          ],
+          "returns": "[row]",
+          "pure": false
+        },
+        "execute": {
+          "args": [
+            "sql",
+            "params?"
+          ],
+          "returns": "{rows_affected, lastrowid}",
+          "pure": false
+        },
+        "transaction": {
+          "args": [
+            "[{verb, sql, params?}]"
+          ],
+          "returns": "{ok, results}",
+          "pure": false
+        }
+      },
+      "config": {
+        "url_env": "AINL_POSTGRES_URL",
+        "host_env": "AINL_POSTGRES_HOST",
+        "port_env": "AINL_POSTGRES_PORT",
+        "db_env": "AINL_POSTGRES_DB",
+        "user_env": "AINL_POSTGRES_USER",
+        "password_env": "AINL_POSTGRES_PASSWORD",
+        "sslmode_env": "AINL_POSTGRES_SSLMODE (default: require)",
+        "sslrootcert_env": "AINL_POSTGRES_SSLROOTCERT (optional CA bundle path)",
+        "pool_min_env": "AINL_POSTGRES_POOL_MIN (default: 1)",
+        "pool_max_env": "AINL_POSTGRES_POOL_MAX (default: 5)",
+        "runtime_async_env": "AINL_RUNTIME_ASYNC (or --runtime-async)",
+        "timeout_s": 5.0,
+        "statement_timeout_ms": 5000,
+        "allow_write": false,
+        "allow_tables": []
+      },
+      "rules": [
+        "query target requires SELECT/CTE statements",
+        "execute target requires DML/DDL and allow_write=true",
+        "transaction executes ordered query/execute operations atomically",
+        "parameterized queries are required for untrusted inputs"
+      ]
+    },
+    "mysql": {
+      "description": "MySQL database access with allowlist and transaction support",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "async_capable": true,
+      "targets": {
+        "query": {
+          "args": [
+            "sql",
+            "params?"
+          ],
+          "returns": "[row]",
+          "pure": false
+        },
+        "execute": {
+          "args": [
+            "sql",
+            "params?"
+          ],
+          "returns": "{rows_affected, lastrowid}",
+          "pure": false
+        },
+        "transaction": {
+          "args": [
+            "[{verb, sql, params?}]"
+          ],
+          "returns": "{ok, results}",
+          "pure": false
+        }
+      },
+      "config": {
+        "url_env": "AINL_MYSQL_URL",
+        "host_env": "AINL_MYSQL_HOST",
+        "port_env": "AINL_MYSQL_PORT",
+        "db_env": "AINL_MYSQL_DB",
+        "user_env": "AINL_MYSQL_USER",
+        "password_env": "AINL_MYSQL_PASSWORD",
+        "ssl_mode_env": "AINL_MYSQL_SSL_MODE (default: REQUIRED)",
+        "ssl_ca_env": "AINL_MYSQL_SSL_CA (optional CA bundle path)",
+        "pool_min_env": "AINL_MYSQL_POOL_MIN (default: 1)",
+        "pool_max_env": "AINL_MYSQL_POOL_MAX (default: 5)",
+        "runtime_async_env": "AINL_RUNTIME_ASYNC (or --runtime-async)",
+        "timeout_s": 5.0,
+        "allow_write": false,
+        "allow_tables": []
+      },
+      "rules": [
+        "query target requires SELECT/CTE statements",
+        "execute target requires DML/DDL and allow_write=true",
+        "transaction executes ordered query/execute operations atomically",
+        "parameterized queries are required for untrusted inputs"
+      ]
+    },
+    "redis": {
+      "description": "Redis cache/session/queue/pubsub access with optional key-prefix policy",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "async_capable": true,
+      "targets": {
+        "get": {"args": ["key"], "returns": "string|null", "pure": false},
+        "set": {"args": ["key", "value", "ttl_s?"], "returns": "{ok}", "pure": false},
+        "delete": {"args": ["key"], "returns": "{deleted}", "pure": false},
+        "incr": {"args": ["key", "amount?"], "returns": "number", "pure": false},
+        "decr": {"args": ["key", "amount?"], "returns": "number", "pure": false},
+        "hget": {"args": ["key", "field"], "returns": "string|null", "pure": false},
+        "hset": {"args": ["key", "field", "value"], "returns": "{updated}", "pure": false},
+        "hdel": {"args": ["key", "field"], "returns": "{deleted}", "pure": false},
+        "hmget": {"args": ["key", "[fields]"], "returns": "[value]", "pure": false},
+        "lpush": {"args": ["key", "value"], "returns": "number", "pure": false},
+        "rpush": {"args": ["key", "value"], "returns": "number", "pure": false},
+        "lpop": {"args": ["key"], "returns": "value|null", "pure": false},
+        "rpop": {"args": ["key"], "returns": "value|null", "pure": false},
+        "llen": {"args": ["key"], "returns": "number", "pure": false},
+        "publish": {"args": ["channel", "message"], "returns": "{subscribers}", "pure": false},
+        "subscribe": {"args": ["channel", "timeout_s?", "max_messages?"], "returns": "{channel, messages}", "pure": false},
+        "ping": {"args": [], "returns": "bool|string", "pure": false},
+        "info": {"args": ["section?"], "returns": "{...}", "pure": false},
+        "transaction": {"args": ["[{verb, args}]"], "returns": "{ok, results}", "pure": false}
+      },
+      "config": {
+        "url_env": "AINL_REDIS_URL",
+        "host_env": "AINL_REDIS_HOST",
+        "port_env": "AINL_REDIS_PORT",
+        "db_env": "AINL_REDIS_DB",
+        "user_env": "AINL_REDIS_USER",
+        "password_env": "AINL_REDIS_PASSWORD",
+        "ssl_env": "AINL_REDIS_SSL",
+        "runtime_async_env": "AINL_RUNTIME_ASYNC (or --runtime-async)",
+        "timeout_s": 5.0,
+        "allow_write": false,
+        "allow_prefixes": []
+      },
+      "rules": [
+        "write verbs require allow_write=true",
+        "optional allow_prefixes policy scopes keys/channels",
+        "transaction executes ordered redis operations atomically",
+        "native async mode uses redis.asyncio for full verb parity with bounded subscribe polling"
+      ]
+    },
+    "dynamodb": {
+      "description": "AWS DynamoDB access for item, query/scan, batch, and transactional operations",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "async_capable": true,
+      "targets": {
+        "get": {"args": ["table", "key", "consistent_read?"], "returns": "{item}", "pure": false},
+        "put": {"args": ["table", "item", "return_values?"], "returns": "{attributes}", "pure": false},
+        "update": {"args": ["table", "key", "update_expression", "expression_attribute_values?", "expression_attribute_names?", "return_values?"], "returns": "{attributes}", "pure": false},
+        "delete": {"args": ["table", "key", "return_values?"], "returns": "{attributes}", "pure": false},
+        "query": {"args": ["table", "key_condition_expression", "expression_attribute_values?", "filter_expression?", "limit?", "exclusive_start_key?"], "returns": "{items, count, last_evaluated_key?}", "pure": false},
+        "scan": {"args": ["table", "filter_expression?", "expression_attribute_values?", "limit?", "exclusive_start_key?"], "returns": "{items, count, last_evaluated_key?}", "pure": false},
+        "batch_get": {"args": ["request_items"], "returns": "{responses}", "pure": false},
+        "batch_write": {"args": ["request_items"], "returns": "{ok, unprocessed_items}", "pure": false},
+        "transact_get": {"args": ["transact_items"], "returns": "{ok, results}", "pure": false},
+        "transact_write": {"args": ["transact_items"], "returns": "{ok, results}", "pure": false},
+        "describe_table": {"args": ["table"], "returns": "{table}", "pure": false},
+        "list_tables": {"args": ["limit?", "exclusive_start_table_name?"], "returns": "{tables, last_evaluated_table_name?}", "pure": false},
+        "streams_subscribe": {"args": ["table_name", "shard_iterator_type?", "filter?", "timeout_s?", "max_events?"], "returns": "{table, events, active}", "pure": false},
+        "streams_unsubscribe": {"args": ["table_name"], "returns": "{table, removed}", "pure": false}
+      },
+      "config": {
+        "url_env": "AINL_DYNAMODB_URL (optional, for local endpoint override)",
+        "region_env": "AINL_DYNAMODB_REGION (default: us-east-1)",
+        "aws_env": "AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN standard chain",
+        "runtime_async_env": "AINL_RUNTIME_ASYNC (or --runtime-async)",
+        "timeout_s": 5.0,
+        "allow_write": false,
+        "allow_tables": [],
+        "consistent_read": false
+      },
+      "rules": [
+        "mutating verbs require allow_write=true",
+        "table allowlist enforced across all table-scoped operations",
+        "transact_write and batch_write respect the same write gate",
+        "streams.subscribe uses bounded polling with timeout/max_events and follows table allowlist",
+        "native async mode supports non-blocking stream batching via background listener tasks"
+      ]
+    },
+    "airtable": {
+      "description": "Airtable REST adapter for no-code style table/record workflows",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "async_capable": true,
+      "targets": {
+        "list": {"args": ["table", "params?"], "returns": "{records, offset?}", "pure": false},
+        "find": {"args": ["table", "formula_or_filter"], "returns": "{records, offset?}", "pure": false},
+        "create": {"args": ["table", "record_or_records"], "returns": "{...}", "pure": false},
+        "update": {"args": ["table", "record_or_records"], "returns": "{...}", "pure": false},
+        "delete": {"args": ["table", "record_id_or_ids"], "returns": "{...}", "pure": false},
+        "upsert": {"args": ["table", "key_field", "key_value", "fields"], "returns": "{ok, action, record}", "pure": false},
+        "get_table": {"args": ["table"], "returns": "{table}", "pure": false},
+        "list_tables": {"args": [], "returns": "{tables}", "pure": false},
+        "list_bases": {"args": [], "returns": "{bases, offset?}", "pure": false},
+        "attachment_upload": {"args": ["table", "record_id", "field_name", "file_path_or_bytes_or_url", "filename?"], "returns": "{ok, attachment|record}", "pure": false},
+        "attachment_download": {"args": ["table", "attachment_url", "output_path?"], "returns": "{bytes_b64|path,size}", "pure": false},
+        "webhook_create": {"args": ["table", "table_or_view", "actions", "notification_url"], "returns": "{webhook_id, expiration_time, mac_secret_base64, specification}", "pure": false},
+        "webhook_list": {"args": ["table"], "returns": "{webhooks}", "pure": false},
+        "webhook_delete": {"args": ["table", "webhook_id"], "returns": "{id, deleted}", "pure": false}
+      },
+      "config": {
+        "api_key_env": "AINL_AIRTABLE_API_KEY",
+        "base_id_env": "AINL_AIRTABLE_BASE_ID",
+        "runtime_async_env": "AINL_RUNTIME_ASYNC (or --runtime-async)",
+        "timeout_s": 8.0,
+        "allow_write": false,
+        "allow_tables": [],
+        "allow_attachment_host_env": "AINL_AIRTABLE_ALLOW_ATTACHMENT_HOST (comma-separated)",
+        "max_page_size": 100
+      },
+      "rules": [
+        "mutating verbs require allow_write=true",
+        "table allowlist enforced when configured",
+        "attachment download/upload-url can be constrained by allow_attachment_hosts",
+        "adapter applies bounded retries for rate-limit/transient http failures",
+        "webhook registration returns metadata only; webhook payload processing is external to this adapter"
+      ]
+    },
+    "supabase": {
+      "description": "Supabase convenience wrapper with Postgres delegation and auth/storage/realtime helpers",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "targets": {
+        "from": {"args": ["table"], "returns": "{ok, table}", "pure": false},
+        "select": {"args": ["table", "where?", "columns?"], "returns": "{data, error?}", "pure": false},
+        "query": {"args": ["table", "where?", "columns?"], "returns": "{data, error?}", "pure": false},
+        "insert": {"args": ["table", "payload"], "returns": "{data, error?}", "pure": false},
+        "update": {"args": ["table", "fields", "where"], "returns": "{data, error?}", "pure": false},
+        "upsert": {"args": ["table", "payload", "key_fields"], "returns": "{ok, action, data, error?}", "pure": false},
+        "delete": {"args": ["table", "where"], "returns": "{data, error?}", "pure": false},
+        "rpc": {"args": ["function_name", "args?"], "returns": "{data, error?}", "pure": false},
+        "auth_sign_up": {"args": ["email", "password"], "returns": "{ok, data, error?}", "pure": false},
+        "auth_sign_in_with_password": {"args": ["email", "password"], "returns": "{ok, data, error?}", "pure": false},
+        "auth_sign_out": {"args": ["access_token?"], "returns": "{ok, data, error?}", "pure": false},
+        "auth_get_user": {"args": ["access_token?"], "returns": "{ok, data, error?}", "pure": false},
+        "auth_reset_password_for_email": {"args": ["email"], "returns": "{ok, data, error?}", "pure": false},
+        "storage_upload": {"args": ["bucket", "path", "content"], "returns": "{ok, data, error?}", "pure": false},
+        "storage_download": {"args": ["bucket", "path"], "returns": "{ok, data, error?}", "pure": false},
+        "storage_list": {"args": ["bucket", "prefix?"], "returns": "{ok, data, error?}", "pure": false},
+        "storage_remove": {"args": ["bucket", "[paths]"], "returns": "{ok, data, error?}", "pure": false},
+        "storage_get_public_url": {"args": ["bucket", "path"], "returns": "{ok, data, error?}", "pure": false},
+        "realtime_subscribe": {"args": ["channel", "table?", "event_types?", "filter?", "timeout_s?", "max_events?", "replay_from?", "fanout_group?", "consumer?"], "returns": "{ok, result:{channel,events,active,fanout_group?,consumer?}}", "pure": false},
+        "realtime_unsubscribe": {"args": ["channel"], "returns": "{ok, result}", "pure": false},
+        "realtime_broadcast": {"args": ["channel", "event", "payload?"], "returns": "{ok, result}", "pure": false},
+        "realtime_replay": {"args": ["channel", "from_sequence_or_timestamp?", "max_events?", "timeout_s?"], "returns": "{ok, result:{channel,events}}", "pure": false},
+        "realtime_get_cursor": {"args": ["channel", "fanout_group?", "consumer?"], "returns": "{ok, result:{channel,group,consumer,cursor}}", "pure": false},
+        "realtime_ack": {"args": ["channel", "cursor", "fanout_group?", "consumer?"], "returns": "{ok, result:{channel,group,consumer,cursor}}", "pure": false}
+      },
+      "config": {
+        "db_url_env": "AINL_SUPABASE_DB_URL (fallback: AINL_POSTGRES_URL)",
+        "url_env": "AINL_SUPABASE_URL",
+        "anon_key_env": "AINL_SUPABASE_ANON_KEY",
+        "service_role_key_env": "AINL_SUPABASE_SERVICE_ROLE_KEY",
+        "runtime_async_env": "AINL_RUNTIME_ASYNC (or --runtime-async)",
+        "timeout_s": 8.0,
+        "allow_write": false,
+        "allow_tables": [],
+        "allow_buckets": [],
+        "allow_channels": []
+      },
+      "rules": [
+        "db/table operations delegate to postgres adapter semantics",
+        "mutating operations require allow_write=true",
+        "table, bucket, and channel allowlists are enforced when configured",
+        "realtime_broadcast and realtime_ack require allow_write=true",
+        "realtime events normalize to {event,schema,table,record,old_record?,sequence?,timestamp?}",
+        "realtime replay/fanout/cursor helpers are lightweight in-process primitives"
+      ]
+    },
     "fs": {
       "description": "Sandboxed file system operations",
       "targets": {

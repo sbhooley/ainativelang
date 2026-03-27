@@ -41,6 +41,7 @@ Expanding targets so AI Native Lang is usable in production and for mass adoptio
 | **Auth middleware** | JWT or API-key from AINL (A op) | ✅ A op → Depends in emit_server |
 | **Rate limit** | Per-client RPM via env | ✅ RateLimitMiddleware; RATE_LIMIT env |
 | **Kubernetes** | Deploy manifest (Deployment, Service, Ingress) | ✅ emit_k8s() → k8s.yaml |
+| **Native async runtime loop** | Optional async graph/step execution + async adapter path | ✅ `AINL_RUNTIME_ASYNC=1` / `--runtime-async`; redis has full async verb parity, dynamodb supports bounded async streams, and supabase has advanced lightweight fanout/replay/cursor helpers; see `docs/runtime/ASYNC_RUNTIME.md` |
 | **Terraform/Pulumi** | DB, queue, cache resources | 🔲 Planned |
 | **CI (GitHub Actions)** | Test + build + emit from .lang | ✅ .github/workflows/ci.yml |
 

@@ -167,8 +167,6 @@ L8:
 L9:
   X selected (push selected trimmed)
   Set usedTokens wouldUse
-  # Debug: log tokenCap and usedTokens
-  R core log "tokenCap=" tokenCap " usedTokens=" usedTokens
   # Hard cap: stop after reaching 100 tokens to ensure budget adherence
   If (ge usedTokens 100) ->L7
   # Continue looping

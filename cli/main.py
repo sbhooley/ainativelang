@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import ast
 import json
 import os
@@ -54,6 +55,12 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "http",
         "bridge",
         "sqlite",
+        "postgres",
+        "mysql",
+        "redis",
+        "dynamodb",
+        "airtable",
+        "supabase",
         "fs",
         "tools",
         "db",
@@ -177,6 +184,113 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
                 allow_write=bool(args.sqlite_allow_write),
                 allow_tables=args.sqlite_allow_table or [],
                 timeout_s=args.sqlite_timeout_s,
+            ),
+        )
+    if "postgres" in enabled:
+        from adapters.postgres import PostgresAdapter
+
+        reg.register(
+            "postgres",
+            PostgresAdapter(
+                dsn=args.postgres_url or None,
+                host=args.postgres_host or None,
+                port=args.postgres_port,
+                database=args.postgres_db or None,
+                user=args.postgres_user or None,
+                password=args.postgres_password if args.postgres_password else None,
+                sslmode=args.postgres_sslmode or None,
+                sslrootcert=args.postgres_sslrootcert or None,
+                timeout_s=args.postgres_timeout_s,
+                statement_timeout_ms=args.postgres_statement_timeout_ms,
+                allow_write=bool(args.postgres_allow_write),
+                allow_tables=args.postgres_allow_table or [],
+                pool_min_size=args.postgres_pool_min,
+                pool_max_size=args.postgres_pool_max,
+            ),
+        )
+    if "mysql" in enabled:
+        from adapters.mysql import MySQLAdapter
+
+        reg.register(
+            "mysql",
+            MySQLAdapter(
+                dsn=args.mysql_url or None,
+                host=args.mysql_host or None,
+                port=args.mysql_port,
+                database=args.mysql_db or None,
+                user=args.mysql_user or None,
+                password=args.mysql_password if args.mysql_password else None,
+                ssl_mode=args.mysql_ssl_mode or None,
+                ssl_ca=args.mysql_ssl_ca or None,
+                timeout_s=args.mysql_timeout_s,
+                allow_write=bool(args.mysql_allow_write),
+                allow_tables=args.mysql_allow_table or [],
+                pool_min_size=args.mysql_pool_min,
+                pool_max_size=args.mysql_pool_max,
+            ),
+        )
+    if "redis" in enabled:
+        from adapters.redis import RedisAdapter
+
+        reg.register(
+            "redis",
+            RedisAdapter(
+                url=args.redis_url or None,
+                host=args.redis_host or None,
+                port=args.redis_port,
+                db=args.redis_db,
+                username=args.redis_user or None,
+                password=args.redis_password if args.redis_password else None,
+                ssl=bool(args.redis_ssl),
+                timeout_s=args.redis_timeout_s,
+                allow_write=bool(args.redis_allow_write),
+                allow_prefixes=args.redis_allow_prefix or [],
+            ),
+        )
+    if "dynamodb" in enabled:
+        from adapters.dynamodb import DynamoDBAdapter
+
+        reg.register(
+            "dynamodb",
+            DynamoDBAdapter(
+                url=args.dynamodb_url or None,
+                region=args.dynamodb_region or None,
+                timeout_s=args.dynamodb_timeout_s,
+                allow_write=bool(args.dynamodb_allow_write),
+                allow_tables=args.dynamodb_allow_table or [],
+                consistent_read=bool(args.dynamodb_consistent_read),
+            ),
+        )
+    if "airtable" in enabled:
+        from adapters.airtable import AirtableAdapter
+
+        reg.register(
+            "airtable",
+            AirtableAdapter(
+                api_key=args.airtable_api_key or None,
+                base_id=args.airtable_base_id or None,
+                timeout_s=args.airtable_timeout_s,
+                allow_write=bool(args.airtable_allow_write),
+                allow_tables=args.airtable_allow_table or [],
+                allow_attachment_hosts=args.airtable_allow_attachment_host or [],
+                max_page_size=args.airtable_max_page_size,
+            ),
+        )
+    if "supabase" in enabled:
+        from adapters.supabase import SupabaseAdapter
+
+        reg.register(
+            "supabase",
+            SupabaseAdapter(
+                db_url=args.supabase_db_url or None,
+                supabase_url=args.supabase_url or None,
+                anon_key=args.supabase_anon_key or None,
+                service_role_key=args.supabase_service_role_key or None,
+                timeout_s=args.supabase_timeout_s,
+                allow_write=bool(args.supabase_allow_write),
+                allow_tables=args.supabase_allow_table or [],
+                allow_buckets=args.supabase_allow_bucket or [],
+                allow_channels=args.supabase_allow_channel or [],
             ),
         )
     if "fs" in enabled:
@@ -312,6 +426,7 @@ def cmd_run_hybrid_ptc(args: argparse.Namespace) -> int:
         no_step_fallback=False,
         execution_mode="graph-preferred",
         unknown_op_policy=None,
+        runtime_async=False,
         trace_out="",
         record_adapters="",
         replay_adapters="",
@@ -376,10 +491,14 @@ def cmd_run(args: argparse.Namespace) -> int:
         trajectory_log_path=trajectory_path,
         avm_event_hasher=sandbox_client.event_hash if sandbox_client.connected else None,
         sandbox_metadata_provider=sandbox_client.trajectory_metadata if sandbox_client.connected else None,
+        runtime_async=bool(getattr(args, "runtime_async", False)),
     )
     label = args.label or eng.default_entry_label()
     try:
-        result = eng.run_label(label, frame={})
+        if getattr(eng, "runtime_async", False):
+            result = asyncio.run(eng.run_label_async(label, frame={}))
+        else:
+            result = eng.run_label(label, frame={})
         payload = {"ok": True, "label": str(label), "result": result, "runtime_version": eng.runtime_version}
     except Exception as e:
         payload = {"ok": False, "label": str(label), "error": str(e), "runtime_version": eng.runtime_version}
@@ -962,6 +1081,11 @@ def main() -> None:
     runp.add_argument("--no-step-fallback", action="store_true")
     runp.add_argument("--execution-mode", choices=["graph-preferred", "steps-only", "graph-only"], default="graph-preferred")
     runp.add_argument("--unknown-op-policy", choices=["skip", "error"], default=None)
+    runp.add_argument(
+        "--runtime-async",
+        action="store_true",
+        help="Enable async-capable adapter dispatch (or set AINL_RUNTIME_ASYNC=1).",
+    )
     runp.add_argument("--trace-out", default="")
     runp.add_argument("--record-adapters", default="")
     runp.add_argument("--replay-adapters", default="")
@@ -972,6 +1096,12 @@ def main() -> None:
             "http",
             "bridge",
             "sqlite",
+            "postgres",
+            "mysql",
+            "redis",
+            "dynamodb",
+            "airtable",
+            "supabase",
             "fs",
             "tools",
             "ext",
@@ -1007,6 +1137,65 @@ def main() -> None:
     runp.add_argument("--sqlite-allow-write", action="store_true")
     runp.add_argument("--sqlite-allow-table", action="append", default=[])
     runp.add_argument("--sqlite-timeout-s", type=float, default=5.0)
+    runp.add_argument("--postgres-url", default="", help="Postgres DSN/URL (or set AINL_POSTGRES_URL)")
+    runp.add_argument("--postgres-host", default="")
+    runp.add_argument("--postgres-port", type=int, default=5432)
+    runp.add_argument("--postgres-db", default="")
+    runp.add_argument("--postgres-user", default="")
+    runp.add_argument("--postgres-password", default="", help="Prefer env var AINL_POSTGRES_PASSWORD in production")
+    runp.add_argument("--postgres-sslmode", default="require")
+    runp.add_argument("--postgres-sslrootcert", default="", help="Path to CA root cert PEM for PostgreSQL TLS")
+    runp.add_argument("--postgres-timeout-s", type=float, default=5.0)
+    runp.add_argument("--postgres-statement-timeout-ms", type=int, default=5000)
+    runp.add_argument("--postgres-pool-min", type=int, default=1)
+    runp.add_argument("--postgres-pool-max", type=int, default=5)
+    runp.add_argument("--postgres-allow-write", action="store_true")
+    runp.add_argument("--postgres-allow-table", action="append", default=[])
+    runp.add_argument("--mysql-url", default="", help="MySQL DSN/URL (or set AINL_MYSQL_URL)")
+    runp.add_argument("--mysql-host", default="")
+    runp.add_argument("--mysql-port", type=int, default=3306)
+    runp.add_argument("--mysql-db", default="")
+    runp.add_argument("--mysql-user", default="")
+    runp.add_argument("--mysql-password", default="", help="Prefer env var AINL_MYSQL_PASSWORD in production")
+    runp.add_argument("--mysql-ssl-mode", default="REQUIRED")
+    runp.add_argument("--mysql-ssl-ca", default="", help="Path to CA root cert PEM for MySQL TLS")
+    runp.add_argument("--mysql-timeout-s", type=float, default=5.0)
+    runp.add_argument("--mysql-pool-min", type=int, default=1)
+    runp.add_argument("--mysql-pool-max", type=int, default=5)
+    runp.add_argument("--mysql-allow-write", action="store_true")
+    runp.add_argument("--mysql-allow-table", action="append", default=[])
+    runp.add_argument("--redis-url", default="", help="Redis URL/DSN (or set AINL_REDIS_URL)")
+    runp.add_argument("--redis-host", default="")
+    runp.add_argument("--redis-port", type=int, default=6379)
+    runp.add_argument("--redis-db", type=int, default=0)
+    runp.add_argument("--redis-user", default="")
+    runp.add_argument("--redis-password", default="", help="Prefer env var AINL_REDIS_PASSWORD in production")
+    runp.add_argument("--redis-ssl", action="store_true")
+    runp.add_argument("--redis-timeout-s", type=float, default=5.0)
+    runp.add_argument("--redis-allow-write", action="store_true")
+    runp.add_argument("--redis-allow-prefix", action="append", default=[])
+    runp.add_argument("--dynamodb-url", default="", help="DynamoDB endpoint URL (or set AINL_DYNAMODB_URL)")
+    runp.add_argument("--dynamodb-region", default="us-east-1", help="AWS region for DynamoDB")
+    runp.add_argument("--dynamodb-timeout-s", type=float, default=5.0)
+    runp.add_argument("--dynamodb-allow-write", action="store_true")
+    runp.add_argument("--dynamodb-allow-table", action="append", default=[])
+    runp.add_argument("--dynamodb-consistent-read", action="store_true")
+    runp.add_argument("--airtable-api-key", default="", help="Airtable personal access token (or AINL_AIRTABLE_API_KEY)")
+    runp.add_argument("--airtable-base-id", default="", help="Airtable base id (or AINL_AIRTABLE_BASE_ID)")
+    runp.add_argument("--airtable-timeout-s", type=float, default=8.0)
+    runp.add_argument("--airtable-max-page-size", type=int, default=100)
+    runp.add_argument("--airtable-allow-write", action="store_true")
+    runp.add_argument("--airtable-allow-table", action="append", default=[])
+    runp.add_argument("--airtable-allow-attachment-host", action="append", default=[], help="Allowed host(s) for attachment download/upload-by-url")
+    runp.add_argument("--supabase-db-url", default="", help="Supabase Postgres DB URL (or AINL_SUPABASE_DB_URL / AINL_POSTGRES_URL)")
+    runp.add_argument("--supabase-url", default="", help="Supabase project URL (or AINL_SUPABASE_URL)")
+    runp.add_argument("--supabase-anon-key", default="", help="Supabase anon key (or AINL_SUPABASE_ANON_KEY)")
+    runp.add_argument("--supabase-service-role-key", default="", help="Supabase service role key (or AINL_SUPABASE_SERVICE_ROLE_KEY)")
+    runp.add_argument("--supabase-timeout-s", type=float, default=8.0)
+    runp.add_argument("--supabase-allow-write", action="store_true")
+    runp.add_argument("--supabase-allow-table", action="append", default=[])
+    runp.add_argument("--supabase-allow-bucket", action="append", default=[])
+    runp.add_argument("--supabase-allow-channel", action="append", default=[])
     runp.add_argument("--fs-root", default="")
     runp.add_argument("--fs-max-read-bytes", type=int, default=1_000_000)
     runp.add_argument("--fs-max-write-bytes", type=int, default=1_000_000)

@@ -1,0 +1,27 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pw_change_me
+      MYSQL_DATABASE: ainl_test
+      MYSQL_USER: ainl
+      MYSQL_PASSWORD: ainl_test_pw_change_me
+    command: ["mysqld", "--default-authentication-plugin=mysql_native_password"]
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uainl -painl_test_pw_change_me --silent"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+
+  mysql_init:
+    image: mysql:8.4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >
+        mysql -h mysql -uainl -painl_test_pw_change_me ainl_test
+        -e "CREATE TABLE IF NOT EXISTS events (id BIGINT AUTO_INCREMENT PRIMARY KEY, external_id VARCHAR(64) NOT NULL UNIQUE, status VARCHAR(32) NOT NULL, amount_cents INT NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);"

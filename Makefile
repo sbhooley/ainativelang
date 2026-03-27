@@ -1,4 +1,4 @@
-.PHONY: conformance benchmark benchmark-ci benchmark-deps check-apollo-promoter
+.PHONY: conformance benchmark benchmark-ci benchmark-deps check-apollo-promoter postgres-it postgres-it-deps mysql-it mysql-it-deps redis-it redis-it-deps dynamodb-it dynamodb-it-deps airtable-it airtable-it-deps supabase-it supabase-it-deps
 
 # Apollo X promoter: strict IR + gateway integration tests (see scripts/check_apollo_promoter.sh).
 check-apollo-promoter:
@@ -57,4 +57,52 @@ benchmark-ci: benchmark-deps ## Run benchmarks like CI (JSON only, tooling/*_ci.
 		--compare-baselines --reliability-runs 10 --cost-model gpt-4o \
 		--warmup 1 --runs 2 \
 		--json-out tooling/benchmark_runtime_ci.json --skip-markdown-inject
+
+# Turnkey postgres integration test path (uses tests/fixtures/docker-compose.postgres.yml).
+postgres-it-deps:
+	@$(PYTHON) -c "import psycopg" 2>/dev/null || \
+	  (echo "==> Installing optional [postgres] deps..." && $(PYTHON) -m pip install -q -e ".[postgres]")
+
+postgres-it: postgres-it-deps
+	@AINL_TEST_USE_DOCKER_POSTGRES=1 $(PYTHON) -m pytest -m integration tests/test_postgres_adapter_integration.py
+
+# Turnkey mysql integration test path (uses tests/fixtures/docker-compose.mysql.yml).
+mysql-it-deps:
+	@$(PYTHON) -c "import pymysql" 2>/dev/null || \
+	  (echo "==> Installing optional [mysql] deps..." && $(PYTHON) -m pip install -q -e ".[mysql]")
+
+mysql-it: mysql-it-deps
+	@AINL_TEST_USE_DOCKER_MYSQL=1 $(PYTHON) -m pytest -m integration tests/test_mysql_adapter_integration.py
+
+# Turnkey redis integration test path (uses tests/fixtures/docker-compose.redis.yml).
+redis-it-deps:
+	@$(PYTHON) -c "import redis" 2>/dev/null || \
+	  (echo "==> Installing optional [redis] deps..." && $(PYTHON) -m pip install -q -e ".[redis]")
+
+redis-it: redis-it-deps
+	@AINL_TEST_USE_DOCKER_REDIS=1 $(PYTHON) -m pytest -m integration tests/test_redis_adapter_integration.py
+
+# Turnkey dynamodb integration test path (uses tests/fixtures/docker-compose.dynamodb.yml).
+dynamodb-it-deps:
+	@$(PYTHON) -c "import boto3" 2>/dev/null || \
+	  (echo "==> Installing optional [dynamodb] deps..." && $(PYTHON) -m pip install -q -e ".[dynamodb]")
+
+dynamodb-it: dynamodb-it-deps
+	@AINL_TEST_USE_DOCKER_DYNAMODB=1 $(PYTHON) -m pytest -m integration tests/test_dynamodb_adapter_integration.py
+
+# Airtable integration path (real API key/base; no docker fixture).
+airtable-it-deps:
+	@$(PYTHON) -c "import httpx" 2>/dev/null || \
+	  (echo "==> Installing optional [airtable] deps..." && $(PYTHON) -m pip install -q -e ".[airtable]")
+
+airtable-it: airtable-it-deps
+	@AINL_TEST_USE_AIRTABLE=1 $(PYTHON) -m pytest -m integration tests/test_airtable_adapter_integration.py
+
+# Supabase integration path (uses Postgres fixture + optional real Supabase URL/keys).
+supabase-it-deps:
+	@$(PYTHON) -c "import httpx" 2>/dev/null || \
+	  (echo "==> Installing optional [supabase] deps..." && $(PYTHON) -m pip install -q -e ".[supabase]")
+
+supabase-it: supabase-it-deps
+	@AINL_TEST_USE_DOCKER_SUPABASE=1 $(PYTHON) -m pytest -m integration tests/test_supabase_adapter_integration.py
 
