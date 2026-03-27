@@ -26,12 +26,12 @@ ainl install openclaw --workspace ~/.openclaw/workspace --dry-run
 
 **What this does (non–dry-run):**
 
-- Writes `aiNativeLang.yml` in the workspace if missing (safe defaults only).
-- Runs `openclaw gateway config.patch` with a full `env.shellEnv` block, including `OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT=true`, `AINL_WEEKLY_TOKEN_BUDGET_CAP=100000`, `OPENCLAW_WORKSPACE`, `AINL_MEMORY_DB`, `MONITOR_CACHE_JSON`, `AINL_IR_CACHE_DIR`, and related paths.
+- Writes **`aiNativeLang.yml`** in the workspace if missing — copies from **`aiNativeLang.example.yml`** (repo root or `tooling/`) when present; otherwise safe defaults inline.
+- Merges **`env.shellEnv`** keys directly into **`<workspace>/.openclaw/openclaw.json`** (OpenClaw CLI **`config set`** rejects AINL-specific keys — file merge is authoritative), including `OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT=true`, `AINL_WEEKLY_TOKEN_BUDGET_CAP=100000`, `OPENCLAW_WORKSPACE`, `AINL_MEMORY_DB`, `MONITOR_CACHE_JSON`, `AINL_IR_CACHE_DIR`, and related paths.
 - Idempotently creates **`weekly_remaining_v1`** under `AINL_MEMORY_DB` (`CREATE TABLE IF NOT EXISTS`). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> (Rolling budget **values** are published to **`memory_records`**; see gold standard §c.) <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 - Registers three crons if missing (same name or same payload message → skipped): **AINL Context Injection** (every 5 min), **AINL Session Summarizer**, **AINL Weekly Token Trends** — matching the gold-standard doc.
 - Runs `openclaw gateway restart` (skipped when `--dry-run`).
-- Prints a markdown health table (workspace, patch, schema, crons, drift, restart, IR cache).
+- Prints a markdown health table (workspace, `aiNativeLang.yml`, env merge, schema, crons, drift, restart, IR cache).
 
 ### Example `ainl install openclaw` health report (realistic shape)
 
@@ -54,7 +54,7 @@ Markdown table (stdout):
 | ✅ | IR cache writable | /path/.cache/ainl/ir |
 ```
 
-With `--dry-run`, **`env.shellEnv`** shows **preview on stderr**; the full `config.patch` JSON, SQL summary, and three `cron add` payloads print to **stderr** before the table.
+With `--dry-run`, **`env.shellEnv`** shows **preview on stderr**; SQL summary and three `openclaw cron add` argv lines print to **stderr** before the table.
 
 ## Check status
 
@@ -68,7 +68,9 @@ Machine-readable JSON:
 ainl status --json
 ```
 
-**What `ainl status` shows:** workspace, schema bootstrap (including legacy **`weekly_remaining_v1`**), weekly budget row (or **Not initialized**), the three core crons, drift signal via `cron_drift_check`, 7-day token totals via **`token_usage_reporter --json-output`**, caps from the current environment, and an overall health row. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> The **Weekly budget remaining** line uses **`_read_weekly_remaining_rollup`**: it prefers a non-null legacy table row, otherwise **`weekly_remaining_tokens`** from the latest **`memory_records`** aggregate — so you may see a number even when the legacy table has no row yet. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> If tables or crons are missing, the table points you at **`Run `ainl install openclaw` to initialize.`**
+**One-line outputs** (Telegram, Slack, CI): `ainl status --summary` (human-readable one line) or `ainl status --json-summary` (minified JSON one line). `--json`, `--json-summary`, and `--summary` are mutually exclusive; full **`--json`** includes a **`summary_line`** field.
+
+**What `ainl status` shows:** workspace, schema bootstrap (including legacy **`weekly_remaining_v1`**), weekly budget row (or **Not initialized**), estimated **cost avoided (7d)** when token usage is available, the three core crons, drift signal via `cron_drift_check`, 7-day token totals via **`token_usage_reporter --json-output`**, caps from the current environment, and an overall health row. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> The **Weekly budget remaining** line uses **`_read_weekly_remaining_rollup`**: it prefers a non-null legacy table row, otherwise **`weekly_remaining_tokens`** from the latest **`memory_records`** aggregate — so you may see a number even when the legacy table has no row yet. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP --> If tables or crons are missing, the table points you at **`Run `ainl install openclaw` to initialize.`**
 
 ### Example `ainl status` table (realistic shape)
 
@@ -85,7 +87,31 @@ ainl status --json
 | ⚠️ | Overall health | Needs attention — Run `ainl install openclaw` to initialize. … |
 ```
 
-Use **`ainl status --json`** for the same fields as structured JSON (`fix_hint`, `weekly_budget_not_initialized`, `token_usage_error`, `cron_jobs`, etc.).
+Use **`ainl status --json`** for the same fields as structured JSON (`fix_hint`, `weekly_budget_not_initialized`, `token_usage_error`, `cron_jobs`, `summary_line`, etc.).
+
+## Schedule your own `.ainl` (optional)
+
+```bash
+ainl cron add path/to/workflow.ainl --cron "0 9 * * *"
+# or
+ainl cron add path/to/workflow.ainl --every 15m
+```
+
+Wraps **`openclaw cron add`** with message **`ainl run <quoted-path>`**. Use **`--dry-run`** to print argv only.
+
+## Emitted dashboard (optional)
+
+After **`python3 scripts/run_tests_and_emit.py`** (dev checkout):
+
+```bash
+ainl dashboard
+```
+
+Runs **`scripts/serve_dashboard.py`**; **`--port`** and **`--no-browser`** supported.
+
+## Project lock file
+
+Canonical example: **`aiNativeLang.example.yml`** (and **`tooling/aiNativeLang.example.yml`** for wheels). **`ainl install openclaw`** copies to **`aiNativeLang.yml`** when missing.
 
 ## Validate with the doctor
 
