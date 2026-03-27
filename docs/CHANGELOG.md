@@ -1,11 +1,20 @@
 # Changelog
 
-## v1.2.10 (March 27, 2026) — Wheel packaging fix for `ainl visualize` + release/docs sync
+## v1.2.10 (March 27, 2026) — Wheel packaging fix, LLM adapter/monitoring pack, and release/docs sync
 
 - **fix(packaging)**: include `intelligence` and `intelligence.*` in setuptools package discovery and add `intelligence/__init__.py` so wheel/PyPI installs include `intelligence.signature_enforcer` for CLI paths that import validator utilities.
 - **fix(cli)**: `ainl visualize` now works from clean `pip install ainativelang` environments (no `ModuleNotFoundError: intelligence` during `scripts.visualize_ainl` import path).
+- **feat(adapters/llm)**: add an internal **LLM adapter layer** under `adapters/llm/` with `AbstractLLMAdapter`, `LLMResponse`/`LLMUsage`, and concrete **`OpenRouterAdapter`** and **`OllamaAdapter`** implementations registered via `adapters/registry.AdapterRegistry`; wiring is exercised in `tests/test_adapters.py` and documented in `docs/ADAPTER_DEVELOPER_GUIDE.md`.
+- **feat(monitoring)**: introduce an optional **AINL-native monitoring pack** under `intelligence/monitor/`:
+  - `collector.MetricsCollector` (in-memory metrics with Prometheus exposition),
+  - `cost_tracker.CostTracker` (SQLite-backed LLM usage and budget store),
+  - `budget_policy.BudgetPolicy` (monthly budget thresholds + Telegram alerts),
+  - `health.HealthStatus` (liveness/readiness checks),
+  - `dashboard.server` (Flask dashboard at `/`, `/api/budget`, `/api/metrics`, `/health/*` with a minimal static HTML UI).
+  The pack is driven by **Python-side intelligence programs and adapters**, not the AINL language itself. Integration guides live in `docs/MONITORING_OPERATIONS.md` and `docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md`.
+- **feat(openclaw tools)**: add thin OpenClaw tool helpers under `adapters/tools/openclaw/` and a simple MCP tools client/registry under `adapters/tools/mcp/` to demonstrate how external tool surfaces can be wrapped for AINL-hosted agents; these are extension-level helpers, not canonical language features.
 - **release**: bump package/runtime surfaces to **1.2.10** (`pyproject.toml`, `runtime/engine.py`, `tests/emits/server/runtime/engine.py`, `CITATION.cff`).
-- **docs**: update release tracking docs to point at v1.2.10 and call out the PyPI quickstart flow (`pip install` → `ainl init` → `ainl check` → `ainl run` → `ainl visualize`).
+- **docs**: update release tracking docs to point at v1.2.10 and call out the PyPI quickstart flow (`pip install` → `ainl init` → `ainl check` → `ainl run` → `ainl visualize`). Cross-link the new monitoring/adapter components from `README.md`, `WHITEPAPERDRAFT.md` (§10.5/§13.5), `docs/DOCS_INDEX.md`, and the intelligence/operations docs so operators can discover the monitoring pack from both OpenClaw and core AINL entry points.
 
 ## v1.2.9 (March 26, 2026) — PTC-Lisp hybrid integration polish (Phases 1–4.5)
 

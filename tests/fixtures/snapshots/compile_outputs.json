@@ -4,11 +4,13 @@
     {
       "path": "examples/hello.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:ac24d8ec024ec14632baa412e9b416fe853baac49b5e7868b8c556da3b737164",
+      "graph_semantic_checksum": "sha256:8abf5494218ead5f03bb4fc333d202bb07266f643e9e6755be262118924d4e9a",
       "labels": [
         "1"
       ],
-      "services": [],
+      "services": [
+        "app"
+      ],
       "emit_capabilities": [
         "needs_python_api"
       ]

@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head><title>AINL Monitor</title>
+<meta http-equiv="refresh" content="10">
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  table { border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 5px; }
+</style>
+</head>
+<body>
+<h1>AINL Monitoring Dashboard</h1>
+<h2>Budget</h2>
+<div id="budget"></div>
+<h2>Metrics</h2>
+<pre id="metrics"></pre>
+<script>
+async function refresh() {
+  const b = await fetch('/api/budget').then(r=>r.json());
+  document.getElementById('budget').innerHTML =
+    '<table>' +
+    '<tr><th>Spent</th><td>$' + b.spent.toFixed(4) + '</td></tr>' +
+    '<tr><th>Limit</th><td>$' + b.limit.toFixed(4) + '</td></tr>' +
+    '<tr><th>Usage</th><td>' + (b.usage*100).toFixed(1) + '%</td></tr>' +
+    '</table>';
+  const m = await fetch('/api/metrics').then(r=>r.text());
+  document.getElementById('metrics').textContent = m;
+}
+setInterval(refresh, 5000);
+refresh();
+</script>
+</body>
+</html>

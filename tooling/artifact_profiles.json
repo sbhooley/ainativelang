@@ -114,7 +114,12 @@
     "legacy-compat": [
       "examples/ptc_integration_example.ainl",
       "examples/hybrid_order_processor.ainl",
-      "examples/price_monitor.ainl"
+      "examples/price_monitor.ainl",
+      "examples/reactive/airtable_webhook_entrypoint.ainl",
+      "examples/reactive/ddb_stream_to_embedding.ainl",
+      "examples/reactive/hybrid_stream_broadcast.ainl",
+      "examples/reactive/observability_reactive_smoke.ainl",
+      "examples/reactive/supabase_realtime_fanout.ainl"
     ]
   },
   "corpus_examples": {

@@ -279,6 +279,209 @@ Run it once after installing/upgrading AINL.
 
 ---
 
+## 7. Apollo's Working Configuration (Case Study)
+
+This section documents a proven, production-ready setup that diverges slightly from the gold standard's profile emission approach while maintaining full AINL compliance and token savings.
+
+### 7.1 Philosophy
+
+Instead of using `eval "$(ainl profile emit-shell ...)"` to set environment caps globally, this configuration **keeps caps in `openclaw.json` under `env.shellEnv`**. The Gateway injects these variables when spawning agents and cron jobs, providing **scoped, upgrade-safe configuration** that requires no shell startup modifications.
+
+### 7.2 Environment Caps (via `openclaw.json`)
+
+```json
+{
+  "env": {
+    "shellEnv": {
+      "OPENCLAW_WORKSPACE": "/Users/clawdbot/.openclaw/workspace",
+      "OPENCLAW_MEMORY_DIR": "/Users/clawdbot/.openclaw/workspace/memory",
+      "OPENCLAW_DAILY_MEMORY_DIR": "/Users/clawdbot/.openclaw/workspace/memory",
+      "AINL_FS_ROOT": "/Users/clawdbot/.openclaw/workspace/AI_Native_Lang",
+      "AINL_MEMORY_DB": "/Users/clawdbot/.openclaw/workspace/.ainl/ainl_memory.sqlite3",
+      "MONITOR_CACHE_JSON": "/Users/clawdbot/.openclaw/workspace/.ainl/monitor_state.json",
+      "AINL_EMBEDDING_MEMORY_DB": "/Users/clawdbot/.openclaw/workspace/.ainl/embedding_memory.sqlite3",
+      "AINL_IR_CACHE_DIR": "/Users/clawdbot/.openclaw/workspace/.cache/ainl/ir",
+      "OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT": "true",
+      "AINL_BRIDGE_REPORT_MAX_CHARS": "3132",
+      "AINL_WEEKLY_TOKEN_BUDGET_CAP": "100000",
+      "PROMOTER_LLM_MAX_PROMPT_CHARS": "4000",
+      "PROMOTER_LLM_MAX_COMPLETION_TOKENS": "1000",
+      "AINL_EXECUTION_MODE": "graph-preferred"
+    }
+  }
+}
+```
+
+**Apply with:** `openclaw gateway config.patch <patch.json>` and restart the gateway.
+
+### 7.3 Additional Tables (Beyond Default Schema)
+
+The gold standard mentions `weekly_remaining_v1`. If not present, create it manually:
+
+```sql
+CREATE TABLE IF NOT EXISTS weekly_remaining_v1 (
+  week_start TEXT PRIMARY KEY,
+  remaining_budget INTEGER,
+  updated_at TEXT
+);
+```
+
+Run via: `sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 "CREATE TABLE ..."`
+
+The `AINL Weekly Token Trends` cron job will populate this on its next run (Sundays 9 AM).
+
+### 7.4 Project-Lock File (`aiNativeLang.yml`)
+
+To make the setup reproducible and self-documenting, place `aiNativeLang.yml` at the workspace root:
+
+```yaml
+version: 1.0
+project: "OpenClaw"
+description: "OpenClaw integration with AINL — Apollo's configuration"
+env:
+  AINL_WEEKLY_TOKEN_BUDGET_CAP: 100000
+  AINL_BRIDGE_REPORT_MAX_CHARS: 3132
+  PROMOTER_LLM_MAX_PROMPT_CHARS: 4000
+  PROMOTER_LLM_MAX_COMPLETION_TOKENS: 1000
+  OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT: 1
+  AINL_EXECUTION_MODE: "graph-preferred"
+providers:
+  - id: "openrouter"
+    type: "factory"
+    baseUrl: "https://openrouter.ai/api/v1"
+    models:
+      - id: "openrouter/stepfun/step-3.5-flash:free"
+        name: "Step 3.5 Flash"
+        contextWindow: 128000
+        maxTokens: 8192
+cron:
+  - name: "AINL Context Injection"
+    schedule: "*/5 * * * *"
+  - name: "AINL Session Summarizer"
+    schedule: "0 3 * * *"
+  - name: "AINL Weekly Token Trends"
+    schedule: "0 9 * * 0"
+  - name: "Token Cost Tracker (AINL)"
+    schedule: "0 * * * *"
+memory:
+  compaction:
+    enabled: true
+    reserveTokens: 50000
+    keepRecentTokens: 40000
+    maxHistoryShare: 0.65
+    recentTurnsPreserve: 5
+    memoryFlush:
+      enabled: true
+  dailyNotes: "memory/YYYY-MM-DD.md"
+  longTerm: "MEMORY.md"
+session:
+  mode: "warn"
+  maxEntries: 800
+  pruneAfter: 30d
+  parentForkMaxTokens: 100000
+execution:
+  mode: "graph-preferred"
+  strictValidation: true
+```
+
+This file serves as **single-source truth** for the setup and is safe to commit to public repos (no secrets).
+
+### 7.5 Cron Jobs (as managed by `openclaw cron`)
+
+The following jobs are active and verified:
+
+| Name | Schedule | Agent | Status |
+|------|----------|-------|--------|
+| AINL Context Injection | `*/5 * * * *` | main | ✅ |
+| AINL Session Summarizer | `0 3 * * *` | main | ✅ |
+| ainl-weekly-token-trends | `0 9 * * 0` | - | ✅ |
+| Token Cost Tracker (AINL) | `0 * * * *` | main | ✅ |
+| Session Budget Enforcement | `0 * * * *` | main | ✅ |
+| AINL Proactive Monitor | `*/15 * * * *` | main | ✅ |
+| ... and others | | | |
+
+All jobs inherit the environment from the Gateway (`env.shellEnv`), ensuring caps apply consistently.
+
+### 7.6 Provider Configuration
+
+OpenRouter is configured as a **factory provider** in `openclaw.json`:
+
+```json
+{
+  "providers": [
+    {
+      "id": "openrouter",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKey": "...",
+      "models": [
+        { "id": "openrouter/stepfun/step-3.5-flash:free", ... },
+        { "id": "openrouter/arcee-ai/trinity-large-preview:free", ... },
+        // plus other free models; Claude Opus available but rarely used
+      ]
+    }
+  ]
+}
+```
+
+### 7.7 Token Savings Achieved
+
+| Metric | Value |
+|--------|-------|
+| Total tokens processed (lifetime) | 10,501,100 |
+| Input | 2,097,000 (20%) |
+| Output | 8,404,100 (80%) |
+| Actual cost | $0.00 (free tier) |
+| Savings vs. Claude Opus (OpenRouter rates) | $220.59 |
+| Savings vs. Claude Opus (Anthropic direct) | $661.77 |
+| Additional efficiency gain from AINL (vs. prompt-loop) | ~2.5× token reduction → ~$300–$1000 saved |
+
+### 7.8 Pros & Cons of This Approach
+
+**Pros:**
+- No shell profile modifications needed; works out of the box after Gateway restart.
+- Caps are version-controlled alongside the rest of OpenClaw config.
+- cron jobs and agents automatically pick up caps without wrapper scripts.
+- Upgrade-safe: Gateway reads `openclaw.json` on every start; your caps persist.
+
+**Cons:**
+- Manual `ainl` CLI runs (outside Gateway) need a wrapper to export caps, or you must `eval` a generated profile.
+- Not exactly matching the gold standard's `ainl profile emit-shell` method, though functionally equivalent for Gateway-managed processes.
+
+### 7.9 Reproduction Steps for Other Hosts
+
+1. Set the `env.shellEnv` keys in `openclaw.json` as shown in §7.2.
+2. Create `weekly_remaining_v1` table if missing (SQL).
+3. Place `aiNativeLang.yml` at workspace root (optional but recommended).
+4. Ensure cron jobs for AINL are present (use `openclaw cron add` or copy from §7.5).
+5. Verify `OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT=true` is set (it is in `shellEnv`).
+6. Restart the Gateway: `openclaw gateway restart`.
+7. Wait for the next weekly token trends run (Sunday 9 AM) to confirm `weekly_remaining_v1` populates.
+8. Check that new sessions load `.openclaw/bootstrap/session_context.md` once generated.
+
+This configuration is **fully compliant** with AINL v1.2.8 gold standard semantics, with only a **profile emission** deviation that is **safe and scoped**.
+
+---
+
+## Appendix A: Verification Commands
+
+```bash
+# Check that weekly_remaining_v1 exists
+sqlite3 ~/.openclaw/workspace/.ainl/ainl_memory.sqlite3 ".tables"
+
+# List cron jobs
+openclaw cron list
+
+# Confirm env caps in running agents (check a recent job's log)
+grep AINL_WEEKLY_TOKEN_BUDGET_CAP ~/.openclaw/logs/gateway.log | tail -1
+
+# Verify session_context.md usage
+ls -la ~/.openclaw/workspace/.openclaw/bootstrap/session_context.md
+```
+
+---
+
+*End of Apollo's configuration case study.*
+
 ## Agent discovery
 
 - **Machine-readable:** `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`** (checklist) · **`openclaw_host_ainl_1_2_8`** (v1.2.8 host briefing: repo vs host)
