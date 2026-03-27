@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.10 (March 27, 2026) — Wheel packaging fix for `ainl visualize` + release/docs sync
+
+- **fix(packaging)**: include `intelligence` and `intelligence.*` in setuptools package discovery and add `intelligence/__init__.py` so wheel/PyPI installs include `intelligence.signature_enforcer` for CLI paths that import validator utilities.
+- **fix(cli)**: `ainl visualize` now works from clean `pip install ainativelang` environments (no `ModuleNotFoundError: intelligence` during `scripts.visualize_ainl` import path).
+- **release**: bump package/runtime surfaces to **1.2.10** (`pyproject.toml`, `runtime/engine.py`, `tests/emits/server/runtime/engine.py`, `CITATION.cff`).
+- **docs**: update release tracking docs to point at v1.2.10 and call out the PyPI quickstart flow (`pip install` → `ainl init` → `ainl check` → `ainl run` → `ainl visualize`).
+
 ## v1.2.9 (March 26, 2026) — PTC-Lisp hybrid integration polish (Phases 1–4.5)
 
 - **feat(ptc)**: `adapters/ptc_runner.py` — opt-in PTC Runner adapter (HTTP + mock + subprocess mode via `AINL_PTC_USE_SUBPROCESS` / `AINL_PTC_RUNNER_CMD`); disabled by default; `AINL_ENABLE_PTC=true` or `--enable-adapter ptc_runner`; structured result envelope with `ok`, `result`, `beam_metrics`, `beam_telemetry`; health/status verbs; `_strip_private_keys` context firewall; registered in `ADAPTER_REGISTRY.json`, `tooling/adapter_manifest.json`, `tooling/effect_analysis.py`.

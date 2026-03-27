@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ainativelang"
-version = "1.2.8"
+version = "1.2.10"
 description = "AINL compiler, runtime, validator, and tooling"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -85,7 +85,7 @@ tooling = ["*.json"]
 [tool.setuptools.packages.find]
 where = ["."]
 # Explicit roots + globs so `tooling` / `adapters` are never skipped (CLI imports `tooling.*`; runtime.compat imports `adapters`).
-include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*"]
+include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

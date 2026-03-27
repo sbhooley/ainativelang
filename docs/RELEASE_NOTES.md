@@ -1,5 +1,13 @@
 # Release notes
 
+## AINL v1.2.10 — PyPI visualize packaging fix (2026-03-27)
+
+**PyPI / runtime:** **`ainl` 1.2.10** — **`RUNTIME_VERSION` `1.2.10`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned.
+
+- **Wheel/PyPI fix for `ainl visualize`:** setuptools package discovery now explicitly includes **`intelligence`** and **`intelligence.*`**, and the package now ships **`intelligence/__init__.py`**.
+- **User-visible impact:** clean installs via **`pip install ainativelang`** now support the documented quickstart end-to-end, including **`ainl visualize main.ainl --output graph.mmd`**.
+- **Docs/release sync:** release metadata and release-facing docs are aligned to **v1.2.10** so install docs, changelog, and website release indicators match shipped behavior.
+
 ## AINL v1.2.8 — OpenClaw intelligence ops + graph-runtime alignment (2026-03-25)
 
 **PyPI / runtime:** **`ainl` 1.2.8** — **`RUNTIME_VERSION` `1.2.8`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned. After pulling, reinstall the package (**`pip install -U -e .`**) or recreate the venv if you see stale **`runtime_version`** or import shadowing from **`__pycache__`**.
