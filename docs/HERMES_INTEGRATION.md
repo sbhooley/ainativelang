@@ -66,6 +66,8 @@ What this wires:
 - `~/.hermes/bin/ainl-run` → shim that compiles then runs a `.ainl` file
 - A PATH hint to include `~/.hermes/bin`
 
+**Optional adapter — `code_context`:** workflows that call **`R code_context.*`** (tiered repo index, dependencies, impact, **`COMPRESS_CONTEXT`**) must pass **`--enable-adapter code_context`** to **`ainl run`** or **`~/.hermes/bin/ainl-run`** (or any cron/wrapper that forwards args to **`ainl run`**). Installing MCP does **not** enable optional adapters. Guide: **`docs/adapters/CODE_CONTEXT.md`** · demo **`examples/code_context_demo.ainl`** · optional env **`AINL_CODE_CONTEXT_STORE`**.
+
 ### 3) Scaffold a Hermes-targeted worker
 
 ```bash
@@ -176,4 +178,10 @@ ainl install-mcp --host hermes
 - AgentSkills format hub: `https://agentskills.io/`
 - AINL Hermes skill pack: [`skills/hermes/`](../skills/hermes/)
 - AINL host hub: [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)
+
+## LLM Adapter Setup
+
+To enable cloud LLM providers, create an AINL config file following the guide in `docs/LLM_ADAPTER_USAGE.md`. Set your provider API keys via environment variables (e.g., `OPENROUTER_API_KEY`). Then pass the config path using `--config` or set `AINL_CONFIG`.
+
+You can verify cost tracking and retry behavior by running a program and checking the SQLite DB under `intelligence/monitor/`.
 

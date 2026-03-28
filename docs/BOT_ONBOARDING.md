@@ -7,7 +7,7 @@ Short entrypoint for bots (and other agents) newly exposed to this repo. Use thi
 ## Where to start
 
 1. **Machine-readable bootstrap** — `tooling/bot_bootstrap.json`
-   Points to onboarding doc, preflight doc, and key safe vs advanced docs. Use it to discover paths programmatically. For **OpenClaw + AINL** install/upgrade posture: **`openclaw_ainl_gold_standard`** → **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**; for **v1.2.8 host obligations** (what ships vs what OpenClaw wires): **`openclaw_host_ainl_1_2_8`** → **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`**.
+   Points to onboarding doc, preflight doc, and key safe vs advanced docs. Use it to discover paths programmatically. For **OpenClaw + AINL** install/upgrade posture: **`openclaw_ainl_gold_standard`** → **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**; for **v1.2.8 host obligations** (what ships vs what OpenClaw wires): **`openclaw_host_ainl_1_2_8`** → **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`**. For **optional tiered repo context** (`code_context`): **`code_context_adapter_doc`** → **`docs/adapters/CODE_CONTEXT.md`** (graphs that call `R code_context.*` need **`--enable-adapter code_context`** on **`ainl run`**; MCP install alone does not enable it).
 
 2. **Docs index** — `docs/DOCS_INDEX.md`
    Top-level map of documentation (core, advanced, training, contributor path). Prefer this over guessing doc names.
@@ -70,6 +70,7 @@ When proposing or implementing work that touches adapters or examples, check the
 | OpenClaw / AI agent quickstart | `AI_AGENT_QUICKSTART_OPENCLAW.md` (see also `OPENCLAW_AI_AGENT.md`) |
 | OpenClaw skill + MCP bootstrap | `docs/OPENCLAW_INTEGRATION.md` (`skills/openclaw/`, `ainl install-openclaw`, `~/.openclaw/openclaw.json`) |
 | ZeroClaw skill + MCP bootstrap | `docs/ZEROCLAW_INTEGRATION.md` (`ainl install-zeroclaw`, `~/.zeroclaw/`) |
+| Optional **`code_context`** (repo index, deps, impact, `COMPRESS_CONTEXT`) | `docs/adapters/CODE_CONTEXT.md` — enable **`--enable-adapter code_context`** on **`ainl run`** / host **`ainl-run`** shims; optional **`AINL_CODE_CONTEXT_STORE`**; demo **`examples/code_context_demo.ainl`** |
 | OpenClaw bridge monitoring (token budget, weekly trends, daily memory path) | `docs/operations/UNIFIED_MONITORING_GUIDE.md` (also `docs/ainl_openclaw_unified_integration.md`, `openclaw/bridge/README.md`) — not used for ZeroClaw daily memory |
 
 ---

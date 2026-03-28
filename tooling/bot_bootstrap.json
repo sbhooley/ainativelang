@@ -11,6 +11,7 @@
   "hermes_integration": "docs/HERMES_INTEGRATION.md",
   "hermes_agent_hub": "docs/integrations/hermes-agent.md",
   "mcp_host_integrations": "docs/getting_started/HOST_MCP_INTEGRATIONS.md",
+  "code_context_adapter_doc": "docs/adapters/CODE_CONTEXT.md",
   "setup_script": "scripts/setup_ainl_integration.sh",
   "ai_native_lang_example_yml": "aiNativeLang.example.yml",
   "openclaw_commands": {
@@ -65,6 +66,7 @@
     "docs/reference/GRAPH_SCHEMA.md"
   ],
   "advanced_docs": [
+    "docs/adapters/CODE_CONTEXT.md",
     "docs/adapters/OPENCLAW_ADAPTERS.md",
     "docs/adapters/MEMORY_CONTRACT.md",
     "docs/advanced/SAFE_USE_AND_THREAT_MODEL.md",

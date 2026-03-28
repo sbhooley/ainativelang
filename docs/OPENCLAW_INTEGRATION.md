@@ -49,6 +49,8 @@ After a successful install, try:
 
 Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import clawflows`** / **`ainl import agency-agents`**), or MCP tools so the agent produces compiling **`.ainl`** source, followed by **`ainl compile`** / **`ainl run`** or **`~/.openclaw/bin/ainl-run my.ainl`**.
 
+**Optional adapter — `code_context`:** graphs that call **`R code_context.*`** (tiered repo index, dependencies, impact, **`COMPRESS_CONTEXT`**) must pass **`--enable-adapter code_context`** to **`ainl run`** or **`~/.openclaw/bin/ainl-run`** (extra args forward to **`ainl run`**). Installing MCP does **not** enable optional adapters. Guide: **`docs/adapters/CODE_CONTEXT.md`** · demo **`examples/code_context_demo.ainl`** · optional env **`AINL_CODE_CONTEXT_STORE`**.
+
 ## What gets installed
 
 | Artifact | Purpose |
@@ -80,3 +82,10 @@ If no shell rc file is updated, the command prints a one-line **`PATH`** tip you
 - Integration narrative: **[`docs/INTEGRATION_STORY.md`](INTEGRATION_STORY.md)**
 - Unified bridge / workspace notes: **[`docs/ainl_openclaw_unified_integration.md`](ainl_openclaw_unified_integration.md)**
 - Cron / bridge code (non-MCP): **[`openclaw/bridge/README.md`](../openclaw/bridge/README.md)**
+
+## LLM Adapter Setup
+
+To enable cloud LLM providers, create an AINL config file following the guide in `docs/LLM_ADAPTER_USAGE.md`. Set your provider API keys via environment variables (e.g., `OPENROUTER_API_KEY`). Then pass the config path using `--config` or set `AINL_CONFIG`.
+
+You can verify cost tracking and retry behavior by running a program and checking the SQLite DB under `intelligence/monitor/`.
+

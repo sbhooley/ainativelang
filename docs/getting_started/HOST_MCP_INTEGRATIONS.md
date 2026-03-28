@@ -19,6 +19,8 @@ Legacy per-host commands remain aliases:
 
 List supported ids: **`ainl install-mcp --list-hosts`**.
 
+**Optional `ainl run` adapters (e.g. `code_context`):** MCP install wires **`ainl-mcp`** and **`ainl-run`**; it does **not** enable optional adapters. Workflows that call **`R code_context.*`** (tiered repo index, dependencies, impact, **`COMPRESS_CONTEXT`**) must pass **`--enable-adapter code_context`** to **`ainl run`** or the host **`ainl-run`** shim (args forward). Guide: **`docs/adapters/CODE_CONTEXT.md`**.
+
 Older **`ainl`** wheels may only expose **`install-openclaw`** / **`install-zeroclaw`**; those are equivalent—upgrade PyPI when you want **`install-mcp`**.
 
 ## Adding a new host (maintainers)

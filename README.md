@@ -908,9 +908,9 @@ See [docs/INSTALL.md](docs/INSTALL.md) for full setup details. At a minimum: Pyt
 
 **LangChain / CrewAI (tools):** optional **`langchain_tool`** adapter — `python3 -m cli.main run ... --enable-adapter langchain_tool`. Demo: [`examples/hybrid/langchain_tool_demo.ainl`](examples/hybrid/langchain_tool_demo.ainl).
 
-**code_context (optional)** — Tiered, ctxzip-style codebase context for a local tree: index Python and basic JS/TS into JSON (default store: `.ainl_code_context.json`, override with `AINL_CODE_CONTEXT_STORE`). After indexing, `QUERY_CONTEXT` returns Tier 0 (signature list), Tier 1 (TF–IDF–ranked signatures plus doc/summary), or Tier 2 (full source when requested). Enable with `--enable-adapter code_context`. Concept and tiered design are heavily inspired by [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip); full credit to **Brady Drexler** for the original idea.
+**code_context (optional)** — Tiered, ctxzip-style codebase context for a local tree: index Python and basic JS/TS into JSON (default store: `.ainl_code_context.json`, override with `AINL_CODE_CONTEXT_STORE`). After indexing, `QUERY_CONTEXT` returns Tier 0 (signature list), Tier 1 (TF–IDF–ranked signatures plus doc/summary), or Tier 2 (full source when requested). Also: **`GET_DEPENDENCIES`** / **`GET_IMPACT`** (import graph + transitive importers + PageRank) and **`COMPRESS_CONTEXT`** (TF–IDF order, greedy token-budget packing). Enable with **`--enable-adapter code_context`** on **`ainl run`** (installing MCP alone does not enable optional adapters). Full reference: [`docs/adapters/CODE_CONTEXT.md`](docs/adapters/CODE_CONTEXT.md). Tiered design: [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip), **Brady Drexler**. Graph/impact/packing ideas: [chrismicah/forgeindex](https://github.com/chrismicah/forgeindex), **Chris Micah**.
 
-Example usage from an AINL graph (adapter target `code_context`): `INDEX /path/to/repo` builds the store; `QUERY_CONTEXT "user authentication flow" 1` returns Tier 1 (signatures plus summaries for top chunks); `QUERY_CONTEXT "user authentication flow" 2` includes full source for those ranked chunks; `STATS` reports chunk count, indexed root, store path, and last update time.
+Example usage from an AINL graph (adapter target `code_context`): `INDEX /path/to/repo` builds the store; `QUERY_CONTEXT "user authentication flow" 1` returns Tier 1 (signatures plus summaries for top chunks); `QUERY_CONTEXT "user authentication flow" 2` includes full source for those ranked chunks; `COMPRESS_CONTEXT "…" 8000` packs signatures/summaries under a token budget; `STATS` reports chunk count, indexed root, store path, and last update time.
 
 **Example (requires `--enable-adapter code_context`):** index once, then query in a loop — Tier 1 is usually token-efficient; `STATS` exposes chunk count and store metadata.
 
@@ -925,6 +925,7 @@ L_index:
 # Main loop: query repeatedly (Tier 1 = signatures + summaries)
 L_query:
   R code_context.QUERY_CONTEXT developer_query 1 50 ->context
+  R code_context.COMPRESS_CONTEXT developer_query 8000 ->packed
   R code_context.STATS ->stats
   # ... feed context into an LLM node or tool ...
   J context

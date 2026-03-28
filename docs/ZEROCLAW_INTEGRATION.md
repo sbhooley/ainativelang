@@ -50,6 +50,8 @@ After a successful install, try:
 
 Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import clawflows`** / **`ainl import agency-agents`**), or MCP tools (**`ainl_list_ecosystem`**, **`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, **`ainl_import_markdown`**) so the agent produces compiling **`.ainl`** source, followed by **`ainl compile`** / **`ainl run`** or **`~/.zeroclaw/bin/ainl-run my.ainl`**.
 
+**Optional adapter — `code_context`:** graphs that call **`R code_context.*`** (tiered repo index, dependencies, impact, **`COMPRESS_CONTEXT`**) must pass **`--enable-adapter code_context`** to **`ainl run`** or **`~/.zeroclaw/bin/ainl-run`** (extra args forward to **`ainl run`**). Installing MCP does **not** enable optional adapters. Guide: **`docs/adapters/CODE_CONTEXT.md`** · demo **`examples/code_context_demo.ainl`** · optional env **`AINL_CODE_CONTEXT_STORE`**.
+
 ## What gets installed
 
 | Artifact | Purpose |
@@ -191,3 +193,10 @@ ZeroClaw’s Rust traits and on-disk layout are **extensible** and may shift bet
 - Integration narrative: **[`docs/INTEGRATION_STORY.md`](INTEGRATION_STORY.md)**
 - Ecosystem sync & OpenClaw- / ZeroClaw-oriented examples: **[`docs/ECOSYSTEM_OPENCLAW.md`](ECOSYSTEM_OPENCLAW.md)**
 - Compile-once framing: **[`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](architecture/COMPILE_ONCE_RUN_MANY.md)**
+
+## LLM Adapter Setup
+
+To enable cloud LLM providers, create an AINL config file following the guide in `docs/LLM_ADAPTER_USAGE.md`. Set your provider API keys via environment variables (e.g., `OPENROUTER_API_KEY`). Then pass the config path using `--config` or set `AINL_CONFIG`.
+
+You can verify cost tracking and retry behavior by running a program and checking the SQLite DB under `intelligence/monitor/`.
+

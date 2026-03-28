@@ -25,8 +25,8 @@ See **`docs/CHANGELOG.md`** § **v1.3.0** for the same items in conventional-com
 
 ### Optional adapter: tiered code context (`code_context`)
 
-- **Adapter:** **`adapters/code_context.py`** — index a local tree to JSON, query TF–IDF tiered chunks (`INDEX`, `QUERY_CONTEXT`, `GET_FULL_SOURCE`, **`STATS`**). Enable: **`--enable-adapter code_context`**. Env: **`AINL_CODE_CONTEXT_STORE`**.
-- **Docs / demo:** **`docs/adapters/CODE_CONTEXT.md`**, **`examples/code_context_demo.ainl`**, catalog **`docs/reference/ADAPTER_REGISTRY.md`** §9. Concept credit: [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip), Brady Drexler.
+- **Adapter:** **`adapters/code_context.py`** — index a local tree to JSON; TF–IDF tiered chunks (`INDEX`, `QUERY_CONTEXT`, `GET_FULL_SOURCE`, **`STATS`**); import graph **`GET_DEPENDENCIES`**, impact + PageRank **`GET_IMPACT`**, TF–IDF greedy packing **`COMPRESS_CONTEXT`**. Enable on **`ainl run`**: **`--enable-adapter code_context`** (host MCP bootstrap does **not** turn this on). Env: **`AINL_CODE_CONTEXT_STORE`**.
+- **Docs / demo:** **`docs/adapters/CODE_CONTEXT.md`**, **`examples/code_context_demo.ainl`**, catalog **`docs/reference/ADAPTER_REGISTRY.md`** §9. Tiered design: [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip), Brady Drexler. Graph/impact/packing ideas: [chrismicah/forgeindex](https://github.com/chrismicah/forgeindex), Chris Micah.
 
 ## AINL v1.2.10 — PyPI visualize packaging fix (2026-03-27)
 

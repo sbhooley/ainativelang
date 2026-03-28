@@ -70,7 +70,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **CLI trajectory JSONL** (`ainl run --log-trajectory`, `AINL_LOG_TRAJECTORY`): `docs/trajectory.md` (per-step trace beside the `.ainl` source; not runner HTTP audit)
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — includes MCP agent role templates, desktop-safe recipe, end-to-end validator/inspector/runner example, and Claude Code / Cowork / Dispatch guidance
-- **MCP host hub (OpenClaw, ZeroClaw, Hermes Agent):** `docs/getting_started/HOST_MCP_INTEGRATIONS.md` — **`ainl install-mcp --host …`**, skill + CLI pattern, maintainer notes (`tooling/mcp_host_install.py`); stub at `docs/HOST_MCP_INTEGRATIONS.md` for old links
+- **MCP host hub (OpenClaw, ZeroClaw, Hermes Agent):** `docs/getting_started/HOST_MCP_INTEGRATIONS.md` — **`ainl install-mcp --host …`**, skill + CLI pattern, maintainer notes (`tooling/mcp_host_install.py`); optional **`code_context`** needs **`--enable-adapter code_context`** on **`ainl run`** (see hub § note); stub at `docs/HOST_MCP_INTEGRATIONS.md` for old links
 - **AINL → external workers (HTTP bridge contract):** `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` — generic `http.Post` / optional `bridge.Post` envelope for non-MCP executors; **OpenClaw / NemoClaw / ZeroClaw / Hermes should prefer `ainl-mcp` first** (see doc); **OpenClaw skill:** `docs/OPENCLAW_INTEGRATION.md` · **ZeroClaw skill:** `docs/ZEROCLAW_INTEGRATION.md` · **Hermes:** `docs/HERMES_INTEGRATION.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
   - **Artifacts:** JSON Schema `schemas/executor_bridge_request.schema.json`; Python `schemas/executor_bridge_validate.validate_executor_bridge_request`; AINL include `modules/common/executor_bridge_request.ainl`; tests `tests/test_executor_bridge_envelope.py`, `tests/test_executor_bridge_integration.py`
 - Batch repo-automation guide: `docs/operations/BATCH_AUTOMATION_GUIDE.md` — inspect-first, worktree-safe, deterministic, auditable batch flows for Dispatch-style environments
@@ -110,7 +110,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Compile-once / run-many proof pack: `docs/architecture/COMPILE_ONCE_RUN_MANY.md`
   - Includes `scripts/summarize_runs.py` for aggregating `RuntimeEngine.run(..., trace=True)` JSON payloads into small health summaries.
 - **Hyperspace emitter** (`--emit hyperspace`, embedded IR agent): `docs/emitters/README.md` · demo `examples/hyperspace_demo.ainl` · adapters `adapters/vector_memory.py`, `adapters/tool_registry.py` · catalog `docs/reference/ADAPTER_REGISTRY.md` §9
-- **Tiered code context (optional):** `docs/adapters/CODE_CONTEXT.md` · `adapters/code_context.py` · demo `examples/code_context_demo.ainl` · enable `--enable-adapter code_context`
+- **Tiered code context (optional):** `docs/adapters/CODE_CONTEXT.md` · `adapters/code_context.py` · demo `examples/code_context_demo.ainl` · enable **`--enable-adapter code_context`** on **`ainl run`** · machine-readable pointer: `tooling/bot_bootstrap.json` → **`code_context_adapter_doc`**
 - Launch copy pack: `docs/launch/SHORT_POST.md`, `docs/launch/TECHNICAL_POST.md`
 - Maintainer publish checklist snapshot: `docs/launch/PUBLISH_CHECKLIST.md`
 - Post-release issue drafts and migration templates:
