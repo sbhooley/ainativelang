@@ -25,13 +25,11 @@ AINL has strong product-market fit with cost-sensitive monitoring teams and audi
 - Add community channels
 - Publish roadmap
 - Create persona landing pages
-- Seed "Built with AINL" showcase
+- **In progress —** Seed "Built with AINL" showcase → [Homepage Community Spotlights](https://ainativelang.com/) (section above site footer) · [docs/community/SPOTLIGHTS.md](https://github.com/sbhooley/ainativelang/blob/main/docs/community/SPOTLIGHTS.md)
 - Ship official Hermes Agent integration (deterministic graphs + self-improving loop + Honcho memory) as an ecosystem credibility win
 
 ## Long-term Levers
 - ROI calculator widget
-- Enterprise validation pack (SOC2 template, hosted runner)
-- Monthly community spotlights
+- Enterprise validation pack (SOC2 template, hosted runner) — **SOC2 stub:** [docs/enterprise/SOC2_CHECKLIST.md](https://github.com/sbhooley/ainativelang/blob/main/docs/enterprise/SOC2_CHECKLIST.md); enterprise callouts on homepage under **For Enterprise Audit**
+- **In progress —** Monthly community spotlights → [docs/community/SPOTLIGHTS.md](https://github.com/sbhooley/ainativelang/blob/main/docs/community/SPOTLIGHTS.md) (template + first entry); homepage mirror above footer
 - Use AINL itself to automate community content
-
-Link this file prominently from README and homepage footer.
