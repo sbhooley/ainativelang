@@ -32,7 +32,7 @@
     },
     "ainl_dashboard": {
       "command": "ainl dashboard [--port N] [--no-browser]",
-      "description": "Runs scripts/serve_dashboard.py (emitted server under tests/emits/server; build first with run_tests_and_emit if needed); opens browser unless --no-browser",
+      "description": "Runs scripts/serve_dashboard.py to serve tests/emits/server (FastAPI + static). Prerequisite file: tests/emits/server/server.py — create with `python3 scripts/run_tests_and_emit.py` from a git checkout; ainl dashboard fails fast with instructions if missing. Not typically present in PyPI-only installs. --no-browser skips opening a tab.",
       "doc": "docs/QUICKSTART_OPENCLAW.md"
     },
     "ainl_doctor_ainl": {

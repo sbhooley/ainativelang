@@ -1498,7 +1498,19 @@ def cmd_dashboard(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
     import subprocess  # AINL-OPENCLAW-TOP5
     import sys  # AINL-OPENCLAW-TOP5
 
-    script = _repo_root() / "scripts" / "serve_dashboard.py"  # AINL-OPENCLAW-TOP5
+    root = _repo_root()  # AINL-OPENCLAW-TOP5
+    emitted_server = root / "tests" / "emits" / "server" / "server.py"  # AINL-OPENCLAW-TOP5
+    if not emitted_server.is_file():  # AINL-OPENCLAW-TOP5
+        print(  # AINL-OPENCLAW-TOP5
+            "ainl dashboard: emitted UI server not present.\n"  # AINL-OPENCLAW-TOP5
+            "  Build it once from a git checkout of the AINL repo:\n"  # AINL-OPENCLAW-TOP5
+            "    python3 scripts/run_tests_and_emit.py\n"  # AINL-OPENCLAW-TOP5
+            f"  Expected file: {emitted_server}\n"  # AINL-OPENCLAW-TOP5
+            "  (PyPI installs typically do not include tests/emits; this path is dev-oriented.)",  # AINL-OPENCLAW-TOP5
+            file=sys.stderr,  # AINL-OPENCLAW-TOP5
+        )  # AINL-OPENCLAW-TOP5
+        return 1  # AINL-OPENCLAW-TOP5
+    script = root / "scripts" / "serve_dashboard.py"  # AINL-OPENCLAW-TOP5
     if not script.is_file():  # AINL-OPENCLAW-TOP5
         print(f"ainl dashboard: missing {script}", file=sys.stderr)  # AINL-OPENCLAW-TOP5
         return 1  # AINL-OPENCLAW-TOP5
@@ -1513,7 +1525,7 @@ def cmd_dashboard(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
 def main() -> None:
     ap = argparse.ArgumentParser(  # AINL-OPENCLAW-TOP5
         description="AINL runtime CLI",  # AINL-OPENCLAW-TOP5
-        epilog="OpenClaw helpers: `ainl install openclaw`, `ainl status [--json|--json-summary|--summary]`, `ainl cron add`, `ainl dashboard`, `ainl doctor --ainl`. See docs/QUICKSTART_OPENCLAW.md.",  # AINL-OPENCLAW-TOP5
+        epilog="OpenClaw helpers: `ainl install openclaw`, `ainl status [--json|--json-summary|--summary]`, `ainl cron add`, `ainl dashboard` (needs emitted server — run `python3 scripts/run_tests_and_emit.py` in a dev checkout), `ainl doctor --ainl`. See docs/QUICKSTART_OPENCLAW.md.",  # AINL-OPENCLAW-TOP5
     )  # AINL-OPENCLAW-TOP5
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -2032,7 +2044,13 @@ def main() -> None:
     cron_add.add_argument("--dry-run", action="store_true", help="Print openclaw argv only")  # AINL-OPENCLAW-TOP5
     cron_add.set_defaults(func=cmd_cron_add)  # AINL-OPENCLAW-TOP5
 
-    dashp = sub.add_parser("dashboard", help="Serve emitted dashboard (scripts/serve_dashboard.py)")  # AINL-OPENCLAW-TOP5
+    dashp = sub.add_parser(  # AINL-OPENCLAW-TOP5
+        "dashboard",  # AINL-OPENCLAW-TOP5
+        help="Serve emitted dashboard via scripts/serve_dashboard.py (requires tests/emits/server from run_tests_and_emit)",  # AINL-OPENCLAW-TOP5
+        formatter_class=argparse.RawDescriptionHelpFormatter,  # AINL-OPENCLAW-TOP5
+        description="Serve the emitted FastAPI/static dashboard under tests/emits/server.",  # AINL-OPENCLAW-TOP5
+        epilog="Prerequisite: from a git checkout, run `python3 scripts/run_tests_and_emit.py` so tests/emits/server/server.py exists. PyPI-only installs usually lack this tree.",  # AINL-OPENCLAW-TOP5
+    )  # AINL-OPENCLAW-TOP5
     dashp.add_argument("--port", type=int, default=None, dest="dashboard_port", help="HTTP port (default 8765)")  # AINL-OPENCLAW-TOP5
     dashp.add_argument("--no-browser", action="store_true", dest="dashboard_no_browser", help="Do not open browser")  # AINL-OPENCLAW-TOP5
     dashp.set_defaults(func=cmd_dashboard)  # AINL-OPENCLAW-TOP5

@@ -96,6 +96,8 @@ These commands are implemented in **`cli/main.py`** and documented in **`docs/QU
 | **`ainl cron add FILE.ainl`** | Wraps **`openclaw cron add`** with message **`ainl run <path>`**; **`--cron`** or **`--every`**; **`--dry-run`** prints argv only. |
 | **`ainl dashboard`** | Runs **`scripts/serve_dashboard.py`** (emitted server under **`tests/emits/server`** — build first with **`scripts/run_tests_and_emit.py`** in a dev checkout); **`--port`**, **`--no-browser`**. |
 
+The CLI **fails fast** if **`tests/emits/server/server.py`** is missing (typical for PyPI-only installs), with the same **`run_tests_and_emit`** hint.
+
 **Shell shortcut:** **`scripts/setup_ainl_integration.sh`** delegates to **`ainl install openclaw`** (supports **`--dry-run`**, **`--workspace`**, **`--verbose`**).
 
 ---

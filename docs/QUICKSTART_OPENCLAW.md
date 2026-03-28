@@ -101,7 +101,13 @@ Wraps **`openclaw cron add`** with message **`ainl run <quoted-path>`**. Use **`
 
 ## Emitted dashboard (optional)
 
-After **`python3 scripts/run_tests_and_emit.py`** (dev checkout):
+This UI is **not** part of a minimal **`pip install ainativelang`** tree: it lives under **`tests/emits/server/`** and is produced by the emitter test harness. Use a **git clone** of the repo, then build once:
+
+```bash
+python3 scripts/run_tests_and_emit.py
+```
+
+That creates **`tests/emits/server/server.py`**. **`ainl dashboard`** checks for that file first and prints the same hint if it is missing.
 
 ```bash
 ainl dashboard
@@ -133,6 +139,7 @@ After `ainl install openclaw`, the gateway process should inherit **`env.shellEn
 | **Cron job 'AINL Weekly Token Trends' not found — Run `ainl install openclaw` to initialize.** | Crons not registered | `ainl install openclaw` (skips duplicate names/messages) |
 | **`OPENCLAW_BOOTSTRAP_PREFER_SESSION_CONTEXT` should be true — … Run `ainl install openclaw` to initialize.** | Gateway env not patched or not restarted | Non–dry-run install or edit `env.shellEnv` + `openclaw gateway restart` |
 | RPCWireError / connection refused | Gateway not running or unreachable | Start or `openclaw gateway restart`; confirm CLI can reach the host |
+| **`ainl dashboard` / emitted server missing** | `tests/emits/server/server.py` not built (typical for PyPI-only installs) | From a git checkout: `python3 scripts/run_tests_and_emit.py` |
 | **Workspace path mismatch — … Run `ainl install openclaw` to initialize.** | `OPENCLAW_WORKSPACE` / `AINL_MEMORY_DB` disagree | Align env; re-run install with `--workspace` |
 
 ## Next steps

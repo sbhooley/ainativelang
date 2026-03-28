@@ -28,7 +28,11 @@ def main() -> None:
     port = args.port
 
     if not os.path.isfile(os.path.join(SERVER_DIR, "server.py")):
-        print("Server not built. Run first: python3 scripts/run_tests_and_emit.py")
+        print(
+            "Emitted server not built. From the AINL repo root run:\n"
+            "  python3 scripts/run_tests_and_emit.py\n"
+            f"Expected: {os.path.join(SERVER_DIR, 'server.py')}"
+        )
         sys.exit(1)
     url = f"http://127.0.0.1:{port}/"
     print(f"Serving API + static at {url} (API at {url}api/)")
