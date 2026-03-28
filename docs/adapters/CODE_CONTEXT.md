@@ -7,9 +7,15 @@ Design lineage:
 - **Tiered retrieval** is inspired by [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip); full credit to **Brady Drexler** for the original idea. This repository ships a **clean re-implementation** for AINL’s adapter system (not a fork of upstream code).
 - **Import graph, transitive importers (“impact”), PageRank-style importance, and knapsack-style compression under a token budget** borrow ideas from import-graph tooling in the [chrismicah/forgeindex](https://github.com/chrismicah/forgeindex) ecosystem. Credit to **Chris Micah** and the forgeindex project; the implementation here is **independent** (not a fork of forgeindex).
 
-## Benefits for coding agents
+## How this helps coding agents
 
 Skeleton views (**`GET_SKELETON`**) give a cheap, token-light map of symbols before full retrieval. **`COMPRESS_CONTEXT`** can use the same embedding pipeline as **`embedding_memory`** (when that adapter is importable and embedding succeeds) to rank chunks by cosine similarity before greedy packing—falling back to TF–IDF when not. Extended **`STATS`** exposes graph size and top PageRank mass so agents can reason about index shape and dependency centrality without running separate queries.
+
+Future iterations could add more advanced skeletonization (e.g. control-flow or dependency-aware views) while staying inside the existing adapter.
+
+Run **`INDEX`** once per workspace so chunks live in persistent JSON; in the agent loop, use **`QUERY_CONTEXT`** at **Tier 1** for token-efficient signatures plus doc/summary, and escalate to **Tier 2** or **`GET_FULL_SOURCE`** only when a specific implementation is needed. **`COMPRESS_CONTEXT`** ranks chunks the same way as **`QUERY_CONTEXT`** (TF–IDF) but **packs** signature + summary lines until a **token budget** (heuristic: ~4 characters per token) is exhausted—useful when you need a single bounded blob for the prompt.
+
+Use **`GET_DEPENDENCIES`** / **`GET_IMPACT`** to see **chunk-level** edges derived from **`import` / `from`** (Python) and **`import` / `require`** (JS/TS), resolved to indexed files. **`GET_IMPACT`** returns direct importers, all transitive importers (reverse graph reachability), and a **global PageRank** score on the forward graph (chunk *A* → *B* if *A*’s chunk source resolves an import to *B*’s file’s canonical chunk). **`STATS`** gives quick visibility into index size and freshness without pulling code into the prompt.
 
 ## Enablement
 
@@ -17,12 +23,6 @@ Skeleton views (**`GET_SKELETON`**) give a cheap, token-light map of symbols bef
 - **Store**: default `.ainl_code_context.json` in the current working directory; override with **`AINL_CODE_CONTEXT_STORE`**.
 
 If the adapter is not enabled, `code_context` calls fail at runtime like other opt-in adapters.
-
-## How this helps coding agents
-
-Run **`INDEX`** once per workspace so chunks live in persistent JSON; in the agent loop, use **`QUERY_CONTEXT`** at **Tier 1** for token-efficient signatures plus doc/summary, and escalate to **Tier 2** or **`GET_FULL_SOURCE`** only when a specific implementation is needed. **`COMPRESS_CONTEXT`** ranks chunks the same way as **`QUERY_CONTEXT`** (TF–IDF) but **packs** signature + summary lines until a **token budget** (heuristic: ~4 characters per token) is exhausted—useful when you need a single bounded blob for the prompt.
-
-Use **`GET_DEPENDENCIES`** / **`GET_IMPACT`** to see **chunk-level** edges derived from **`import` / `from`** (Python) and **`import` / `require`** (JS/TS), resolved to indexed files. **`GET_IMPACT`** returns direct importers, all transitive importers (reverse graph reachability), and a **global PageRank** score on the forward graph (chunk *A* → *B* if *A*’s chunk source resolves an import to *B*’s file’s canonical chunk). **`STATS`** gives quick visibility into index size and freshness without pulling code into the prompt.
 
 ## Tiers
 
