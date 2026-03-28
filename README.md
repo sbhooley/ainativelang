@@ -62,7 +62,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **See updated benchmarks (tiktoken cl100k_base, viable subset, minimal_emit fallback stub):** [`BENCHMARK.md`](BENCHMARK.md) · [`docs/benchmarks.md`](docs/benchmarks.md#benchmark-highlights-march-2026) · comparative methodology [`docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
 > - **ZeroClaw skill (one-command install → deterministic graphs):** [`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md) · [`skills/ainl/`](skills/ainl/) · curated trees **[`examples/ecosystem/`](examples/ecosystem/)**
 > - **MCP host hub:** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) · **`ainl install-mcp --host openclaw|zeroclaw|hermes`**
-> - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · **`ainl install openclaw`**, **`ainl status`**, **`ainl doctor --ainl`** · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
+> - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · **`ainl install openclaw`**, **`ainl status`** (with **`--json`**, **`--json-summary`**, **`--summary`**), **`ainl cron add`**, **`ainl dashboard`**, **`ainl doctor --ainl`** · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). Agent discovery: **`tooling/bot_bootstrap.json`** → **`openclaw_commands`**. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 > - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-mcp --host openclaw`**
 > - **OpenClaw + AINL unified integration (v1.3.0: ainl install openclaw, ainl status, Hermes; v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
 > - **Hermes Agent support (official; self-improving agents with deterministic graphs):** [`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md) · [`skills/hermes/`](skills/hermes/) · **`ainl install-mcp --host hermes`** · **`ainl compile --emit hermes-skill`**
@@ -83,6 +83,20 @@ It is designed for teams building AI workflows that need multiple steps, state a
 **Compile-once, run-many:** you author (or import) a graph once; the runtime executes it deterministically without re-spending LLM tokens on orchestration each time. Size economics are tracked with **tiktoken cl100k_base**; the **viable subset** (e.g. **public_mixed**) shows about **~1.02×** leverage for **minimal_emit** vs unstructured baselines—see **[`BENCHMARK.md`](BENCHMARK.md)**, **[`docs/benchmarks.md`](docs/benchmarks.md)**, and **[`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](docs/architecture/COMPILE_ONCE_RUN_MANY.md)**.
 
 **Performance & benchmarks (updated Mar 2026):** Size results use **tiktoken cl100k_base** (billing-aligned for GPT-4o–class models). Reports separate **viable subset** rows from **legacy-inclusive** aggregates; **minimal_emit fallback stub** and **emitter compaction** (e.g. prisma / react_ts stubs) are documented in the transparency blocks. See **[`BENCHMARK.md`](BENCHMARK.md)** for tables; narrative hub **[`docs/benchmarks.md`](docs/benchmarks.md)** (highlights, commands, CI). Runtime economics and optional reliability batches: **`tooling/benchmark_runtime_results.json`** via `make benchmark` / `scripts/benchmark_runtime.py`. For long-lived OpenClaw deployments, pair these static benchmarks with live token-budget observability and cost tracking via **`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`** and the monitoring components documented in **`docs/MONITORING_OPERATIONS.md`**.
+
+### CLI polish (OpenClaw, v1.3.0+)
+
+These commands are implemented in **`cli/main.py`** and documented in **`docs/QUICKSTART_OPENCLAW.md`**. For bots and IDE tools, **`tooling/bot_bootstrap.json`** exposes the same surface under **`openclaw_commands`** (plus **`ai_native_lang_example_yml`**). Project lock example files: **`aiNativeLang.example.yml`** (repo root) and **`tooling/aiNativeLang.example.yml`** (packaged wheels).
+
+| Command | What it does |
+|--------|----------------|
+| **`ainl install openclaw --workspace PATH`** | Merges **`env.shellEnv`** into **`<workspace>/.openclaw/openclaw.json`**, bootstraps SQLite, registers three gold-standard crons, restarts gateway; use **`--dry-run`** to preview. |
+| **`ainl status`** | Unified health: workspace, schema, weekly budget (**`memory_records`** fallback), crons, drift, 7d tokens, estimated cost avoided (7d), caps. **`--json`** (pretty), **`--json-summary`** (one-line JSON), **`--summary`** (one-line text for alerts). |
+| **`ainl doctor --ainl`** | Validates OpenClaw + AINL integration (env, schema, cron names, bootstrap flag). |
+| **`ainl cron add FILE.ainl`** | Wraps **`openclaw cron add`** with message **`ainl run <path>`**; **`--cron`** or **`--every`**; **`--dry-run`** prints argv only. |
+| **`ainl dashboard`** | Runs **`scripts/serve_dashboard.py`** (emitted server under **`tests/emits/server`** — build first with **`scripts/run_tests_and_emit.py`** in a dev checkout); **`--port`**, **`--no-browser`**. |
+
+**Shell shortcut:** **`scripts/setup_ainl_integration.sh`** delegates to **`ainl install openclaw`** (supports **`--dry-run`**, **`--workspace`**, **`--verbose`**).
 
 ---
 
