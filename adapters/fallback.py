@@ -153,7 +153,6 @@ def create_fallback_from_config(config: dict, llm_adapter_registry: LLMAdapterRe
             recovery_timeout_s=cb_cfg.get("recovery_timeout_s", 300.0),
         )
         # Wire circuit breaker metrics to observability
-        # Wire circuit breaker metrics to observability
         emit = RuntimeObservability.from_env_or_flag().emit
         breaker.emit_metric = lambda metric_name, value, labels=None: emit(
             metric_name, value, labels=labels or {}

@@ -32,6 +32,19 @@ llm:
 
 Environment variables are expanded automatically (e.g., `${OPENROUTER_API_KEY}`).
 
+
+Tell AINL to load this configuration:
+
+- CLI flag: `--config path/to/config.yaml`
+- Environment variable: `AINL_CONFIG=path/to/config.yaml`
+
+As an alternative, you can enable specific adapters without a config file using:
+
+- CLI flag: `--enable-adapter llm.openrouter` (repeatable)
+- Environment variable: `AINL_ENABLED_ADAPTERS=llm.openrouter,llm.anthropic`
+
+The `--config` approach is recommended for LLM setup because it also defines the fallback chain, circuit breaker settings, and provider-specific options.
+
 ## Bootstrap Integration
 
 In your application startup code (CLI or server):
@@ -131,3 +144,42 @@ Circuit breaker state is emitted as a gauge: `circuit_breaker_state{provider,sta
 
 - Tool use passthrough for Anthropic/Cohere (out of scope for Phase 1).
 - Optional SDK‑based adapters via `ainativelang[anthropic]`.
+
+
+## Monitoring & Alerting
+
+The AINL ecosystem includes a lightweight monitoring stack:
+
+- **Runtime metrics**: Adapters and circuit breakers emit metrics via `RuntimeObservability.emit`. These are:
+  - Printed as JSON to stderr when `AINL_OBSERVABILITY=1`
+  - Optionally written to a JSONL file via `AINL_OBSERVABILITY_JSONL=/path/metrics.jsonl`
+  - Always forwarded to the in‑memory collector for Prometheus export
+
+- **Prometheus endpoint**: Run `python scripts/serve_dashboard.py` and scrape `http://localhost:8080/api/metrics` for:
+  - `circuit_breaker_state{provider="...",state="open|closed|half_open"}`
+  - `cost_estimate_drift_total`, `cost_estimate_drift_pct{provider="...",model="..."}`
+
+- **Health checks**:  
+  `GET /health/live` returns `200 OK` if the process is alive.  
+  `GET /health/ready` returns `200` when collector and cost DB are ready.
+
+- **Cost validation service**: `services/cost_validator.py` runs in the background (if started) and compares adapter estimates against live provider prices (OpenRouter) every 6 hours by default. On drift >10%, it emits `cost_estimate_drift_total` and `cost_estimate_drift_pct`.
+
+See `docs/AGENT_GUIDE_INDEX.md` for a full feature map.
+
+## Using LLM Adapters with MCP (Hermes‑Agent / OpenClaw Skill)
+
+When running the AINL MCP server (`scripts/ainl_mcp_server.py`), LLM adapters are **not** enabled by default to preserve a minimal attack surface. To enable them:
+
+1. Set `AINL_CONFIG` to point to your YAML config file **or** set `AINL_MCP_LLM_ENABLED=1`.
+2. Start the server: `python scripts/ainl_mcp_server.py`.
+3. The server will:
+   - Load the config (with env‑var expansion).
+   - Call `register_llm_adapters()` to register the `llm` composite and the individual provider adapters.
+   - Relax the `network` privilege tier restriction so LLM adapters can make outbound requests.
+4. Connect your MCP client (Hermes‑Agent, OpenClaw skill) to the server as usual.
+
+If `AINL_CONFIG` is set, the server automatically registers the LLM adapters defined under `llm.providers` and uses `llm.fallback_chain`. If `AINL_MCP_LLM_ENABLED=1` but no config is provided, the server will attempt to use default (no‑op) adapters; you should provide a config.
+
+See `docs/AGENT_GUIDE_INDEX.md` for a complete agent‑oriented reference.
+

@@ -62,6 +62,11 @@ class RuntimeObservability:
                     pass
 
     def emit(self, name: str, value: Any, *, labels: Optional[Dict[str, Any]] = None) -> None:
+        # Always update in-memory collector for Prometheus endpoint
+        try:
+            _collector.set(name, value, labels=dict(labels or {}))
+        except Exception:
+            pass
         if not self.enabled:
             return
         event = {
@@ -85,49 +90,6 @@ class RuntimeObservability:
             except Exception:
                 # Keep sink failures non-fatal.
                 pass
-
-
-        # Also update in-memory collector for Prometheus endpoint
-        try:
-            _collector.set(name, value, labels=dict(labels or {}))
-        except Exception:
-            pass
-    def close(self) -> None:
-        if self._jsonl_fh is None:
-            return
-        try:
-            with self._lock:
-                self._jsonl_fh.close()
-        except Exception:
-            pass
-        finally:
-            self._jsonl_fh = None
-
-    def on_ack(self, ok: bool, *, labels: Optional[Dict[str, Any]] = None) -> None:
-        if not self.enabled:
-            return
-        self._ack_total += 1
-        if ok:
-            self._ack_ok += 1
-        self.emit("reactive.ack.total", self._ack_total, labels=labels)
-        self.emit("reactive.ack.success", self._ack_ok, labels=labels)
-        rate = float(self._ack_ok) / float(self._ack_total) if self._ack_total else 0.0
-        self.emit("reactive.ack.success_rate", round(rate, 6), labels=labels)
-
-    def sequence_gap(self, key: str, seq: Any, *, labels: Optional[Dict[str, Any]] = None) -> None:
-        if not self.enabled:
-            return
-        try:
-            cur = int(str(seq))
-        except Exception:
-            return
-        prev = self._last_seq_by_key.get(key)
-        self._last_seq_by_key[key] = cur
-        if prev is None:
-            return
-        gap = max(0, cur - prev)
-        self.emit("reactive.sequence_gap", gap, labels=labels)
-
 
 def record_metric(context: Dict[str, Any], name: str, value: Any, *, labels: Optional[Dict[str, Any]] = None) -> None:
     """

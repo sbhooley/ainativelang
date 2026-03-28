@@ -46,9 +46,14 @@ llm:
   fallback_chain: ["openrouter"]  # or ["anthropic", "cohere", "openrouter"]
 
   # Optional: circuit breaker settings (apply across all network adapters)
+      # Example configuration:
+      # circuit_breaker:
+      #   failure_threshold: 5      # consecutive failures to trip
+      #   recovery_timeout_s: 300     # seconds before trying again
+      #   half_open_max_calls: 3    # calls in half-open state
   # circuit_breaker:
   #   failure_threshold: 5      # consecutive failures to trip
-  #   recovery_timeout: 300     # seconds before trying again
+  #   recovery_timeout_s: 300     # seconds before trying again
   #   half_open_max_calls: 3    # calls in half-open state
 
 # Optional: other adapter namespaces can be configured similarly
