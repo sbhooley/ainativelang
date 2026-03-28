@@ -40,6 +40,7 @@ import json
 import os
 import time
 import uuid
+import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -194,8 +195,9 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
             return load_profile_as_grant(profile_name)
         except ValueError:
             pass
-    return {
-        "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),
+    # Base grant
+    grant = {
+        "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),  # core only
         "forbidden_adapters": [],
         "forbidden_effects": [],
         "forbidden_effect_tiers": [],
@@ -203,6 +205,15 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
         "limits": dict(_DEFAULT_LIMITS),
         "adapter_constraints": {},
     }
+    # If LLM usage is enabled via env var or config presence, relax constraints
+    if os.environ.get("AINL_MCP_LLM_ENABLED") == "1" or os.environ.get("AINL_CONFIG"):
+        # Add common LLM provider names to allowed adapters
+        grant["allowed_adapters"].extend(["openrouter", "anthropic", "cohere", "ollama", "llm"])
+        # Remove network from forbidden privilege tiers (LLM adapters have network_facing=True)
+        grant["forbidden_privilege_tiers"] = [
+            tier for tier in grant["forbidden_privilege_tiers"] if tier != "network"
+        ]
+    return grant
 
 _MCP_SERVER_GRANT: Dict[str, Any] = _load_mcp_server_grant()
 # Optional sandbox discovery at startup; MCP behavior is unchanged when unavailable.
@@ -225,6 +236,24 @@ if _HAS_MCP:
     )
 
 
+
+
+def _load_config_from_path(config_path: str) -> dict:
+    """Load YAML config from path and expand environment variables."""
+    import yaml
+    with open(config_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+
+    def _expand(v):
+        if isinstance(v, str):
+            return os.path.expandvars(v)
+        if isinstance(v, dict):
+            return {k: _expand(v) for k, v in v.items()}
+        if isinstance(v, list):
+            return [_expand(x) for x in v]
+        return v
+
+    return _expand(raw)
 def _compile(code: str, strict: bool = True) -> Dict[str, Any]:
     compiler = AICodeCompiler(strict_mode=strict)
     return compiler.compile(code)
@@ -415,8 +444,21 @@ def ainl_run(
         }
 
     merged_limits = _merge_limits(limits)
-    reg = AdapterRegistry(allowed=list(_DEFAULT_ALLOWED_ADAPTERS))
+    reg = AdapterRegistry(allowed=list(_MCP_SERVER_GRANT.get("allowed_adapters", _DEFAULT_ALLOWED_ADAPTERS)))
     reg.register("core", _EchoAdapter())
+    # Optional LLM adapter registration if AINL_CONFIG present
+    config_path = os.environ.get("AINL_CONFIG")
+    if config_path:
+        try:
+            config = _load_config_from_path(config_path)
+            # Only attempt if llm providers are defined
+            if config.get("llm", {}).get("providers"):
+                from adapters import register_llm_adapters
+                register_llm_adapters(reg, config)
+        except Exception as e:
+            # Log warning but continue; server remains functional without LLM
+            print(f"[ainl_mcp_server] Warning: failed to register LLM adapters: {e}")
+
 
     try:
         eng = RuntimeEngine(
@@ -546,7 +588,7 @@ def ainl_fitness_report(file: str, runs: int = 5, strict: bool = True) -> dict:
     last_error: Optional[str] = None
     sample_runs: List[Dict[str, Any]] = []
     for _ in range(runs):
-        reg = AdapterRegistry(allowed=list(_DEFAULT_ALLOWED_ADAPTERS))
+        reg = AdapterRegistry(allowed=list(_MCP_SERVER_GRANT.get("allowed_adapters", _DEFAULT_ALLOWED_ADAPTERS)))
         reg.register("core", _EchoAdapter())
         start = time.perf_counter()
         run_summary: Dict[str, Any] = {"ok": False}

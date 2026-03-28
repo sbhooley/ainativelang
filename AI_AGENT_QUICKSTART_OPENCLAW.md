@@ -55,6 +55,12 @@ Read in order:
 
 ---
 
+
+
+### LLM Adapter Setup (Optional)
+
+For agents that need cloud LLM capabilities (e.g., OpenRouter, Anthropic, Cohere), see `docs/LLM_ADAPTER_USAGE.md`. Create a config file (or set `AINL_CONFIG`) and define `llm.providers` with your API keys as environment variables (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, etc.). Then use `--config` when running the CLI or set `AINL_MCP_LLM_ENABLED=1` for the MCP server.
+
 ## 3. Explore Existing OpenClaw Adapters
 
 Open `ADAPTER_REGISTRY.json` and look for:

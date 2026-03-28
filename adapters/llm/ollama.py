@@ -2,6 +2,8 @@ import requests
 from .base import AbstractLLMAdapter, LLMResponse, LLMUsage
 
 class OllamaAdapter(AbstractLLMAdapter):
+    network_facing = True
+
     def __init__(self, config: dict):
         self.base_url = config.get("base_url", "http://ollama:11434")
         self.model = config.get("model", "llama2")

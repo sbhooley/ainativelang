@@ -17,6 +17,10 @@ class LLMResponse:
     raw: Optional[Any] = None
 
 class AbstractLLMAdapter(ABC):
+    """LLM providers; subclasses set network_facing for policy / capability discovery."""
+
+    network_facing: bool = False
+
     @abstractmethod
     def complete(self, prompt: str, max_tokens: int, **kwargs) -> LLMResponse:
         pass

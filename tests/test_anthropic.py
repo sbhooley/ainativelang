@@ -48,26 +48,20 @@ def test_anthropic_429_retry(monkeypatch, anthropic_success_response):
     call_count = {"n": 0}
 
     def mock_post(url, json=None, headers=None, timeout=None):
-        if call_count["n"] < 1:
-            call_count["n"] += 1
+        call_count["n"] += 1
+        if call_count["n"] == 1:
             req = httpx.Request('POST', url)
             return httpx.Response(429, text="rate limit", request=req)
         req = httpx.Request('POST', url)
         return httpx.Response(200, json=anthropic_success_response, request=req)
 
     monkeypatch.setattr(httpx, "post", mock_post)
-    adapter = AnthropicAdapter({"api_key": "test-key", "model": "claude-3-5-sonnet-20241022"})
-    # First call should raise due to 429
-    with pytest.raises(RuntimeError) as excinfo:
-        adapter.complete("Hello", max_tokens=100)
-    assert "429" in str(excinfo.value)
-    # Second call should succeed
+    adapter = AnthropicAdapter({"api_key": "***", "model": "claude-3-5-sonnet-20241022"})
+    # With retry, this call should succeed after one retry (2 attempts total)
     resp = adapter.complete("Hello", max_tokens=100)
     assert resp.content == '{"result": "ok"}'
-    # The fail call incremented count to 1; success call does not increment.
-    assert call_count["n"] == 1
-
-
+    # Total HTTP calls should be 2 (first 429, second 200)
+    assert call_count["n"] == 2
 def test_anthropic_validate():
     # With a valid API key (dummy), adapter is considered valid structurally
     adapter = AnthropicAdapter({"api_key": "dummy"})

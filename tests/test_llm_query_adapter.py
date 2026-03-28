@@ -1,6 +1,8 @@
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from runtime.adapters.base import AdapterError, AdapterRegistry
@@ -12,7 +14,8 @@ def test_llm_query_mock_success():
     try:
         os.environ["AINL_LLM_QUERY_MOCK"] = "1"
         reg = AdapterRegistry(allowed=["llm_query"])
-        reg.register("llm_query", LlmQueryAdapter(enabled=True))
+        with pytest.warns(DeprecationWarning, match="llm_query is deprecated"):
+            reg.register("llm_query", LlmQueryAdapter(enabled=True))
         out = reg.call("llm_query", "query", ["hello", "gpt", 64], {"x": 1})
         assert out["ok"] is True
         assert out["runtime"] == "llm_query"
@@ -26,7 +29,8 @@ def test_llm_query_mock_success():
 
 def test_llm_query_blocks_when_disabled():
     reg = AdapterRegistry(allowed=["llm_query"])
-    reg.register("llm_query", LlmQueryAdapter(enabled=False))
+    with pytest.warns(DeprecationWarning, match="llm_query is deprecated"):
+        reg.register("llm_query", LlmQueryAdapter(enabled=False))
     try:
         reg.call("llm_query", "query", ["hello"], {})
     except AdapterError as e:
@@ -39,7 +43,8 @@ def test_llm_query_private_context_firewall():
     old = os.environ.get("AINL_LLM_QUERY_MOCK")
     try:
         os.environ["AINL_LLM_QUERY_MOCK"] = "1"
-        adp = LlmQueryAdapter(enabled=True)
+        with pytest.warns(DeprecationWarning, match="llm_query is deprecated"):
+            adp = LlmQueryAdapter(enabled=True)
         out = adp.run("hello", context={"visible": 1, "_secret": 2})
         assert out["ok"] is True
         # Mock returns deterministic text; firewall behavior is exercised by the adapter path.

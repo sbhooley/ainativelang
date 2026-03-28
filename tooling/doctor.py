@@ -66,7 +66,7 @@ def _check_host_config(home: Path, host_id: str) -> DoctorCheck:
         m = re.search(rf"^\s*command:\s*\"?([^\n\"]+)\"?\s*$", text, flags=re.MULTILINE)
         cmd = (m.group(1).strip() if m else "")
         hermes_hint = ""
-        if host_id == "hermes":
+        if host_id in ("hermes", "hermes-gateway"):
             hermes_hint = (
                 " MCP server `ainl` is registered for stdio; after adding skill bundles under "
                 "`~/.hermes/skills/ainl-imports/`, refresh Hermes’ skills index (e.g. restart the agent or use your "

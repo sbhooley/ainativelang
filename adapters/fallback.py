@@ -1,8 +1,9 @@
 """
 Fallback adapter and circuit breaker for LLM providers.
 """
-
 from __future__ import annotations
+
+from runtime.observability import RuntimeObservability
 
 import time
 from dataclasses import dataclass, field
@@ -150,6 +151,12 @@ def create_fallback_from_config(config: dict, llm_adapter_registry: LLMAdapterRe
             name=provider_name,
             failure_threshold=cb_cfg.get("failure_threshold", 5),
             recovery_timeout_s=cb_cfg.get("recovery_timeout_s", 300.0),
+        )
+        # Wire circuit breaker metrics to observability
+        # Wire circuit breaker metrics to observability
+        emit = RuntimeObservability.from_env_or_flag().emit
+        breaker.emit_metric = lambda metric_name, value, labels=None: emit(
+            metric_name, value, labels=labels or {}
         )
         adapters_with_breakers.append((adapter, breaker))
 

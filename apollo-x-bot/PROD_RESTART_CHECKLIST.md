@@ -54,3 +54,10 @@ In dashboard (`/v1/promoter.dashboard`) verify:
 - `Run health` card updates after polls
 - `Policy state` reflects active/expired flags correctly
 - `Cost avoidance (24h)` shows non-zero values when fallback/skip policies are active
+
+## 6) Poll schedule (OpenClaw or OS cron)
+
+The promoter does not run by itself: something must invoke `apollo-x-bot/openclaw-poll.sh` on a cadence (e.g. every 45 minutes). After restart:
+
+- **OpenClaw:** confirm the job exists (`openclaw cron` / your host’s UI) and the message still `cd`’s to this repo and runs `bash apollo-x-bot/openclaw-poll.sh`. See **`OPENCLAW_DEPLOY.md`** for the exact `openclaw cron add` example.
+- **OS cron:** `crontab -l` should contain a line that runs the same script; fix missing jobs if `GET /v1/promoter.stats` → `run_health` shows stale `last_poll_success_utc`.

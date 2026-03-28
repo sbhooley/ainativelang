@@ -1,4 +1,5 @@
 from __future__ import annotations
+import uuid
 
 import json
 import asyncio
@@ -1163,6 +1164,7 @@ class RuntimeEngine:
     def _run_label(self, label_id: str, frame: Dict[str, Any], stack: List[str], force_steps: bool = False) -> Any:
         if not stack:
             self._start_run()
+            frame['_run_id'] = str(uuid.uuid4())
         lid = self._resolve_label_key(label_id, stack)
         stack = stack + [lid]
         self._guard_depth(stack)

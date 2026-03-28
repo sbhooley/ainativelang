@@ -15,8 +15,8 @@ fi
 # Prefer explicit PYTHON override, then common local runtimes.
 if [[ -n "${PYTHON:-}" ]]; then
   PY="$PYTHON"
-elif [[ -x "/data/.openclaw/workspace/ainativelang/.venv-ainl/bin/python3" ]]; then
-  PY="/data/.openclaw/workspace/ainativelang/.venv-ainl/bin/python3"
+elif [[ -x "$ROOT/.venv-ainl/bin/python3" ]]; then
+  PY="$ROOT/.venv-ainl/bin/python3"
 else
   PY="python3"
 fi

@@ -1,22 +1,55 @@
-# Example LLM configuration for AINL adapter ecosystem
+# AINL Configuration Template
+# Copy and customize for your deployment.
+#
+# Environment variable expansion:
+# - In this file, you can use ${VAR} or $VAR to reference environment variables.
+# - API keys are STRONGLY recommended to be set via environment variables
+#   rather than hard-coding them in this file.
+# - Set variables in your shell before running, or use a `.env` file with
+#   a tool like `direnv` or `dotenv`.
 
+# LLM provider configuration
 llm:
-  default_provider: openrouter
-  fallback_chain: [openrouter, anthropic, ollama]
-  circuit_breaker:
-    failure_threshold: 5
-    recovery_timeout_s: 300
+  # List of providers to register
   providers:
     openrouter:
-      api_key: ${OPENROUTER_API_KEY}
-      base_url: https://openrouter.ai/api/v1
-      model: openai/gpt-4o-mini
-      json_mode: true
-    anthropic:
-      api_key: ${ANTHROPIC_API_KEY}
-      model: claude-3-5-sonnet-20241022
-      json_mode: true
-    ollama:
-      base_url: http://localhost:11434
-      model: llama3.1
-      json_mode: false
+      # API key: prefer setting via OPENROUTER_API_KEY environment variable
+      # api_key: "${OPENROUTER_API_KEY}"   # expanded from env
+      model: stepfun/step-3.5-flash:free  # free model on OpenRouter
+      max_tokens: 800
+      json_mode: true   # enable JSON mode if supported
+      # Optional: base_url, referer, title for OpenRouter
+      # base_url: https://openrouter.ai/api/v1
+      # referer: https://your-app.example.com
+      # title: "My AINL App"
+
+    # Example: Anthropic (requires ANTHROPIC_API_KEY env)
+    # anthropic:
+    #   api_key: "${ANTHROPIC_API_KEY}"
+    #   model: claude-3-5-sonnet-20241022
+    #   max_tokens: 800
+    #   json_mode: true
+
+    # Example: Cohere (requires COHERE_API_KEY env)
+    # cohere:
+    #   api_key: "${COHERE_API_KEY}"
+    #   model: command-r-plus
+    #   max_tokens: 800
+    #   json_mode: true
+
+    # Example: Ollama (local)
+    # ollama:
+    #   base_url: http://localhost:11434
+    #   model: llama3
+
+  # Fallback chain: list of provider names to try in order if one fails
+  fallback_chain: ["openrouter"]  # or ["anthropic", "cohere", "openrouter"]
+
+  # Optional: circuit breaker settings (apply across all network adapters)
+  # circuit_breaker:
+  #   failure_threshold: 5      # consecutive failures to trip
+  #   recovery_timeout: 300     # seconds before trying again
+  #   half_open_max_calls: 3    # calls in half-open state
+
+# Optional: other adapter namespaces can be configured similarly
+# memory, fs, sqlite, etc.

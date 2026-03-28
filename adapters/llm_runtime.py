@@ -11,9 +11,21 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from runtime.adapters.base import RuntimeAdapter, AdapterError
+from intelligence.monitor.cost_tracker import CostTracker
 
 from adapters.registry import LLMAdapterRegistry
 from adapters.llm.base import AbstractLLMAdapter, LLMResponse, LLMUsage
+
+
+def _run_id_from_context(context: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Match RuntimeEngine frame keys: `run_id` (tests/manual) and `_run_id` (engine-injected)."""
+    if not context:
+        return None
+    for key in ("run_id", "_run_id"):
+        val = context.get(key)
+        if val is not None and str(val).strip():
+            return str(val)
+    return None
 
 
 class LLMRuntimeAdapter(RuntimeAdapter):
@@ -58,6 +70,27 @@ class LLMRuntimeAdapter(RuntimeAdapter):
             resp: LLMResponse = adapter.complete(prompt=prompt, max_tokens=max_tokens)
         except Exception as e:
             raise AdapterError(f"LLM call failed ({self.provider}): {e}") from e
+
+        usage = resp.usage
+        provider = resp.provider
+        model = resp.model
+
+        # Automatic cost recording
+        run_id = _run_id_from_context(context)
+        if run_id:
+            try:
+                cost = adapter.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
+                CostTracker().add_cost(
+                    run_id=run_id,
+                    provider=provider,
+                    model=model,
+                    prompt_tokens=usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens,
+                    cost_usd=cost,
+                )
+            except Exception as e:
+                import warnings
+                warnings.warn(f"Cost tracking failed: {e}")
 
         return {
             "content": resp.content,

@@ -403,10 +403,28 @@ def _pretty_runtime_error(err: Exception) -> str:
     return f"{msg}\n  line {line_no}: {src}\n           {caret}"
 
 
+
+def _load_config(args) -> dict:
+    """Load YAML config from args.config or AINL_CONFIG env, expanding environment variables."""
+    import yaml
+    config_path = getattr(args, "config", None) or os.environ.get("AINL_CONFIG")
+    if not config_path:
+        return {}
+    with open(config_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    # Recursively expand environment variables in all strings
+    def _expand(value):
+        if isinstance(value, str):
+            return os.path.expandvars(value)
+        if isinstance(value, dict):
+            return {k: _expand(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_expand(v) for v in value]
+        return value
+    return _expand(raw)
+
+
 def cmd_run_hybrid_ptc(args: argparse.Namespace) -> int:
-    """Thin wrapper that runs examples/hybrid_order_processor.ainl with sensible defaults."""
-    if not args.no_mock and not os.environ.get("AINL_PTC_RUNNER_MOCK"):
-        os.environ["AINL_PTC_RUNNER_MOCK"] = "1"
 
     print("Running hybrid PTC order processor example...")
     print("  source: examples/hybrid_order_processor.ainl")
@@ -473,6 +491,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     with open(src_path, "r", encoding="utf-8") as f:
         code = f.read()
     reg = _adapter_registry_from_args(args)
+    config = _load_config(args)
+    # Register LLM adapters only if LLM configuration is present
+    if config.get("llm") and (config["llm"].get("fallback_chain") or config["llm"].get("providers")):
+        from adapters import register_llm_adapters
+        register_llm_adapters(reg, config)
     _register_enabled_adapters(reg, args)
     env_traj = os.environ.get("AINL_LOG_TRAJECTORY", "").strip().lower()
     trajectory_path: Optional[str] = None
@@ -1531,6 +1554,7 @@ def main() -> None:
 
     runp = sub.add_parser("run", help="Run AINL file")
     runp.add_argument("file", nargs="?")
+    runp.add_argument("--config", help="Path to AINL config YAML (for LLM adapter configuration)", default=None)
     runp.add_argument("--label", default="")
     runp.add_argument("--strict", action="store_true")
     runp.add_argument("--strict-reachability", action="store_true")

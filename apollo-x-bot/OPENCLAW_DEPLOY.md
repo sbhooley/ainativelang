@@ -5,6 +5,8 @@ OpenClaw does **not** replace the HTTP gateway: the graph uses `ExecutorBridgeAd
 1. **Supervise the gateway** (systemd, launchd, Docker, or a host process manager).
 2. **Schedule polls** with **OpenClaw cron** (or OS cron) using `apollo-x-bot/openclaw-poll.sh` (or an equivalent `python -m cli.main run …` line).
 
+**Important:** The graph file’s `S core cron "*/45 * * * *"` is **metadata for humans and tooling** — it does **not** install a schedule. If you skip step 2, the bot will not poll.
+
 Optional: keep using **`ainl install-mcp --host openclaw`** so the agent can compile/run other AINL via MCP — orthogonal to the promoter poll.
 
 ---

@@ -2,6 +2,10 @@
 
 This guide covers how to configure and use the expanded LLM adapter ecosystem in AINL, including fallback chains, JSON mode, and cost monitoring.
 
+## Migrating from `llm_query`
+
+The legacy **`llm_query`** runtime adapter remains available behind `--enable-adapter llm_query` or `AINL_ENABLE_LLM_QUERY=true`, but **instantiating it emits a `DeprecationWarning`**. Prefer the unified pipeline: register **`llm`** via `register_llm_adapters` and use **`R llm completion ...`** (or your graph’s equivalent) with `config.yaml` `llm:` / fallback chain as below. See `adapters/llm_runtime.py` and `adapters/__init__.py` for registration details.
+
 ## Configuration
 
 Create a `config.yaml` in your project root:

@@ -35,6 +35,17 @@ python3 -m cli.main check --strict apollo-x-bot/ainl-x-promoter.ainl
 python3 -m cli.main visualize apollo-x-bot/ainl-x-promoter.ainl --output apollo-x-bot/promoter.mmd
 ```
 
+## Scheduling (required)
+
+The graph includes `S core cron "*/45 * * * *"` as **documentation only** — it does **not** register macOS/Linux cron or OpenClaw jobs. If nothing invokes `ainl run` on `ainl-x-promoter.ainl`, the gateway can be healthy while the bot **never polls**: no `@Apollo_AINL` search, no replies, no cursor commits, and no `maybe_daily_post` from the graph.
+
+**Pick one:**
+
+- **OpenClaw cron** — copy-paste commands and env layout: **[`OPENCLAW_DEPLOY.md`](OPENCLAW_DEPLOY.md)** (`openclaw cron add` calling `apollo-x-bot/openclaw-poll.sh`).
+- **OS cron** — same script on a schedule, e.g. `*/45 * * * * cd /path/to/AI_Native_Lang && bash apollo-x-bot/openclaw-poll.sh >> /path/to/logs/promoter_poll.log 2>&1` (ensure `PYTHON`, `PROMOTER_GATEWAY_URL`, and secrets match the gateway; `openclaw-poll.sh` sources `apollo-x-bot/.env` and optional `APOLLO_PROMOTER_ENV`).
+
+Confirm activity with **`GET /v1/promoter.stats`** → `run_health.last_poll_success_utc` (or audit rows for `search_cursor_commit` after each poll).
+
 ## Production layout: HTTP gateway + `ExecutorBridgeAdapter`
 
 The graph uses `R bridge.POST <executor_key> <json_body>` (see `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`). The runtime wraps HTTP responses as `{ ok, status_code, body, ... }`, so the graph extracts lists with `X … get search_resp body.tweets` and `X … get scored body`.
@@ -108,6 +119,8 @@ Call rd/ENTRY ->_
 You can put variables in **`apollo-x-bot/.env`** (`KEY=value` per line). The gateway loads that file automatically; `run-with-gateway.sh` and `openclaw-poll.sh` also `source` it so `ainl run` sees the same values. The repo root `.gitignore` already ignores `.env`. Production can instead use `~/.openclaw/apollo-x-promoter.env` via `APOLLO_PROMOTER_ENV` (see `OPENCLAW_DEPLOY.md`).
 
 **Troubleshooting:** If debug shows `X_BEARER_TOKEN` missing but `.env` has it, fix an empty export in your shell (`export X_BEARER_TOKEN=`) or rely on the gateway: non-empty values in `.env` **overwrite** the environment when the process starts. Use `PROMOTER_GATEWAY_DEBUG=1` and check the `startup:` lines for `dotenv_path` / `exists` / `bearer_set`. Delete `data/promoter_state.sqlite` (or change `PROMOTER_STATE_PATH`) to reset **already_posted_today**, **search cursor**, **replied-tweet dedupe**, and related keys during dev.
+
+**No posts / no dashboard movement:** (1) Confirm a **scheduler** is actually running `openclaw-poll.sh` (see **Scheduling (required)** above). (2) **`GET /v1/promoter.stats`** — if `run_health` never updates, polls are not running. (3) **Replies** only happen when `x.search` returns tweets and `llm.classify` + `PROMOTER_CLASSIFY_MIN_SCORE` leave at least one candidate; silence on X (no mentions) means no `process_tweet` rows in audit. (4) **Original posts** are capped per UTC day and spaced by **`PROMOTER_ORIGINAL_POST_MIN_INTERVAL_SEC`** (default 3600); `maybe_daily_post` returns `noop` with `reason: min_interval_not_met` until the gap elapses — this is expected, not a failure.
 
 If daily posting appears stalled while polls still run, check policy KV flags via `POST /v1/kv.get` for `promoter_daily_block_flag` and `promoter_daily_fallback_model_flag`. `promoter_daily_block_flag` should be empty/null when daily posting is allowed; stale non-empty values force `daily_post_deferred_rate_limit`.
 

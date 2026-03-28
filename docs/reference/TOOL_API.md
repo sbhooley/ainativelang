@@ -42,3 +42,24 @@ echo '{"action":"plan_delta","base_ir":{},"code":"S core web /api"}' | ainl-tool
 ```bash
 echo '{"action":"patch_apply","base_ir":{},"patch_code":"S core web /api","allow_replace":false}' | ainl-tool-api
 ```
+
+## CLI runtime options
+
+When running AINL programs via `python -m cli.main run`, you can control adapter loading and configuration:
+
+| Flag / Env | Description |
+|------------|-------------|
+| `--config PATH` | YAML configuration file. Enables LLM adapter registration and other adapter settings. |
+| `AINL_CONFIG` | Env var alternative to `--config`. |
+| `--enable-adapter NAMESPACE.ADAPTER` | Enable a specific adapter without a config file (rare). Multiple flags allowed. |
+| `AINL_ENABLED_ADAPTERS` | Comma-separated adapter names to enable. |
+
+Example:
+
+```bash
+export OPENROUTER_API_KEY="sk-or-..."
+python -m cli.main run --config config.yaml examples/hello.ainl
+```
+
+See `LLM_ADAPTER_USAGE.md` for the config schema and environment variable details.
+

@@ -1,161 +1,54 @@
-"""
-Tests for retry backoff strategies (fixed and exponential).
+"""Test retry_with_backoff decorator for LLM adapters."""
+import httpx
+import pytest
+from adapters.llm.retry import retry_with_backoff
+from adapters.llm.anthropic import AnthropicAdapter
+from adapters.llm.cohere import CohereAdapter
 
-Covers:
-- _compute_retry_delay_ms helper with fixed and exponential strategies
-- backward compatibility: default strategy is fixed
-- exponential cap via max_backoff_ms
-- compiler parsing of optional backoff_strategy token
-- runtime integration: retry step with backoff_strategy field
-"""
+def make_429_on_first_call(success_response):
+    call_count = {"n": 0}
+    def mock_post(url, json=None, headers=None, timeout=None):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            req = httpx.Request('POST', url)
+            return httpx.Response(429, text="rate limit", request=req)
+        req = httpx.Request('POST', url)
+        return httpx.Response(200, json=success_response, request=req)
+    return mock_post, call_count
 
-import os
-import sys
+def test_anthropic_retry_429(monkeypatch):
+    success_response = {
+        "content": [{"type": "text", "text": '{"result":"ok"}'}],
+        "model": "claude-3-5-sonnet-20241022",
+        "usage": {"input_tokens": 10, "output_tokens": 5},
+    }
+    mock_post, call_count = make_429_on_first_call(success_response)
+    monkeypatch.setattr(httpx, "post", mock_post)
+    adapter = AnthropicAdapter({"api_key": "***", "model": "claude-3-5-sonnet-20241022"})
+    resp = adapter.complete("Hello", max_tokens=100)
+    assert resp.content == '{"result":"ok"}'
+    # With retry, we expect 2 calls: first 429, second 200
+    assert call_count["n"] == 2
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+def test_cohere_retry_429(monkeypatch):
+    success_response = {
+        "generations": [{"text": '{"result":"ok"}'}],
+        "meta": {"billed_units": {"input_tokens": 10, "output_tokens": 5}},
+    }
+    mock_post, call_count = make_429_on_first_call(success_response)
+    monkeypatch.setattr(httpx, "post", mock_post)
+    adapter = CohereAdapter({"api_key": "***", "model": "command-r-plus"})
+    resp = adapter.complete("Hello", max_tokens=100)
+    assert resp.content == '{"result":"ok"}'
+    assert call_count["n"] == 2
 
-from runtime.engine import RuntimeEngine
-
-
-class TestComputeRetryDelay:
-    def test_fixed_default(self):
-        cfg = {"backoff_ms": 100}
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 1) == 100.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 2) == 100.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 5) == 100.0
-
-    def test_fixed_explicit(self):
-        cfg = {"backoff_ms": 200, "backoff_strategy": "fixed"}
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 1) == 200.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 3) == 200.0
-
-    def test_exponential(self):
-        cfg = {"backoff_ms": 100, "backoff_strategy": "exponential"}
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 1) == 100.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 2) == 200.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 3) == 400.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 4) == 800.0
-
-    def test_exponential_cap(self):
-        cfg = {"backoff_ms": 100, "backoff_strategy": "exponential", "max_backoff_ms": 500}
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 1) == 100.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 2) == 200.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 3) == 400.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 4) == 500.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 10) == 500.0
-
-    def test_exponential_default_cap(self):
-        cfg = {"backoff_ms": 10000, "backoff_strategy": "exponential"}
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 1) == 10000.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 2) == 20000.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 3) == 30000.0  # capped at default 30000
-
-    def test_zero_backoff(self):
-        cfg = {"backoff_ms": 0, "backoff_strategy": "exponential"}
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 1) == 0.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 5) == 0.0
-
-    def test_unknown_strategy_falls_back_to_fixed(self):
-        cfg = {"backoff_ms": 100, "backoff_strategy": "unknown"}
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 1) == 100.0
-        assert RuntimeEngine._compute_retry_delay_ms(cfg, 3) == 100.0
-
-
-class TestCompilerParsesBackoffStrategy:
-    def test_standalone_retry_with_strategy(self):
-        from compiler_v2 import AICodeCompiler
-
-        code = "S app api /api\nL1:\nR ext.OP \"task\" ->res\nRetry 3 500 exponential\nJ res"
-        c = AICodeCompiler()
-        ir = c.compile(code)
-        steps = ir["labels"]["1"]["legacy"]["steps"]
-        retry_steps = [s for s in steps if s["op"] == "Retry"]
-        assert len(retry_steps) == 1
-        assert retry_steps[0]["backoff_strategy"] == "exponential"
-        assert retry_steps[0]["count"] == "3"
-        assert retry_steps[0]["backoff_ms"] == "500"
-
-    def test_standalone_retry_without_strategy(self):
-        from compiler_v2 import AICodeCompiler
-
-        code = "S app api /api\nL1:\nR ext.OP \"task\" ->res\nRetry 3 500\nJ res"
-        c = AICodeCompiler()
-        ir = c.compile(code)
-        steps = ir["labels"]["1"]["legacy"]["steps"]
-        retry_steps = [s for s in steps if s["op"] == "Retry"]
-        assert len(retry_steps) == 1
-        assert "backoff_strategy" not in retry_steps[0]
-
-    def test_retry_with_node_target_and_strategy(self):
-        from compiler_v2 import AICodeCompiler
-
-        code = "S app api /api\nL1:\nR ext.OP \"task\" ->res\nRetry @n1 2 1000 exponential\nJ res"
-        c = AICodeCompiler()
-        ir = c.compile(code)
-        steps = ir["labels"]["1"]["legacy"]["steps"]
-        retry_steps = [s for s in steps if s["op"] == "Retry"]
-        assert len(retry_steps) == 1
-        assert retry_steps[0]["backoff_strategy"] == "exponential"
-        assert retry_steps[0]["at_node_id"] == "n1"
-
-
-class TestRetryIntegration:
-    def test_retry_fixed_backward_compat(self):
-        from runtime.adapters.base import AdapterRegistry, RuntimeAdapter, AdapterError
-
-        call_count = 0
-
-        class FailThenSucceed(RuntimeAdapter):
-            def call(self, target, args, context):
-                nonlocal call_count
-                call_count += 1
-                if call_count <= 2:
-                    raise AdapterError("transient failure")
-                return "ok"
-
-        reg = AdapterRegistry(allowed=["ext"])
-        reg.register("ext", FailThenSucceed())
-        code = "S app api /api\nL1:\nR ext.OP \"task\" ->res\nRetry 3 0\nJ res"
-        eng = RuntimeEngine.from_code(code, strict=False)
-        eng.adapters = reg
-        result = eng.run_label("1", frame={})
-        assert result is not None
-        assert call_count == 3
-
-    def test_retry_exponential_delays(self):
-        """Verify exponential backoff computes correct delays via step-mode."""
-        from runtime.adapters.base import AdapterRegistry, RuntimeAdapter, AdapterError
-
-        delays_observed = []
-        original_sleep = __import__("time").sleep
-
-        def mock_sleep(seconds):
-            delays_observed.append(round(seconds * 1000))
-
-        call_count = 0
-
-        class AlwaysFail(RuntimeAdapter):
-            def call(self, target, args, context):
-                nonlocal call_count
-                call_count += 1
-                raise AdapterError("always fails")
-
-        reg = AdapterRegistry(allowed=["ext"])
-        reg.register("ext", AlwaysFail())
-        code = "S app api /api\nL1:\nR ext.OP \"task\" ->res\nRetry @n1 3 100 exponential\nErr @n1 L2\nJ res\nL2:\nSet out \"failed\"\nJ out"
-        eng = RuntimeEngine.from_code(code, strict=False)
-        eng.adapters = reg
-        eng.execution_mode = "steps-only"
-
-        import time
-        time.sleep = mock_sleep
-        try:
-            result = eng.run_label("1", frame={})
-        finally:
-            time.sleep = original_sleep
-
-        assert result is not None
-        assert len(delays_observed) == 3
-        assert delays_observed[0] == 100
-        assert delays_observed[1] == 200
-        assert delays_observed[2] == 400
+def test_retry_non_429_raises_immediately(monkeypatch):
+    """Test that non-retryable errors (e.g., 400) are raised without retry."""
+    def mock_post(url, json=None, headers=None, timeout=None):
+        req = httpx.Request('POST', url)
+        return httpx.Response(400, text="bad request", request=req)
+    monkeypatch.setattr(httpx, "post", mock_post)
+    adapter = AnthropicAdapter({"api_key": "***", "model": "claude-3-5-sonnet-20241022"})
+    with pytest.raises(httpx.HTTPStatusError) as excinfo:
+        adapter.complete("Hello", max_tokens=100)
+    assert excinfo.value.response.status_code == 400

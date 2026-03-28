@@ -14,6 +14,8 @@ def _truthy_env(name: str) -> bool:
     return str(os.environ.get(name) or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+from intelligence.monitor.collector import collector as _collector
+
 class RuntimeObservability:
     """
     Lightweight runtime metrics collector.
@@ -84,6 +86,12 @@ class RuntimeObservability:
                 # Keep sink failures non-fatal.
                 pass
 
+
+        # Also update in-memory collector for Prometheus endpoint
+        try:
+            _collector.set(name, value, labels=dict(labels or {}))
+        except Exception:
+            pass
     def close(self) -> None:
         if self._jsonl_fh is None:
             return

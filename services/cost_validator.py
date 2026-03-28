@@ -26,6 +26,8 @@ try:
 except ImportError:
     OpenRouterAdapter = None
 
+OPENROUTER_MODELS_CACHE_TTL_S = 24 * 3600
+
 
 class CostValidator:
     """
@@ -39,6 +41,10 @@ class CostValidator:
         self._stop_event = threading.Event()
         self.observability = observability
         self._openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "")
+        # Process-local cache for OpenRouter /v1/models JSON (24h TTL); on fetch failure keep last good payload.
+        self._or_models_payload: Optional[Dict[str, Any]] = None
+        self._or_models_fetched_at: float = 0.0
+        self._or_models_ttl_s: float = OPENROUTER_MODELS_CACHE_TTL_S
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -87,10 +93,15 @@ class CostValidator:
             else:
                 self._validate_static(adapter)
 
-    def _validate_openrouter(self, adapter: OpenRouterAdapter) -> None:
-        # Fetch model pricing from OpenRouter
+    def _fetch_openrouter_models_payload(self) -> Optional[Dict[str, Any]]:
+        """GET OpenRouter models JSON with 24h in-memory TTL; on error return last cached payload if any."""
         if not self._openrouter_api_key:
-            return
+            return None
+        now = time.time()
+        with self._lock:
+            if self._or_models_payload is not None and (now - self._or_models_fetched_at) < self._or_models_ttl_s:
+                return self._or_models_payload
+
         url = "https://openrouter.ai/api/v1/models"
         headers = {"Authorization": f"Bearer {self._openrouter_api_key}"}
         try:
@@ -100,6 +111,17 @@ class CostValidator:
                 data = resp.json()
         except Exception as e:
             print(f"[cost_validator] OpenRouter price fetch failed: {e}")
+            with self._lock:
+                return self._or_models_payload
+
+        with self._lock:
+            self._or_models_payload = data
+            self._or_models_fetched_at = time.time()
+            return data
+
+    def _validate_openrouter(self, adapter: OpenRouterAdapter) -> None:
+        data = self._fetch_openrouter_models_payload()
+        if not data:
             return
 
         # data is a dict with 'data' list of models
@@ -134,7 +156,7 @@ class CostValidator:
                 self._emit_counter("cost_estimate_drift_total", 1, labels={"provider": "openrouter", "model": model_id})
                 self._emit_gauge("cost_estimate_drift_pct", drift_pct, labels={"provider": "openrouter", "model": model_id})
 
-    def _validate_static(self, adapter: AbstractLLMAdapter) -> None:
+    def _validate_static(self, adapter: Any) -> None:
         # For static adapters (Anthropic, Cohere), compare estimate against its own constants (should match).
         # We'll simulate a sample to ensure the math is consistent; if there is a discrepancy we report.
         sample_prompt = 1000

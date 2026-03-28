@@ -107,7 +107,7 @@ tooling = ["*.json", "*.yml"]
 [tool.setuptools.packages.find]
 where = ["."]
 # Explicit roots + globs so `tooling` / `adapters` are never skipped (CLI imports `tooling.*`; runtime.compat imports `adapters`).
-include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*"]
+include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*", "hermes", "hermes.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

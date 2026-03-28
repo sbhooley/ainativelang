@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 import subprocess
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlparse
@@ -52,6 +53,11 @@ class LlmQueryAdapter(RuntimeAdapter):
         self._max_response_bytes = int(max_response_bytes)
         self._mock_mode = _is_truthy_env(os.environ.get("AINL_LLM_QUERY_MOCK"))
         self._fallback_cmd = str(os.environ.get("AINL_LLM_QUERY_CMD") or "").strip()
+        warnings.warn(
+            "llm_query is deprecated; use runtime adapter 'llm' with target 'completion' and config from docs/LLM_ADAPTER_USAGE.md.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     def _ensure_enabled(self) -> None:
         if not self._enabled:
