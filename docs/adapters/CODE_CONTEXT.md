@@ -1,6 +1,11 @@
 # Code context adapter (`code_context`)
 
-`code_context` is an optional AINL runtime adapter for **tiered codebase context**: index a local tree into a JSON file, then query signatures, summaries (TF–IDF), or full source on demand. The design is inspired by [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip); full credit to **Brady Drexler** for the original idea. This repository ships a **clean re-implementation** for AINL’s adapter system (not a fork of upstream code).
+`code_context` is an optional AINL runtime adapter for **tiered codebase context**: index a local tree into a JSON file, then query signatures, summaries (TF–IDF), full source, **import-based dependencies**, **reverse impact** (who imports whom, plus a PageRank-style score), or **greedy token-budget packing** on demand.
+
+Design lineage:
+
+- **Tiered retrieval** is inspired by [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip); full credit to **Brady Drexler** for the original idea. This repository ships a **clean re-implementation** for AINL’s adapter system (not a fork of upstream code).
+- **Import graph, transitive importers (“impact”), PageRank-style importance, and knapsack-style compression under a token budget** borrow ideas from import-graph tooling in the [chrismicah/forgeindex](https://github.com/chrismicah/forgeindex) ecosystem. Credit to **Chris Micah** and the forgeindex project; the implementation here is **independent** (not a fork of forgeindex).
 
 ## Enablement
 
@@ -11,7 +16,9 @@ If the adapter is not enabled, `code_context` calls fail at runtime like other o
 
 ## How this helps coding agents
 
-Run **`INDEX`** once per workspace so chunks live in persistent JSON; in the agent loop, use **`QUERY_CONTEXT`** at **Tier 1** for token-efficient signatures plus doc/summary, and escalate to **Tier 2** or **`GET_FULL_SOURCE`** only when a specific implementation is needed. **`STATS`** gives quick visibility into index size and freshness without pulling code into the prompt. The tiered flow mirrors how humans skim a repo before reading files in depth.
+Run **`INDEX`** once per workspace so chunks live in persistent JSON; in the agent loop, use **`QUERY_CONTEXT`** at **Tier 1** for token-efficient signatures plus doc/summary, and escalate to **Tier 2** or **`GET_FULL_SOURCE`** only when a specific implementation is needed. **`COMPRESS_CONTEXT`** ranks chunks the same way as **`QUERY_CONTEXT`** (TF–IDF) but **packs** signature + summary lines until a **token budget** (heuristic: ~4 characters per token) is exhausted—useful when you need a single bounded blob for the prompt.
+
+Use **`GET_DEPENDENCIES`** / **`GET_IMPACT`** to see **chunk-level** edges derived from **`import` / `from`** (Python) and **`import` / `require`** (JS/TS), resolved to indexed files. **`GET_IMPACT`** returns direct importers, all transitive importers (reverse graph reachability), and a **global PageRank** score on the forward graph (chunk *A* → *B* if *A*’s chunk source resolves an import to *B*’s file’s canonical chunk). **`STATS`** gives quick visibility into index size and freshness without pulling code into the prompt.
 
 ## Tiers
 
@@ -31,6 +38,9 @@ Preferred **dotted** form (matches other memory-style adapters):
 R code_context.INDEX "/path/to/repo" ->ok
 R code_context.QUERY_CONTEXT "search terms" 1 50 ->text
 R code_context.GET_FULL_SOURCE "chunk_id" ->src
+R code_context.GET_DEPENDENCIES "chunk_id" ->deps
+R code_context.GET_IMPACT "chunk_id" ->impact
+R code_context.COMPRESS_CONTEXT "search terms" 32000 ->packed
 R code_context.STATS "_" ->stats
 ```
 
@@ -41,11 +51,16 @@ R code_context.STATS "_" ->stats
 | `INDEX` | `path` (directory) | `{ "ok": true, "chunks": <n> }` |
 | `QUERY_CONTEXT` | `query`, optional `max_tier` (0–2), optional `limit` | string (tiered text) |
 | `GET_FULL_SOURCE` | `chunk_id` | string |
+| `GET_DEPENDENCIES` | `chunk_id` | list of chunk ids (forward deps, sorted) |
+| `GET_IMPACT` | `chunk_id` | `{ "chunk_id", "direct_importers", "transitive_importers", "pagerank" }` |
+| `COMPRESS_CONTEXT` | `query`, optional `max_tokens` (default 32000) | string (packed signatures + summaries) |
 | `STATS` | (none) | `{ "chunks", "indexed_root", "store_path", "updated_at" }` |
+
+Chunk ids are stable strings of the form `kind:path:name@start_line:<hash>` (see `adapters/code_context.py`). Use **`QUERY_CONTEXT`** output or the JSON store to obtain ids.
 
 ## Direct Python helpers
 
-The module exposes `index_repository`, `query_context`, and `get_full_source` for scripts and tests (same defaults as the adapter). See `adapters/code_context.py`.
+The module exposes `index_repository`, `query_context`, `get_full_source`, `get_dependencies`, `get_impact`, and `compress_context` for scripts and tests (same defaults as the adapter). See `adapters/code_context.py`.
 
 ## Example graph
 

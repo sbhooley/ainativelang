@@ -5,6 +5,10 @@ https://github.com/BradyD2003/ctxzip
 Full credit to Brady Drexler for the original idea.
 This is a clean, minimal re-implementation for AINL’s adapter system.
 
+Import-graph dependencies, reverse impact (transitive importers), PageRank-style
+scores, and greedy token-budget packing (``COMPRESS_CONTEXT``) follow ideas from
+chrismicah/forgeindex (https://github.com/chrismicah/forgeindex); credit **Chris Micah**.
+
 Optional local code index with ctxzip-style tiers. Enable on the CLI host with
 ``--enable-adapter code_context`` (see cli/main.py registration).
 
@@ -24,6 +28,9 @@ Verbs (target, case-insensitive):
   QUERY_CONTEXT <query> [max_tier] [limit]
   GET_FULL_SOURCE <chunk_id>
   STATS  (no args — index size, paths, last update time)
+  GET_DEPENDENCIES <chunk_id>
+  GET_IMPACT <chunk_id>
+  COMPRESS_CONTEXT <query> [max_tokens]
 
 Module helpers — same behavior as the verbs above; use these from plain Python, tests, or
 custom tooling/nodes when you do not want to go through ``adapter.call(...)``. They use the
@@ -32,6 +39,9 @@ default JSON store in the current working directory unless ``AINL_CODE_CONTEXT_S
   index_repository(path) -> None
   query_context(query, max_tier=1, limit=50) -> str
   get_full_source(chunk_id: str) -> str
+  get_dependencies(chunk_id: str) -> List[str]
+  get_impact(chunk_id: str) -> Dict[str, Any]
+  compress_context(query: str, max_tokens: int = 32000) -> str
 """
 
 # adapters/code_context.py
@@ -312,8 +322,197 @@ def _tfidf_rank(query: str, chunks: Sequence[Dict[str, Any]], top_k: int) -> Lis
     return [c for _, c in scored[:lim]]
 
 
+_RE_JS_FROM = re.compile(
+    r"""import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]""",
+    re.MULTILINE,
+)
+_RE_JS_REQ = re.compile(r"""require\s*\(\s*['"]([^'"]+)['"]\s*\)""")
+
+
+def _estimate_tokens(text: str) -> int:
+    return max(1, len(text) // 4)
+
+
+def _extract_py_import_targets(source: str) -> List[str]:
+    out: List[str] = []
+    for line in source.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("from "):
+            parts = s.split()
+            if len(parts) >= 2 and parts[0] == "from":
+                mod = parts[1]
+                if mod == "." or mod.startswith("."):
+                    continue
+                out.append(mod.rstrip("."))
+        elif s.startswith("import "):
+            rest = s[6:].split("#")[0].strip()
+            for part in rest.split(","):
+                p = part.strip()
+                if not p:
+                    continue
+                p = p.split()[0]
+                if p.startswith("."):
+                    continue
+                if " as " in p:
+                    p = p.split(" as ")[0].strip()
+                out.append(p)
+    return out
+
+
+def _extract_js_import_targets(source: str) -> List[str]:
+    out: List[str] = []
+    for m in _RE_JS_FROM.finditer(source):
+        out.append(m.group(1))
+    for m in _RE_JS_REQ.finditer(source):
+        out.append(m.group(1))
+    return out
+
+
+def _py_mod_to_candidate_paths(mod: str) -> List[str]:
+    parts = mod.split(".")
+    if not parts or not parts[0]:
+        return []
+    base = "/".join(parts)
+    return [f"{base}.py", f"{base}/__init__.py"]
+
+
+def _resolve_import_to_rel(
+    root: Path,
+    chunk_path: str,
+    target: str,
+    lang: str,
+) -> Optional[str]:
+    root = root.resolve()
+    if lang == "python":
+        if target.startswith("."):
+            return None
+        for rel in _py_mod_to_candidate_paths(target):
+            p = root / rel
+            if p.is_file():
+                return rel.replace("\\", "/")
+        return None
+    chunk_path = chunk_path.replace("\\", "/")
+    if target.startswith(".") or target.startswith("/"):
+        base = (root / chunk_path).parent
+        try:
+            cand = (base / target).resolve()
+            cand.relative_to(root)
+        except ValueError:
+            return None
+        if cand.is_file():
+            return str(cand.relative_to(root)).replace("\\", "/")
+        for suf in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"):
+            p = cand.with_suffix(suf)
+            if p.is_file():
+                return str(p.relative_to(root)).replace("\\", "/")
+        if cand.is_dir():
+            for fn in ("index.ts", "index.tsx", "index.js", "index.jsx"):
+                p = cand / fn
+                if p.is_file():
+                    return str(p.relative_to(root)).replace("\\", "/")
+        return None
+    return None
+
+
+def _file_canonical_id(chunks: Sequence[Dict[str, Any]]) -> Dict[str, str]:
+    by_path: Dict[str, List[Dict[str, Any]]] = {}
+    for c in chunks:
+        p = str(c.get("path") or "")
+        by_path.setdefault(p, []).append(c)
+    out: Dict[str, str] = {}
+    for p, lst in by_path.items():
+        lst.sort(key=lambda x: int(x.get("start_line") or 0))
+        if lst:
+            out[p] = str(lst[0]["id"])
+    return out
+
+
+def _pagerank(
+    nodes: List[str],
+    forward: Dict[str, set],
+    d: float = 0.85,
+    iters: int = 24,
+) -> Dict[str, float]:
+    if not nodes:
+        return {}
+    n = len(nodes)
+    idx = {name: i for i, name in enumerate(nodes)}
+    outdeg = [max(1, len(forward.get(nodes[i], ()))) for i in range(n)]
+    inbound: List[List[int]] = [[] for _ in range(n)]
+    for i, ni in enumerate(nodes):
+        for nj in forward.get(ni, ()):
+            j = idx.get(nj)
+            if j is not None:
+                inbound[j].append(i)
+    r = [1.0 / n] * n
+    for _ in range(iters):
+        r_new = [(1.0 - d) / n] * n
+        for j in range(n):
+            s = 0.0
+            for i in inbound[j]:
+                s += r[i] / outdeg[i]
+            r_new[j] += d * s
+        r = r_new
+    return {nodes[i]: r[i] for i in range(n)}
+
+
+def _rebuild_dep_structs(
+    root: Path,
+    chunks: List[Dict[str, Any]],
+) -> Tuple[Dict[str, set], Dict[str, set], Dict[str, float]]:
+    canon = _file_canonical_id(chunks)
+    forward: Dict[str, set] = {str(c["id"]): set() for c in chunks}
+    for c in chunks:
+        cid = str(c["id"])
+        src = str(c.get("source") or "")
+        lang = str(c.get("language") or "python")
+        chunk_path = str(c.get("path") or "")
+        if lang == "python":
+            targets = _extract_py_import_targets(src)
+        else:
+            targets = _extract_js_import_targets(src)
+        for t in targets:
+            rel = _resolve_import_to_rel(root, chunk_path, t, lang)
+            if not rel:
+                continue
+            tid = canon.get(rel)
+            if tid and tid != cid:
+                forward[cid].add(tid)
+    reverse: Dict[str, set] = {str(c["id"]): set() for c in chunks}
+    for a, deps in forward.items():
+        for b in deps:
+            reverse.setdefault(b, set()).add(a)
+    nodes = [str(c["id"]) for c in chunks]
+    pr = _pagerank(nodes, forward)
+    return forward, reverse, pr
+
+
+def _transitive_importers(chunk_id: str, reverse: Dict[str, set]) -> List[str]:
+    seen: set = set()
+    out: List[str] = []
+    stack = list(reverse.get(chunk_id, ()))
+    while stack:
+        x = stack.pop()
+        if x in seen:
+            continue
+        seen.add(x)
+        out.append(x)
+        stack.extend(reverse.get(x, ()))
+    out.sort()
+    return out
+
+
 class CodeContextAdapter(RuntimeAdapter):
-    """JSON-backed code chunks; tiered retrieval (ctxzip-inspired)."""
+    """JSON-backed code chunks; tiered retrieval (ctxzip-inspired).
+
+    Dependency graph, reverse-impact (transitive importers), PageRank-style importance,
+    and greedy token-budget context packing follow ideas from import-graph workflows in
+    the forgeindex ecosystem (https://github.com/chrismicah/forgeindex). Credit:
+    **Chris Micah** and the forgeindex project for those concepts; this file is an
+    independent implementation for AINL.
+    """
 
     def __init__(self, store_path: Optional[str] = None):
         raw = (store_path or os.environ.get("AINL_CODE_CONTEXT_STORE") or "").strip()
@@ -322,6 +521,9 @@ class CodeContextAdapter(RuntimeAdapter):
         self._by_id: Dict[str, Dict[str, Any]] = {}
         self._indexed_root: Optional[str] = None
         self._updated_at: Optional[float] = None
+        self._dep_forward: Dict[str, set] = {}
+        self._dep_reverse: Dict[str, set] = {}
+        self._dep_pagerank: Dict[str, float] = {}
         self._load()
 
     def _load(self) -> None:
@@ -330,6 +532,7 @@ class CodeContextAdapter(RuntimeAdapter):
             self._by_id = {}
             self._indexed_root = None
             self._updated_at = None
+            self._clear_dep_graphs()
             return
         try:
             data = json.loads(self.store_path.read_text(encoding="utf-8"))
@@ -340,6 +543,7 @@ class CodeContextAdapter(RuntimeAdapter):
             self._by_id = {}
             self._indexed_root = None
             self._updated_at = None
+            self._clear_dep_graphs()
             return
         self._chunks = list(data.get("chunks") or [])
         ir = data.get("indexed_root", None)
@@ -354,6 +558,24 @@ class CodeContextAdapter(RuntimeAdapter):
             except ValueError:
                 self._updated_at = None
         self._by_id = {str(c.get("id")): c for c in self._chunks if c.get("id")}
+        self._sync_dep_graphs()
+
+    def _clear_dep_graphs(self) -> None:
+        self._dep_forward = {}
+        self._dep_reverse = {}
+        self._dep_pagerank = {}
+
+    def _sync_dep_graphs(self) -> None:
+        if not self._chunks or not self._indexed_root:
+            self._clear_dep_graphs()
+            return
+        root = Path(self._indexed_root)
+        if not root.is_dir():
+            self._clear_dep_graphs()
+            return
+        self._dep_forward, self._dep_reverse, self._dep_pagerank = _rebuild_dep_structs(
+            root, self._chunks
+        )
 
     def _save(self, root: Path, chunks: List[Dict[str, Any]]) -> None:
         self.store_path.parent.mkdir(parents=True, exist_ok=True)
@@ -369,6 +591,7 @@ class CodeContextAdapter(RuntimeAdapter):
         self._by_id = {str(c["id"]): c for c in chunks}
         self._indexed_root = str(root.resolve())
         self._updated_at = ts
+        self._sync_dep_graphs()
 
     def index_repository(self, path: str) -> None:
         root = Path(path).expanduser().resolve()
@@ -405,6 +628,48 @@ class CodeContextAdapter(RuntimeAdapter):
             return ""
         return str(c.get("source") or "")
 
+    def get_dependencies(self, chunk_id: str) -> List[str]:
+        cid = str(chunk_id)
+        return sorted(self._dep_forward.get(cid, ()))
+
+    def get_impact(self, chunk_id: str) -> Dict[str, Any]:
+        cid = str(chunk_id)
+        if cid not in self._by_id:
+            return {
+                "chunk_id": cid,
+                "direct_importers": [],
+                "transitive_importers": [],
+                "pagerank": 0.0,
+            }
+        direct = sorted(self._dep_reverse.get(cid, ()))
+        trans = _transitive_importers(cid, self._dep_reverse)
+        pr = float(self._dep_pagerank.get(cid, 0.0))
+        return {
+            "chunk_id": cid,
+            "direct_importers": direct,
+            "transitive_importers": trans,
+            "pagerank": pr,
+        }
+
+    def compress_context(self, query: str, max_tokens: int = 32000) -> str:
+        if not self._chunks:
+            return "(no index; run INDEX first)"
+        mt = max(100, int(max_tokens))
+        ranked = _tfidf_rank(query, self._chunks, top_k=min(500, len(self._chunks)))
+        parts: List[str] = []
+        used = 0
+        for c in ranked:
+            block = f"[{c['id']}] {c['path']}:{c['start_line']}\n{c['signature']}"
+            summ = (c.get("summary") or "").strip()
+            if summ:
+                block += f"\n{summ}"
+            cost = _estimate_tokens(block)
+            if parts and used + cost > mt:
+                break
+            parts.append(block)
+            used += cost
+        return "\n\n".join(parts) if parts else "(empty)"
+
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
         verb = (target or "").strip().upper()
         if verb == "INDEX":
@@ -423,6 +688,20 @@ class CodeContextAdapter(RuntimeAdapter):
             if not args:
                 raise AdapterError("code_context.GET_FULL_SOURCE requires chunk_id")
             return self.get_full_source(str(args[0]))
+        if verb == "GET_DEPENDENCIES":
+            if not args:
+                raise AdapterError("code_context.GET_DEPENDENCIES requires chunk_id")
+            return self.get_dependencies(str(args[0]))
+        if verb == "GET_IMPACT":
+            if not args:
+                raise AdapterError("code_context.GET_IMPACT requires chunk_id")
+            return self.get_impact(str(args[0]))
+        if verb == "COMPRESS_CONTEXT":
+            if not args:
+                raise AdapterError("code_context.COMPRESS_CONTEXT requires query string")
+            q = str(args[0])
+            max_tok = int(args[1]) if len(args) > 1 and args[1] is not None else 32000
+            return self.compress_context(q, max_tokens=max_tok)
         if verb == "STATS":
             ua: Optional[float] = getattr(self, "_updated_at", None)
             if ua is not None:
@@ -465,3 +744,15 @@ def query_context(query: str, max_tier: int = 1, limit: int = 50) -> str:
 
 def get_full_source(chunk_id: str) -> str:
     return _get_default().get_full_source(chunk_id)
+
+
+def get_dependencies(chunk_id: str) -> List[str]:
+    return _get_default().get_dependencies(chunk_id)
+
+
+def get_impact(chunk_id: str) -> Dict[str, Any]:
+    return _get_default().get_impact(chunk_id)
+
+
+def compress_context(query: str, max_tokens: int = 32000) -> str:
+    return _get_default().compress_context(query, max_tokens=max_tokens)

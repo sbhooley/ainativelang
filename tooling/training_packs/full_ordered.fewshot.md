@@ -5,9 +5,32 @@
 - Secondary: `none`
 
 ```ainl
+# examples/hello.ainl
+# The simplest possible AINL program — a good starting point.
+#
+# AINL programs are compiled graphs. Each "label" (L1:, L2:, END) is a node.
+# Control flow is explicit: every node ends with a J (join/return) that passes
+# a value to the runtime, or an If (...) that branches to another label.
+#
+# Syntax cheat-sheet:
+#   S <scope> <adapter> <path>     — header: declares the program surface
+#   X <var> <literal>              — assign a literal to a variable
+#   R <adapter>.<op> [args] -><v>  — Request: call an adapter operation
+#   J <var>                        — Join: return the value and finish this node
+#   If (<expr>) -><then> -><else>  — conditional branch
+#
+# Run this file:
+#   ainl check examples/hello.ainl --strict
+#   ainl run   examples/hello.ainl
+#   ainl visualize examples/hello.ainl --output -   # Mermaid diagram
+
+S app core noop
+
 L1:
-  R core.ADD 2 3 ->x
-  J x
+  # Use the built-in core.ADD operation to add two numbers.
+  # The result is bound to the variable `sum`.
+  R core.ADD 2 3 ->sum
+  J sum
 ```
 
 ## 2. `examples/crud_api.ainl`
@@ -421,4 +444,39 @@ L1:
 
   R core.ECHO "done" ->done
   J done
+```
+
+## 21. `examples/code_context_demo.ainl`
+- Primary: `code_context_adapter`
+- Secondary: `none`
+
+```ainl
+# examples/code_context_demo.ainl
+# Tiered code index demo (ctxzip-style) via the optional code_context adapter.
+# Also exercises forgeindex-inspired dependency / impact / COMPRESS_CONTEXT (see docs).
+#
+# Run from repo root (indexes "." — this repository):
+#   python3 -m cli.main run examples/code_context_demo.ainl --json \
+#     --enable-adapter code_context
+#
+# Strict validate:
+#   python3 scripts/validate_ainl.py examples/code_context_demo.ainl --strict
+#
+# Credits: BradyD2003/ctxzip (Brady Drexler); chrismicah/forgeindex (Chris Micah) — see docs/adapters/CODE_CONTEXT.md.
+
+S app core noop
+
+L1:
+  # Build / refresh the JSON store (default: .ainl_code_context.json in cwd).
+  R code_context.INDEX "." ->_idx
+  # Tier 1: TF–IDF-ranked signatures + one-line summaries (limit 5 chunks).
+  R code_context.QUERY_CONTEXT "adapter" 1 5 ->context
+  # Greedy pack: TF–IDF order, stop when estimated tokens exceed budget (~len//4).
+  R code_context.COMPRESS_CONTEXT "adapter" 4000 ->packed
+  # Example chunk id for _tokenize in adapters/code_context.py (see QUERY_CONTEXT or .ainl_code_context.json if this drifts).
+  R code_context.GET_DEPENDENCIES "fn:adapters/code_context.py:_tokenize@83:f024a60ce80a" ->deps
+  R code_context.GET_IMPACT "fn:adapters/code_context.py:_tokenize@83:f024a60ce80a" ->impact
+  # STATS has no logical args; "_" is a parse placeholder only (adapter ignores it).
+  R code_context.STATS "_" ->stats
+  J context
 ```

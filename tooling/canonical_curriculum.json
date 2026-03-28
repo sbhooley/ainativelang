@@ -121,6 +121,12 @@
       "path": "examples/test_phase2_common_modules.ainl",
       "primary_pattern": "common_modules_guard_budget_reflect",
       "secondary_pattern": "sequential_module_calls"
+    },
+    {
+      "order": 21,
+      "path": "examples/code_context_demo.ainl",
+      "primary_pattern": "code_context_adapter",
+      "secondary_pattern": "none"
     }
   ]
 }

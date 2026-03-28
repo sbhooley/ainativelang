@@ -8,7 +8,7 @@
       "primary_pattern": "compute_return",
       "secondary_pattern": "none",
       "strict_valid_expected": true,
-      "canonical_source": "L1:\n  R core.ADD 2 3 ->x\n  J x\n",
+      "canonical_source": "# examples/hello.ainl\n# The simplest possible AINL program \u2014 a good starting point.\n#\n# AINL programs are compiled graphs. Each \"label\" (L1:, L2:, END) is a node.\n# Control flow is explicit: every node ends with a J (join/return) that passes\n# a value to the runtime, or an If (...) that branches to another label.\n#\n# Syntax cheat-sheet:\n#   S <scope> <adapter> <path>     \u2014 header: declares the program surface\n#   X <var> <literal>              \u2014 assign a literal to a variable\n#   R <adapter>.<op> [args] -><v>  \u2014 Request: call an adapter operation\n#   J <var>                        \u2014 Join: return the value and finish this node\n#   If (<expr>) -><then> -><else>  \u2014 conditional branch\n#\n# Run this file:\n#   ainl check examples/hello.ainl --strict\n#   ainl run   examples/hello.ainl\n#   ainl visualize examples/hello.ainl --output -   # Mermaid diagram\n\nS app core noop\n\nL1:\n  # Use the built-in core.ADD operation to add two numbers.\n  # The result is bound to the variable `sum`.\n  R core.ADD 2 3 ->sum\n  J sum\n",
       "checks": {
         "no_compat_return_binding": true,
         "uppercase_adapter_verbs_preferred": true
@@ -256,6 +256,19 @@
       "secondary_pattern": "sequential_module_calls",
       "strict_valid_expected": true,
       "canonical_source": "# examples/test_phase2_common_modules.ainl\n# Phase 2 smoke: guard, session_budget, reflect (strict-safe frame bindings).\n# Run: python3 scripts/validate_ainl.py --strict --strict-reachability examples/test_phase2_common_modules.ainl\n#      python3 -m cli.main run examples/test_phase2_common_modules.ainl --log-trajectory --json --enable-adapter api --enable-adapter memory\n\ninclude \"modules/common/guard.ainl\" as guard\ninclude \"modules/common/session_budget.ainl\" as sb\ninclude \"modules/common/reflect.ainl\" as reflect\n\nL1:\n  Set guard_skip false\n  Set guard_tokens_used 5\n  Set guard_max_tokens 100\n  Set guard_elapsed_sec 1\n  Set guard_max_duration_sec 3600\n  Set guard_condition_ok true\n  Set guard_audit false\n  Call guard/ENTRY ->g_out\n\n  Set budget_tokens_start 10\n  Set budget_tokens_delta 5\n  Set budget_max_tokens 100\n  Set budget_time_start 0\n  Set budget_time_delta_sec 1\n  Set budget_max_duration_sec 9999\n  Set budget_log_memory false\n  Call sb/ENTRY ->b_out\n\n  Set reflect_trajectory_text \"\"\n  Set reflect_traj_nonempty 0\n  Set reflect_has_fail_pattern false\n  Set reflect_abort false\n  Call reflect/ENTRY ->r_ok\n\n  Set reflect_trajectory_text \"{\\\"outcome\\\": \\\"fail\\\"}\"\n  Set reflect_traj_nonempty 1\n  Set reflect_has_fail_pattern true\n  Set reflect_abort false\n  Call reflect/ENTRY ->r_adj\n\n  Set guard_skip false\n  Set guard_tokens_used 500\n  Set guard_max_tokens 10\n  Set guard_elapsed_sec 1\n  Set guard_max_duration_sec 3600\n  Set guard_condition_ok true\n  Set guard_audit false\n  Call guard/ENTRY ->g_viol\n\n  R core.ECHO \"done\" ->done\n  J done\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__code_context_demo_ainl",
+      "order": 21,
+      "path": "examples/code_context_demo.ainl",
+      "primary_pattern": "code_context_adapter",
+      "secondary_pattern": "none",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/code_context_demo.ainl\n# Tiered code index demo (ctxzip-style) via the optional code_context adapter.\n# Also exercises forgeindex-inspired dependency / impact / COMPRESS_CONTEXT (see docs).\n#\n# Run from repo root (indexes \".\" \u2014 this repository):\n#   python3 -m cli.main run examples/code_context_demo.ainl --json \\\n#     --enable-adapter code_context\n#\n# Strict validate:\n#   python3 scripts/validate_ainl.py examples/code_context_demo.ainl --strict\n#\n# Credits: BradyD2003/ctxzip (Brady Drexler); chrismicah/forgeindex (Chris Micah) \u2014 see docs/adapters/CODE_CONTEXT.md.\n\nS app core noop\n\nL1:\n  # Build / refresh the JSON store (default: .ainl_code_context.json in cwd).\n  R code_context.INDEX \".\" ->_idx\n  # Tier 1: TF\u2013IDF-ranked signatures + one-line summaries (limit 5 chunks).\n  R code_context.QUERY_CONTEXT \"adapter\" 1 5 ->context\n  # Greedy pack: TF\u2013IDF order, stop when estimated tokens exceed budget (~len//4).\n  R code_context.COMPRESS_CONTEXT \"adapter\" 4000 ->packed\n  # Example chunk id for _tokenize in adapters/code_context.py (see QUERY_CONTEXT or .ainl_code_context.json if this drifts).\n  R code_context.GET_DEPENDENCIES \"fn:adapters/code_context.py:_tokenize@83:f024a60ce80a\" ->deps\n  R code_context.GET_IMPACT \"fn:adapters/code_context.py:_tokenize@83:f024a60ce80a\" ->impact\n  # STATS has no logical args; \"_\" is a parse placeholder only (adapter ignores it).\n  R code_context.STATS \"_\" ->stats\n  J context\n",
       "checks": {
         "no_compat_return_binding": true,
         "uppercase_adapter_verbs_preferred": true
