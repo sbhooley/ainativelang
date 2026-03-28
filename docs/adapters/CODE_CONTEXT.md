@@ -7,6 +7,10 @@ Design lineage:
 - **Tiered retrieval** is inspired by [BradyD2003/ctxzip](https://github.com/BradyD2003/ctxzip); full credit to **Brady Drexler** for the original idea. This repository ships a **clean re-implementation** for AINL’s adapter system (not a fork of upstream code).
 - **Import graph, transitive importers (“impact”), PageRank-style importance, and knapsack-style compression under a token budget** borrow ideas from import-graph tooling in the [chrismicah/forgeindex](https://github.com/chrismicah/forgeindex) ecosystem. Credit to **Chris Micah** and the forgeindex project; the implementation here is **independent** (not a fork of forgeindex).
 
+## Benefits for coding agents
+
+Skeleton views (**`GET_SKELETON`**) give a cheap, token-light map of symbols before full retrieval. **`COMPRESS_CONTEXT`** can use the same embedding pipeline as **`embedding_memory`** (when that adapter is importable and embedding succeeds) to rank chunks by cosine similarity before greedy packing—falling back to TF–IDF when not. Extended **`STATS`** exposes graph size and top PageRank mass so agents can reason about index shape and dependency centrality without running separate queries.
+
 ## Enablement
 
 - **CLI**: `ainl run … --enable-adapter code_context`
@@ -38,6 +42,8 @@ Preferred **dotted** form (matches other memory-style adapters):
 R code_context.INDEX "/path/to/repo" ->ok
 R code_context.QUERY_CONTEXT "search terms" 1 50 ->text
 R code_context.GET_FULL_SOURCE "chunk_id" ->src
+R code_context.GET_SKELETON "_" ->skel
+R code_context.GET_SKELETON "path/to/file.py" ->skel2
 R code_context.GET_DEPENDENCIES "chunk_id" ->deps
 R code_context.GET_IMPACT "chunk_id" ->impact
 R code_context.COMPRESS_CONTEXT "search terms" 32000 ->packed
@@ -51,16 +57,17 @@ R code_context.STATS "_" ->stats
 | `INDEX` | `path` (directory) | `{ "ok": true, "chunks": <n> }` |
 | `QUERY_CONTEXT` | `query`, optional `max_tier` (0–2), optional `limit` | string (tiered text) |
 | `GET_FULL_SOURCE` | `chunk_id` | string |
+| `GET_SKELETON` | optional path or one or more `chunk_id` (no filter → use `"_"` as a parse placeholder for “all”, capped at 100 chunks) | string (Tier 0–style lines: `path:line  signature`) |
 | `GET_DEPENDENCIES` | `chunk_id` | list of chunk ids (forward deps, sorted) |
 | `GET_IMPACT` | `chunk_id` | `{ "chunk_id", "direct_importers", "transitive_importers", "pagerank" }` |
-| `COMPRESS_CONTEXT` | `query`, optional `max_tokens` (default 32000) | string (packed signatures + summaries) |
-| `STATS` | (none) | `{ "chunks", "indexed_root", "store_path", "updated_at" }` |
+| `COMPRESS_CONTEXT` | `query`, optional `max_tokens` (default 32000) | string (packed signatures + summaries); ranks by **embedding cosine** vs query when `embedding_memory` embed succeeds, else **TF–IDF** |
+| `STATS` | (none) | `{ "chunks", "indexed_root", "store_path", "updated_at", "num_nodes", "num_edges", "top_pagerank" }` — `top_pagerank` is up to 5 `{ "chunk_id", "score" }` entries |
 
 Chunk ids are stable strings of the form `kind:path:name@start_line:<hash>` (see `adapters/code_context.py`). Use **`QUERY_CONTEXT`** output or the JSON store to obtain ids.
 
 ## Direct Python helpers
 
-The module exposes `index_repository`, `query_context`, `get_full_source`, `get_dependencies`, `get_impact`, and `compress_context` for scripts and tests (same defaults as the adapter). See `adapters/code_context.py`.
+The module exposes `index_repository`, `query_context`, `get_full_source`, `get_skeleton`, `get_dependencies`, `get_impact`, and `compress_context` for scripts and tests (same defaults as the adapter). See `adapters/code_context.py`.
 
 ## Example graph
 

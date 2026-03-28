@@ -15,10 +15,13 @@ Optional local code index with ctxzip-style tiers. Enable on the CLI host with
 Tiers:
   Tier 0 — compact list of all chunk signatures (directory-style view).
   Tier 1 — signatures plus docstring/summary for the top-ranked chunks (TF–IDF over
-           indexed text; no external embeddings).
+           indexed text; optional embedding-based ranking for ``COMPRESS_CONTEXT`` when
+           ``embedding_memory`` is importable — see below).
   Tier 2 — full source for ranked chunks (only when max_tier >= 2), or use GET_FULL_SOURCE.
-  (Future: Tier 1 ranking could optionally be swapped for semantic search via the existing
-   embedding_memory adapter; not wired here.)
+
+``COMPRESS_CONTEXT`` ranks chunks with the ``embedding_memory`` adapter when available
+(import + embed succeeds): cosine similarity between the query embedding and each
+chunk’s text embedding; otherwise falls back to TF–IDF (unchanged behavior).
 
 Env:
   AINL_CODE_CONTEXT_STORE — JSON store path (default: .ainl_code_context.json in cwd).
@@ -27,7 +30,8 @@ Verbs (target, case-insensitive):
   INDEX <path>
   QUERY_CONTEXT <query> [max_tier] [limit]
   GET_FULL_SOURCE <chunk_id>
-  STATS  (no args — index size, paths, last update time)
+  GET_SKELETON [path_or_chunk_id …]
+  STATS  (no args — index size, paths, last update time, optional graph metrics)
   GET_DEPENDENCIES <chunk_id>
   GET_IMPACT <chunk_id>
   COMPRESS_CONTEXT <query> [max_tokens]
@@ -39,6 +43,7 @@ default JSON store in the current working directory unless ``AINL_CODE_CONTEXT_S
   index_repository(path) -> None
   query_context(query, max_tier=1, limit=50) -> str
   get_full_source(chunk_id: str) -> str
+  get_skeleton(*filters: str) -> str
   get_dependencies(chunk_id: str) -> List[str]
   get_impact(chunk_id: str) -> Dict[str, Any]
   compress_context(query: str, max_tokens: int = 32000) -> str
@@ -322,6 +327,42 @@ def _tfidf_rank(query: str, chunks: Sequence[Dict[str, Any]], top_k: int) -> Lis
     return [c for _, c in scored[:lim]]
 
 
+def _cosine_vec(a: Sequence[float], b: Sequence[float]) -> float:
+    if len(a) != len(b) or not a:
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(x * x for x in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _rank_chunks_embedding_or_tfidf(
+    query: str,
+    chunks: Sequence[Dict[str, Any]],
+    top_k: int,
+) -> List[Dict[str, Any]]:
+    """Prefer embedding_memory adapter for ranking; fall back to TF–IDF on any failure."""
+    # Best-effort: uses private _embed to stay in the same embedding space as embedding_memory; falls back silently to TF-IDF on any import or runtime issue.
+    try:
+        from adapters.embedding_memory import EmbeddingMemoryAdapter  # type: ignore
+    except ImportError:
+        return _tfidf_rank(query, list(chunks), top_k=top_k)
+    try:
+        emb = EmbeddingMemoryAdapter()
+        qv = emb._embed((query or "").strip())
+        scored: List[Tuple[float, Dict[str, Any]]] = []
+        for c in chunks:
+            cv = emb._embed(_chunk_text(c))
+            scored.append((_cosine_vec(qv, cv), c))
+        scored.sort(key=lambda x: -x[0])
+        lim = max(1, min(int(top_k), len(scored)))
+        return [c for _, c in scored[:lim]]
+    except Exception:
+        return _tfidf_rank(query, list(chunks), top_k=top_k)
+
+
 _RE_JS_FROM = re.compile(
     r"""import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]""",
     re.MULTILINE,
@@ -512,6 +553,9 @@ class CodeContextAdapter(RuntimeAdapter):
     the forgeindex ecosystem (https://github.com/chrismicah/forgeindex). Credit:
     **Chris Micah** and the forgeindex project for those concepts; this file is an
     independent implementation for AINL.
+
+    Optional: GET_SKELETON (Tier-0 signature lines only); COMPRESS_CONTEXT may rank via
+    embedding_memory when import/embed succeeds; STATS includes graph counts and top PageRank.
     """
 
     def __init__(self, store_path: Optional[str] = None):
@@ -651,11 +695,53 @@ class CodeContextAdapter(RuntimeAdapter):
             "pagerank": pr,
         }
 
+    def get_skeleton(self, *filters: str) -> str:
+        if not self._chunks:
+            return "(no index; run INDEX first)"
+        ordered = sorted(
+            self._chunks,
+            key=lambda c: (str(c.get("path") or ""), int(c.get("start_line") or 0)),
+        )
+
+        def _line(c: Dict[str, Any]) -> str:
+            return f"{c['path']}:{c['start_line']}  {c['signature']}"
+
+        flist = [f.strip() for f in filters if f and str(f).strip()]
+        if len(flist) == 1 and flist[0] == "_":
+            flist = []
+        if not flist:
+            take = ordered[:100]
+            return "\n".join(_line(c) for c in take) if take else "(empty)"
+
+        if len(flist) == 1:
+            one = flist[0]
+            if one in self._by_id:
+                return _line(self._by_id[one])
+            norm = one.replace("\\", "/")
+            matches = [
+                c
+                for c in ordered
+                if str(c.get("path") or "") == norm
+                or str(c.get("path") or "").endswith(norm)
+            ]
+            if not matches:
+                return "(empty)"
+            return "\n".join(_line(c) for c in matches)
+
+        lines: List[str] = []
+        for cid in flist:
+            c = self._by_id.get(cid)
+            if c:
+                lines.append(_line(c))
+        return "\n".join(lines) if lines else "(empty)"
+
     def compress_context(self, query: str, max_tokens: int = 32000) -> str:
         if not self._chunks:
             return "(no index; run INDEX first)"
         mt = max(100, int(max_tokens))
-        ranked = _tfidf_rank(query, self._chunks, top_k=min(500, len(self._chunks)))
+        ranked = _rank_chunks_embedding_or_tfidf(
+            query, self._chunks, top_k=min(500, len(self._chunks))
+        )
         parts: List[str] = []
         used = 0
         for c in ranked:
@@ -702,6 +788,9 @@ class CodeContextAdapter(RuntimeAdapter):
             q = str(args[0])
             max_tok = int(args[1]) if len(args) > 1 and args[1] is not None else 32000
             return self.compress_context(q, max_tokens=max_tok)
+        if verb == "GET_SKELETON":
+            flist = [str(a) for a in args if a is not None and str(a).strip() != ""]
+            return self.get_skeleton(*flist)
         if verb == "STATS":
             ua: Optional[float] = getattr(self, "_updated_at", None)
             if ua is not None:
@@ -720,6 +809,19 @@ class CodeContextAdapter(RuntimeAdapter):
                 "indexed_root": ir,
                 "store_path": str(self.store_path),
                 "updated_at": ua,
+                "num_nodes": len(self._chunks),
+                "num_edges": (
+                    sum(len(v) for v in self._dep_forward.values())
+                    if self._dep_forward
+                    else 0
+                ),
+                "top_pagerank": sorted(
+                    (
+                        {"chunk_id": cid, "score": float(sc)}
+                        for cid, sc in (self._dep_pagerank or {}).items()
+                    ),
+                    key=lambda x: -x["score"],
+                )[:5],
             }
         raise AdapterError(f"code_context unsupported verb: {target!r}")
 
@@ -756,3 +858,7 @@ def get_impact(chunk_id: str) -> Dict[str, Any]:
 
 def compress_context(query: str, max_tokens: int = 32000) -> str:
     return _get_default().compress_context(query, max_tokens=max_tokens)
+
+
+def get_skeleton(*filters: str) -> str:
+    return _get_default().get_skeleton(*filters)

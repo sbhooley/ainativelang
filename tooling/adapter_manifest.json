@@ -426,7 +426,7 @@
       "support_tier": "compatibility",
       "strict_contract": true,
       "recommended_lane": "noncanonical",
-      "verbs": ["INDEX", "QUERY_CONTEXT", "GET_FULL_SOURCE", "GET_DEPENDENCIES", "GET_IMPACT", "COMPRESS_CONTEXT", "STATS"],
+      "verbs": ["INDEX", "QUERY_CONTEXT", "GET_FULL_SOURCE", "GET_SKELETON", "GET_DEPENDENCIES", "GET_IMPACT", "COMPRESS_CONTEXT", "STATS"],
       "effect_default": "io",
       "privilege_tier": "local_state",
       "destructive": false,

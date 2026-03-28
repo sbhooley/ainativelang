@@ -471,12 +471,15 @@ L1:
   R code_context.INDEX "." ->_idx
   # Tier 1: TF–IDF-ranked signatures + one-line summaries (limit 5 chunks).
   R code_context.QUERY_CONTEXT "adapter" 1 5 ->context
-  # Greedy pack: TF–IDF order, stop when estimated tokens exceed budget (~len//4).
+  # Tier-0-style signatures only: "_" = all chunks (cap 100); or filter by file path.
+  R code_context.GET_SKELETON "_" ->skel_all
+  R code_context.GET_SKELETON "adapters/code_context.py" ->skel_file
+  # Greedy pack: embedding ranking when embedding_memory is available, else TF–IDF; ~len//4 token estimate.
   R code_context.COMPRESS_CONTEXT "adapter" 4000 ->packed
   # Example chunk id for _tokenize in adapters/code_context.py (see QUERY_CONTEXT or .ainl_code_context.json if this drifts).
   R code_context.GET_DEPENDENCIES "fn:adapters/code_context.py:_tokenize@83:f024a60ce80a" ->deps
   R code_context.GET_IMPACT "fn:adapters/code_context.py:_tokenize@83:f024a60ce80a" ->impact
-  # STATS has no logical args; "_" is a parse placeholder only (adapter ignores it).
+  # STATS: chunks, store_path, updated_at, plus num_nodes, num_edges, top_pagerank; "_" is a parse placeholder only.
   R code_context.STATS "_" ->stats
   J context
 ```
