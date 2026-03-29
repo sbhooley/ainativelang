@@ -616,7 +616,7 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     reg = AdapterRegistry(allowed=[
         'core', 'db', 'email', 'calendar', 'social',
         'svc', 'cache', 'queue', 'wasm', 'extras', 'tiktok', 'agent', 'memory',
-        'fs', 'http', 'web', 'embedding_memory',
+        'fs', 'http', 'web', 'embedding_memory', 'mcp', 'crm_db',
     ])
     from runtime.adapters.builtins import CoreBuiltinAdapter
     reg.register('core', CoreBuiltinAdapter())
@@ -625,6 +625,13 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     reg.register('social', SocialAdapter())
     reg.register('svc', ServiceAdapter())
     reg.register('db', DBLeadsAdapter())
+    # CRM database adapter for IntelligenceReport table (used by wrapper evolver)
+    try:
+        from adapters.crm_db import CrmDbAdapter
+        reg.register('crm_db', CrmDbAdapter())
+        reg.allow('crm_db')
+    except Exception as e:
+        logger.warning(f'CRM DB adapter not registered: {e}')
     reg.register('cache', CacheAdapter())
     reg.register('queue', NotificationQueueAdapter())
     reg.register('extras', ExtrasAdapter())
@@ -650,6 +657,14 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
     # HTTP adapter for LLM calls and general HTTP
     from runtime.adapters.http import SimpleHttpAdapter
     reg.register('http', SimpleHttpAdapter())
+
+    # MCP adapter for calling external MCP servers (e.g., OpenSpace)
+    try:
+        from adapters.tools.mcp.adapter import MCPToolAdapter
+        reg.register('mcp', MCPToolAdapter())
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        logger.warning(f'MCP adapter not registered: {e}')
 
     # Optional WASM adapter if wasmtime is available and demo modules exist
     try:

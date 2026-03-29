@@ -1,0 +1,87 @@
+# ainl_wrapper_evolver.ainl
+# Continuous improvement for AINL wrappers using OpenSpace
+#
+# This module monitors recent AINL cron job failures, uses OpenSpace to diagnose
+# root cause, generates improvement patches, and records insights.
+
+S core now ->L_analyze
+
+L_analyze:
+  # Query recent intelligence reports for AINL wrapper failures/errors
+  R crm_db F
+    "IntelligenceReport"
+    "jobName LIKE 'AINL%' AND status IN ('error','failed','timeout')"
+    "createdAt DESC"
+    10
+  ->reports
+  X rows (reports.rows)
+  If (core.eq (core.len rows) 0)
+    R cache log "No AINL wrapper failures found in recent intelligence reports."
+    ->L_done
+  ->L_delegate
+
+L_delegate:
+  # Convert rows to JSON string for prompt
+  X rows_json (core.stringify rows)
+  X prompt (
+    "You are an AINL language and OpenClaw integration expert.\n" +
+    "Diagnose why these AINL cron jobs/wrappers are failing and propose concrete fixes.\n" +
+    "Recent failure reports (IntelligenceReport rows in JSON):\n" +
+    rows_json + "\n\n" +
+    "Wrapper source files are in: /Users/clawdbot/.openclaw/workspace/AI_Native_Lang/demo/*.ainl\n" +
+    "Common issues: missing adapters, incorrect R syntax, invalid label jumps, missing env vars, resource limits, DB path errors, MCP connection failures.\n" +
+    "Propose a specific patch to the wrapper file. Provide the corrected code snippet in context.\n" +
+    "Return JSON with fields: analysis (string), suggested_fix (filename.ainl), patch (diff or full corrected snippet), confidence (0-1 float)."
+  )
+  R mcp.openspace.execute_task
+    task=prompt
+    search_scope="local"
+    max_iterations=25
+  ->L_evaluate
+
+L_evaluate:
+  X result (_mcp_result)
+  If (core.ne result.status "success")
+    R crm_db P
+      "IntelligenceReport"
+      {
+        "_table": "IntelligenceReport",
+        "jobName": "AINL Wrapper Evolver",
+        "status": "error",
+        "resultJson": (core.stringify {"error": result.response})
+      }
+    ->L_done
+  ->L_record
+
+L_record:
+  X evolved (result.evolved_skills)
+  If (core.gt (core.len evolved) 0)
+    X skill (evolved[0])
+    R crm_db P
+      "IntelligenceReport"
+      {
+        "_table": "IntelligenceReport",
+        "jobName": "AINL Wrapper Evolver",
+        "status": "evolved",
+        "resultJson": (core.stringify {
+          "skill_name": skill.name,
+          "skill_dir": skill.skill_dir,
+          "change_summary": skill.change_summary,
+          "upload_ready": skill.upload_ready,
+          "full_response": result.response
+        })
+      }
+    ->L_done
+  else
+    R crm_db P
+      "IntelligenceReport"
+      {
+        "_table": "IntelligenceReport",
+        "jobName": "AINL Wrapper Evolver",
+        "status": "ok",
+        "resultJson": (core.stringify {"insight": result.response})
+      }
+    ->L_done
+
+L_done:
+  Ret {evolved: (core.len evolved), status: "complete"}

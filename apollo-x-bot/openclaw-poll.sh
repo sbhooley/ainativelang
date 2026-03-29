@@ -43,7 +43,8 @@ export AINL_MEMORY_DB="${AINL_MEMORY_DB:-$ROOT/apollo-x-bot/data/promoter_memory
 HTTP_TIMEOUT_S="${AINL_HTTP_TIMEOUT_S:-120}"
 
 cd "$ROOT"
-exec "$PY" -m cli.main run "$ROOT/apollo-x-bot/ainl-x-promoter.ainl" --strict --label _poll \
+exec "$PY" -m cli.main run "$ROOT/apollo-x-bot/ainl-x-promoter.ainl" \
+  --trace \
   --http-timeout-s "$HTTP_TIMEOUT_S" \
   --enable-adapter bridge \
   --enable-adapter api \

@@ -1,0 +1,5 @@
+S core cron "*/15 * * * *" ->START
+
+START:
+  X x (core.add 1 2)
+  Ret x

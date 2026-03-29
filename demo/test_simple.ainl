@@ -1,0 +1,5 @@
+# test_simple.ainl
+S core now ->L0
+
+L0:
+  Ret {"test": "hello"}

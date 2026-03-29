@@ -22,7 +22,7 @@ include "../modules/common/promoter_discover_from_tweets.ainl" as pdt
 include "../modules/llm/promoter_daily_post_payload.ainl" as pdpp
 include "../modules/llm/promoter_process_tweet_payload.ainl" as pptp
 
-S core cron "*/45 * * * *"
+S core cron "*/45 * * * *" ->L_poll X
 
 L_poll:
   R core.echo "x.search" ->executor_req_executor

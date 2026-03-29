@@ -64,6 +64,12 @@ WRAPPERS = {
     "embedding-memory-pilot": _BRIDGE_DIR / "wrappers" / "embedding_memory_pilot.ainl",
     "token-aware-startup": _BRIDGE_DIR / "wrappers" / "token_aware_startup_context.ainl",
     "wasm-health-score": _BRIDGE_DIR / "wrappers" / "wasm_health_score.ainl",
+    # OpenSpace integrations
+    "lead-ai-openspace": ROOT / "demo" / "lead_ai_openspace.ainl",
+    "ainl-wrapper-evolver": ROOT / "demo" / "ainl_wrapper_evolver.ainl",
+    "test-openspace-mcp": ROOT / "demo" / "test_openspace_mcp.ainl",
+    "test-simple": ROOT / "demo" / "test_simple.ainl",
+    "test-mcp-log": ROOT / "demo" / "test_mcp_log.ainl",
     # "email-monitor": _BRIDGE_DIR / "wrappers" / "email_monitor.ainl",  # disabled: requires 'openclaw mail' plugin
 }
 

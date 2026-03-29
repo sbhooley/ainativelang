@@ -1,3 +1,4 @@
+import os
 import subprocess
 import json
 import requests
@@ -9,12 +10,17 @@ class MCPClient:
         if self.type == "stdio":
             self.command = server_config["command"]
             self.args = server_config.get("args", [])
+            self.env = server_config.get("env")  # Optional environment vars to merge with current env
             self.process = None
         else:
             self.url = server_config["url"]
     
     def start(self):
         if self.type == "stdio":
+            # Merge provided env with current environment
+            env = None
+            if isinstance(self.env, dict):
+                env = {**os.environ, **self.env}
             self.process = subprocess.Popen(
                 [self.command] + self.args,
                 stdin=subprocess.PIPE,
@@ -22,7 +28,8 @@ class MCPClient:
                 stderr=subprocess.PIPE,
                 text=True,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
+                env=env
             )
     
     def stop(self):

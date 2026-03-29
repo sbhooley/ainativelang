@@ -114,7 +114,8 @@ tooling = ["*.json", "*.yml"]
 [tool.setuptools.packages.find]
 where = ["."]
 # Explicit roots + globs so `tooling` / `adapters` are never skipped (CLI imports `tooling.*`; runtime.compat imports `adapters`).
-include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*", "hermes", "hermes.*"]
+# OpenClaw bridge modules must be included for `ainl install openclaw` to work.
+include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*", "hermes", "hermes.*", "openclaw", "openclaw.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

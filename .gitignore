@@ -12,9 +12,13 @@ build/
 .venv/
 .venv-*/
 venv/
+.ainl/
 
 # Environment / secrets
 .env
+# Local OpenClaw project lock (machine-specific paths; use aiNativeLang.example.yml)
+/aiNativeLang.yml
+apollo-x-bot/*.sqlite
 
 # Test / cache
 .pytest_cache/
@@ -30,6 +34,8 @@ hello.mmd
 # OS artifacts
 .DS_Store
 Thumbs.db
+.sqlite3
+.sqlite3-journal
 
 # Editor artifacts
 *.swp

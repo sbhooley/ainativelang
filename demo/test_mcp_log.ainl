@@ -1,0 +1,13 @@
+# test_mcp_log.ainl
+# Test MCP by logging a message via the cache adapter to confirm execution
+
+S core now ->L0
+
+L0:
+  R mcp.openspace.execute_task
+    task="Return a short message confirming you are running."
+    search_scope="local"
+    max_iterations=3
+  ->result
+  R cache set "openspace_test_last_result" (core.stringify result)
+  Ret result
