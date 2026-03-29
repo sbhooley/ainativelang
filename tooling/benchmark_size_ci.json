@@ -1,6 +1,6 @@
 {
   "schema_version": "3.5",
-  "generated_at_utc": "2026-03-24T03:32:18.991698+00:00",
+  "generated_at_utc": "2026-03-29T15:12:55.418286+00:00",
   "metric": "tiktoken",
   "mode_request": "minimal_emit",
   "profile_request": "canonical_strict_valid",
@@ -26,14 +26,173 @@
             "classes": [
               "strict-valid"
             ],
-            "artifact_count": 19
+            "artifact_count": 23
           },
           "artifacts": [
+            {
+              "artifact": "examples/code_context_demo.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 468,
+              "compile_time_ms_mean": 0.7647920089463393,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.202991452991453
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.202991452991453,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 29,
+              "viable_for_aggregate": true
+            },
+            {
+              "artifact": "examples/cron/monitor_and_alert.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 73,
+              "compile_time_ms_mean": 0.4572083319847782,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "cron"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "python_api",
+                "prisma",
+                "mt5",
+                "scraper",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": 98,
+                  "included": true,
+                  "ratio_vs_source": 1.3424657534246576
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 98,
+              "aggregate_ratio_vs_source": 1.3424657534246576,
+              "target_structure": {
+                "cron": {
+                  "function_def_chunks": 5,
+                  "schedule_comment_chunks": 90,
+                  "pass_chunks": 3,
+                  "total_chunks": 98
+                }
+              },
+              "cost_estimation_basis_tokens": 98,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.000705
+              },
+              "ainl_source_nonempty_lines": 10,
+              "viable_for_aggregate": true
+            },
             {
               "artifact": "examples/crud_api.ainl",
               "class": "strict-valid",
               "ainl_source_size": 37,
-              "compile_time_ms_mean": 0.5370556415679554,
+              "compile_time_ms_mean": 0.432402982066075,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -112,8 +271,8 @@
             {
               "artifact": "examples/hello.ainl",
               "class": "strict-valid",
-              "ainl_source_size": 18,
-              "compile_time_ms_mean": 0.2477083277578155,
+              "ainl_source_size": 295,
+              "compile_time_ms_mean": 0.20068072869131962,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -137,7 +296,7 @@
                 "python_api": {
                   "size": 95,
                   "included": true,
-                  "ratio_vs_source": 5.277777777777778
+                  "ratio_vs_source": 0.3220338983050847
                 },
                 "prisma": {
                   "size": null,
@@ -171,7 +330,7 @@
                 }
               },
               "aggregate_generated_output_size": 95,
-              "aggregate_ratio_vs_source": 5.277777777777778,
+              "aggregate_ratio_vs_source": 0.3220338983050847,
               "target_structure": {
                 "python_api": {
                   "imports_chunks": 7,
@@ -186,14 +345,14 @@
               "estimated_cost_usd_per_generation": {
                 "gpt-4o": 0.0006775
               },
-              "ainl_source_nonempty_lines": 3,
+              "ainl_source_nonempty_lines": 24,
               "viable_for_aggregate": true
             },
             {
               "artifact": "examples/hybrid/langchain_tool_demo.ainl",
               "class": "strict-valid",
               "ainl_source_size": 231,
-              "compile_time_ms_mean": 0.3579863502333562,
+              "compile_time_ms_mean": 0.27905532624572515,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -273,7 +432,7 @@
               "artifact": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
               "class": "strict-valid",
               "ainl_source_size": 99,
-              "compile_time_ms_mean": 0.4103890193315844,
+              "compile_time_ms_mean": 0.3290833750118812,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -353,7 +512,7 @@
               "artifact": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
               "class": "strict-valid",
               "ainl_source_size": 85,
-              "compile_time_ms_mean": 0.40505568419272703,
+              "compile_time_ms_mean": 0.34248634862403077,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -433,7 +592,7 @@
               "artifact": "examples/hyperspace_demo.ainl",
               "class": "strict-valid",
               "ainl_source_size": 516,
-              "compile_time_ms_mean": 14.612472344500324,
+              "compile_time_ms_mean": 14.932152310696742,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -513,7 +672,7 @@
               "artifact": "examples/if_call_workflow.ainl",
               "class": "strict-valid",
               "ainl_source_size": 83,
-              "compile_time_ms_mean": 0.8779443451203406,
+              "compile_time_ms_mean": 1.4894303555289905,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -593,7 +752,7 @@
               "artifact": "examples/monitor_escalation.ainl",
               "class": "strict-valid",
               "ainl_source_size": 72,
-              "compile_time_ms_mean": 0.5558609846048057,
+              "compile_time_ms_mean": 1.0155836741129558,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -669,10 +828,90 @@
               "viable_for_aggregate": true
             },
             {
+              "artifact": "examples/prediction_market_demo.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 767,
+              "compile_time_ms_mean": 1.1367776508753498,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.12385919165580182
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.12385919165580182,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 37,
+              "viable_for_aggregate": true
+            },
+            {
               "artifact": "examples/rag_pipeline.ainl",
               "class": "strict-valid",
               "ainl_source_size": 29,
-              "compile_time_ms_mean": 0.3712920006364584,
+              "compile_time_ms_mean": 1.3590973103418946,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -752,7 +991,7 @@
               "artifact": "examples/retry_error_resilience.ainl",
               "class": "strict-valid",
               "ainl_source_size": 54,
-              "compile_time_ms_mean": 0.497249672965457,
+              "compile_time_ms_mean": 0.9854443681736788,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -832,7 +1071,7 @@
               "artifact": "examples/scraper/basic_scraper.ainl",
               "class": "strict-valid",
               "ainl_source_size": 67,
-              "compile_time_ms_mean": 0.3511803612733881,
+              "compile_time_ms_mean": 0.8385969558730721,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -916,10 +1155,90 @@
               "viable_for_aggregate": true
             },
             {
+              "artifact": "examples/solana_demo.ainl",
+              "class": "strict-valid",
+              "ainl_source_size": 432,
+              "compile_time_ms_mean": 1.4117783090720575,
+              "compile_time_ms_samples": 3,
+              "compile_time_ms_failures_in_probe": 0,
+              "included_targets": [
+                "python_api"
+              ],
+              "excluded_targets": [
+                "react_ts",
+                "prisma",
+                "mt5",
+                "scraper",
+                "cron",
+                "langgraph",
+                "temporal"
+              ],
+              "targets": {
+                "react_ts": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "python_api": {
+                  "size": 95,
+                  "included": true,
+                  "ratio_vs_source": 0.2199074074074074
+                },
+                "prisma": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "mt5": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "scraper": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "cron": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "langgraph": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                },
+                "temporal": {
+                  "size": null,
+                  "included": false,
+                  "ratio_vs_source": null
+                }
+              },
+              "aggregate_generated_output_size": 95,
+              "aggregate_ratio_vs_source": 0.2199074074074074,
+              "target_structure": {
+                "python_api": {
+                  "imports_chunks": 7,
+                  "decorator_chunks": 0,
+                  "function_def_chunks": 0,
+                  "return_chunks": 0,
+                  "total_chunks": 95
+                }
+              },
+              "cost_estimation_basis_tokens": 95,
+              "cost_estimation_method": "aggregate_emitted_tiktoken",
+              "estimated_cost_usd_per_generation": {
+                "gpt-4o": 0.0006775
+              },
+              "ainl_source_nonempty_lines": 22,
+              "viable_for_aggregate": true
+            },
+            {
               "artifact": "examples/status_branching.ainl",
               "class": "strict-valid",
               "ainl_source_size": 48,
-              "compile_time_ms_mean": 0.5079026838454107,
+              "compile_time_ms_mean": 0.9801803389564157,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -999,7 +1318,7 @@
               "artifact": "examples/test_adapters_full.ainl",
               "class": "strict-valid",
               "ainl_source_size": 404,
-              "compile_time_ms_mean": 1.5499583484294515,
+              "compile_time_ms_mean": 3.025847370736301,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -1079,7 +1398,7 @@
               "artifact": "examples/test_nested.ainl",
               "class": "strict-valid",
               "ainl_source_size": 20,
-              "compile_time_ms_mean": 0.24329166626557708,
+              "compile_time_ms_mean": 0.8183889634286364,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -1159,7 +1478,7 @@
               "artifact": "examples/test_phase2_common_modules.ainl",
               "class": "strict-valid",
               "ainl_source_size": 424,
-              "compile_time_ms_mean": 20.321847347076982,
+              "compile_time_ms_mean": 22.818833667164046,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -1239,7 +1558,7 @@
               "artifact": "examples/timeout_demo.ainl",
               "class": "strict-valid",
               "ainl_source_size": 49,
-              "compile_time_ms_mean": 2.122403006069362,
+              "compile_time_ms_mean": 2.4387776696433625,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -1319,7 +1638,7 @@
               "artifact": "examples/timeout_memory_prune_demo.ainl",
               "class": "strict-valid",
               "ainl_source_size": 256,
-              "compile_time_ms_mean": 2.5917780003510416,
+              "compile_time_ms_mean": 2.984777675010264,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -1399,7 +1718,7 @@
               "artifact": "examples/web/basic_web_api.ainl",
               "class": "strict-valid",
               "ainl_source_size": 32,
-              "compile_time_ms_mean": 0.26073634702091414,
+              "compile_time_ms_mean": 0.26197203745444614,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -1479,7 +1798,7 @@
               "artifact": "examples/webhook_automation.ainl",
               "class": "strict-valid",
               "ainl_source_size": 66,
-              "compile_time_ms_mean": 0.6080553284846246,
+              "compile_time_ms_mean": 0.4726526482651631,
               "compile_time_ms_samples": 3,
               "compile_time_ms_failures_in_probe": 0,
               "included_targets": [
@@ -1557,33 +1876,33 @@
             }
           ],
           "summary": {
-            "artifact_count": 19,
-            "ainl_source_total": 2590,
+            "artifact_count": 23,
+            "ainl_source_total": 4607,
             "targets_total": {
               "react_ts": 0,
-              "python_api": 1626,
+              "python_api": 1911,
               "prisma": 0,
               "mt5": 0,
               "scraper": 154,
-              "cron": 197,
+              "cron": 295,
               "langgraph": 0,
               "temporal": 0
             },
-            "aggregate_generated_output_total": 1977,
-            "aggregate_ratio_vs_source": 0.7633204633204633,
+            "aggregate_generated_output_total": 2360,
+            "aggregate_ratio_vs_source": 0.5122639461688735,
             "target_structure_totals": {
               "python_api": {
-                "imports_chunks": 119,
+                "imports_chunks": 140,
                 "decorator_chunks": 5,
                 "function_def_chunks": 6,
                 "return_chunks": 6,
-                "total_chunks": 1626
+                "total_chunks": 1911
               },
               "cron": {
-                "function_def_chunks": 11,
-                "schedule_comment_chunks": 180,
-                "pass_chunks": 6,
-                "total_chunks": 197
+                "function_def_chunks": 16,
+                "schedule_comment_chunks": 270,
+                "pass_chunks": 9,
+                "total_chunks": 295
               },
               "scraper": {
                 "imports_chunks": 11,
@@ -1596,33 +1915,33 @@
             }
           },
           "viable_aggregate": {
-            "artifact_count": 19,
-            "ainl_source_total": 2590,
+            "artifact_count": 23,
+            "ainl_source_total": 4607,
             "targets_total": {
               "react_ts": 0,
-              "python_api": 1626,
+              "python_api": 1911,
               "prisma": 0,
               "mt5": 0,
               "scraper": 154,
-              "cron": 197,
+              "cron": 295,
               "langgraph": 0,
               "temporal": 0
             },
-            "aggregate_generated_output_total": 1977,
-            "aggregate_ratio_vs_source": 0.7633204633204633,
+            "aggregate_generated_output_total": 2360,
+            "aggregate_ratio_vs_source": 0.5122639461688735,
             "target_structure_totals": {
               "python_api": {
-                "imports_chunks": 119,
+                "imports_chunks": 140,
                 "decorator_chunks": 5,
                 "function_def_chunks": 6,
                 "return_chunks": 6,
-                "total_chunks": 1626
+                "total_chunks": 1911
               },
               "cron": {
-                "function_def_chunks": 11,
-                "schedule_comment_chunks": 180,
-                "pass_chunks": 6,
-                "total_chunks": 197
+                "function_def_chunks": 16,
+                "schedule_comment_chunks": 270,
+                "pass_chunks": 9,
+                "total_chunks": 295
               },
               "scraper": {
                 "imports_chunks": 11,
@@ -1639,18 +1958,18 @@
             "top_targets": [
               {
                 "target": "python_api",
-                "size": 1626,
-                "share_of_aggregate": 0.8224582701062215
+                "size": 1911,
+                "share_of_aggregate": 0.8097457627118644
               },
               {
                 "target": "cron",
-                "size": 197,
-                "share_of_aggregate": 0.09964592817400102
+                "size": 295,
+                "share_of_aggregate": 0.125
               },
               {
                 "target": "scraper",
                 "size": 154,
-                "share_of_aggregate": 0.07789580171977745
+                "share_of_aggregate": 0.06525423728813559
               }
             ],
             "top_artifacts": [
@@ -1672,9 +1991,9 @@
                 ]
               },
               {
-                "artifact": "examples/monitor_escalation.ainl",
+                "artifact": "examples/cron/monitor_and_alert.ainl",
                 "size": 98,
-                "ratio_vs_source": 1.3611111111111112,
+                "ratio_vs_source": 1.3424657534246576,
                 "included_targets": [
                   "cron"
                 ]
@@ -1683,23 +2002,23 @@
             "residual_overhead_by_target": [
               {
                 "target": "python_api",
-                "total_size": 1626,
+                "total_size": 1911,
                 "structure": {
-                  "imports_chunks": 119,
+                  "imports_chunks": 140,
                   "decorator_chunks": 5,
                   "function_def_chunks": 6,
                   "return_chunks": 6,
-                  "total_chunks": 1626
+                  "total_chunks": 1911
                 }
               },
               {
                 "target": "cron",
-                "total_size": 197,
+                "total_size": 295,
                 "structure": {
-                  "function_def_chunks": 11,
-                  "schedule_comment_chunks": 180,
-                  "pass_chunks": 6,
-                  "total_chunks": 197
+                  "function_def_chunks": 16,
+                  "schedule_comment_chunks": 270,
+                  "pass_chunks": 9,
+                  "total_chunks": 295
                 }
               },
               {
@@ -1734,9 +2053,9 @@
                 ]
               },
               {
-                "artifact": "examples/monitor_escalation.ainl",
+                "artifact": "examples/cron/monitor_and_alert.ainl",
                 "size": 98,
-                "ratio_vs_source": 1.3611111111111112,
+                "ratio_vs_source": 1.3424657534246576,
                 "included_targets": [
                   "cron"
                 ]
@@ -1745,18 +2064,18 @@
             "top_minimal_emitted_targets": [
               {
                 "target": "python_api",
-                "size": 1626,
-                "share_of_aggregate": 0.8224582701062215
+                "size": 1911,
+                "share_of_aggregate": 0.8097457627118644
               },
               {
                 "target": "cron",
-                "size": 197,
-                "share_of_aggregate": 0.09964592817400102
+                "size": 295,
+                "share_of_aggregate": 0.125
               },
               {
                 "target": "scraper",
                 "size": 154,
-                "share_of_aggregate": 0.07789580171977745
+                "share_of_aggregate": 0.06525423728813559
               }
             ]
           }
@@ -1826,15 +2145,15 @@
             }
           },
           "full_multitarget": {
-            "ainl_aggregate_emit_active_metric": 21800,
+            "ainl_aggregate_emit_active_metric": 22418,
             "active_metric": "tiktoken",
-            "ainl_aggregate_emit_tiktoken": 21800,
-            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 25.057471264367816,
-            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 29.539295392953928,
-            "ratio_ainl_active_over_pure_tiktoken": 25.057471264367816,
-            "ratio_ainl_active_over_lang_tiktoken": 29.539295392953928,
+            "ainl_aggregate_emit_tiktoken": 22418,
+            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 25.767816091954025,
+            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 30.37669376693767,
+            "ratio_ainl_active_over_pure_tiktoken": 25.767816091954025,
+            "ratio_ainl_active_over_lang_tiktoken": 30.37669376693767,
             "estimated_cost_usd_ainl_emit_tiktoken": {
-              "gpt-4o": 0.155325
+              "gpt-4o": 0.159735
             },
             "estimated_cost_usd_handwritten_sources_tiktoken": {
               "gpt-4o": 0.01146
@@ -1885,15 +2204,15 @@
             }
           },
           "full_multitarget": {
-            "ainl_aggregate_emit_active_metric": 21168,
+            "ainl_aggregate_emit_active_metric": 21744,
             "active_metric": "tiktoken",
-            "ainl_aggregate_emit_tiktoken": 21168,
-            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 30.24,
-            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 28.074270557029177,
-            "ratio_ainl_active_over_pure_tiktoken": 30.24,
-            "ratio_ainl_active_over_lang_tiktoken": 28.074270557029177,
+            "ainl_aggregate_emit_tiktoken": 21744,
+            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 31.062857142857144,
+            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 28.838196286472147,
+            "ratio_ainl_active_over_pure_tiktoken": 31.062857142857144,
+            "ratio_ainl_active_over_lang_tiktoken": 28.838196286472147,
             "estimated_cost_usd_ainl_emit_tiktoken": {
-              "gpt-4o": 0.150825
+              "gpt-4o": 0.1549275
             },
             "estimated_cost_usd_handwritten_sources_tiktoken": {
               "gpt-4o": 0.010365
@@ -1944,15 +2263,15 @@
             }
           },
           "full_multitarget": {
-            "ainl_aggregate_emit_active_metric": 293896,
+            "ainl_aggregate_emit_active_metric": 296636,
             "active_metric": "tiktoken",
-            "ainl_aggregate_emit_tiktoken": 293896,
-            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 185.54040404040404,
-            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 180.9704433497537,
-            "ratio_ainl_active_over_pure_tiktoken": 185.54040404040404,
-            "ratio_ainl_active_over_lang_tiktoken": 180.9704433497537,
+            "ainl_aggregate_emit_tiktoken": 296636,
+            "ratio_ainl_tiktoken_over_pure_py_tiktoken": 187.27020202020202,
+            "ratio_ainl_tiktoken_over_langgraph_tiktoken": 182.6576354679803,
+            "ratio_ainl_active_over_pure_tiktoken": 187.27020202020202,
+            "ratio_ainl_active_over_lang_tiktoken": 182.6576354679803,
             "estimated_cost_usd_ainl_emit_tiktoken": {
-              "gpt-4o": 2.094015
+              "gpt-4o": 2.1135375
             },
             "estimated_cost_usd_handwritten_sources_tiktoken": {
               "gpt-4o": 0.02286

@@ -4,6 +4,7 @@
 
 - **fix(packaging)**: add **`PyYAML`** to core **`dependencies`**. **`scripts/ainl_mcp_server.py`** imports **`yaml`** at module load; **`ainl-mcp --help`** / CI **wheel-integrity** must not fail with **`ModuleNotFoundError: yaml`** after **`pip install ainativelang[mcp]`**.
 - **fix(ci)**: **`tests/test_intelligence_budget_hydrate.py`** / **`tests/test_runtime_api_compat.py`** — close **`MemoryAdapter`** SQLite connections (and **`gc.collect`**) before deleting temp DB paths on **Windows** (avoids **`PermissionError`** in **`core-pr`**).
+- **chore(benchmarks)**: refresh **`tooling/benchmark_size_ci.json`** after **`examples/hello.ainl`** grew (commented tutorial header); keeps **`benchmark-regression`** size gate aligned with **`minimal_emit`** token counts.
 
 ## v1.3.2 (March 29, 2026) — Core HTTP deps for LLM adapter imports
 
