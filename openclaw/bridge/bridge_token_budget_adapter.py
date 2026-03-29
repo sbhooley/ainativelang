@@ -7,10 +7,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from statistics import mean
 from typing import Any, Dict, List, Optional, Tuple
@@ -164,8 +165,71 @@ def _token_report_parse_block_json(text: str) -> str:
     return json.dumps(_token_report_parse_block_dict(text), ensure_ascii=False)
 
 
+def _weekly_token_stats_from_db(days_back: int = 14) -> Optional[Dict[str, Any]]:
+    """Attempt to fetch weekly token usage stats from IntelligenceReport DB (Context Compaction Trigger entries)."""
+    db_path = _ROOT / 'crm' / 'prisma' / 'dev.db'
+    if not db_path.is_file():
+        return None
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cur = conn.cursor()
+        # Get entries from the last N days
+        cutoff_dt = datetime.now(timezone.utc) - timedelta(days=days_back)
+        cutoff = cutoff_dt.isoformat()
+        cur.execute("""
+            SELECT date(createdAt) as day, result_json FROM IntelligenceReport
+            WHERE jobName = 'Context Compaction Trigger' AND createdAt >= ? AND result_json IS NOT NULL
+            ORDER BY createdAt DESC
+        """, (cutoff,))
+        rows = cur.fetchall()
+        conn.close()
+
+        # Build map: day -> latest tokens (since rows DESC, first per day is latest)
+        day_latest: Dict[str, int] = {}
+        for day_str, result_json in rows:
+            try:
+                data = json.loads(result_json)
+                tokens = data.get('tokens')
+                if isinstance(tokens, int) and day_str not in day_latest:
+                    day_latest[day_str] = tokens
+            except Exception:
+                continue
+
+        if not day_latest:
+            return None
+
+        # Chronological day list for the last 7 days (if available)
+        chrono_days = sorted(day_latest.keys())[-7:]
+        day_tokens = [day_latest[d] for d in chrono_days]
+
+        total_w = sum(day_tokens)
+        avg_d = int(round(total_w / len(day_tokens))) if day_tokens else 0
+
+        # We don't easily compute prev7 from same DB without separate query; leave empty to skip comparison
+        return {
+            'ok': True,
+            'error': None,
+            'day_tokens': day_tokens,
+            'last7': [f"{d}.md" for d in chrono_days],  # names for consistency
+            'prev7': [],  # not computed
+            'empty_estimates': False,
+            'weekly_total_tokens': total_w,
+            'avg_daily_tokens': avg_d,
+            'days_in_window': len(day_tokens),
+        }
+    except Exception as e:
+        # Log warning? We'll just return None to fallback to files
+        return None
+
+
 def _weekly_token_window_stats() -> Dict[str, Any]:
     """Structured stats for markdown + rolling_budget_publish (same window as weekly trends)."""
+    # First, try to get stats from IntelligenceReport DB (new source)
+    db_stats = _weekly_token_stats_from_db()
+    if db_stats and db_stats.get('day_tokens'):
+        return db_stats
+
+    # Fallback to scanning daily memory files (legacy)
     mem = _openclaw_memory_dir()
     if not mem.is_dir():
         return {"ok": False, "error": "no_memory_dir", "day_tokens": [], "last7": [], "prev7": []}

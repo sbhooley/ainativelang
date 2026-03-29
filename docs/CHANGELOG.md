@@ -3,6 +3,7 @@
 ## v1.3.3 (March 29, 2026) — PyYAML for ainl-mcp entrypoint
 
 - **fix(packaging)**: add **`PyYAML`** to core **`dependencies`**. **`scripts/ainl_mcp_server.py`** imports **`yaml`** at module load; **`ainl-mcp --help`** / CI **wheel-integrity** must not fail with **`ModuleNotFoundError: yaml`** after **`pip install ainativelang[mcp]`**.
+- **fix(ci)**: **`tests/test_intelligence_budget_hydrate.py`** / **`tests/test_runtime_api_compat.py`** — close **`MemoryAdapter`** SQLite connections (and **`gc.collect`**) before deleting temp DB paths on **Windows** (avoids **`PermissionError`** in **`core-pr`**).
 
 ## v1.3.2 (March 29, 2026) — Core HTTP deps for LLM adapter imports
 

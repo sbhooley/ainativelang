@@ -1,6 +1,7 @@
 """Tests for tooling/intelligence_budget_hydrate.py."""
 from __future__ import annotations
 
+import gc
 import json
 import os
 import tempfile
@@ -53,6 +54,8 @@ def test_hydrate_end_to_end(tmp_path: Path) -> None:
     cache_json = tmp_path / "cache.json"
     with tempfile.NamedTemporaryFile(delete=False, suffix=".sqlite3") as f:
         db_path = f.name
+    ma = None
+    reg = None
     try:
         Path(db_path).unlink(missing_ok=True)
         ma = MemoryAdapter(db_path=db_path, valid_namespaces={"workflow", "intel"})
@@ -90,6 +93,13 @@ def test_hydrate_end_to_end(tmp_path: Path) -> None:
         assert c.get("daily_remaining") == 1000
         assert c.get("rolling_source") == "memory.budget.aggregate.weekly_remaining_v1"
     finally:
+        for ad in (ma, reg._adapters.get("memory") if reg else None):
+            if ad is not None and hasattr(ad, "_conn"):
+                try:
+                    ad._conn.close()
+                except Exception:
+                    pass
+        gc.collect()
         Path(db_path).unlink(missing_ok=True)
 
 

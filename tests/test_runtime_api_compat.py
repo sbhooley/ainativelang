@@ -1,4 +1,5 @@
 import argparse
+import gc
 import json
 import os
 import sys
@@ -172,3 +173,4 @@ def test_cli_can_enable_fs_and_sqlite_adapters():
         )
         # This is a smoke-path test for CLI adapter wiring; command should execute successfully.
         assert cmd_run(args) == 0
+        gc.collect()
