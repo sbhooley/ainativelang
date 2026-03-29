@@ -167,7 +167,9 @@ def _token_report_parse_block_json(text: str) -> str:
 
 def _weekly_token_stats_from_db(days_back: int = 14) -> Optional[Dict[str, Any]]:
     """Attempt to fetch weekly token usage stats from IntelligenceReport DB (Context Compaction Trigger entries)."""
-    db_path = _ROOT / 'crm' / 'prisma' / 'dev.db'
+    # DB is at workspace/crm/prisma/dev.db. From _ROOT (workspace/AI_Native_Lang), workspace is _ROOT.parent.
+    workspace_root = _ROOT.parent
+    db_path = workspace_root / 'crm' / 'prisma' / 'dev.db'
     if not db_path.is_file():
         return None
     try:
