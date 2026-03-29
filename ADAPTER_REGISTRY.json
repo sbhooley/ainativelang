@@ -1007,6 +1007,102 @@
         "Supports split and dotted forms: R llm_query query ... and R llm_query.QUERY ...",
         "Underscore-prefixed context keys are filtered before request serialization."
       ]
+    },
+    "solana": {
+      "description": "Solana JSON-RPC adapter: native/SPL transfers, raw program invoke, account reads, event listen simulation",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "targets": {
+        "transfer": {
+          "args": ["to_pubkey", "lamports"],
+          "returns": "{ok, signature?, dry_run?, ...}",
+          "network": true
+        },
+        "transfer_spl": {
+          "args": ["mint", "source_ata", "dest_ata", "owner", "amount", "decimals?"],
+          "returns": "{ok, signature?, ...}",
+          "network": true
+        },
+        "invoke": {
+          "args": ["program_id", "instruction_b64", "accounts_json?", "priority_fee_microlamports?"],
+          "returns": "{ok, signature?, ...}",
+          "network": true
+        },
+        "get_account": {
+          "args": ["pubkey"],
+          "returns": "{ok, lamports, owner, ...}",
+          "network": true
+        },
+        "get_balance": {
+          "args": ["pubkey"],
+          "returns": "{ok, lamports}",
+          "network": true
+        },
+        "get_token_accounts": {
+          "args": ["owner_pubkey", "mint_pubkey?"],
+          "returns": "{ok, owner, count, accounts}",
+          "network": true
+        },
+        "get_program_accounts": {
+          "args": ["program_id", "filters_json?", "limit?"],
+          "returns": "{ok, program_id, accounts, truncated?, ...}",
+          "network": true
+        },
+        "get_signatures_for_address": {
+          "args": ["address", "limit?"],
+          "returns": "{ok, signatures, ...}",
+          "network": true
+        },
+        "get_latest_blockhash": {
+          "args": [],
+          "returns": "{ok, blockhash, last_valid_block_height?, dry_run?}",
+          "network": true
+        },
+        "get_pyth_price": {
+          "args": ["price_feed_pubkey", "expect_update_account?"],
+          "returns": "{ok, parser: legacy|v2, price, conf, confidence, timestamp?, ...}",
+          "network": true
+        },
+        "hermes_fallback": {
+          "args": ["feed_id_hex"],
+          "returns": "{ok, parser: hermes, price, conf, timestamp, exponent, ...}",
+          "network": true
+        },
+        "derive_pda": {
+          "args": ["seeds_json", "program_id"],
+          "returns": "{ok, address, bump, program_id, ...}",
+          "network": true
+        },
+        "get_market_state": {
+          "args": ["market_pubkey"],
+          "returns": "{ok, lamports, owner, read_as: market_state, ...}",
+          "network": true
+        },
+        "simulate_events": {
+          "args": ["program_id?"],
+          "returns": "{ok, mode, events}",
+          "network": true
+        }
+      },
+      "config": {
+        "rpc_url_env": "AINL_SOLANA_RPC_URL",
+        "keypair_env": "AINL_SOLANA_KEYPAIR_JSON",
+        "context_keypair": "_solana_keypair_json or _ainl_solana_keypair_json",
+        "dry_run_env": "AINL_DRY_RUN",
+        "token_accounts_cap_env": "AINL_SOLANA_TOKEN_ACCOUNTS_LIMIT",
+        "program_accounts_cap_env": "AINL_SOLANA_GET_PROGRAM_ACCOUNTS_LIMIT"
+      },
+      "notes": [
+        "Requires optional Python packages solana and solders; SPL transfer may require spl.token bindings.",
+        "Use strict dotted verbs: R solana.GET_ACCOUNT ..., R solana.GET_BALANCE ..., R solana.TRANSFER ...",
+        "First blockchain.solana family member; registry id is solana for strict compatibility.",
+        "GET_PYTH_PRICE optional second arg expect_update_account (bool): tries PriceUpdateV2 then legacy PriceAccount; unified parser field; Hermes for off-chain only via HERMES_FALLBACK.",
+        "HERMES_FALLBACK feed_id_hex (64 hex chars): Hermes /v2/updates/price/latest; optional AINL_PYTH_HERMES_URL base override.",
+        "DERIVE_PDA seeds_json (JSON array of UTF-8 strings) + program_id: Pubkey.find_program_address; dry-run returns mock address.",
+        "INVOKE optional trailing priority_fee_microlamports: micro-lamports per compute unit (SetComputeUnitPrice), not whole-lamport tips."
+      ]
     }
   },
   "notes": [

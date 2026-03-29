@@ -683,6 +683,21 @@ def cmd_compile(args: argparse.Namespace) -> int:
         print(json.dumps({"ok": True, "emit": "hermes-skill", "dir": str(out_dir.resolve()), "files": written}, indent=2))
         return 0
 
+    if emit in ("solana-client", "blockchain-client"):
+        stem = Path(src_path).stem
+        out_raw = str(getattr(args, "output", "") or "").strip()
+        out_path = Path(out_raw).expanduser() if out_raw else Path.cwd() / "solana_client.py"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        content = c.emit_solana_client(ir, source_stem=stem)
+        out_path.write_text(content, encoding="utf-8")
+        print(
+            json.dumps(
+                {"ok": True, "emit": emit, "path": str(out_path.resolve()), "source_stem": stem},
+                indent=2,
+            )
+        )
+        return 0
+
     print(json.dumps({"ok": False, "error": f"unknown --emit target: {emit!r}"}, indent=2))
     return 2
 
@@ -1749,9 +1764,9 @@ def main() -> None:
     cmp.add_argument("--strict", action="store_true")
     cmp.add_argument(
         "--emit",
-        choices=["ir", "hermes-skill", "hermes"],
+        choices=["ir", "hermes-skill", "hermes", "solana-client", "blockchain-client"],
         default="ir",
-        help="Emit target (ir or host bundle). Use hermes-skill for ~/.hermes/skills/ bundles.",
+        help="Emit target (ir, hermes-skill bundle, or solana-client / blockchain-client single-file runner).",
     )
     cmp.add_argument("-o", "--output", default="", help="Output directory for bundle emitters")
     cmp.set_defaults(func=cmd_compile)

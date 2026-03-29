@@ -294,6 +294,8 @@ def main() -> None:
             "prisma",
             "sql",
             "hyperspace",
+            "solana-client",
+            "blockchain-client",
             "langgraph",
             "temporal",
             "hermes-skill",
@@ -303,6 +305,7 @@ def main() -> None:
             "Emit artifact instead of IR JSON. "
             "Hybrid interop: langgraph (StateGraph wrapper → docs/hybrid_langgraph.md), "
             "temporal (*_activities.py + *_workflow.py → docs/hybrid_temporal.md). "
+            "Blockchain: solana-client or blockchain-client → single-file Solana client (see docs/emitters/README.md). "
             "Typical strict path: --strict <file.ainl> --emit langgraph|temporal -o … "
             "Overview: docs/HYBRID_GUIDE.md"
         ),
@@ -312,7 +315,8 @@ def main() -> None:
         "--output",
         default=None,
         help=(
-            "Output path: hyperspace (default hyperspace_agent.py), langgraph (default <stem>_langgraph.py), "
+            "Output path: hyperspace (default hyperspace_agent.py), solana-client|blockchain-client (default solana_client.py), "
+            "langgraph (default <stem>_langgraph.py), "
             "temporal (dir or .py prefix — docs/hybrid_temporal.md). See docs/HYBRID_GUIDE.md"
         ),
     )
@@ -431,6 +435,23 @@ def main() -> None:
         print(
             json.dumps(
                 {"ok": True, "emit": "hyperspace", "path": str(out.resolve()), "source_stem": stem},
+                indent=2,
+            )
+        )
+    elif args.emit in ("solana-client", "blockchain-client"):
+        stem = Path(args.file).stem if args.file else "ainl_graph"
+        content = c.emit_solana_client(ir, source_stem=stem)
+        out = Path(args.output).expanduser() if args.output else Path.cwd() / "solana_client.py"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(content, encoding="utf-8")
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "emit": args.emit,
+                    "path": str(out.resolve()),
+                    "source_stem": stem,
+                },
                 indent=2,
             )
         )

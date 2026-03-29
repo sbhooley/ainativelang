@@ -127,6 +127,18 @@
       "path": "examples/code_context_demo.ainl",
       "primary_pattern": "code_context_adapter",
       "secondary_pattern": "none"
+    },
+    {
+      "order": 22,
+      "path": "examples/solana_demo.ainl",
+      "primary_pattern": "solana_rpc_demo",
+      "secondary_pattern": "blockhash_pyth_stringify"
+    },
+    {
+      "order": 23,
+      "path": "examples/prediction_market_demo.ainl",
+      "primary_pattern": "solana_prediction_market",
+      "secondary_pattern": "pda_pyth_invoke_payout"
     }
   ]
 }

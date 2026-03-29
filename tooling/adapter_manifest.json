@@ -557,6 +557,18 @@
       "network_facing": true,
       "sandbox_safe": false,
       "notes": "Strict allowlist placeholder for X/Twitter-shaped bridge calls; production graphs use bridge.POST with executor keys instead."
+    },
+    "solana": {
+      "support_tier": "core",
+      "strict_contract": true,
+      "recommended_lane": "canonical",
+      "verbs": ["TRANSFER", "TRANSFER_SPL", "INVOKE", "GET_ACCOUNT", "GET_BALANCE", "GET_TOKEN_ACCOUNTS", "GET_PROGRAM_ACCOUNTS", "GET_SIGNATURES_FOR_ADDRESS", "GET_LATEST_BLOCKHASH", "GET_PYTH_PRICE", "HERMES_FALLBACK", "GET_MARKET_STATE", "DERIVE_PDA", "SIMULATE_EVENTS"],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "Solana JSON-RPC via solana-py + solders (optional install). Mutating verbs require keypair or AINL_DRY_RUN. GET_PYTH_PRICE: legacy + PriceUpdateV2 paths; optional expect_update_account. HERMES_FALLBACK: Hermes HTTP quote. DERIVE_PDA: UTF-8 string seeds JSON. INVOKE optional priority_fee_microlamports is micro-lamports per CU (ComputeBudget)."
     }
   }
 }

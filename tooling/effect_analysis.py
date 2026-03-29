@@ -213,6 +213,24 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "llm_query.QUERY": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "llm_query.RUN": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "tools.CALL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
+    # Solana RPC (network); reads vs writes follow HTTP effect kinds for planning compatibility.
+    # Contract detail (docs-only; not enforced here): solana.GET_PYTH_PRICE may take optional
+    # expect_update_account (bool) for pull/update-account handling; solana.INVOKE may take optional
+    # trailing priority_fee_microlamports (micro-lamports per CU, SetComputeUnitPrice).
+    "solana.TRANSFER": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "solana.TRANSFER_SPL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "solana.INVOKE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "solana.GET_ACCOUNT": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.GET_BALANCE": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.GET_TOKEN_ACCOUNTS": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.GET_PROGRAM_ACCOUNTS": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.GET_SIGNATURES_FOR_ADDRESS": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.GET_LATEST_BLOCKHASH": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.GET_PYTH_PRICE": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.HERMES_FALLBACK": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.GET_MARKET_STATE": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.DERIVE_PDA": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "solana.SIMULATE_EVENTS": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
     # wasm compute calls are treated as pure compute effects.
     "wasm.CALL": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
 }

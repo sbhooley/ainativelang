@@ -483,3 +483,68 @@ L1:
   R code_context.STATS "_" ->stats
   J context
 ```
+
+## 22. `examples/solana_demo.ainl`
+- Primary: `solana_rpc_demo`
+- Secondary: `blockhash_pyth_stringify`
+
+```ainl
+# examples/solana_demo.ainl
+# Solana example — demonstrates R solana.VERB pattern. General blockchain adapters will use similar structure via blockchain_base.py.
+# Strict demo: read-only Solana RPC + simulation (install solana+solders for live calls).
+#
+# Env (typical):
+#   export AINL_SOLANA_RPC_URL=https://api.devnet.solana.com   # default if unset
+#   export AINL_DRY_RUN=1                                      # safe: no real txs from mutating steps
+# Optional caps: AINL_SOLANA_TOKEN_ACCOUNTS_LIMIT, AINL_SOLANA_GET_PROGRAM_ACCOUNTS_LIMIT
+# GET_LATEST_BLOCKHASH below: read-only; with AINL_DRY_RUN=1 returns mock blockhash (no RPC).
+#
+# ainl-validate examples/solana_demo.ainl --strict
+# ainl-validate examples/solana_demo.ainl --strict --emit solana-client -o solana_client.py
+# cd /path/to/AI_Native_Lang && AINL_DRY_RUN=1 python3 solana_client.py
+# AINL_SOLANA_DEMO_PREVIEW=1 AINL_DRY_RUN=1 python3 solana_client.py
+
+L1:
+  R solana.GET_ACCOUNT "11111111111111111111111111111111" ->sysprog
+  R solana.GET_BALANCE "11111111111111111111111111111111" ->sysbal
+  R solana.GET_LATEST_BLOCKHASH _ ->bh   # _ = strict-parse placeholder (no primary arg); use bh + dry-run txs to rehearse flows
+  R solana.GET_SIGNATURES_FOR_ADDRESS "Vote111111111111111111111111111111111111111" 3 ->sigs
+  R solana.SIMULATE_EVENTS "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" ->evts
+  R core.STRINGIFY sysbal ->sbal
+  J sbal
+```
+
+## 23. `examples/prediction_market_demo.ainl`
+- Primary: `solana_prediction_market`
+- Secondary: `pda_pyth_invoke_payout`
+
+```ainl
+# examples/prediction_market_demo.ainl
+# Prediction-market workflow (Polymarket-style on Solana): market PDA state → Pyth oracle quote → settlement/trade INVOKE
+# with ComputeBudget priority (microlamports/CU). Composable with DFlow routes and cross-listed (e.g. Kalshi-tokenized) books off-chain.
+# Strict parse: use real market PDA + Pyth feed pubkeys on your cluster; placeholders below are for compile-only demos.
+# Run with AINL_DRY_RUN=1 for mock blockhash/Pyth/tx sigs (no RPC parse pressure on dummy accounts).
+#
+# ainl-validate examples/prediction_market_demo.ainl --strict
+# ainl-validate examples/prediction_market_demo.ainl --strict --emit solana-client -o solana_client.py
+#
+# More (comment-only; strict graphs — wire labels/If as needed):
+#   R solana.DERIVE_PDA '["market","MY_MARKET"]' "YourProgram1111111111111111111111111111111111" ->mkt_pda
+#   (single-quoted JSON = one token; inner " are literal — see compiler lossless lexer + adapters/solana.py)
+#   R solana.GET_PYTH_PRICE "11111111111111111111111111111111" true ->px_v2   # prefer PriceUpdateV2 path
+#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq   # SOL/USD (Crypto.SOL/USD) feed id hex
+#   # export AINL_PYTH_HERMES_URL=https://hermes.pyth.network   # optional; same default if unset
+#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq2   # duplicate example: explicit SOL/USD feed_id_hex
+
+L1:
+  R solana.GET_LATEST_BLOCKHASH _ ->bh
+  R solana.GET_MARKET_STATE "11111111111111111111111111111111" ->mst
+  R solana.GET_PYTH_PRICE "11111111111111111111111111111111" ->px
+  # Conditional resolution → payout (strict graphs: use If on px.ok / threshold → label with INVOKE + priority fee):
+  #   If px_ok ->Lpayout ->Lskip
+  # Lpayout: R solana.INVOKE <program> <settlement_ix_b64> "[]" 5000 ->payout_sig
+  # Lskip: J px
+  R solana.INVOKE "11111111111111111111111111111111" "AA==" "[]" 5000 ->inv
+  R core.STRINGIFY inv ->out
+  J out
+```

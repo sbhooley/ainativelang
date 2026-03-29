@@ -2,6 +2,8 @@
 
 This folder is the **Hermes Agent** companion skill pack for **AINL**.
 
+**PyPI:** `ainativelang` **v1.3.1** (optional extras: `[mcp]`, `[solana]`).
+
 **Gold standard integration:**
 
 - **AINL** compiles AI-authored workflows into **deterministic graphs** (canonical IR).

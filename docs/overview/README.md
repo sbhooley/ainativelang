@@ -5,8 +5,8 @@ Use this section to answer: what is AINL, what kind of system is it, and where s
 ## Best starting points
 
 - [`../WHAT_IS_AINL.md`](../WHAT_IS_AINL.md) — **canonical** primer (narrative + includes, visualizer, trajectory, Hyperspace, adapters). Root [`../../WHAT_IS_AINL.md`](../../WHAT_IS_AINL.md) is a stub pointing here.
-- [`../../WHITEPAPERDRAFT.md`](../../WHITEPAPERDRAFT.md) — long-form architecture (v1.3.0 adds Hermes Agent support, ainl install openclaw, ainl status; v1.2.8 adds OpenClaw intelligence, token economics, graph pitfalls, auto-tuner).
-- [`../CHANGELOG.md`](../CHANGELOG.md) / [`../RELEASE_NOTES.md`](../RELEASE_NOTES.md) — **current release v1.2.10** (`pyproject.toml`, **`RUNTIME_VERSION`**)
+- [`../../WHITEPAPERDRAFT.md`](../../WHITEPAPERDRAFT.md) — long-form architecture (through **v1.3.1**: Hermes Agent, `ainl install openclaw`, `ainl status`, native Solana; v1.2.8+ OpenClaw intelligence, token economics, graph pitfalls, auto-tuner).
+- [`../CHANGELOG.md`](../CHANGELOG.md) / [`../RELEASE_NOTES.md`](../RELEASE_NOTES.md) — **current release v1.3.1** (`pyproject.toml`, **`RUNTIME_VERSION`**)
 - [`../AUDIENCE_GUIDE.md`](../AUDIENCE_GUIDE.md) — choose the right entry path by audience
 - [`../architecture/ARCHITECTURE_OVERVIEW.md`](../architecture/ARCHITECTURE_OVERVIEW.md) — publication-ready system overview
 - [`../reference/GLOSSARY.md`](../reference/GLOSSARY.md) — shared terminology

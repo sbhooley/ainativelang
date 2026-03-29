@@ -53,10 +53,10 @@ A conformant implementation must satisfy both. The tables below mark schema (IR 
 
 | Rule | Implementation |
 |------|----------------|
-| Comment `#` to EOL (only outside quotes) | ✓ `tokenize_line()` strips `#` and rest of line when not inside double-quoted string. |
+| Comment `#` to EOL (only outside quotes) | ✓ `tokenize_line()` / `tokenize_line_lossless()` strip `#` and rest of line when not inside a quoted span. |
 | Statement = OP + slots | ✓ `parse_line()` splits on whitespace; first token = op, rest = slots. |
 | OP; L id : for labels | ✓ Ops parsed; labels via `op.startswith("L") and op.endswith(":")`. |
-| Strings: double quotes only; escape `\"` `\\` | ✓ `tokenize_line()` treats quoted strings as single tokens; escapes supported. |
+| Strings: double quotes; single quotes for literals with inner `"` (e.g. JSON seeds); escapes `\"` `\\` in double-quoted; `\'` `\\` in single-quoted | ✓ `tokenize_line()` and `tokenize_line_lossless()` aligned; **compile** uses lossless only. |
 | Identifiers / path / enum | ✓ Identifiers: alnum + underscore; dot allowed for fe tokens (e.g. `color.primary`); paths `/`-prefixed; enums as `E[Id,...]`. |
 
 ### 2.2–2.3 Ops and slot rules
@@ -304,7 +304,7 @@ These tests define “conformance in spirit”; implement as automated suite whe
   (see [INSTALL.md](INSTALL.md)). Pre-commit’s docs-contract hook prefers
   `./.venv-py310/bin/python` when present.
 
-## CI conformance note (v1.2.8 line)
+## CI conformance note (v1.3.1 release line)
 
 - The CI `core-pr` profile installs `fastapi`/`uvicorn` through the `dev` extra so runtime-runner service tests import consistently across Linux/macOS/Windows.
 - Runtime benchmark comparisons are still produced on pull requests, while strict runtime regression failure gating is enforced on non-PR lanes (push/release) to reduce host-noise false negatives in PR checks.

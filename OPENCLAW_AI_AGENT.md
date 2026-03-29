@@ -2,6 +2,7 @@
 name: AI_Native_Lang
 description: Deterministic graph-first DSL for AI-to-AI full-stack generation
 version: 1.0.0
+ainativelang_release: "1.3.1"
 license: Apache-2.0
 openclaw_integration: complete
 adapters:

@@ -1,5 +1,7 @@
 # OpenClaw requests 2–6 → AINL v1.2.8 mapping (docs-only, honest)
 
+> **Current `ainl` release:** **v1.3.1** (see `docs/RELEASE_NOTES.md`). The body below describes the **v1.2.8** request-mapping baseline; later releases add features (e.g. Hermes, OpenClaw CLI polish **v1.3.0**, native Solana **v1.3.1**) without changing this lane analysis.
+
 **Purpose:** This note maps OpenClaw’s “2–6” requests (summarizer, WASM compute, vector retrieval, per-feature caps, sparse attention) to what **AINL v1.2.8** **already implements**, what is **operator/host wiring**, and what is **out of scope** for AINL’s lane (compile-once deterministic graph runtime).
 
 **Key principle (keep AINL in its lane):** AINL does **not** rewrite workflow logic at runtime. It does **not** generate new `.ainl` graphs during execution. It does **not** do dynamic prompt optimization as a first-class runtime feature. What *can* adapt is the **self-tuning resource & budget layer** around execution: caps, hydration, pruning, embedding selection, and observability feedback loops driven by OpenClaw scheduling + configuration.

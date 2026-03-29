@@ -340,6 +340,38 @@
         "onboarding": true
       },
       "source": "# examples/code_context_demo.ainl\n# Tiered code index demo (ctxzip-style) via the optional code_context adapter.\n# Also exercises forgeindex-inspired dependency / impact / COMPRESS_CONTEXT (see docs).\n#\n# Run from repo root (indexes \".\" \u2014 this repository):\n#   python3 -m cli.main run examples/code_context_demo.ainl --json \\\n#     --enable-adapter code_context\n#\n# Strict validate:\n#   python3 scripts/validate_ainl.py examples/code_context_demo.ainl --strict\n#\n# Credits: BradyD2003/ctxzip (Brady Drexler); chrismicah/forgeindex (Chris Micah) \u2014 see docs/adapters/CODE_CONTEXT.md.\n\nS app core noop\n\nL1:\n  # Build / refresh the JSON store (default: .ainl_code_context.json in cwd).\n  R code_context.INDEX \".\" ->_idx\n  # Tier 1: TF\u2013IDF-ranked signatures + one-line summaries (limit 5 chunks).\n  R code_context.QUERY_CONTEXT \"adapter\" 1 5 ->context\n  # Tier-0-style signatures only: \"_\" = all chunks (cap 100); or filter by file path.\n  R code_context.GET_SKELETON \"_\" ->skel_all\n  R code_context.GET_SKELETON \"adapters/code_context.py\" ->skel_file\n  # Greedy pack: embedding ranking when embedding_memory is available, else TF\u2013IDF; ~len//4 token estimate.\n  R code_context.COMPRESS_CONTEXT \"adapter\" 4000 ->packed\n  # Example chunk id for _tokenize in adapters/code_context.py (see QUERY_CONTEXT or .ainl_code_context.json if this drifts).\n  R code_context.GET_DEPENDENCIES \"fn:adapters/code_context.py:_tokenize@83:f024a60ce80a\" ->deps\n  R code_context.GET_IMPACT \"fn:adapters/code_context.py:_tokenize@83:f024a60ce80a\" ->impact\n  # STATS: chunks, store_path, updated_at, plus num_nodes, num_edges, top_pagerank; \"_\" is a parse placeholder only.\n  R code_context.STATS \"_\" ->stats\n  J context\n"
+    },
+    {
+      "id": "examples__solana_demo_ainl",
+      "order": 22,
+      "path": "examples/solana_demo.ainl",
+      "primary_pattern": "solana_rpc_demo",
+      "secondary_pattern": "blockhash_pyth_stringify",
+      "strict_valid": true,
+      "public_safe": true,
+      "suitable_for": {
+        "finetuning": true,
+        "few_shot": true,
+        "eval": true,
+        "onboarding": true
+      },
+      "source": "# examples/solana_demo.ainl\n# Solana example \u2014 demonstrates R solana.VERB pattern. General blockchain adapters will use similar structure via blockchain_base.py.\n# Strict demo: read-only Solana RPC + simulation (install solana+solders for live calls).\n#\n# Env (typical):\n#   export AINL_SOLANA_RPC_URL=https://api.devnet.solana.com   # default if unset\n#   export AINL_DRY_RUN=1                                      # safe: no real txs from mutating steps\n# Optional caps: AINL_SOLANA_TOKEN_ACCOUNTS_LIMIT, AINL_SOLANA_GET_PROGRAM_ACCOUNTS_LIMIT\n# GET_LATEST_BLOCKHASH below: read-only; with AINL_DRY_RUN=1 returns mock blockhash (no RPC).\n#\n# ainl-validate examples/solana_demo.ainl --strict\n# ainl-validate examples/solana_demo.ainl --strict --emit solana-client -o solana_client.py\n# cd /path/to/AI_Native_Lang && AINL_DRY_RUN=1 python3 solana_client.py\n# AINL_SOLANA_DEMO_PREVIEW=1 AINL_DRY_RUN=1 python3 solana_client.py\n\nL1:\n  R solana.GET_ACCOUNT \"11111111111111111111111111111111\" ->sysprog\n  R solana.GET_BALANCE \"11111111111111111111111111111111\" ->sysbal\n  R solana.GET_LATEST_BLOCKHASH _ ->bh   # _ = strict-parse placeholder (no primary arg); use bh + dry-run txs to rehearse flows\n  R solana.GET_SIGNATURES_FOR_ADDRESS \"Vote111111111111111111111111111111111111111\" 3 ->sigs\n  R solana.SIMULATE_EVENTS \"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\" ->evts\n  R core.STRINGIFY sysbal ->sbal\n  J sbal\n"
+    },
+    {
+      "id": "examples__prediction_market_demo_ainl",
+      "order": 23,
+      "path": "examples/prediction_market_demo.ainl",
+      "primary_pattern": "solana_prediction_market",
+      "secondary_pattern": "pda_pyth_invoke_payout",
+      "strict_valid": true,
+      "public_safe": true,
+      "suitable_for": {
+        "finetuning": true,
+        "few_shot": true,
+        "eval": true,
+        "onboarding": true
+      },
+      "source": "# examples/prediction_market_demo.ainl\n# Prediction-market workflow (Polymarket-style on Solana): market PDA state \u2192 Pyth oracle quote \u2192 settlement/trade INVOKE\n# with ComputeBudget priority (microlamports/CU). Composable with DFlow routes and cross-listed (e.g. Kalshi-tokenized) books off-chain.\n# Strict parse: use real market PDA + Pyth feed pubkeys on your cluster; placeholders below are for compile-only demos.\n# Run with AINL_DRY_RUN=1 for mock blockhash/Pyth/tx sigs (no RPC parse pressure on dummy accounts).\n#\n# ainl-validate examples/prediction_market_demo.ainl --strict\n# ainl-validate examples/prediction_market_demo.ainl --strict --emit solana-client -o solana_client.py\n#\n# More (comment-only; strict graphs \u2014 wire labels/If as needed):\n#   R solana.DERIVE_PDA '[\"market\",\"MY_MARKET\"]' \"YourProgram1111111111111111111111111111111111\" ->mkt_pda\n#   (single-quoted JSON = one token; inner \" are literal \u2014 see compiler lossless lexer + adapters/solana.py)\n#   R solana.GET_PYTH_PRICE \"11111111111111111111111111111111\" true ->px_v2   # prefer PriceUpdateV2 path\n#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq   # SOL/USD (Crypto.SOL/USD) feed id hex\n#   # export AINL_PYTH_HERMES_URL=https://hermes.pyth.network   # optional; same default if unset\n#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq2   # duplicate example: explicit SOL/USD feed_id_hex\n\nL1:\n  R solana.GET_LATEST_BLOCKHASH _ ->bh\n  R solana.GET_MARKET_STATE \"11111111111111111111111111111111\" ->mst\n  R solana.GET_PYTH_PRICE \"11111111111111111111111111111111\" ->px\n  # Conditional resolution \u2192 payout (strict graphs: use If on px.ok / threshold \u2192 label with INVOKE + priority fee):\n  #   If px_ok ->Lpayout ->Lskip\n  # Lpayout: R solana.INVOKE <program> <settlement_ix_b64> \"[]\" 5000 ->payout_sig\n  # Lskip: J px\n  R solana.INVOKE \"11111111111111111111111111111111\" \"AA==\" \"[]\" 5000 ->inv\n  R core.STRINGIFY inv ->out\n  J out\n"
     }
   ]
 }

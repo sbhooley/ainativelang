@@ -2,6 +2,8 @@
 
 **Hub (all MCP hosts):** [`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md) — **`ainl install-mcp --host zeroclaw`** (same as **`ainl install-zeroclaw`**).
 
+**PyPI:** `ainativelang` **v1.3.1**.
+
 AINL ships a **ZeroClaw skill** (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-mcp --host zeroclaw`** (alias **`ainl install-zeroclaw`**), a user-side bootstrap that wires PyPI, **`~/.zeroclaw/mcp.json`**, and **`~/.zeroclaw/bin/ainl-run`** without changing the ZeroClaw application itself.
 
 **Memory:** ZeroClaw-hosted runs use the same AINL **`memory`** adapter and MCP tools as other hosts; they do **not** depend on OpenClaw’s **`~/.openclaw/workspace/memory/`** daily markdown (that path is **OpenClaw bridge**–specific). See [`docs/adapters/MEMORY_CONTRACT.md`](adapters/MEMORY_CONTRACT.md) and [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).

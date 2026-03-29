@@ -62,6 +62,11 @@ jobs:
       - name: Run core profile
         run: python scripts/run_test_profiles.py --profile core
 
+      # Explicit gate: compile → RuntimeEngine → SolanaAdapter (includes dry-run mutating verbs).
+      # Core profile already runs this file; this step names the contract in CI logs.
+      - name: Solana prediction-market E2E (dry-run runtime)
+        run: python -m pytest -q tests/test_solana_prediction_market_e2e.py
+
       - name: Verify adapter manifest consistency
         run: python -m pytest -q tests/test_adapter_manifest.py
 

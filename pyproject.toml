@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ainativelang"
-version = "1.3.0"
+version = "1.3.1"
 description = "AINL compiler, runtime, validator, and tooling"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -71,6 +71,8 @@ airtable = ["pyairtable>=2.0.0", "httpx>=0.27.0"]
 supabase = ["supabase>=2.0.0", "httpx>=0.27.0"]
 # Optional: Anthropic API for ainl-ollama-benchmark --cloud-model
 anthropic = ["anthropic>=0.40.0"]
+# Solana JSON-RPC (adapters/solana.py); SPL helpers may require additional spl.token bindings
+solana = ["solana>=0.34.0", "solders>=0.21.0"]
 
 [project.scripts]
 ainl-validate = "scripts.validate_ainl:main"

@@ -184,6 +184,22 @@ def test_lexer_parity_with_compiler_on_complete_line():
     assert st.lex.tokens == compiler_vals
 
 
+def test_lexer_single_quoted_string_keeps_json_seeds_one_token():
+    """DERIVE_PDA seeds_json: '["a","b"]' must not split on inner double quotes (regression)."""
+    line = '  R solana.DERIVE_PDA \'["m","1"]\' "11111111111111111111111111111111" ->pda'
+    toks = AICodeCompiler().tokenize_line_lossless(line, 1)
+    vals = [t["value"] for t in toks if t.get("kind") in ("bare", "string")]
+    assert vals == ["R", "solana.DERIVE_PDA", '["m","1"]', "11111111111111111111111111111111", "->pda"]
+
+
+def test_legacy_tokenize_line_matches_lossless_single_quoted_json():
+    c = AICodeCompiler()
+    line = '  R solana.DERIVE_PDA \'["m","1"]\' "11111111111111111111111111111111" ->pda'
+    lossy = c.tokenize_line(line)
+    lossless_vals = [t["value"] for t in c.tokenize_line_lossless(line, 1) if t.get("kind") in ("bare", "string")]
+    assert lossy == lossless_vals
+
+
 def test_formally_admissible_candidates_are_compiler_completable():
     prefix = "E /users G"
     raw = {"->L1", "->L2", "->1", "users"}

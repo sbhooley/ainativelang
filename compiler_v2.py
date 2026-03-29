@@ -1596,51 +1596,14 @@ class AICodeCompiler:
                 )
 
     def tokenize_line(self, line: str) -> List[str]:
-        """Legacy/simple tokenizer (string tokens only).
+        """Legacy tokenizer: **decoded** slot strings matching :meth:`tokenize_line_lossless` (``bare`` + ``string`` only).
 
-        Notes:
-        - Preserves double-quoted string raw text (including quote characters).
-        - Treats '#' as comment start only when outside quotes.
-        - Does NOT emit token kinds/spans and does NOT provide decoded string values.
-        - Prefer tokenize_line_lossless() for compiler/lossless behavior.
+        Older versions returned quote-delimited raw fragments for double-quoted spans; this now matches lossless
+        **values** (e.g. ``"hello"`` → ``hello``) so single-quoted JSON and double-quoted strings behave consistently.
+        Compile always uses :meth:`tokenize_line_lossless`; prefer that API when you need spans, kinds, or comments.
         """
-        out: List[str] = []
-        buf: List[str] = []
-        in_q = False
-        esc = False
-        i = 0
-        n = len(line)
-        while i < n:
-            ch = line[i]
-            if not in_q and ch == "#":
-                break
-            if esc:
-                buf.append(ch)
-                esc = False
-                i += 1
-                continue
-            if ch == "\\" and in_q:
-                esc = True
-                i += 1
-                continue
-            if ch == '"':
-                buf.append(ch)
-                in_q = not in_q
-                i += 1
-                continue
-            if not in_q and ch in " \t":
-                if buf:
-                    out.append("".join(buf))
-                    buf = []
-                i += 1
-                continue
-            buf.append(ch)
-            i += 1
-        if in_q:
-            raise ValueError("Unterminated string literal")
-        if buf:
-            out.append("".join(buf))
-        return out
+        toks = self.tokenize_line_lossless(line, 1)
+        return [t["value"] for t in toks if t.get("kind") in ("bare", "string")]
 
     def parse_line(self, line: str) -> Tuple[str, List[str]]:
         """Legacy/simple parser based on tokenize_line(); kept for compatibility."""
@@ -1653,6 +1616,10 @@ class AICodeCompiler:
         """Emit Token dicts (kind, raw, value, span) including ws and comment.
         Span uses 1-based line number and 0-based columns.
         String decoding treats \\", \\\\, \\n, \\t, \\r as escape sequences.
+        Single-quoted strings (``'...'``) treat inner ``"`` literally — use for JSON seeds in ``R solana.DERIVE_PDA`` so
+        ``'["a","b"]'`` is one token; only ``\\\\`` and ``\\'`` are special inside single quotes.
+        **Compile** always uses this lossless tokenizer; :meth:`tokenize_line` is the legacy list-of-strings variant
+        (aligned with the same rules for double- and single-quoted spans).
         Raises ValueError with line+column for unterminated strings.
         """
         _ESC_MAP = {'"': '"', '\\': '\\', 'n': '\n', 't': '\t', 'r': '\r'}
@@ -1703,13 +1670,39 @@ class AICodeCompiler:
                 else:
                     i += 1
                 continue
+            if ch == "'":
+                col_start = i
+                i += 1
+                value_parts_sq: List[str] = []
+                while i < n:
+                    c = line[i]
+                    if c == "\\" and i + 1 < n:
+                        nxt = line[i + 1]
+                        if nxt in ("'", "\\"):
+                            value_parts_sq.append(nxt)
+                            i += 2
+                            continue
+                        value_parts_sq.append(c)
+                        i += 1
+                        continue
+                    if c == "'":
+                        i += 1
+                        break
+                    value_parts_sq.append(c)
+                    i += 1
+                else:
+                    raise ValueError(f"Unterminated single-quoted string at line {lineno}, column {col_start}")
+                value_sq = "".join(value_parts_sq)
+                raw_sq = line[col_start:i]
+                out.append(_make_token("string", raw_sq, value_sq, lineno, col_start, i))
+                continue
             if ch == '"':
                 col_start = i
                 in_q = True
                 i += 1
                 continue
             start = i
-            while i < n and line[i] not in " \t" and line[i] != "#" and line[i] != '"':
+            while i < n and line[i] not in " \t" and line[i] != "#" and line[i] != '"' and line[i] != "'":
                 i += 1
             raw = line[start:i]
             out.append(_make_token("bare", raw, raw, lineno, start, i))
@@ -4325,6 +4318,188 @@ class AICodeCompiler:
         py += "        # TODO: integrate with hyperspace_sdk (Agent/Session, register run_ainl as callback,\n"
         py += "        # tool discovery via tool_registry.LIST / DISCOVER, session-scoped trajectory).\n"
         py += "        _log.info(\"Hyperspace SDK present; native bridge not yet wired — executing graph directly.\")\n"
+        py += "    result = run_ainl()\n"
+        py += "    print(result)\n"
+
+        return py
+
+    def emit_solana_client(self, ir: Dict[str, Any], *, source_stem: str = "ainl_graph") -> str:
+        """Emit standalone solana_client.py: embedded IR, RuntimeEngine, core + vector_memory + tool_registry + SolanaAdapter."""
+        import base64
+        import json as _json
+
+        ir_blob = base64.standard_b64encode(_json.dumps(ir, ensure_ascii=False).encode("utf-8")).decode("ascii")
+        stem = str(source_stem or "ainl_graph").replace("\\", "/").split("/")[-1]
+
+        py = (
+            '"""DISCOVERABILITY / GETTING STARTED (AINL v1.3.1 – Solana strict graphs)\n'
+            "\n"
+            "AINL v1.3.1 adds native Solana support for deterministic prediction-market agents: PDA derivation, Pyth\n"
+            "oracles (legacy PriceAccount + PriceUpdateV2), Hermes fallback, and low-cost settlement flows with\n"
+            "priority fees. This client embeds the full IR and RuntimeEngine so you can run Solana graphs directly.\n"
+            "\n"
+            "- DERIVE_PDA — derive market PDAs/vaults from single-quoted JSON seeds, e.g.\n"
+            "  R solana.DERIVE_PDA '[\"market\",\"MY_MARKET_ID\"]' \"YourProgram1111111111111111111111111111111111\" ->mkt_pda\n"
+            "- GET_PYTH_PRICE + HERMES_FALLBACK — on-chain Pyth price (legacy + PriceUpdateV2) plus off-chain Hermes\n"
+            "  quotes for robust resolution monitoring; safe to combine with AINL_DRY_RUN=1 for deterministic tests.\n"
+            "- INVOKE / TRANSFER_SPL with priority fees — rehearse and execute cost-controlled trades/payouts using a\n"
+            "  micro-lamports-per-CU argument (e.g. R solana.INVOKE ... 5000 ->out); under AINL_DRY_RUN=1 these verbs\n"
+            "  return structured simulation envelopes instead of sending transactions.\n"
+            "\n"
+            "Strings and JSON args: prefer single-quoted strings for JSON (e.g. seeds or accounts) so inner double\n"
+            "quotes stay literal without extra escaping. Start with examples/prediction_market_demo.ainl and\n"
+            "docs/solana_quickstart.md for end-to-end flows; this solana_client module is the runnable entrypoint.\n"
+            "\n"
+            "Standalone AINL runtime wrapper with optional Solana RPC adapter (solana/solders).\n\n"
+            "Generated module pattern (same idea as hyperspace_agent.py):\n"
+            "  - Embedded IR in _IR_B64; repo root on sys.path; build_registry() + RuntimeEngine.\n"
+            "  - Default RPC: https://api.devnet.solana.com (override with AINL_SOLANA_RPC_URL).\n"
+            "  - Signing: AINL_SOLANA_KEYPAIR_JSON (path or JSON byte array), or frame key "
+            "_solana_keypair_json at runtime.\n"
+            "  - Safe rehearsal: AINL_DRY_RUN=1 avoids sending transactions (mutating steps return mock sigs).\n"
+            "  - Future: blockchain.solana.VERB or evm.* may be supported via adapters/blockchain_base.py "
+            "(see comment template).\n"
+            "  - General Blockchain Path: Extend support to other chains by subclassing BlockchainAdapterBase "
+            "and adding a parallel emit_xxx_client emitter following this pattern (additive only; Hyperspace unchanged).\n"
+            "  - Prediction markets (example): DERIVE_PDA '[\"market\",\"<id>\"]' <program_id> for market PDAs; "
+            "GET_PYTH_PRICE supports legacy PriceAccount and PriceUpdateV2 (parser field); HERMES_FALLBACK <feed_hex> "
+            "for off-chain quotes when RPC/V2 is awkward; GET_MARKET_STATE -> INVOKE with micro-lamports/CU priority "
+            "for deterministic low-cost settlement; AINL_DRY_RUN=1 mocks; see examples/prediction_market_demo.ainl.\n"
+            "  - Use DERIVE_PDA for market accounts, GET_PYTH_PRICE with V2 feeds, and HERMES_FALLBACK for reliable off-chain quotes.\n\n"
+            "Run a specific label (if your IR defines it), default entry otherwise:\n"
+            "  python3 -c \"import solana_client as m; m.run_ainl(label='1')\"\n"
+            "  R solana.GET_LATEST_BLOCKHASH _ ->bh   # _ = ignored placeholder; AINL_DRY_RUN=1 returns mock blockhash\n\n"
+            "Full example (devnet, dry-run safe):\n"
+            "  export AINL_SOLANA_RPC_URL=https://api.devnet.solana.com\n"
+            "  export AINL_DRY_RUN=1\n"
+            "  # optional: export AINL_SOLANA_KEYPAIR_JSON=$HOME/.config/solana/id.json\n"
+            "  python3 solana_client.py\n"
+            "  AINL_SOLANA_DEMO_PREVIEW=1 python3 solana_client.py   # IR summary + run\n\n"
+            "Next step (rehearse a tx flow on devnet without sending real lamports):\n"
+            "  # With AINL_DRY_RUN=1: GET_LATEST_BLOCKHASH returns a mock blockhash; TRANSFER/INVOKE return mock sigs.\n"
+            "  #   R solana.GET_LATEST_BLOCKHASH _ ->bh\n"
+            "  #   R solana.TRANSFER <dest_pubkey> 1 ->sig\n"
+            "  # Or: R solana.INVOKE <program_id> <instruction_b64> \"[]\" 5000 ->out   # optional priority µ-lamports/CU\n"
+            "  # Prediction-style dry-run: GET_MARKET_STATE <pda> ->m; GET_PYTH_PRICE <feed> ->px; INVOKE ... \"[]\" 5000 ->s\n"
+            "  # Runtime: print(SOLANA_VERBS) after import for the canonical op list (tuple from adapters.solana).\n"
+            '"""\n'
+        )
+        py += self._emit_provenance_comment_block("#", "AINL emitted Solana client wrapper")
+        py += "import base64\nimport json\nimport logging\nimport os\nimport sys\nimport warnings\nfrom pathlib import Path\n\n"
+        py += "_log = logging.getLogger(__name__)\n\n"
+        py += "try:\n"
+        py += "    import solana  # type: ignore  # noqa: F401\n"
+        py += "    import solders  # type: ignore  # noqa: F401\n"
+        py += "    _SOLANA_DEPS = True\n"
+        py += "except ImportError:\n"
+        py += "    solana = None  # type: ignore\n"
+        py += "    solders = None  # type: ignore\n"
+        py += "    _SOLANA_DEPS = False\n"
+        py += "    warnings.warn(\n"
+        py += (
+            '        "solana/solders not installed; SolanaAdapter calls need optional deps '
+            '(pip install ainativelang[solana]).",\n'
+        )
+        py += "        RuntimeWarning,\n"
+        py += "        stacklevel=2,\n"
+        py += "    )\n\n"
+        py += "_IR_B64 = " + repr(ir_blob) + "\n"
+        py += "_SOURCE_STEM = " + repr(stem) + "\n\n"
+
+        py += "def _repo_root() -> Path:\n"
+        py += "    _here = Path(__file__).resolve().parent\n"
+        py += "    for start in (_here, Path.cwd().resolve()):\n"
+        py += "        root = start\n"
+        py += "        for _ in range(14):\n"
+        py += "            if (root / \"runtime\" / \"engine.py\").is_file() and (root / \"adapters\").is_dir():\n"
+        py += "                return root\n"
+        py += "            if root.parent == root:\n"
+        py += "                break\n"
+        py += "            root = root.parent\n"
+        py += "    return _here\n\n"
+
+        py += "_ROOT = _repo_root()\n"
+        py += "if str(_ROOT) not in sys.path:\n"
+        py += "    sys.path.insert(0, str(_ROOT))\n\n"
+
+        py += "from runtime.engine import RuntimeEngine\n"
+        py += "from runtime.adapters.base import AdapterRegistry\n"
+        py += "from adapters.vector_memory import VectorMemoryAdapter\n"
+        py += "from adapters.tool_registry import ToolRegistryAdapter\n"
+        py += "from adapters.solana import SOLANA_VERBS, SolanaAdapter\n\n"
+
+        py += "def build_registry() -> AdapterRegistry:\n"
+        py += (
+            "    reg = AdapterRegistry(allowed=[\"core\", \"vector_memory\", \"tool_registry\", \"solana\"])\n"
+        )
+        py += "    reg.register(\"vector_memory\", VectorMemoryAdapter())\n"
+        py += "    reg.register(\"tool_registry\", ToolRegistryAdapter())\n"
+        py += "    reg.register(\"solana\", SolanaAdapter())\n"
+        py += "    return reg\n\n"
+
+        py += "def trajectory_log_path_from_env():\n"
+        py += "    v = os.environ.get(\"AINL_LOG_TRAJECTORY\", \"\").strip().lower()\n"
+        py += "    if v in (\"1\", \"true\", \"yes\", \"on\"):\n"
+        py += "        return str(Path.cwd() / f\"{_SOURCE_STEM}.trajectory.jsonl\")\n"
+        py += "    return None\n\n"
+
+        py += "def make_engine(registry: AdapterRegistry, trajectory_log_path):\n"
+        py += "    _ir = json.loads(base64.standard_b64decode(_IR_B64))\n"
+        py += "    return RuntimeEngine(\n"
+        py += "        ir=_ir,\n"
+        py += "        adapters=registry,\n"
+        py += "        trace=False,\n"
+        py += "        step_fallback=True,\n"
+        py += "        execution_mode=\"graph-preferred\",\n"
+        py += "        trajectory_log_path=trajectory_log_path,\n"
+        py += "    )\n\n"
+
+        py += "def run_ainl(label=None, frame=None):\n"
+        py += "    reg = build_registry()\n"
+        py += "    traj = trajectory_log_path_from_env()\n"
+        py += "    if traj:\n"
+        py += "        _log.info(\"AINL trajectory logging -> %s\", traj)\n"
+        py += "    eng = make_engine(reg, traj)\n"
+        py += "    lid = label if label is not None else eng.default_entry_label()\n"
+        py += "    return eng.run_label(lid, frame=frame if frame is not None else {})\n\n"
+
+        py += "def demo_preview_embedded_ir():\n"
+        py += (
+            "    \"\"\"Load _IR_B64; log label/step counts and first step; log+print SOLANA_VERBS when deps present. "
+            "Helps debug Solana flows (embedded IR shape, step order, and supported verbs).\"\"\"\n"
+        )
+        py += "    ir = json.loads(base64.standard_b64decode(_IR_B64))\n"
+        py += "    labels = ir.get(\"labels\") or {}\n"
+        py += "    nlabels = len(labels)\n"
+        py += "    if not labels:\n"
+        py += "        _log.info(\"embedded IR: no labels\")\n"
+        py += "        return\n"
+        py += "    total_steps = 0\n"
+        py += "    for lid, body in labels.items():\n"
+        py += "        st = ((body or {}).get(\"legacy\") or {}).get(\"steps\") or []\n"
+        py += "        total_steps += len(st)\n"
+        py += "    _log.info(\"embedded IR: %d label(s), %d total step(s)\", nlabels, total_steps)\n"
+        py += "    first_lid = next(iter(labels.keys()))\n"
+        py += "    body = labels.get(first_lid) or {}\n"
+        py += "    legacy = body.get(\"legacy\") or {}\n"
+        py += "    steps = legacy.get(\"steps\") or []\n"
+        py += "    if not steps:\n"
+        py += "        _log.info(\"embedded IR: label %r has no steps\", first_lid)\n"
+        py += "        return\n"
+        py += "    st0 = steps[0]\n"
+        py += "    _log.info(\"embedded IR preview: label=%r step_count=%d first_step=%s\", first_lid, len(steps), st0)\n"
+        py += "    if _SOLANA_DEPS:\n"
+        py += "        _sv = \" \".join(SOLANA_VERBS)\n"
+        py += "        _log.info(\"Solana adapter verbs (strict R solana.<VERB>): %s\", _sv)\n"
+        py += "        print(\"SOLANA_VERBS:\", _sv)\n\n"
+
+        py += 'if __name__ == "__main__":\n'
+        py += "    logging.basicConfig(level=logging.INFO, format=\"%(levelname)s %(message)s\")\n"
+        py += "    if _SOLANA_DEPS:\n"
+        py += "        _log.info(\"Solana deps present; executing graph with SolanaAdapter registered.\")\n"
+        py += "    pv = os.environ.get(\"AINL_SOLANA_DEMO_PREVIEW\", \"\").strip().lower()\n"
+        py += "    if pv in (\"1\", \"true\", \"yes\", \"on\"):\n"
+        py += "        demo_preview_embedded_ir()\n"
         py += "    result = run_ainl()\n"
         py += "    print(result)\n"
 

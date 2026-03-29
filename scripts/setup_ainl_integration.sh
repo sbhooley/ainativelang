@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup_ainl_integration.sh — AINL v1.3.0 OpenClaw integration setup
+# setup_ainl_integration.sh — AINL v1.3.1 OpenClaw integration setup
 #
 # This script is a thin convenience wrapper around `ainl install openclaw`.
 # For most users, running `ainl install openclaw --workspace PATH` directly is
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "== AINL v1.3.0 OpenClaw Integration Setup =="
+echo "== AINL v1.3.1 OpenClaw Integration Setup =="
 echo ""
 
 if ! command -v "$AINL_BIN" &>/dev/null; then

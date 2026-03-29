@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing to AINL.
 
+**Docs hub mirror:** [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) (pointers only; this file remains canonical).
+
 This project supports both human contributors and AI-assisted contribution workflows, with human review and maintainer discretion governing final acceptance. **AI agents** should follow **`docs/BOT_ONBOARDING.md`** and complete **`docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** before implementation work; see `tooling/bot_bootstrap.json` for pointers.
 
 ## Before You Contribute
@@ -11,7 +13,7 @@ Please read the relevant project materials before making substantial changes.
 Start with:
 
 - `README.md`
-- **`docs/CHANGELOG.md`** / **`docs/RELEASE_NOTES.md`** — **current release v1.2.8** (see also **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**)
+- **`docs/CHANGELOG.md`** / **`docs/RELEASE_NOTES.md`** — **current release v1.3.1** (see also **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**). Solana / prediction-market contributions: **`docs/solana_quickstart.md`** (including the community-team section).
 - `docs/DOCS_INDEX.md`
 - `docs/AINL_SPEC.md`
 - `SEMANTICS.md`

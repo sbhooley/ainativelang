@@ -2,6 +2,8 @@
 
 Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcpServers.ainl`** (or YAML **`mcp_servers.ainl`** on Hermes), install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
 
+**Current PyPI release:** `ainativelang` **v1.3.1**.
+
 ## Two-step pattern (every host)
 
 1. **Install and onboard the agent runtime** using that product’s official docs (e.g. OpenClaw → [openclaw.ai](https://openclaw.ai/) · Hermes Agent → [github.com/NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)).

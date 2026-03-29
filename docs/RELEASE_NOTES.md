@@ -1,5 +1,14 @@
 # Release notes
 
+## AINL v1.3.1 — Solana strict graphs + lexer/runtime polish (2026-03-29)
+
+**PyPI / runtime:** **`ainl` 1.3.1** — **`RUNTIME_VERSION` `1.3.1`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned. See `docs/CHANGELOG.md` v1.3.0 + v1.3.1 for full details (Hermes/OpenClaw + Solana/lexer updates).
+
+- **Solana strict graphs:** `examples/solana_demo.ainl` and `examples/prediction_market_demo.ainl` are now first-class **strict-valid** examples and appear in `tooling/artifact_profiles.json`, `tooling/canonical_curriculum.json`, and the canonical training packs.
+- **Prediction markets:** `adapters/solana.py` supports DERIVE_PDA with **single-quoted JSON** seeds (e.g. `'["market","ID"]'`), strict GET_PYTH_PRICE (legacy + PriceUpdateV2), HERMES_FALLBACK, and dry-run envelopes for INVOKE / TRANSFER / TRANSFER_SPL under `AINL_DRY_RUN=1`.
+- **Lexer alignment:** `tokenize_line_lossless` and the legacy `tokenize_line` agree on decoded **bare/string** token values, including single-quoted strings; compile always uses the lossless tokenizer.
+- **Discoverability:** `docs/solana_quickstart.md`, Solana onboarding cross-links in `docs/emitters/README.md` and `examples/README.md`, README callouts, and root `CONTRIBUTING.md` (release version + Solana pointers) so agents and operators find the v1.3.1 path quickly.
+
 ## AINL v1.3.0 — Hermes Agent + OpenClaw integration improvements (2026-03-27)
 
 **PyPI / runtime:** **`ainl` 1.3.0** — **`RUNTIME_VERSION` `1.3.0`** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); language server **`serverInfo.version`** and runner **OpenAPI** **`app.version`** follow **`RUNTIME_VERSION`**; **`CITATION.cff`** aligned.

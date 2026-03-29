@@ -2,7 +2,7 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.2.10** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.3.1** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
 ## Public API surface (for downstream apps)
 
@@ -30,6 +30,26 @@ CLI entry points are listed under **`[project.scripts]`** in `pyproject.toml` (`
 
 ## Build and upload
 
+**Preferred (uses project `uv.lock`):**
+
+```bash
+rm -rf dist/
+uv build
+uvx twine check dist/*
+```
+
+**Upload to PyPI** (create an API token on [pypi.org](https://pypi.org/manage/account/token/) with scope for **`ainativelang`**):
+
+```bash
+UV_PUBLISH_TOKEN=pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx uv publish
+```
+
+`uv publish` reads **`UV_PUBLISH_TOKEN`** (or **`--token`**). Do not commit tokens.
+
+**CI / OIDC:** After you register **Trusted publishing** for this GitHub repo on the PyPI project, use **Actions → Publish PyPI → Run workflow**, or publish a **GitHub Release** (workflow triggers on `release: published`). See **`.github/workflows/publish-pypi.yml`**.
+
+**Classic tools** (equivalent):
+
 ```bash
 python -m pip install --upgrade build twine
 python -m build
@@ -37,7 +57,7 @@ twine check dist/*
 twine upload dist/*
 ```
 
-Use **TestPyPI** first if desired: `twine upload --repository testpypi dist/*`.
+Use **TestPyPI** first if desired: `twine upload --repository testpypi dist/*` or `uv publish --publish-url https://test.pypi.org/legacy/ --token ...`.
 
 ## Required release gates (automation)
 

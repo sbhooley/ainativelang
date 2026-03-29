@@ -2,9 +2,9 @@
 
 This document defines additive MCP tool contracts intended for self-improving research loops.
 
-## Stability note (v1.3.0)
+## Stability note (v1.3.1)
 
-The following fields are considered stable in the v1.2.7+ research pack surface (current **`RUNTIME_VERSION`** **1.3.0**):
+The following fields are considered stable in the v1.2.7+ research pack surface (current **`RUNTIME_VERSION`** **1.3.1**):
 
 - `ainl_validate(...).diagnostics[].llm_repair_hint`
 - `ainl_ir_diff(...).diff.changed_nodes[]` as a list of `{label_id, node_id, changes}`

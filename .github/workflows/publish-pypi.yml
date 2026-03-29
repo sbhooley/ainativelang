@@ -1,0 +1,38 @@
+# Upload ainativelang to PyPI.
+#
+# Option A — Trusted publishing (recommended): register this workflow + repo on PyPI
+# (Project → Publishing → Add a new pending publisher → GitHub).
+# Then run from Actions → "Publish PyPI" → Run workflow, or publish a GitHub Release.
+#
+# Option B — Local: `uv build && UV_PUBLISH_TOKEN=... uv publish` (see docs/RELEASING.md).
+
+name: Publish PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

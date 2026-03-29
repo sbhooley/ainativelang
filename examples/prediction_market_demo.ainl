@@ -1,0 +1,38 @@
+# examples/prediction_market_demo.ainl
+# AINL v1.3.1 — Solana prediction markets (strict-valid on-ramp)
+#
+# This file demonstrates a full resolution → conditional payout pattern on Solana: read market state, resolve prices
+# with Pyth on-chain (legacy + PriceUpdateV2) and/or Hermes off-chain, then rehearse settlement with INVOKE and
+# ComputeBudget priority fees (micro-lamports per CU). Placeholders are compile-only; use real PDAs and feed pubkeys
+# on your cluster for production.
+#
+# Single-quoted JSON for DERIVE_PDA seeds (recommended): R solana.DERIVE_PDA '["market","MY_MARKET"]' "<program_id>" ->pda
+# — one lexer token; inner double quotes are literal (see docs/solana_quickstart.md and adapters/solana.py).
+#
+# Dry-run first: export AINL_DRY_RUN=1 for mock blockhash, Pyth/Hermes-shaped quotes, and simulated INVOKE/TRANSFER
+# envelopes without sending transactions or requiring live keypairs for many paths.
+#
+# Broader guidance (env vars, compile flags, agent-oriented prompts): docs/solana_quickstart.md
+#
+# Validate / emit standalone client:
+#   ainl-validate examples/prediction_market_demo.ainl --strict
+#   ainl-validate examples/prediction_market_demo.ainl --strict --emit solana-client -o solana_client.py
+#
+# More (comment-only; strict graphs — wire labels/If as needed):
+#   R solana.DERIVE_PDA '["market","MY_MARKET"]' "YourProgram1111111111111111111111111111111111" ->mkt_pda
+#   R solana.GET_PYTH_PRICE "11111111111111111111111111111111" true ->px_v2   # prefer PriceUpdateV2 path
+#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq   # SOL/USD (Crypto.SOL/USD) feed id hex
+#   # export AINL_PYTH_HERMES_URL=https://hermes.pyth.network   # optional; same default if unset
+#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq2   # duplicate example: explicit SOL/USD feed_id_hex
+
+L1:
+  R solana.GET_LATEST_BLOCKHASH _ ->bh
+  R solana.GET_MARKET_STATE "11111111111111111111111111111111" ->mst
+  R solana.GET_PYTH_PRICE "11111111111111111111111111111111" ->px
+  # Conditional resolution → payout (strict graphs: use If on px.ok / threshold → label with INVOKE + priority fee):
+  #   If px_ok ->Lpayout ->Lskip
+  # Lpayout: R solana.INVOKE <program> <settlement_ix_b64> "[]" 5000 ->payout_sig
+  # Lskip: J px
+  R solana.INVOKE "11111111111111111111111111111111" "AA==" "[]" 5000 ->inv
+  R core.STRINGIFY inv ->out
+  J out

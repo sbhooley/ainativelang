@@ -30,6 +30,8 @@ metadata:
 
 **AINL** is an AI-native language that compiles **deterministic graphs**. In Hermes Agent, use it to import workflows, compile them, run them, and expose **`ainl-mcp`** tools to the agent for safe, repeatable execution.
 
+**PyPI:** `ainativelang` **v1.3.1** (optional extras: `[mcp]`, `[solana]`).
+
 ## Agent instructions
 
 Follow this skill when the user is on **Hermes Agent** (or wants a **closed learning loop** on top of **deterministic `.ainl` graphs**). Prefer **`./install.sh`** from a checked-out skill folder, or the manual path:

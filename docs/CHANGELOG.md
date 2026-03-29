@@ -1,7 +1,16 @@
 # Changelog
 
+## v1.3.1 (March 29, 2026) — Native Solana + prediction markets (strict graphs), discoverability docs, mirrored runtime sync
+
+- **release**: bump **`pyproject.toml`** / PyPI **`ainl` 1.3.1**; **`RUNTIME_VERSION` 1.3.1** in **`runtime/engine.py`** and **`tests/emits/server/runtime/engine.py`**; **`CITATION.cff`** **`version`** / **`date-released`**; **`tooling/bot_bootstrap.json`** schema **`version`**.
+- **solana**: prediction-market flows on **`adapters/solana.SolanaAdapter`** — **`DERIVE_PDA`** with single-quoted JSON seeds, **`GET_PYTH_PRICE`** (legacy + PriceUpdateV2), **`HERMES_FALLBACK`**, **`INVOKE`** / **`TRANSFER_SPL`** with priority fees; **`AINL_DRY_RUN=1`** simulation envelopes for mutating verbs; optional **`pip install "ainativelang[solana]"`**.
+- **examples / curriculum**: **`examples/solana_demo.ainl`**, **`examples/prediction_market_demo.ainl`** strict-valid; wired through artifact profiles / canonical curriculum / training packs where applicable.
+- **emitters**: **`--emit solana-client`** / **`blockchain-client`** standalone **`solana_client.py`** with v1.3.1 **DISCOVERABILITY** module docstring; see **`docs/emitters/README.md`** Solana section.
+- **docs**: **`docs/solana_quickstart.md`**, root **`README.md`** Solana callout, **`examples/README.md`** pointers, **`CONTRIBUTING.md`** (release version + Solana pointers), **`docs/CONTRIBUTING.md`** hub stub; tests assert discoverability strings in emitted client + adapter docstrings (**`tests/test_solana_blockchain.py`**).
+
 ## v1.3.0 (March 27, 2026) — Official Hermes Agent integration + OpenClaw integration improvements (MCP bootstrap + skill pack + hermes-skill emitter)
 
+- **solana / lexer**: `R solana.DERIVE_PDA` seeds accept **single-quoted JSON** `'["a","b"]'` as one lexer token; under **`AINL_DRY_RUN=1`**, mutating verbs **`INVOKE`**, **`TRANSFER`**, and **`TRANSFER_SPL`** return simulated envelopes **without** requiring **solders** (live RPC/signing still needs `ainativelang[solana]`). Legacy **`tokenize_line()`** now delegates to **`tokenize_line_lossless`** (decoded slot values; same as compile).
 - **code_context adapter**: Added **`GET_SKELETON`** (cheap Tier-0 signatures), embedding-aware **`COMPRESS_CONTEXT`** (cosine ranking when **`embedding_memory`** is available), and extended **`STATS`** with graph metrics; plus import-graph **`GET_DEPENDENCIES`** / **`GET_IMPACT`** and greedy packing on earlier iterations. Builds on ctxzip tiers + forgeindex graph/compression ideas. See `docs/adapters/CODE_CONTEXT.md`, `examples/code_context_demo.ainl`. Full credit to **Brady Drexler** (ctxzip) and **Chris Micah** (forgeindex).
 - **feat(hermes)**: add official Hermes Agent host support to `ainl install-mcp --host hermes` / `ainl hermes-install` (writes `~/.hermes/config.yaml` `mcp_servers.ainl`, installs `~/.hermes/bin/ainl-run`, PATH hint).
 - **feat(skills/hermes)**: ship a Hermes-native skills pack under `skills/hermes/` (installer + bridge helpers for ingest/export loops).
