@@ -2,7 +2,7 @@
 
 **Hub (all MCP hosts):** [`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md) — **`ainl install-mcp --host openclaw`** (same as **`ainl install-openclaw`**).
 
-**PyPI:** `ainativelang` **v1.3.2**.
+**PyPI:** `ainativelang` **v1.3.3**.
 
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw%20Skill-AINL-blue)](https://github.com/sbhooley/ainativelang/tree/main/skills/openclaw)
 
@@ -76,7 +76,7 @@ If no shell rc file is updated, the command prints a one-line **`PATH`** tip you
 ## See also
 
 - **OpenClaw + AINL gold standard (install / upgrade):** [`operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md) — profiles, caps, cron, bootstrap, verification (**`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**)
-- **AINL v1.3.2 — host briefing (what the repo includes vs what OpenClaw must do; current PyPI):** [`operations/OPENCLAW_HOST_AINL_1_2_8.md`](operations/OPENCLAW_HOST_AINL_1_2_8.md) — **`openclaw_host_ainl_1_2_8`**
+- **AINL v1.3.3 — host briefing (what the repo includes vs what OpenClaw must do; current PyPI):** [`operations/OPENCLAW_HOST_AINL_1_2_8.md`](operations/OPENCLAW_HOST_AINL_1_2_8.md) — **`openclaw_host_ainl_1_2_8`**
 - **All MCP hosts:** **[`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)**
 - Skill files: **[`skills/openclaw/README.md`](../skills/openclaw/README.md)**
 - ZeroClaw parallel: **[`docs/ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)**

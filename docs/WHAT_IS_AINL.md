@@ -197,7 +197,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 - **Compiler / IR:** `compiler_v2.py` → canonical **`labels`** graph (`nodes`, `edges`, `entry`, `exits`), strict-mode validation, include merge.
 - **Structured diagnostics:** native **`Diagnostic`** records (lineno, spans, kinds, suggested fixes) via **`CompilerContext`**; **`ainl-validate`** and **`ainl visualize`** support **`--diagnostics-format`** (`auto` / `plain` / `rich` / `json`) and optional **rich** UI with **`pip install -e ".[dev]"`**. See `docs/INSTALL.md`, `compiler_diagnostics.py`.
 - **Graph visualizer CLI:** **`ainl visualize`** / **`ainl-visualize`** / `scripts/visualize_ainl.py` emit **Mermaid** (`graph TD`, subgraph **clusters** per include alias, synthetic **`Call →` entry** edges with a `%%` comment). Paste into [mermaid.live](https://mermaid.live). Flags: `--no-clusters`, `--labels-only`, `-o -`. Details: root **`README.md`** (*Visualize your workflow*), `docs/architecture/GRAPH_INTROSPECTION.md` §7.
-- **Runtime:** `ainl run`, runner service, MCP server, record/replay adapters — see `docs/getting_started/README.md`. **Graph + includes:** bare child label targets in merged IR are qualified with the current **`alias/`** stack frame when needed (`runtime/engine.py`). See `docs/RUNTIME_COMPILER_CONTRACT.md`, **`docs/RELEASE_NOTES.md`** (**current: v1.3.2**; access-aware memory module notes under **v1.2.4** in that file).
+- **Runtime:** `ainl run`, runner service, MCP server, record/replay adapters — see `docs/getting_started/README.md`. **Graph + includes:** bare child label targets in merged IR are qualified with the current **`alias/`** stack frame when needed (`runtime/engine.py`). See `docs/RUNTIME_COMPILER_CONTRACT.md`, **`docs/RELEASE_NOTES.md`** (**current: v1.3.3**; access-aware memory module notes under **v1.2.4** in that file).
 - **Memory helpers (opt-in):** `modules/common/access_aware_memory.ainl` — **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, **`LACCESS_LIST_SAFE`** for optional **`last_accessed` / `access_count`** metadata on **`memory`**; use **`LACCESS_LIST_SAFE`** for graph-reliable list touches. Index: `modules/common/README.md`.
 - **Guard / budget / reflect includes:** `modules/common/guard.ainl`, `session_budget.ainl`, `reflect.ainl` — strict-safe ceilings, spend accounting, and reflect gates (`modules/common/README.md`).
 - **Trajectory logging (CLI):** optional **`<stem>.trajectory.jsonl`** next to the `.ainl` source (`ainl run --log-trajectory` or **`AINL_LOG_TRAJECTORY`**). Doc: `docs/trajectory.md`.
@@ -228,7 +228,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 
 Reproducible **size** tables (**tiktoken cl100k_base**, viable subset vs legacy-inclusive transparency): [`BENCHMARK.md`](../BENCHMARK.md). Hub (commands, CI, runtime + LLM eval pointers): [`docs/benchmarks.md`](benchmarks.md).
 
-Long-form architecture: [`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md) (repository root) — **v1.3.2** positioning: OpenClaw intelligence, token caps, embedding pilot, graph-runtime pitfalls, weekly cap auto-tuner, and native Solana + prediction-market workflows (**`docs/solana_quickstart.md`**).
+Long-form architecture: [`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md) (repository root) — **v1.3.3** positioning: OpenClaw intelligence, token caps, embedding pilot, graph-runtime pitfalls, weekly cap auto-tuner, and native Solana + prediction-market workflows (**`docs/solana_quickstart.md`**).
 
 ## Why now
 

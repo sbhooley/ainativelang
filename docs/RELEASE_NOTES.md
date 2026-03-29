@@ -1,5 +1,9 @@
 # Release notes
 
+## AINL v1.3.3 — PyYAML for MCP server imports (2026-03-29)
+
+**PyPI / runtime:** **`ainl` 1.3.3** — **`RUNTIME_VERSION` `1.3.3`**; **`PyYAML`** is a **core dependency** so **`ainl-mcp`** imports succeed on clean **`pip install ainativelang[mcp]`** (CI **wheel-integrity**). See **`docs/CHANGELOG.md`** § v1.3.3.
+
 ## AINL v1.3.2 — Core httpx/requests dependencies (2026-03-29)
 
 **PyPI / runtime:** **`ainl` 1.3.2** — **`RUNTIME_VERSION` `1.3.2`**; **`httpx`** and **`requests`** are now **core dependencies** so wheel installs and **`ainl`** entrypoint imports succeed after **`pip install ainativelang[mcp]`** (fixes **`ModuleNotFoundError: requests`** from **`adapters.llm.ollama`** during CI smoke). See **`docs/CHANGELOG.md`** § v1.3.2.

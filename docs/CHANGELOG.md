@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.3 (March 29, 2026) — PyYAML for ainl-mcp entrypoint
+
+- **fix(packaging)**: add **`PyYAML`** to core **`dependencies`**. **`scripts/ainl_mcp_server.py`** imports **`yaml`** at module load; **`ainl-mcp --help`** / CI **wheel-integrity** must not fail with **`ModuleNotFoundError: yaml`** after **`pip install ainativelang[mcp]`**.
+
 ## v1.3.2 (March 29, 2026) — Core HTTP deps for LLM adapter imports
 
 - **fix(packaging)**: declare **`httpx`** and **`requests`** as core **`dependencies`** in **`pyproject.toml`**. **`adapters/__init__.py`** eagerly imports LLM adapters that require these modules; a bare **`pip install ainativelang[mcp]`** (or base install) must not fail with **`ModuleNotFoundError`** on **`ainl --help`** / import smoke (CI **install-smoke** / **wheel-integrity**).
