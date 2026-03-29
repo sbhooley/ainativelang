@@ -205,7 +205,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 - **Optional tiered code context:** **`code_context`** indexes a repo to JSON and serves ctxzip-style tiers (TF–IDF summaries by default), plus **import-graph dependencies**, **reverse impact** (transitive importers + PageRank), and **`COMPRESS_CONTEXT`** (greedy token-budget packing of ranked chunks); enable with **`--enable-adapter code_context`** on **`ainl run`**. Guide: **`docs/adapters/CODE_CONTEXT.md`**.
 - **Hyperspace emitter:** **`--emit hyperspace`** on validate emits a standalone Python agent with embedded IR — `docs/emitters/README.md`, `examples/hyperspace_demo.ainl`, root `README.md`.
 - **HTTP executor bridge (AINL → external workers):** small JSON **request envelope** for `http.Post` / optional `bridge.Post` (`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` §3); machine-readable **`schemas/executor_bridge_request.schema.json`**; Python **`schemas/executor_bridge_validate.py`**; reusable include **`modules/common/executor_bridge_request.ainl`**. **MCP (`ainl-mcp`) first** for OpenClaw / NemoClaw / ZeroClaw; HTTP bridge is secondary.
-- **OpenClaw operations (current v1.3.2):** **`scripts/run_intelligence.py`** (startup context, summarizer, consolidation, optional **`auto_tune_ainl_caps`**) with rolling **budget hydrate**; pinned env **`tooling/openclaw_workspace_env.example.sh`**, profiles **`tooling/ainl_profiles.json`**; operator playbooks **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**, **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context and caps (**`docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`**, **`TOKEN_CAPS_STAGING.md`**); weekly cap tuner **`scripts/auto_tune_ainl_caps.py`**. Graph-safe patterns for intelligence: **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**.
+- **OpenClaw operations (current v1.3.3):** **`scripts/run_intelligence.py`** (startup context, summarizer, consolidation, optional **`auto_tune_ainl_caps`**) with rolling **budget hydrate**; pinned env **`tooling/openclaw_workspace_env.example.sh`**, profiles **`tooling/ainl_profiles.json`**; operator playbooks **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**, **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context and caps (**`docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`**, **`TOKEN_CAPS_STAGING.md`**); weekly cap tuner **`scripts/auto_tune_ainl_caps.py`**. Graph-safe patterns for intelligence: **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**.
 
 ---
 
@@ -216,7 +216,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 | Install & CLI flags | `docs/INSTALL.md` |
 | Graph / IR introspection | `docs/architecture/GRAPH_INTROSPECTION.md` |
 | Strict / conformance | `docs/CONFORMANCE.md` |
-| OpenClaw gold standard + host briefing (v1.3.2) | `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`, `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` |
+| OpenClaw gold standard + host briefing (v1.3.3) | `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`, `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` |
 | Integration paths | `docs/getting_started/README.md`, `docs/INTEGRATION_STORY.md` |
 | HTTP executor bridge (envelope + schema + include) | `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` §3; `schemas/executor_bridge_request.schema.json`; `modules/common/executor_bridge_request.ainl` |
 | Trajectory JSONL / Hyperspace emit | `docs/trajectory.md`; `docs/emitters/README.md` |

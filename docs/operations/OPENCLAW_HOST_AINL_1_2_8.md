@@ -1,4 +1,4 @@
-# OpenClaw host briefing — AINL **v1.2.8 / v1.3.0 / v1.3.1 / v1.3.3** (install / update)
+# OpenClaw host briefing — AINL **v1.2.8 / v1.3.0 / v1.3.1 / v1.3.2 / v1.3.3** (install / update)
 
 **Audience:** You are the **OpenClaw host** — the process that owns config, cron, workspace paths, and **what gets injected into the agent** at session start.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## What the AINL **v1.2.8 / v1.3.0 / v1.3.1 / v1.3.3** repo includes (you consume; you don’t reimplement)
+## What the AINL **v1.2.8 / v1.3.0 / v1.3.1 / v1.3.2 / v1.3.3** repo includes (you consume; you don’t reimplement)
 
 | Capability | What it is |
 |------------|------------|

@@ -25,7 +25,7 @@ AINL is positioned as the **authoring and validation layer** where an LLM (or hu
 
 AINL now emits optional runtime handoff metadata in compiled IR (`execution_requirements`, including `avm_policy_fragment` plus neutral isolation/capability/resource hints) so operators can pair the deterministic graph layer with AVM (`avmd`) or general sandbox runtimes (for example Firecracker, gVisor, Kubernetes Agent Sandbox, E2B-style environments) without changing language/runtime semantics.
 
-### Positioning note (v1.2.8–v1.3.1): OpenClaw operations, token economics, graph-authored intelligence, self-monitoring, and native Solana (v1.3.1)
+### Positioning note (v1.2.8–v1.3.3): OpenClaw operations, token economics, graph-authored intelligence, self-monitoring, and native Solana (since v1.3.1)
 
 Production OpenClaw stacks pin **workspace and adapter paths** (`OPENCLAW_WORKSPACE`, `AINL_MEMORY_DB`, `MONITOR_CACHE_JSON`, `AINL_FS_ROOT`), use **named profiles** (`tooling/ainl_profiles.json`, `ainl profile emit-shell`), and schedule **`scripts/run_intelligence.py`** for **startup context** (`intelligence/token_aware_startup_context.lang`), **session summarization** (`proactive_session_summarizer.lang`), **memory consolidation**, and **rolling budget hydration** into the monitor cache (`tooling/intelligence_budget_hydrate.py`). **v1.2.8** hardens **graph-preferred** intelligence programs against runtime pitfalls: no raw `{…}` object literals in **`X`** (use `core.parse`, **`obj`/`put`**, or **`arr`**); **`J`** returns a value in graph mode—it is **not** a jump to a label (use **`Call`** for subgraph entry); optional **`memory.list`** filters use **`null`** for omitted **`record_id_prefix`**, not `""`. Specs: **`docs/AINL_SPEC.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`** (graph pitfalls), **`docs/INTELLIGENCE_PROGRAMS.md`**.
 
@@ -321,7 +321,7 @@ deployment environments.
 
 See `docs/architecture/STATE_DISCIPLINE.md` for the full specification.
 
-**Optional access metadata (opt-in module):** `modules/common/access_aware_memory.ainl` provides **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and **`LACCESS_LIST_SAFE`** helpers that bump **`metadata.last_accessed`** (ISO timestamp) and **`metadata.access_count`** on selected **`memory.get`** / **`memory.list`** / **`memory.put`** paths. Plain adapter calls remain unchanged if you do not use the module. **`LACCESS_LIST_SAFE`** uses a **While** + index loop for graph-reliable list snapshots; **`LACCESS_LIST`** uses a **`ForEach`** surface form whose IR may not yet fully match **Loop** lowering—hosts that rely on **graph-preferred** execution should prefer **`LACCESS_LIST_SAFE`** until the compiler emits an equivalent **Loop**. Details: module header, `modules/common/README.md`, **`docs/RELEASE_NOTES.md`** (feature described under **v1.2.4**; **current release v1.3.1**).
+**Optional access metadata (opt-in module):** `modules/common/access_aware_memory.ainl` provides **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, and **`LACCESS_LIST_SAFE`** helpers that bump **`metadata.last_accessed`** (ISO timestamp) and **`metadata.access_count`** on selected **`memory.get`** / **`memory.list`** / **`memory.put`** paths. Plain adapter calls remain unchanged if you do not use the module. **`LACCESS_LIST_SAFE`** uses a **While** + index loop for graph-reliable list snapshots; **`LACCESS_LIST`** uses a **`ForEach`** surface form whose IR may not yet fully match **Loop** lowering—hosts that rely on **graph-preferred** execution should prefer **`LACCESS_LIST_SAFE`** until the compiler emits an equivalent **Loop**. Details: module header, `modules/common/README.md`, **`docs/RELEASE_NOTES.md`** (feature described under **v1.2.4**; **current release v1.3.3**).
 
 ### 7.4 Narrative and integration references
 
@@ -333,7 +333,7 @@ Canonical specs: `docs/architecture/STATE_DISCIPLINE.md`,
 `docs/adapters/MEMORY_CONTRACT.md`, `docs/getting_started/HOST_MCP_INTEGRATIONS.md`,
 `docs/ainl_openclaw_unified_integration.md`, `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 
-**OpenClaw operator bundle (v1.2.8–v1.3.1):** **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** (install, upgrade survival, profiles, cron, bootstrap preference, verification) and **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`** (what the repo ships vs what the host must configure). **`docs/BOT_ONBOARDING.md`** exposes machine-readable keys (`openclaw_ainl_gold_standard`, `openclaw_host_ainl_1_2_8`) for agents.
+**OpenClaw operator bundle (v1.2.8–v1.3.3):** **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** (install, upgrade survival, profiles, cron, bootstrap preference, verification) and **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`** (what the repo ships vs what the host must configure). **`docs/BOT_ONBOARDING.md`** exposes machine-readable keys (`openclaw_ainl_gold_standard`, `openclaw_host_ainl_1_2_8`) for agents.
 
 ---
 
@@ -499,7 +499,7 @@ memory path via MCP without depending on OpenClaw's markdown layout. See
 **[AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents)**
 and `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 
-### 10.5 Intelligence runner, hydration, and cap tuning (v1.2.8–v1.3.1)
+### 10.5 Intelligence runner, hydration, and cap tuning (v1.2.8–v1.3.3)
 
 - **`scripts/run_intelligence.py`** — dispatches **`context`**, **`summarizer`**, **`consolidation`**, optional **`continuity`**, and **`auto_tune_ainl_caps`** (Python tool executed via subprocess). **`all`** runs the core trio (excludes auto-tune). Rolling **budget hydrate** merges workflow memory into the monitor cache when configured.
 - **`tooling/openclaw_workspace_env.example.sh`** — template for pinning **`OPENCLAW_WORKSPACE`** and AINL paths in cron/systemd.
@@ -921,7 +921,7 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Memory v1.1 deterministic contract upgrade** — extension-level memory now supports additive deterministic metadata (`source`, `confidence`, `tags`, `valid_at`), bounded list filters (`tags_any`/`tags_all`, created/updated windows, `limit`/`offset`), namespace TTL/prune policy hooks, response operational counters, and capability-advertised memory profile metadata (`memory_profile`) without introducing semantic retrieval or policy cognition into core runtime semantics.
 - **External executor bridge (HTTP)** — documented contract in `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` for calling non-MCP workers via `http.Post` (and optional host-mapped **`bridge`** adapter for executor keys → URLs). **MCP (`ainl-mcp`) remains primary** for OpenClaw/NemoClaw; the HTTP bridge is the secondary pattern for generic gateways and plugins.
 - **Reproducible benchmark suite** — `tiktoken` **cl100k_base** default sizing with **`BENCHMARK.md`** transparency (viable subset, legacy-inclusive tables, **minimal_emit fallback stub**, Mar 2026 **prisma/react_ts** compaction notes), **Compile ms (mean×3)** in size tables, runtime benchmark (latency/RSS, optional reliability and scalability probe), shared **economics** helpers (`tooling/bench_metrics.py`), handwritten **baseline** comparison, **CI regression** gating (`scripts/compare_benchmark_json.py`, `make benchmark` / `make benchmark-ci`, workflow `benchmark-regression` — **preferring committed `*_ci.json` baselines on the baseline git SHA when present**), hub **`docs/benchmarks.md`**, and **`ainl-ollama-benchmark --cloud-model`** for an optional **Anthropic Claude** baseline (`temperature=0`, graceful skip without key/SDK).
-- **OpenClaw intelligence + ops (v1.2.8–v1.3.1)** — **`scripts/run_intelligence.py`** with rolling **budget hydrate**; graph-safe intelligence and **`modules/common/generic_memory.ainl`**; **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** and **`OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context, **`payload.summary`** for summarizer indexing, **startup token** env clamps; **`scripts/auto_tune_ainl_caps.py`** / **`run_intelligence.py auto_tune_ainl_caps`**.
+- **OpenClaw intelligence + ops (v1.2.8–v1.3.3)** — **`scripts/run_intelligence.py`** with rolling **budget hydrate**; graph-safe intelligence and **`modules/common/generic_memory.ainl`**; **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** and **`OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context, **`payload.summary`** for summarizer indexing, **startup token** env clamps; **`scripts/auto_tune_ainl_caps.py`** / **`run_intelligence.py auto_tune_ainl_caps`**.
 
 ### 17.2 Remaining Future Work
 
@@ -1144,9 +1144,9 @@ Paths are relative to the repository root.
 - `docs/case_studies/` — graph-native vs prompt-loop, cost analysis, long-context memory
 - `docs/PATTERNS.md` — workflow patterns (RetryWithBackoff, RateLimit, BatchProcess, CacheWarm)
 
-### OpenClaw operations and intelligence (v1.2.8–v1.3.1)
+### OpenClaw operations and intelligence (v1.2.8–v1.3.3)
 - `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md` — profiles, caps, cron, bootstrap, verification
-- `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — repo vs host responsibilities (v1.2.8–v1.3.1)
+- `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — repo vs host responsibilities (v1.2.8–v1.3.3)
 - `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`, `docs/operations/TOKEN_CAPS_STAGING.md`, `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
 - `intelligence/*.lang` — scheduled programs (startup context, summarizer, consolidation, auto-tune lang companion)
 - `scripts/run_intelligence.py`, `scripts/auto_tune_ainl_caps.py`, `scripts/run_auto_tune_ainl_caps.sh`

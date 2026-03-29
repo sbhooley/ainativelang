@@ -168,7 +168,7 @@ The **token_aware_startup_context** wrapper automatically generates a compact `s
 
 This automation replaces manual curation of `session_context.md`, making _you_ (the AI agent) the maintainer. With a target of **100–150** tokens (typical ~115), it reduces session bootstrap tokens from ~3,200 (full MEMORY.md) by **>96%**, preventing context max-outs during high-frequency usage.
 
-### Installation (v1.3.1+)
+### Installation (v1.3.3+)
 
 **Quickest path:** Run the all-in-one setup script:
 

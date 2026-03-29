@@ -52,7 +52,7 @@
     },
     "setup_script": {
       "command": "./scripts/setup_ainl_integration.sh [--workspace PATH] [--dry-run] [--with-cron] [--verbose]",
-      "description": "Shell convenience wrapper around `ainl install openclaw`. Supports --dry-run to preview without changes. Now delegates to ainl CLI (no longer uses deprecated gateway config.patch). v1.3.1+.",
+      "description": "Shell convenience wrapper around `ainl install openclaw`. Supports --dry-run to preview without changes. Now delegates to ainl CLI (no longer uses deprecated gateway config.patch). v1.3.3+.",
       "doc": "docs/QUICKSTART_OPENCLAW.md"
     }
   },
