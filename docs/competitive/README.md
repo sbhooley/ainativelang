@@ -8,7 +8,7 @@ Use this section for comparative framing such as “AINL vs X” and category-de
 
 Comparative docs should be grounded in **shipped** behavior (compiler, runtime, emitters, MCP) and link to **reproducible** benchmarks where numbers are claimed.
 
-## Guides (v1.2.5+ baseline; current PyPI **v1.3.1**)
+## Guides (v1.2.5+ baseline; current PyPI **v1.3.2**)
 
 - **[`FROM_LANGGRAPH_TO_AINL.md`](FROM_LANGGRAPH_TO_AINL.md)** — 15-minute onboarding from graph-first Python to AINL + optional `--emit langgraph`.
 - **[`AINL_AND_TEMPORAL.md`](AINL_AND_TEMPORAL.md)** — keep AINL as source of truth; emit Temporal modules when you need durability workers.

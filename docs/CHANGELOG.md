@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.2 (March 29, 2026) — Core HTTP deps for LLM adapter imports
+
+- **fix(packaging)**: declare **`httpx`** and **`requests`** as core **`dependencies`** in **`pyproject.toml`**. **`adapters/__init__.py`** eagerly imports LLM adapters that require these modules; a bare **`pip install ainativelang[mcp]`** (or base install) must not fail with **`ModuleNotFoundError`** on **`ainl --help`** / import smoke (CI **install-smoke** / **wheel-integrity**).
+
 ## v1.3.1 (March 29, 2026) — Native Solana + prediction markets (strict graphs), discoverability docs, mirrored runtime sync
 
 - **release**: bump **`pyproject.toml`** / PyPI **`ainl` 1.3.1**; **`RUNTIME_VERSION` 1.3.1** in **`runtime/engine.py`** and **`tests/emits/server/runtime/engine.py`**; **`CITATION.cff`** **`version`** / **`date-released`**; **`tooling/bot_bootstrap.json`** schema **`version`**.
