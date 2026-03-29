@@ -297,6 +297,15 @@ jobs:
             --json-out tooling/benchmark_runtime_ci.json \
             --skip-markdown-inject
 
+      - name: Upload benchmark JSON (pre-regression)
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-json-precheck-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            tooling/benchmark_size_ci.json
+            tooling/benchmark_runtime_ci.json
+
       - name: Regression check (size)
         if: steps.baselines.outputs.size_ci == 'present' || steps.baselines.outputs.size == 'present'
         run: |
@@ -317,7 +326,9 @@ jobs:
           echo "::notice::No tooling/benchmark_size_ci.json or benchmark_size.json at baseline SHA; skipping size regression compare."
 
       - name: Regression check (runtime)
+        id: runtime_regression
         if: (steps.baselines.outputs.runtime_ci == 'present' || steps.baselines.outputs.runtime == 'present') && github.event_name != 'pull_request'
+        continue-on-error: true
         run: |
           set -euo pipefail
           if [ "${{ steps.baselines.outputs.runtime_ci }}" = "present" ]; then
