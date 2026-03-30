@@ -1,6 +1,6 @@
 ---
 name: prep-tomorrow
-emoji: 🌙
+emoji: "🌙"
 description: Evening routine to set up tomorrow — reviews your calendar, suggests what to prep, and sets priorities
 schedule: "9pm"
 author: @davehappyminion
