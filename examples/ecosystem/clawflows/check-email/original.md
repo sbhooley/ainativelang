@@ -1,6 +1,6 @@
 ---
 name: check-email
-emoji: 📧
+emoji: "📧"
 description: Email summary — fetches recent emails, categorizes by priority, and presents a clean overview of what needs attention. Read-only — no actions taken.
 author: @davehappyminion
 schedule: "9am, 1pm, 5pm"
