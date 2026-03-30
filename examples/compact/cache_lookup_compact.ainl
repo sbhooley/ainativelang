@@ -1,0 +1,13 @@
+# examples/compact/cache_lookup_compact.ainl
+# Cache-first pattern: check cache before calling API.
+
+cached_fetch:
+  in: url
+
+  cached = cache.get url
+  if cached:
+    out cached
+
+  fresh = http.GET url
+  cache.set url fresh
+  out fresh

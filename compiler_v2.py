@@ -2467,6 +2467,8 @@ class AICodeCompiler:
         source_path: Optional[str] = None,
         include_ancestors: Optional[Set[str]] = None,
     ) -> Dict[str, Any]:
+        from ainl_preprocess import preprocess as _compact_preprocess
+        code = _compact_preprocess(code)
         source_text = code
         lines = code.split("\n")
         source_lines = list(lines)

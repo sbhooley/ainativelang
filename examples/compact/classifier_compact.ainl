@@ -1,0 +1,14 @@
+# examples/compact/classifier_compact.ainl
+# Multi-branch classifier in compact syntax.
+# Demonstrates if/branching, inputs, and string outputs.
+
+classifier:
+  in: level message
+
+  if level == "critical":
+    out "ALERT: critical"
+
+  if level == "warning":
+    out "WARN: warning"
+
+  out "INFO: logged"

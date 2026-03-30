@@ -104,6 +104,7 @@ ainl-validate-s-cron = "scripts.validate_s_cron_schedules:main"
 py-modules = [
   "compiler_v2",
   "compiler_diagnostics",
+  "ainl_preprocess",
   "runtime",
   "grammar_constraint",
 ]

@@ -1,0 +1,7 @@
+# examples/compact/hello_compact.ainl
+# The simplest compact AINL program.
+# Equivalent to examples/hello.ainl but in compact syntax.
+
+adder:
+  result = core.ADD 2 3
+  out result
