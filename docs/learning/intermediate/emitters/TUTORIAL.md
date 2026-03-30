@@ -47,7 +47,7 @@ LangGraph expects a Python class with state and nodes.
 ### Generate LangGraph Code
 
 ```bash
-ainl emit monitoring.ainl   --target langgraph   --output monitoring_langgraph.py
+ainl emit monitoring.ainl --target langgraph -o monitoring_langgraph.py
 ```
 
 **Result** (`monitoring_langgraph.py`):
@@ -117,7 +117,7 @@ Temporal expects a workflow definition with activities.
 ### Generate Temporal Code
 
 ```bash
-ainl emit monitoring.ainl   --target temporal   --output monitoring_temporal.py
+ainl emit monitoring.ainl --target temporal -o monitoring_temporal/
 ```
 
 **Result** (`monitoring_temporal.py`):
@@ -210,7 +210,8 @@ print(result)
 ### OpenCrawl Emitter (bonus)
 
 ```bash
-ainl emit monitoring.ainl --target opencrawl --output crawl_workflow.py
+# Note: opencrawl emitter not yet available
+# ainl emit monitoring.ainl --target opencrawl -o crawl_workflow.py
 # Creates a Scrapy spider for web scraping workflows
 ```
 

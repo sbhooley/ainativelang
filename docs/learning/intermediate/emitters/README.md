@@ -27,7 +27,7 @@ AINL graphs are portable. Write your workflow logic in AINL, then emit to:
 ### LangGraph Emitter
 
 ```bash
-ainl emit monitor.ainl --target langgraph --output graph.py
+ainl emit monitor.ainl --target langgraph -o graph.py
 ```
 
 Outputs a LangGraph `StateGraph` that you can run with `graph.invoke()`.
@@ -46,7 +46,7 @@ Outputs a LangGraph `StateGraph` that you can run with `graph.invoke()`.
 ### Temporal Emitter
 
 ```bash
-ainl emit workflow.ainl --target temporal --output workflow.py
+ainl emit workflow.ainl --target temporal -o workflow/
 ```
 
 Generates a Temporal `Workflow` and `Activity` definitions.
@@ -63,7 +63,7 @@ Generates a Temporal `Workflow` and `Activity` definitions.
 ### FastAPI Emitter
 
 ```bash
-ainl emit api.ainl --target fastapi --output server.py
+ainl emit api.ainl --target server -o server.py
 ```
 
 Creates a FastAPI app:
@@ -83,7 +83,7 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 ### React Emitter (Experimental)
 
 ```bash
-ainl emit ui.ainl --target react --output ui/
+ainl emit ui.ainl --target react -o ui/
 ```
 
 Generates React components that mirror your graph structure.

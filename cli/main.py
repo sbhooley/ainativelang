@@ -702,6 +702,214 @@ def cmd_compile(args: argparse.Namespace) -> int:
     return 2
 
 
+def cmd_validate(args: argparse.Namespace) -> int:
+    """Alias for cmd_check — validates an .ainl file (compile + strict checks)."""
+    return cmd_check(args)
+
+
+def cmd_emit(args: argparse.Namespace) -> int:
+    """Compile an .ainl file and emit to a target platform."""
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
+        code = f.read()
+
+    c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
+    ir = c.compile(code, emit_graph=True, source_path=src_path)
+    if ir.get("errors"):
+        print(json.dumps({"ok": False, "errors": ir.get("errors", [])}, indent=2))
+        return 1
+
+    target = str(args.target).strip().lower()
+    stem = Path(src_path).stem
+    out_raw = str(getattr(args, "output", "") or "").strip()
+
+    # IR passthrough
+    if target == "ir":
+        print(json.dumps(ir, indent=2))
+        return 0
+
+    # Hermes skill bundle
+    if target in ("hermes-skill", "hermes"):
+        out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_hermes_skill"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        bundle = c.emit_hermes_skill_bundle(ir, ainl_source=code, skill_name=stem, source_stem=stem)
+        written = []
+        for rel, content in sorted(bundle.items()):
+            p = out_dir / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(content, encoding="utf-8")
+            written.append(str(p.resolve()))
+        print(json.dumps({"ok": True, "emit": target, "dir": str(out_dir.resolve()), "files": written}, indent=2))
+        return 0
+
+    # Solana / blockchain client
+    if target in ("solana-client", "blockchain-client"):
+        out_path = Path(out_raw).expanduser() if out_raw else Path.cwd() / "solana_client.py"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        content = c.emit_solana_client(ir, source_stem=stem)
+        out_path.write_text(content, encoding="utf-8")
+        print(json.dumps({"ok": True, "emit": target, "path": str(out_path.resolve())}, indent=2))
+        return 0
+
+    # LangGraph hybrid wrapper
+    if target == "langgraph":
+        import scripts.emit_langgraph as emit_langgraph
+        out_path = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_langgraph.py"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        emit_langgraph.emit_langgraph_to_path(ir, out_path, source_stem=stem)
+        print(json.dumps({"ok": True, "emit": "langgraph", "path": str(out_path.resolve()), "source_stem": stem}, indent=2))
+        return 0
+
+    # Temporal hybrid wrapper
+    if target == "temporal":
+        import scripts.emit_temporal as emit_temporal
+        out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        act_path, wf_path = emit_temporal.emit_temporal_pair(ir, output_dir=out_dir, source_stem=stem)
+        print(json.dumps({"ok": True, "emit": "temporal", "dir": str(out_dir.resolve()), "files": [str(act_path), str(wf_path)]}, indent=2))
+        return 0
+
+    # Emitters available on the compiler
+    emitter_map = {
+        "server": "emit_server",
+        "python-api": "emit_python_api",
+        "react": "emit_react",
+        "openapi": "emit_openapi",
+        "prisma": "emit_prisma_schema",
+        "sql": "emit_sql_migrations",
+        "docker": "emit_dockerfile",
+        "k8s": "emit_k8s",
+        "cron": "emit_cron_stub",
+    }
+    if target in emitter_map:
+        method = getattr(c, emitter_map[target], None)
+        if method:
+            content = method(ir)
+            if out_raw:
+                out_path = Path(out_raw).expanduser()
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_text(str(content), encoding="utf-8")
+                print(json.dumps({"ok": True, "emit": target, "path": str(out_path.resolve())}, indent=2))
+            else:
+                if isinstance(content, dict):
+                    print(json.dumps(content, indent=2))
+                else:
+                    print(content)
+            return 0
+
+    print(json.dumps({"ok": False, "error": f"unknown --target: {target!r}"}, indent=2))
+    return 2
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Start an HTTP server that validates and runs AINL files via REST API."""
+    host = getattr(args, "host", "0.0.0.0")
+    port = int(getattr(args, "port", 8080))
+
+    try:
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+    except ImportError:
+        print(json.dumps({"ok": False, "error": "http.server not available"}))
+        return 1
+
+    class AINLRequestHandler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else ""
+
+            if self.path == "/validate" or self.path == "/check":
+                try:
+                    payload = json.loads(body) if body.strip().startswith("{") else {"source": body}
+                    source = payload.get("source", body)
+                    strict = payload.get("strict", False)
+                    c = AICodeCompiler(strict_mode=strict)
+                    ir = c.compile(source, emit_graph=True)
+                    ok = len(ir.get("errors", [])) == 0
+                    result = {
+                        "ok": ok,
+                        "ir_version": ir.get("ir_version"),
+                        "errors": ir.get("errors", []),
+                        "warnings": ir.get("warnings", []),
+                        "diagnostics": list(ir.get("diagnostics") or []),
+                    }
+                    self._json_response(200 if ok else 400, result)
+                except Exception as e:
+                    self._json_response(500, {"ok": False, "error": str(e)})
+
+            elif self.path == "/compile":
+                try:
+                    payload = json.loads(body) if body.strip().startswith("{") else {"source": body}
+                    source = payload.get("source", body)
+                    strict = payload.get("strict", False)
+                    c = AICodeCompiler(strict_mode=strict)
+                    ir = c.compile(source, emit_graph=True)
+                    if ir.get("errors"):
+                        self._json_response(400, {"ok": False, "errors": ir.get("errors", [])})
+                    else:
+                        self._json_response(200, ir)
+                except Exception as e:
+                    self._json_response(500, {"ok": False, "error": str(e)})
+
+            elif self.path == "/run":
+                try:
+                    payload = json.loads(body) if body.strip().startswith("{") else {"source": body}
+                    source = payload.get("source", body)
+                    strict = payload.get("strict", False)
+                    frame = payload.get("frame", {})
+                    c = AICodeCompiler(strict_mode=strict)
+                    ir = c.compile(source, emit_graph=True)
+                    if ir.get("errors"):
+                        self._json_response(400, {"ok": False, "errors": ir.get("errors", [])})
+                        return
+                    engine = RuntimeEngine(ir)
+                    result = engine.run(source, frame=frame)
+                    self._json_response(200, result)
+                except Exception as e:
+                    self._json_response(500, {"ok": False, "error": str(e)})
+
+            else:
+                self._json_response(404, {"error": f"Unknown endpoint: {self.path}", "endpoints": ["/validate", "/compile", "/run"]})
+
+        def do_GET(self):
+            if self.path == "/health" or self.path == "/":
+                self._json_response(200, {
+                    "status": "ok",
+                    "service": "ainl-serve",
+                    "version": "1.3.3",
+                    "endpoints": {
+                        "POST /validate": "Validate AINL source (JSON body: {source, strict?})",
+                        "POST /compile": "Compile AINL source to IR (JSON body: {source, strict?})",
+                        "POST /run": "Compile and run AINL source (JSON body: {source, strict?, frame?})",
+                        "GET /health": "Health check",
+                    },
+                })
+            else:
+                self._json_response(404, {"error": "Not found"})
+
+        def _json_response(self, status: int, data: dict):
+            body = json.dumps(data, indent=2, default=str).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format, *a):
+            import sys
+            sys.stderr.write(f"[ainl-serve] {self.address_string()} {format % a}\n")
+
+    print(f"Starting AINL server on {host}:{port}")
+    print(f"Endpoints: POST /validate, POST /compile, POST /run, GET /health")
+    server = HTTPServer((host, port), AINLRequestHandler)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down.")
+        server.shutdown()
+    return 0
+
+
 def cmd_inspect(args: argparse.Namespace) -> int:
     src_path = str(Path(args.file).resolve())
     with open(src_path, "r", encoding="utf-8") as f:
@@ -1770,6 +1978,36 @@ def main() -> None:
     )
     cmp.add_argument("-o", "--output", default="", help="Output directory for bundle emitters")
     cmp.set_defaults(func=cmd_compile)
+
+    # --- ainl validate (alias for check) ---
+    val = sub.add_parser("validate", help="Validate an .ainl file (alias for 'check')")
+    val.add_argument("file")
+    val.add_argument("--strict", action="store_true")
+    val.set_defaults(func=cmd_validate)
+
+    # --- ainl emit (full emitter with all targets) ---
+    emt = sub.add_parser("emit", help="Compile an .ainl file and emit to a target platform")
+    emt.add_argument("file")
+    emt.add_argument(
+        "--target", "-t",
+        required=True,
+        choices=[
+            "ir", "langgraph", "temporal", "hermes-skill", "hermes",
+            "solana-client", "blockchain-client",
+            "server", "python-api", "react", "openapi", "prisma", "sql",
+            "docker", "k8s", "cron",
+        ],
+        help="Emit target platform.",
+    )
+    emt.add_argument("-o", "--output", default="", help="Output path or directory")
+    emt.add_argument("--strict", action="store_true")
+    emt.set_defaults(func=cmd_emit)
+
+    # --- ainl serve (HTTP server for validation/compile/run) ---
+    srv = sub.add_parser("serve", help="Start an HTTP server exposing AINL validate/compile/run as REST API")
+    srv.add_argument("--host", default="0.0.0.0", help="Bind address (default: 0.0.0.0)")
+    srv.add_argument("--port", "-p", type=int, default=8080, help="Port (default: 8080)")
+    srv.set_defaults(func=cmd_serve)
 
     isp = sub.add_parser("inspect", help="Compile an .ainl file and dump full canonical IR JSON")
     isp.add_argument("file")
