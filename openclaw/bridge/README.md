@@ -65,6 +65,24 @@ Adjust `--cron` to match `modules/openclaw/cron_*.ainl` and `tooling/cron_regist
 
 See `docs/ainl_openclaw_unified_integration.md` and `docs/CRON_ORCHESTRATION.md` for full integration context. **Unified operator guide (memory path, sentinel, cron, troubleshooting):** `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 
+### Token tracker adapter (`openclaw_token_tracker`)
+
+Registered in **`build_wrapper_registry()`** for AINL programs that invoke **`R openclaw_token_tracker ...`** (`RUN`, `ReadTokenStats`). Aggregates **`agent:main:main`** session tokens via **`openclaw sessions --json --active`**, optional **`openclaw cache`** read/write.
+
+| Variable | Default | Role |
+|----------|---------|------|
+| `OPENCLAW_BIN` | (see `adapters/openclaw_token_tracker.py`) | `openclaw` CLI used for `sessions` / `cache` |
+| `TOKEN_TRACKER_CACHE_NS` | `workflow` | Cache namespace for snapshots |
+| `TOKEN_TRACKER_CACHE_KEY` | `main_session_tokens` | Cache key |
+| `TOKEN_TRACKER_WINDOW_MINUTES` | `60` | `--active` window for `sessions` |
+| `TOKEN_TRACKER_CACHE_TTL` | `300` | Fresh-cache TTL for `ReadTokenStats` (seconds) |
+
+Full narrative: [`docs/ainl_openclaw_unified_integration.md`](../../docs/ainl_openclaw_unified_integration.md) (Token tracker + content-engine budget).
+
+### Content-engine and wrapper budget guards
+
+**`content-engine`** reads optional **`model_override`** from monitor **`cache`** (`budget` / `model_override`); otherwise uses **`gpt-4o-mini`**. It is a **critical** wrapper: when **`MONITOR_CACHE_JSON`** reports low **`workflow.token_budget`**, the bridge **skips non-critical wrappers** only—**`content-engine`** and **`token-budget-alert`** still run. Tune **`AINL_WRAPPER_MIN_DAILY_REMAINING`**, **`AINL_WRAPPER_MIN_WEEKLY_REMAINING`**, **`AINL_WRAPPER_BUDGET_GUARDS_JSON`** in `run_wrapper_ainl.py`.
+
 ### Monitoring tools (production)
 
 Daily markdown target (unless overridden): **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**. Detail: `docs/openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`.
@@ -90,7 +108,9 @@ Daily markdown target (unless overridden): **`~/.openclaw/workspace/memory/YYYY-
 | `AINL_TOKEN_REPORT_SENTINEL` | Duplicate-guard file path (default `/tmp/token_report_today_sent`) |
 | `AINL_DRY_RUN` / `--dry-run` | Skip live `append_today`, queue notify, sentinel, prune file writes |
 | `AINL_BRIDGE_FAKE_CACHE_MB`, `AINL_BRIDGE_PRUNE_FORCE_ERROR` | **Tests only** — branch simulation |
-| `OPENCLAW_BIN`, `OPENCLAW_TARGET`, `OPENCLAW_NOTIFY_CHANNEL` | Notify / CLI integration |
+| `OPENCLAW_BIN`, `OPENCLAW_TARGET`, `OPENCLAW_NOTIFY_CHANNEL` | Notify / CLI integration; **`OPENCLAW_BIN`** also drives **`openclaw_token_tracker`** |
+| `TOKEN_TRACKER_CACHE_NS`, `TOKEN_TRACKER_CACHE_KEY`, `TOKEN_TRACKER_WINDOW_MINUTES`, `TOKEN_TRACKER_CACHE_TTL` | Token tracker adapter cache + sessions window (see § Token tracker adapter) |
+| `AINL_WRAPPER_MIN_DAILY_REMAINING`, `AINL_WRAPPER_MIN_WEEKLY_REMAINING`, `AINL_WRAPPER_BUDGET_GUARDS_JSON` | Skip **non-critical** wrappers when budgets low; **`content-engine`** is critical |
 | `AINL_ADVOCATE_DAILY_TOKEN_BUDGET` | Budget denominator for token-usage (default 500000) |
 | `AINL_IR_CACHE` | `0` disables IR disk cache for `run_wrapper_ainl.py` (default on) |
 | `AINL_IR_CACHE_DIR` | Cache directory (default `~/.cache/ainl/ir`) |

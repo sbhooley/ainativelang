@@ -113,7 +113,7 @@ This keeps the integration **transparent and auditable**: AINL describes the wor
 
 For the **shipped** OpenClaw bridge (cron payloads, `run_wrapper_ainl.py`, daily markdown memory, token-budget and weekly-trends wrappers), read:
 
-- [`../ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md) — integration boundaries and env vars
+- [`../ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md) — integration boundaries and env vars; **`openclaw_token_tracker`** (main-session token snapshot + optional `openclaw cache`); **`content-engine`** **`model_override`** and **critical** wrapper behavior under budget guards
 - [`../operations/UNIFIED_MONITORING_GUIDE.md`](../operations/UNIFIED_MONITORING_GUIDE.md) — unified monitoring (memory path **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**, sentinel, consolidated notify)
 - [`../../openclaw/bridge/README.md`](../../openclaw/bridge/README.md) — bridge tools table and cron examples
 - [`../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md`](../openclaw/BRIDGE_TOKEN_BUDGET_ALERT.md) — token budget wrapper reference

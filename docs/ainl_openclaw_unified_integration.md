@@ -12,7 +12,7 @@
 
 For one readable walkthrough of **four tiered state**, **SQLite `memory` vs OpenClaw daily markdown**, **MCP on OpenClaw and ZeroClaw**, and **bridge monitoring**, see **[AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents)**. Host wiring hub: **[`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)**.
 
-This document describes the **additive** integration: Python adapters (`openclaw_memory`, `github`, `crm`), manifest entries, thin `.ainl` wrappers under `scripts/wrappers/`, and the bridge runner under `openclaw/bridge/run_wrapper_ainl.py`. Core compiler/runtime behavior is unchanged; Advocate Suite daemon scripts are orthogonal.
+This document describes the **additive** integration: Python adapters (`openclaw_memory`, `github`, `crm`, `openclaw_token_tracker`), manifest entries, thin `.ainl` wrappers under `scripts/wrappers/`, and the bridge runner under `openclaw/bridge/run_wrapper_ainl.py`. Core compiler/runtime behavior is unchanged; Advocate Suite daemon scripts are orthogonal.
 
 ## Cron governance (multi-scheduler drift)
 
@@ -47,8 +47,34 @@ export CRM_HEALTH_URL=http://127.0.0.1:YOUR_PORT/api/health
 | `adapters/openclaw_memory.py` | Daily markdown append/read; `openclaw memory search --json`; search result cache in `MONITOR_CACHE_JSON` |
 | `adapters/github.py` | GitHub REST (`search_repos`, `get_repo`, `create_issue`); optional `GITHUB_TOKEN`; short GET cache |
 | `adapters/crm.py` | HTTP to CRM (`CRM_API_BASE`, default from `openclaw_defaults`); paths overridable via `CRM_PATH_*` |
-| `openclaw/bridge/run_wrapper_ainl.py` (shim: `scripts/run_wrapper_ainl.py`) | Registry builder + injects `crm_health_url` into the frame for `content-engine.ainl` |
+| `adapters/openclaw_token_tracker.py` | Main-session token snapshot via `openclaw sessions`; optional `openclaw cache` persistence (`RUN` / `ReadTokenStats`) |
+| `openclaw/bridge/run_wrapper_ainl.py` (shim: `scripts/run_wrapper_ainl.py`) | Registry builder; injects `crm_health_url` for `content-engine.ainl`; registers adapters; applies **budget guards** (skips non-critical wrappers when `workflow.token_budget` in `MONITOR_CACHE_JSON` is low—see below) |
 | `scripts/wrappers/*.ainl` | `include` the matching `modules/openclaw/cron_*.ainl` schedule module |
+
+## Token tracker adapter (`openclaw_token_tracker`)
+
+Registered in **`openclaw/bridge/run_wrapper_ainl.py`** with `openclaw_memory`, `github`, and `crm`. It aggregates **main direct session** token usage (sessions whose key is `agent:main:main`) from **`openclaw sessions --json --active <minutes>`** and optionally persists JSON via **`openclaw cache set`** / **`openclaw cache get`**.
+
+- **`RUN`** — Recompute totals and write the cache snapshot (returns a stats dict).
+- **`ReadTokenStats`** — Return a cached snapshot if younger than the TTL; otherwise recompute and refresh.
+
+**Host setup:** Set **`OPENCLAW_BIN`** to the same `openclaw` binary your host uses (defaults match other in-repo adapters). The adapter needs a CLI that implements **`sessions`**; **`cache`** get/set is required only if you want persistent snapshots between runs. If a subcommand is missing, stats/cache steps fail gracefully (empty or partial results).
+
+| Variable | Default | Role |
+|----------|---------|------|
+| `TOKEN_TRACKER_CACHE_NS` | `workflow` | Namespace for `openclaw cache` snapshot |
+| `TOKEN_TRACKER_CACHE_KEY` | `main_session_tokens` | Key under that namespace |
+| `TOKEN_TRACKER_WINDOW_MINUTES` | `60` | Window passed to `openclaw sessions --active` |
+| `TOKEN_TRACKER_CACHE_TTL` | `300` | Seconds `ReadTokenStats` treats cache as fresh |
+
+**Manifest:** `tooling/adapter_manifest.json` → **`openclaw_token_tracker`**.
+
+## Content-engine wrapper (model override + budget guard)
+
+**Entry:** `scripts/wrappers/content-engine.ainl` via `python3 openclaw/bridge/run_wrapper_ainl.py content-engine`.
+
+- **Model selection:** The program reads **`R cache get "budget" "model_override"`**. If that value is non-empty, it is used as the OpenAI chat model name; otherwise **`gpt-4o-mini`**. Your rolling-budget or operator pipeline should write `model_override` into the same monitor **`cache`** store the bridge uses (typically namespace **`workflow`**, key **`budget`** or aligned with your token-budget jobs).
+- **Budget guard:** When **`MONITOR_CACHE_JSON`** contains low **`workflow.token_budget`** daily/weekly remaining figures, **`run_wrapper_ainl.py`** may **skip launching** wrappers that are not **critical**, so scheduled jobs do not spend tokens on secondary work. **`content-engine`** is **critical** (with **`token-budget-alert`**): it is **not** skipped by this guard. Thresholds: **`AINL_WRAPPER_MIN_DAILY_REMAINING`** (default `1000`), **`AINL_WRAPPER_MIN_WEEKLY_REMAINING`** (default `5000`). Optional per-wrapper JSON: **`AINL_WRAPPER_BUDGET_GUARDS_JSON`** (see `openclaw/bridge/run_wrapper_ainl.py`).
 
 ## Production monitoring stack (bridge)
 
@@ -68,11 +94,13 @@ These wrappers run via **`openclaw/bridge/run_wrapper_ainl.py`** and write to Op
 
 ## Environment variables
 
-- **OpenClaw CLI**: `OPENCLAW_BIN` (default matches other OpenClaw adapters in-repo).
+- **OpenClaw CLI**: `OPENCLAW_BIN` (default matches other OpenClaw adapters in-repo). Required for **`openclaw_token_tracker`** session/cache integration.
 - **Daily file location**: `OPENCLAW_MEMORY_DIR` or `OPENCLAW_WORKSPACE/memory` (default **`~/.openclaw/workspace/memory`**) so `openclaw memory search` and on-disk notes stay consistent. Each day’s file is **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`**.
 - **Dry run**: `AINL_DRY_RUN=1` or pass `--dry-run` to `openclaw/bridge/run_wrapper_ainl.py` (or the `scripts/` shim), or set frame key `dry_run` when embedding `RuntimeEngine`.
 - **GitHub**: `GITHUB_TOKEN` or `GH_TOKEN`; `GITHUB_API_URL` if using Enterprise.
 - **CRM**: `CRM_API_BASE`, `CRM_HEALTH_URL`, `CRM_PATH_GITHUB_INTEL_DIGEST`, `CRM_PATH_GITHUB_INTEL_FIND`, `CRM_PATH_LEADS_UPSERT` as needed.
+- **Token tracker:** `TOKEN_TRACKER_CACHE_NS`, `TOKEN_TRACKER_CACHE_KEY`, `TOKEN_TRACKER_WINDOW_MINUTES`, `TOKEN_TRACKER_CACHE_TTL` (see **Token tracker adapter** above).
+- **Wrapper budget guards** (bridge skip logic): `AINL_WRAPPER_MIN_DAILY_REMAINING`, `AINL_WRAPPER_MIN_WEEKLY_REMAINING`, `AINL_WRAPPER_BUDGET_GUARDS_JSON` (see **Content-engine wrapper** above).
 
 ## Testing with `--dry-run`
 

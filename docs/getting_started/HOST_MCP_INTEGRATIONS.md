@@ -34,7 +34,7 @@ Older **`ainl`** wheels may only expose **`install-openclaw`** / **`install-zero
 
 ## Deep dives
 
-- **OpenClaw:** [`OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) — **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**. Cron/bridge (non-MCP): [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md). **Unified bridge & workspace automation:** [`../ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md).
+- **OpenClaw:** [`OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md) — **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**. Cron/bridge (non-MCP): [`openclaw/bridge/README.md`](../../openclaw/bridge/README.md). **Unified bridge & workspace automation:** [`../ainl_openclaw_unified_integration.md`](../ainl_openclaw_unified_integration.md) (**token tracker adapter**, **`content-engine`** model override + budget guards, **`OPENCLAW_BIN`** / **`TOKEN_TRACKER_*`**).
 - **ZeroClaw:** [`ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md) — **`~/.zeroclaw/mcp.json`**, optional **`[ainl_bridge]`** when run from a git checkout.
 - **Hermes Agent:** [`HERMES_INTEGRATION.md`](../HERMES_INTEGRATION.md) — upstream **[github.com/NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)** · **`~/.hermes/config.yaml`** (`mcp_servers.ainl`), **`~/.hermes/bin/ainl-run`**, and **`--emit hermes-skill`** bundles under **`~/.hermes/skills/ainl-imports/`**.
 - **Operators / MCP templates:** [`operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](../operations/EXTERNAL_ORCHESTRATION_GUIDE.md).
