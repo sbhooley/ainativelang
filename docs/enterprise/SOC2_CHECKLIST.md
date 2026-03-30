@@ -53,6 +53,22 @@ The repository includes a **self-contained, core-only** workflow intended for au
 
 This does **not** replace your SIEM, change tickets, or control testing — it gives a **concrete, inspectable artifact** that ties product behavior (policy gates + tape) to common SOC 2 discussion points.
 
+### Example: Bundling tape for auditor review
+
+Below is a **realistic excerpt** of JSONL lines emitted by `ainl run … --trace-jsonl` for [`audit-log-demo.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/enterprise/audit-log-demo.ainl) (fields and shape match the runtime; timestamps are illustrative).
+
+```jsonl
+{"step_id": 3, "label": "_tick", "operation": "Set", "inputs": {"node_id": "n4", "step": {"op": "Set", "lineno": 37, "name": "max_error_bp", "ref": "20"}}, "output": 20, "outcome": "success", "timestamp": "2026-03-30T18:46:28.739Z", "user_reward": null}
+{"step_id": 4, "label": "_tick", "operation": "X", "inputs": {"node_id": "n5", "step": {"op": "X", "lineno": 38, "dst": "lat_bad", "fn": "core.gt", "args": ["latency_ms", "max_latency_ms"]}}, "output": true, "outcome": "success", "timestamp": "2026-03-30T18:46:28.739Z", "user_reward": null}
+{"step_id": 5, "label": "_violation", "operation": "Set", "inputs": {"node_id": "n1", "step": {"op": "Set", "lineno": 46, "name": "out", "ref": "audit:policy_violation"}}, "output": "audit:policy_violation", "outcome": "success", "timestamp": "2026-03-30T18:46:28.739Z", "user_reward": null}
+{"step_id": 6, "label": "_violation", "operation": "J", "inputs": {"node_id": "n2", "step": {"op": "J", "lineno": 47, "var": "out"}}, "output": "audit:policy_violation", "outcome": "success", "timestamp": "2026-03-30T18:46:28.740Z", "user_reward": null}
+{"step_id": 7, "label": "_tick", "operation": "If", "inputs": {"node_id": "n6", "step": {"op": "If", "lineno": 39, "cond": "lat_bad", "then": "_violation", "else": "_err_check"}}, "output": "audit:policy_violation", "outcome": "success", "timestamp": "2026-03-30T18:46:28.740Z", "user_reward": null}
+```
+
+- **Immutable, diffable evidence:** Each line is one execution step with `label`, `operation`, `outcome`, and UTC `timestamp`. You can store the file in git-secured storage or an evidence vault, then **diff** two tapes from different dates or graph versions to show what changed in behavior — complementing (not replacing) your change-management records.
+- **Export:** Write a tape with `uv run ainl run examples/enterprise/audit-log-demo.ainl --trace-jsonl audit-tape.jsonl` (`--trace-jsonl` takes the **output file path**). Archive that file next to the **exact** `.ainl` (or IR) revision and `ainl check --strict` output you used for the run.
+- **Control mapping (illustrative):** **CC7.2** — the tape is structured **audit logging** of *what executed* (policy gate `lat_bad`, branch to `_violation`, join result). **CC8.1** — the graph is a versioned artifact; pairing the tape with the same commit SHA as `ainl check --strict` shows **authorized, testable change** to production logic.
+
 ---
 
 ## Next steps for your audit pack
