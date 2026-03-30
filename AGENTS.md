@@ -58,11 +58,54 @@ POST /compile    — Compile to IR (JSON: {source, strict?})
 POST /run        — Compile and execute (JSON: {source, strict?, frame?})
 ```
 
-## Real AINL Syntax
+## AINL Syntax — Two Formats
 
-**This is critical.** AINL uses a compact 1-char opcode syntax.
-Do NOT invent syntax. Always reference `examples/hello.ainl` or
-`examples/golden/*.ainl` for correct syntax.
+AINL supports TWO equivalent syntaxes. Both compile to the same IR.
+
+### Compact Syntax (Recommended for new code)
+
+Human-friendly, Python-like. See `examples/compact/` for examples.
+
+```ainl
+# examples/compact/hello_compact.ainl
+adder:
+  result = core.ADD 2 3
+  out result
+```
+
+```ainl
+# Branching, inputs, adapter calls
+classifier:
+  in: level message
+  severity = llm.classify level message
+  if severity == "CRITICAL":
+    result = http.POST ${SLACK_WEBHOOK} {text: message}
+    out {action: "slack"}
+  out {action: "logged"}
+```
+
+Compact syntax rules:
+```
+name:                             Graph header (becomes S + labels)
+name @cron "schedule":            Cron job
+name @api "/path":                API endpoint
+in: field1 field2                 Input fields (X field ctx.field)
+var = adapter.op args             Adapter call (R adapter.op args ->var)
+adapter.op args                   Bare call (R adapter.op args ->_)
+var = expr                        Assignment (Set var expr)
+if cond:                          Branch (==, !=, >, <, >=, or bare var)
+  indented body                   Then-block
+out expr                          Return value (Set _out expr + J _out)
+err "message"                     Raise error
+call label                        Call another section
+config key:type                   Config declaration (D Config)
+state key:type                    State declaration (D State)
+# comment                         Comments preserved
+```
+
+### Opcode Syntax (Low-level, power users)
+
+The original 1-char opcode format. See `examples/hello.ainl`.
 
 ### Opcodes
 
@@ -137,31 +180,37 @@ python -m pytest tests/ -x -q -k "not test_profiles_cover"
 # Expected: ~400 passed
 ```
 
-## ⚠️ WARNING: Tutorial Syntax vs Real Syntax
+## ⚠️ NOTE: Tutorial Syntax Variants
 
-The files in `docs/learning/intermediate/` (adapters, emitters, patterns)
-describe a **high-level graph syntax that does NOT exist yet**:
+The files in `docs/learning/intermediate/` contain TWO syntax styles:
 
-```
-# THIS IS ASPIRATIONAL — DOES NOT COMPILE:
-graph AlertClassifier {
-  node classify: LLM("severity-classifier") { ... }
-  node route: switch(classify.result) { ... }
-}
-```
+1. **Compact syntax** (works now) — Python-like, uses the preprocessor:
+   ```ainl
+   classifier:
+     in: level
+     if level == "high":
+       out "critical"
+     out "info"
+   ```
 
-This is a design preview for a potential future AINL 2.0 syntax.
-The real, working syntax uses the opcode format shown above.
-Look for `⚠️ DESIGN PREVIEW` markers in those docs.
+2. **Graph block syntax** (DESIGN PREVIEW — does NOT compile):
+   ```
+   graph AlertClassifier {
+     node classify: LLM("severity-classifier") { ... }
+   }
+   ```
+   This `graph { node ... }` syntax is aspirational. It does NOT compile.
+   Look for `⚠️ DESIGN PREVIEW` markers in those docs.
 
-**Always validate your .ainl files**: `ainl validate <file> --strict`
+**Use compact syntax for new code.** Always validate: `ainl validate <file> --strict`
 
 ## Do NOT
 
 - Modify files outside this repository (especially ~/.openclaw/)
-- Invent new AINL syntax without checking examples/ first
-- Trust intermediate tutorial code blocks as compilable (check for disclaimers)
+- Invent new AINL syntax — use compact or opcode format only
+- Use `graph { node ... }` block syntax (it does NOT compile)
 - Skip running `ainl validate --strict` before committing .ainl files
+- Use `X var value` for assignments — use `Set var value` instead (X has runtime quirks)
 
 ## Related Repositories
 

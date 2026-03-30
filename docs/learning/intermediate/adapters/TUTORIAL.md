@@ -1,10 +1,12 @@
 # Adapters Tutorial: Building a Multi-Adapter Graph
 
-> **⚠️ DESIGN PREVIEW**: The `graph { node ... }` syntax shown in this document
-> is a **design preview for AINL 2.0** and does not compile with the current
-> AINL compiler (v1.3.3). The current working syntax uses single-character
-> opcodes (`S`, `R`, `X`, `J`, `If`, `Set`). See `examples/hello.ainl` or
-> `AGENTS.md` in the repo root for real, compilable syntax.
+> **ℹ️ TWO SYNTAX STYLES**: This document shows two AINL syntax styles:
+> 1. **Compact syntax** (works now) — Python-like, recommended for new code.
+>    See `examples/compact/` and `AGENTS.md` for the full reference.
+> 2. **Graph block syntax** (`graph { node ... }`) — **DESIGN PREVIEW**, does
+>    NOT compile. These blocks are labeled "Design Preview" below.
+>
+> Use compact syntax for real projects: `ainl validate <file> --strict`
 
 
 **Time**: 45 minutes  

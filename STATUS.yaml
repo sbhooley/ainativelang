@@ -65,12 +65,26 @@ real_and_working:
     status: working
     notes: "Zero-dependency HTTP server using stdlib. Foundation for cloud."
 
+  compact_syntax_preprocessor:
+    file: ainl_preprocess.py
+    lines: 500
+    status: production
+    tests: 54
+    notes: >
+      Human-friendly compact syntax (Python-like) that transpiles to standard
+      opcodes before the compiler sees it. Zero compiler changes. Both strict
+      and non-strict modes supported. 66% token reduction vs raw opcodes.
+    examples: "examples/compact/"
+
 aspirational_not_built:
-  high_level_graph_syntax:
-    description: "graph X { node Y: LLM(...) { ... } } syntax in tutorials"
+  graph_block_syntax:
+    description: "graph X { node Y: LLM(...) { ... } } verbose block syntax in tutorials"
     status: "design preview only — does NOT compile"
     location: "docs/learning/intermediate/"
-    notes: "Tutorials describe a future AINL 2.0 syntax. Real syntax uses opcodes."
+    notes: >
+      Some tutorials show a verbose graph{} block syntax alongside the working
+      compact syntax. The graph{} blocks are aspirational and marked with
+      DESIGN PREVIEW disclaimers. Use compact syntax instead.
 
   cloud_marketplace_api:
     description: "Token-gated marketplace for buying/selling .ainl graphs"
