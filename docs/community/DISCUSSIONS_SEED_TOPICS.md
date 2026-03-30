@@ -2,7 +2,7 @@
 
 Use this file to **seed** the [AINL GitHub Discussions](https://github.com/sbhooley/ainativelang/discussions) forum.
 
-**Ready-to-post bodies:** one file per topic in [`docs/community/discussions/`](discussions/) (title + body blocks). Prefer copying from there to avoid drift.
+**Ready-to-post bodies:** consolidated exact copy in **[`DISCUSSIONS_POST_EXACT.md`](DISCUSSIONS_POST_EXACT.md)** (title + body per thread). Older per-topic files: [`docs/community/discussions/`](discussions/).
 
 ## Maintainer: create discussions (GitHub UI)
 

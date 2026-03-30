@@ -66,7 +66,7 @@ Monthly highlights of real AINL programs, contributors, and outcomes. Entries ar
 
 ## 2026-03 — CRM simple lead router (independent builder)
 
-**Project:** SQLite **CRM** routing workflow — score-based branch (sales vs nurture), **ops budget gate**, inserts audit rows via **`crm_db.P`** — strict validation, **zero runtime orchestration LLM**.
+**Project:** Early adopter built a **deterministic lead router** with **policy gates** and **full audit tape** — score-based branch (sales vs nurture), **ops budget gate**, routing decisions written to SQLite via **`crm_db.P`**; strict validation, **zero runtime orchestration LLM**.
 
 **Savings / outcome:** Deterministic routing vs ad-hoc LLM classification loops; recurring orchestration token cost stays at **0**; JSONL tape for compliance review when traced.
 
