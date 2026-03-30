@@ -18,6 +18,18 @@ Unless otherwise noted, the open core may include items such as:
 
 The exact scope of the open core is determined by the license notices and documentation accompanying each repository, package, module, artifact, or distribution.
 
+## Support tiers (open core and beyond)
+
+AINL is intentionally **open core** so teams can adopt, validate, and run workflows without a vendor lock-in fee. At the same time, **production and audit-driven** deployments often need predictable response times and operational backing. The following tiers describe how help is structured; **exact SLAs, scope, and pricing are defined only in a written commercial agreement** — not in this file.
+
+| Tier | Who it is for | What you get | “Won’t be left without help” |
+|------|----------------|--------------|------------------------------|
+| **Community** | Builders using the open-source compiler and runtime, Discussions, and docs | Peer help via [GitHub Discussions](https://github.com/sbhooley/ainativelang/discussions), issues for bugs and features, and curated examples in-repo | Best-effort, async community support — **no** guaranteed response time. |
+| **Paid support** | Teams that need named channels, triage, and guidance for production AINL programs | Commercial engagement per [Examples of Commercial Offerings](#examples-of-commercial-offerings) below (e.g., onboarding, monitor packs, implementation review); response expectations per **order form** | **Contractual** support scope and response targets so you are not relying on volunteer availability alone. |
+| **Enterprise hosted runner** | Organizations that need **SLA-backed execution**, isolation, or managed operational responsibility for runs | Hosted or managed runner options as described in offer docs and your agreement; pairs with paid support for operational incidents | **Dedicated** operational and support path for run health — separate from “best effort” community channels. |
+
+If you are evaluating AINL for **SOC 2–style** or regulated workflows, combine **strict validation + execution tape** (see `docs/enterprise/SOC2_CHECKLIST.md`) with whichever tier matches your **risk and uptime** requirements. Nothing in this section implies certification; it describes **support and operational** posture only.
+
 ## Examples of Commercial Offerings
 
 Separate commercial offerings may include, for example:

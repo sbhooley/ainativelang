@@ -39,6 +39,22 @@ For SLA-backed execution, priority support, or managed runner options, see **[CO
 
 ---
 
+## Production tape replay example
+
+The repository includes a **self-contained, core-only** workflow intended for audit narratives and dry runs: [`examples/enterprise/audit-log-demo.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/enterprise/audit-log-demo.ainl). It models a small **monitoring slice** with explicit **policy thresholds** (latency and error-rate stand-ins), **explicit branches** (`within_policy` vs `policy_violation`), and comments mapping behavior to **CC7.2** (tape as monitoring evidence) and **CC8.1** (versioned graph + strict checks).
+
+**How to capture and replay evidence**
+
+1. From the repo root, validate the graph:  
+   `uv run ainl check examples/enterprise/audit-log-demo.ainl --strict`
+2. Run once and write a JSONL execution tape:  
+   `uv run ainl run examples/enterprise/audit-log-demo.ainl --trace-jsonl audit_demo.tape.jsonl`
+3. For auditor review, retain the **`.ainl` revision** (commit SHA), the **strict check output**, and the **tape file(s)** together. Re-running the same graph with the same inputs reproduces the branch outcome; the tape lists node-level steps in order.
+
+This does **not** replace your SIEM, change tickets, or control testing — it gives a **concrete, inspectable artifact** that ties product behavior (policy gates + tape) to common SOC 2 discussion points.
+
+---
+
 ## Next steps for your audit pack
 
 1. Map each row above to your actual IdP, secrets, SIEM, and change tickets.
@@ -51,3 +67,4 @@ For SLA-backed execution, priority support, or managed runner options, see **[CO
 - [Validation deep dive](../validation-deep-dive.md)
 - [COMMERCIAL.md](../../COMMERCIAL.md) — hosted runner and support
 - [Community spotlights](../community/SPOTLIGHTS.md) — real workflows (e.g., monitoring, cost reports)
+- [Production tape replay example](#production-tape-replay-example) — `examples/enterprise/audit-log-demo.ainl`

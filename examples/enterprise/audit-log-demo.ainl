@@ -1,0 +1,51 @@
+# examples/enterprise/audit-log-demo.ainl
+#
+# Production-style audit demo: deterministic monitoring slice with explicit policy gates
+# and JSONL execution tape suitable for SOC 2–style narratives (illustrative, not certification).
+#
+# ── CC7.2 (monitoring) — "continuous monitoring and feedback"
+#   Each scheduled or on-demand run emits a chronological JSONL tape (node-level steps).
+#   Retained tapes give reviewers a replay-oriented trail: what the graph evaluated, which
+#   branch executed, and what outcome string was joined — without inferring intent from chat.
+#   Pair tape retention, access control, and alerting with your SIEM / log management controls.
+#
+# ── CC8.1 (change management)
+#   The `.ainl` source and `ainl check --strict` output are versionable artifacts; promote
+#   the same graph IR through PR review and CI like any other code change.
+#
+# ── CC6.1 (logical access / capability boundaries)
+#   This file uses only the `core` adapter so it runs in restricted sandboxes. In production,
+#   you would attach http/email/chain adapters only where policy allows; undeclared effects
+#   cannot appear in the compiled graph.
+#
+# Validate and capture tape (from repo root):
+#   uv run ainl check examples/enterprise/audit-log-demo.ainl --strict
+#   uv run ainl run examples/enterprise/audit-log-demo.ainl --trace-jsonl audit_demo.tape.jsonl
+#
+# Replay narrative for auditors: re-run the same binary graph with the same inputs; the tape
+# reproduces the branch decision. For investigations, diff tapes across runs or correlate
+# timestamps with external telemetry (outside AINL).
+
+S app core noop
+
+# Simulated KPIs — replace with adapter reads (HTTP health, chain RPC, queue depth) under your
+# capability policy; keep thresholds as data your team reviews in PR.
+L_tick:
+  Set latency_ms 120
+  Set error_rate_bp 15
+  Set max_latency_ms 100
+  Set max_error_bp 20
+  X lat_bad (core.gt latency_ms max_latency_ms)
+  If lat_bad ->L_violation ->L_err_check
+
+L_err_check:
+  X err_bad (core.gt error_rate_bp max_error_bp)
+  If err_bad ->L_violation ->L_ok
+
+L_violation:
+  Set out "audit:policy_violation"
+  J out
+
+L_ok:
+  Set out "audit:within_policy"
+  J out
