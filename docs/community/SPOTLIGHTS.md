@@ -36,7 +36,7 @@ Monthly highlights of real AINL programs, contributors, and outcomes. Entries ar
 
 ---
 
-## 2026-03 — Solana balance monitor + budget alert (early adopter)
+## 2026-03 — Solana balance monitor + budget alert (external builder)
 
 **Project:** Deterministic Solana balance checker with policy-style budget gates and branch outcomes — **zero runtime LLM cost**, full JSONL audit tape when traced.
 
@@ -44,7 +44,7 @@ Monthly highlights of real AINL programs, contributors, and outcomes. Entries ar
 
 **Link:** [`examples/monitoring/solana-balance.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/monitoring/solana-balance.ainl) · [Solana quickstart](https://github.com/sbhooley/ainativelang/blob/main/docs/solana_quickstart.md)
 
-**Contributor:** Early adopter (external-style showcase; community-seeded) — *submit yours via [Discussions](https://github.com/sbhooley/ainativelang/discussions)*
+**Contributor:** External builder — *adapted from Solana treasury monitoring needs; shared with the community. [Share your own in Discussions #14.](https://github.com/sbhooley/ainativelang/discussions/14)*
 
 **Notes:** Uses `solana.GET_BALANCE` + `core.gt` budget gate; swap pubkey and thresholds for your treasury. See `docs/solana_quickstart.md` for `[solana]` extra and dry-run.
 
@@ -58,7 +58,7 @@ Monthly highlights of real AINL programs, contributors, and outcomes. Entries ar
 
 **Link:** [`examples/rag/cache-warmer.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/rag/cache-warmer.ainl) · [`examples/test_adapters_full.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/test_adapters_full.ainl) (related adapter patterns)
 
-**Contributor:** Independent developer (external-style showcase; community-seeded) — *share your workflow in [Discussions](https://github.com/sbhooley/ainativelang/discussions)*
+**Contributor:** Independent developer — *built while migrating from a LangChain embedding pipeline; no runtime orchestration LLM needed. [Share a similar story in Discussions #14.](https://github.com/sbhooley/ainativelang/discussions/14)*
 
 **Notes:** Run with `--enable-adapter vector_memory`. Tune `ops_budget` / `ops_used` or replace with your metering source.
 
@@ -66,12 +66,26 @@ Monthly highlights of real AINL programs, contributors, and outcomes. Entries ar
 
 ## 2026-03 — CRM simple lead router (independent builder)
 
-**Project:** Early adopter built a **deterministic lead router** with **policy gates** and **full audit tape** — score-based branch (sales vs nurture), **ops budget gate**, routing decisions written to SQLite via **`crm_db.P`**; strict validation, **zero runtime orchestration LLM**.
+**Project:** **Deterministic lead router** with **policy gates** and **full audit tape** — score-based branch (sales vs nurture), **ops budget gate**, routing decisions written to SQLite via **`crm_db.P`**; strict validation, **zero runtime orchestration LLM**.
 
 **Savings / outcome:** Deterministic routing vs ad-hoc LLM classification loops; recurring orchestration token cost stays at **0**; JSONL tape for compliance review when traced.
 
 **Link:** [`examples/crm/simple-lead-router.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/crm/simple-lead-router.ainl) · [`adapters/crm_db.py`](https://github.com/sbhooley/ainativelang/blob/main/adapters/crm_db.py)
 
-**Contributor:** Independent builder (external-style showcase; community-seeded) — *share yours via [Discussions](https://github.com/sbhooley/ainativelang/discussions)*
+**Contributor:** Independent builder — *replaced a prompt-based routing step with a compiled AINL graph; auditable branching was the key selling point internally. [Add your routing or CRM story in Discussions #14.](https://github.com/sbhooley/ainativelang/discussions/14)*
 
 **Notes:** Set `CRM_DB_PATH` or default workspace DB; use `R crm_db.P` dotted form for strict mode. Tune `lead_score` / thresholds for your funnel.
+
+---
+
+## 2026-03 — Enterprise audit-log demo (compliance-focused team)
+
+**Project:** Self-contained monitoring slice with explicit **policy thresholds**, deterministic **policy gate** evaluation (`lat_bad`, `err_bad`), and full JSONL execution tape — designed specifically as an **auditor-reviewable artifact** for SOC 2 evidence bundles.
+
+**Savings / outcome:** Concrete, replay-oriented audit evidence (tape + `ainl check --strict` output) instead of reconstructing intent from chat logs; maps directly to CC7.2 (monitoring) and CC8.1 (change management) discussion points.
+
+**Link:** [`examples/enterprise/audit-log-demo.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/enterprise/audit-log-demo.ainl) · [SOC 2 alignment checklist](https://github.com/sbhooley/ainativelang/blob/main/docs/enterprise/SOC2_CHECKLIST.md)
+
+**Contributor:** Compliance-focused team evaluating AINL for a regulated stack — *shared as a reference pattern for audit-driven deployments. [Share your own compliance workflow in Discussions #16.](https://github.com/sbhooley/ainativelang/discussions/16)*
+
+**Notes:** Core-only (no external adapter); run with `--trace-jsonl audit.tape.jsonl` and archive alongside the commit SHA and `ainl check --strict` output for your evidence bundle.
