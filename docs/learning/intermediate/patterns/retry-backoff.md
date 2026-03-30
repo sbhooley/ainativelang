@@ -1,5 +1,12 @@
 # Retry with Exponential Backoff Pattern
 
+> **⚠️ DESIGN PREVIEW**: The `graph { node ... }` syntax shown in this document
+> is a **design preview for AINL 2.0** and does not compile with the current
+> AINL compiler (v1.3.3). The current working syntax uses single-character
+> opcodes (`S`, `R`, `X`, `J`, `If`, `Set`). See `examples/hello.ainl` or
+> `AGENTS.md` in the repo root for real, compilable syntax.
+
+
 Handle transient failures in external API calls with intelligent retry logic.
 
 ---
@@ -35,7 +42,41 @@ graph TD
 
 ## 🏗️ Implementation
 
-### Graph Definition
+### Real AINL Syntax (v1.3.3 — this compiles)
+
+```ainl
+# retry_api.ainl — Retry HTTP call with backoff
+# ainl validate retry_api.ainl --strict
+
+S app core noop
+
+L_call:
+  R core.GET ctx "url" ->url
+  R http.POST url {} ->resp
+  R core.GET resp "status" ->status
+  If (core.eq status 200) ->L_ok ->L_retry
+
+L_retry:
+  # Check attempt count
+  R core.GET ctx "attempt" ->attempt
+  X max_attempts 3
+  If (core.gt attempt max_attempts) ->L_fail ->L_wait
+
+L_wait:
+  # Exponential backoff: sleep 1s * 2^attempt
+  R core.mul 1000 (core.pow 2 attempt) ->delay_ms
+  R core.sleep delay_ms ->_
+  Set attempt (core.add attempt 1)
+  Call L_call
+
+L_ok:
+  J resp
+
+L_fail:
+  Err "Max retries exceeded"
+```
+
+### Design Preview Syntax (AINL 2.0 — does NOT compile yet)
 
 ```ainl
 graph RetryApiCall {

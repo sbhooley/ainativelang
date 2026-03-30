@@ -1,5 +1,12 @@
 # Idempotent Webhook Handler Pattern
 
+> **⚠️ DESIGN PREVIEW**: The `graph { node ... }` syntax shown in this document
+> is a **design preview for AINL 2.0** and does not compile with the current
+> AINL compiler (v1.3.3). The current working syntax uses single-character
+> opcodes (`S`, `R`, `X`, `J`, `If`, `Set`). See `examples/hello.ainl` or
+> `AGENTS.md` in the repo root for real, compilable syntax.
+
+
 Handle duplicate webhook events safely without double-processing.
 
 ---
@@ -16,6 +23,47 @@ You need to ensure processing is idempotent: processing the same event twice has
 ---
 
 ## Implementation
+
+### Real AINL Syntax (v1.3.3 — this compiles)
+
+```ainl
+# webhook_processor.ainl — Idempotent webhook handler
+# ainl validate webhook_processor.ainl --strict
+
+S app api /webhooks/incoming
+
+L_start:
+  R core.GET ctx "body" ->body
+  R core.GET body "id" ->event_id
+  R core.GET body "type" ->event_type
+
+  # Check idempotency cache
+  X cache_key (core.add "webhook:" event_id)
+  R cache.get cache_key ->already
+  If already ->L_skip ->L_process
+
+L_skip:
+  Set result {"status": "already_processed", "skipped": true}
+  J result
+
+L_process:
+  # Route by event type
+  If (core.eq event_type "invoice.paid") ->L_invoice ->L_other
+
+L_invoice:
+  R http.POST "https://api.stripe.com/v1/invoices/finalize" body ->resp
+  Set result {"status": "processed", "type": "invoice"}
+  # Mark as processed
+  R cache.set cache_key "processed" ->_
+  J result
+
+L_other:
+  Set result {"status": "processed", "type": event_type}
+  R cache.set cache_key "processed" ->_
+  J result
+```
+
+### Design Preview Syntax (AINL 2.0 — does NOT compile yet)
 
 ```ainl
 graph WebhookProcessor {

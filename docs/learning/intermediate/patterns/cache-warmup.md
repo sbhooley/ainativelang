@@ -1,5 +1,12 @@
 # Cache Warmup Pattern
 
+> **⚠️ DESIGN PREVIEW**: The `graph { node ... }` syntax shown in this document
+> is a **design preview for AINL 2.0** and does not compile with the current
+> AINL compiler (v1.3.3). The current working syntax uses single-character
+> opcodes (`S`, `R`, `X`, `J`, `If`, `Set`). See `examples/hello.ainl` or
+> `AGENTS.md` in the repo root for real, compilable syntax.
+
+
 Pre-populate cache with LLM responses to reduce costs and latency for repeated queries.
 
 ---
@@ -16,6 +23,36 @@ LLM costs add up. Cache responses so subsequent identical queries hit cache inst
 ---
 
 ## Implementation
+
+### Real AINL Syntax (v1.3.3 — this compiles)
+
+```ainl
+# cached_qa.ainl — Cache LLM responses to reduce cost
+# ainl validate cached_qa.ainl --strict
+
+S app core noop
+
+L_start:
+  R core.GET ctx "question" ->question
+  # Normalize key: lowercase, trim
+  R core.lower question ->norm_q
+  X cache_key (core.add "qa:" norm_q)
+
+  # Check cache
+  R cache.get cache_key ->cached
+  If cached ->L_cached ->L_ask_llm
+
+L_cached:
+  J cached
+
+L_ask_llm:
+  R llm.query question ->answer
+  # Store in cache
+  R cache.set cache_key answer ->_
+  J answer
+```
+
+### Design Preview Syntax (AINL 2.0 — does NOT compile yet)
 
 ```ainl
 graph CachedQA {

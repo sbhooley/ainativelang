@@ -1,0 +1,106 @@
+# STATUS.yaml — What is real vs aspirational
+# Updated: 2026-03-30
+
+real_and_working:
+  compiler:
+    file: compiler_v2.py
+    lines: 5303
+    status: production
+    notes: "Parses .ainl → IR. 25 emitters. Fully tested."
+
+  runtime:
+    file: runtime/engine.py
+    lines: 2153
+    status: production
+    notes: "Executes IR graphs. Async support. Observability."
+
+  cli:
+    file: cli/main.py
+    lines: 2700
+    status: production
+    commands:
+      - "ainl run"
+      - "ainl validate [--strict] [--json-output]"
+      - "ainl emit --target <target>"
+      - "ainl serve [--port PORT]"
+      - "ainl compile"
+      - "ainl check"
+      - "ainl visualize"
+      - "ainl inspect"
+      - "ainl init"
+      - "ainl doctor"
+
+  adapters:
+    status: production
+    count: 54
+    key_adapters:
+      - "solana (1447 lines)"
+      - "postgres (469 lines)"
+      - "dynamodb (604 lines)"
+      - "redis (615 lines)"
+      - "supabase (764 lines)"
+      - "mysql (475 lines)"
+      - "airtable (415 lines)"
+      - "llm/openrouter"
+      - "llm/ollama"
+      - "llm/anthropic"
+      - "llm/cohere"
+      - "http, memory, cache, queue"
+
+  tests:
+    count: "~1000 files, ~300K lines"
+    status: "400 passing"
+
+  examples:
+    count: 154
+    format: ".ainl (real, compilable syntax)"
+
+  http_server:
+    command: "ainl serve --port 8080"
+    endpoints:
+      - "POST /validate"
+      - "POST /compile"
+      - "POST /run"
+      - "GET /health"
+    status: working
+    notes: "Zero-dependency HTTP server using stdlib. Foundation for cloud."
+
+aspirational_not_built:
+  high_level_graph_syntax:
+    description: "graph X { node Y: LLM(...) { ... } } syntax in tutorials"
+    status: "design preview only — does NOT compile"
+    location: "docs/learning/intermediate/"
+    notes: "Tutorials describe a future AINL 2.0 syntax. Real syntax uses opcodes."
+
+  cloud_marketplace_api:
+    description: "Token-gated marketplace for buying/selling .ainl graphs"
+    status: "design only — zero implementation code"
+    location: "ainativelangcloud repo"
+
+  hosted_runtime_saas:
+    description: "Managed execution environment for enterprises"
+    status: "design only"
+
+  validation_saas_dashboard:
+    description: "Cloud-hosted validation with compliance reports"
+    status: "design only — ainl serve exists locally but not deployed"
+
+  token_gating:
+    description: "1M $AINL wallet balance check for marketplace access"
+    status: "not built — Solana adapter exists but gating logic doesn't"
+
+  marketplace_graphs:
+    description: ".ainl.json files in ainativelangcloud/marketplace/graphs/"
+    status: "hand-written mockups, not compiler output"
+
+  enterprise_support_sla:
+    description: "Tiered support contracts"
+    status: "spec written, not operational"
+
+  community_champions_program:
+    description: "Token-incentivized contributor rewards"
+    status: "spec written, not launched"
+
+  ainl_native_cloud:
+    description: "Running cloud services as AINL graphs instead of Lambda/Python"
+    status: "plan only — no AINL backend graphs written"

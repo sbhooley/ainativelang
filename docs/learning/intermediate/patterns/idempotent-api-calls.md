@@ -1,5 +1,12 @@
 # Idempotent API Calls Pattern
 
+> **⚠️ DESIGN PREVIEW**: The `graph { node ... }` syntax shown in this document
+> is a **design preview for AINL 2.0** and does not compile with the current
+> AINL compiler (v1.3.3). The current working syntax uses single-character
+> opcodes (`S`, `R`, `X`, `J`, `If`, `Set`). See `examples/hello.ainl` or
+> `AGENTS.md` in the repo root for real, compilable syntax.
+
+
 Make external API calls safe to retry without causing duplicates.
 
 ---

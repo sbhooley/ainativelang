@@ -1,5 +1,12 @@
 # Email Alert Classifier Pattern
 
+> **⚠️ DESIGN PREVIEW**: The `graph { node ... }` syntax shown in this document
+> is a **design preview for AINL 2.0** and does not compile with the current
+> AINL compiler (v1.3.3). The current working syntax uses single-character
+> opcodes (`S`, `R`, `X`, `J`, `If`, `Set`). See `examples/hello.ainl` or
+> `AGENTS.md` in the repo root for real, compilable syntax.
+
+
 Classify and route alerts based on severity using LLM + deterministic routing.
 
 ---
@@ -31,7 +38,45 @@ graph TD
 
 ## 🏗️ Implementation
 
-### Graph Definition
+### Real AINL Syntax (v1.3.3 — this compiles)
+
+```ainl
+# alert_classifier.ainl — Route alerts by severity
+# ainl validate alert_classifier.ainl --strict
+# ainl run alert_classifier.ainl
+
+S app core noop
+
+L_classify:
+  # Input: alert source, level, message are in the frame
+  R core.GET ctx "source" ->source
+  R core.GET ctx "level" ->level
+  R core.GET ctx "message" ->msg
+
+  # Use LLM adapter to classify severity
+  R llm.classify level msg ->severity
+
+  If (core.eq severity "CRITICAL") ->L_slack ->L_check_warn
+
+L_check_warn:
+  If (core.eq severity "WARNING") ->L_email ->L_log
+
+L_slack:
+  R http.POST "https://hooks.slack.com/..." {"text": msg} ->_
+  Set action "sent_slack"
+  J action
+
+L_email:
+  R http.POST "https://api.sendgrid.com/v3/mail/send" {"to": "ops@example.com", "body": msg} ->_
+  Set action "sent_email"
+  J action
+
+L_log:
+  Set action "logged"
+  J action
+```
+
+### Design Preview Syntax (AINL 2.0 — does NOT compile yet)
 
 ```ainl
 graph AlertClassifier {
