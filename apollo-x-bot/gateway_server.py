@@ -78,6 +78,7 @@ import re
 import secrets
 import sqlite3
 import ssl
+import subprocess
 import sys
 import time
 import urllib.error
@@ -2041,6 +2042,41 @@ def _read_daily_codebase_snippets() -> str:
         if total >= max_chars:
             break
     return "\n\n".join(parts)
+
+
+def _recent_commit_messages(max_commits: int = 3) -> str:
+    """Return a newline-separated list of recent git commit subject lines from the codebase root."""
+    root = _promoter_codebase_root()
+    git_exe = os.environ.get("PROMOTER_GIT_EXE", "git")
+    try:
+        result = subprocess.run(
+            [git_exe, "-C", str(root), "log", f"-{max_commits}", "--oneline", "--no-decorate"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode == 0:
+            lines = [line.strip() for line in result.stdout.strip().splitlines() if line.strip()]
+            return "\n".join(lines[:max_commits])
+    except Exception as e:
+        _gw_debug(f"recent commits fetch failed: {e!r}")
+    return ""
+
+
+def handle_promoter_daily_github_commits(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
+    """Return recent commit messages to provide time-sensitive content for daily posts."""
+    max_commits = 3
+    try:
+        payload = body.get("payload") or body
+        if isinstance(payload, dict):
+            mc = payload.get("max_commits")
+            if isinstance(mc, int) and 1 <= mc <= 10:
+                max_commits = mc
+    except Exception:
+        pass
+    commits = _recent_commit_messages(max_commits)
+    return {"ok": True, "commits": commits.splitlines() if commits else []}
 
 
 def handle_x_search(body: Dict[str, Any], state: PromoterState) -> Dict[str, Any]:
@@ -4125,6 +4161,7 @@ ROUTES = {
     "/v1/promoter.classify_prompts": handle_promoter_classify_prompts,
     "/v1/promoter.daily_post_prompts": handle_promoter_daily_post_prompts,
     "/v1/promoter.daily_snippets": handle_promoter_daily_snippets,
+    "/v1/promoter.daily_github_commits": handle_promoter_daily_github_commits,
     "/v1/promoter.gate_eval": handle_promoter_gate_eval,
     "/v1/promoter.process_tweet": handle_process_tweet,
     "/v1/promoter.discover_tweet_authors": handle_promoter_discover_tweet_authors,

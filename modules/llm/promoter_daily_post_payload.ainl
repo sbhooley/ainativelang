@@ -31,6 +31,11 @@ L_pd_fetch:
   # pd_llm_ok is overwritten by chat response "ok" (boolean). Init as JSON 0, not "false" (avoids strict/parse edge in nested include).
   R bridge.POST promoter.daily_snippets empty ->snip_http
   X d_sn get snip_http body snippets
+  R bridge.POST promoter.daily_github_commits empty ->comm_http
+  X d_comm_raw get comm_http body commits
+  Set d_comm_str null
+  X d_comm_arr (if (eq d_comm_raw null) null else d_comm_raw)
+  X d_comm_str (ite (eq d_comm_arr null) "" (core.join d_comm_arr "\n"))
   R bridge.POST promoter.daily_post_prompts empty ->pr_http
   X d_sys get pr_http body system
   X d_suf get pr_http body user_suffix
@@ -55,14 +60,16 @@ L_pd_fetch:
   R core.concat pd_b d_link ->pd_c
   R core.concat pd_c "\n\nRepository excerpts:\n" ->pd_d
   R core.concat pd_d d_sn2 ->pd_e
-  R core.concat pd_e "\n\n" ->pd_f
+  X d_comm_section (ite (and (neq d_comm_str "") (gt (len d_comm_str) 0)) (core.concat "\nRecent git commits:\n" d_comm_str "\n") "")
+  R core.concat pd_e d_comm_section ->pd_after_commits
+  R core.concat pd_after_commits "\n\n" ->pd_f
   R core.concat pd_f d_suf3 ->daily_user_full
   R core.stringify d_sys3 ->sys_j
   R core.stringify daily_user_full ->usr_j
   R core.concat "{\"role\":\"system\",\"content\":" sys_j "}" ->m0
   R core.concat "{\"role\":\"user\",\"content\":" usr_j "}" ->m1
   R core.concat "[" m0 "," m1 "]" ->msgs
-  R core.env "PROMOTER_DAILY_POST_TEMPERATURE" "0.9" ->dtemp
+  R core.env "PROMOTER_DAILY_POST_TEMPERATURE" "1.2" ->dtemp
   R core.concat "{\"messages\":" msgs ",\"temperature\":" dtemp ",\"usage_context\":\"daily_original_post\"}" ->pd_llm_inner_json
   R core.stringify "ainl-x-promoter" ->pd_rid_j
   R core.stringify "daily" ->pd_sid_j
