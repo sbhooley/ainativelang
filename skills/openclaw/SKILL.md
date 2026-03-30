@@ -71,7 +71,7 @@ Tell the user they can say in OpenClaw:
 
 ## MCP
 
-Configure the host so **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`** runs **`ainl-mcp`** as a stdio MCP server (see AINL docs: *OpenClaw integration* / *External orchestration*). **`ainl install-mcp --host openclaw`** merges that entry when missing.
+Configure the host so **`mcp.servers.ainl`** in **`~/.openclaw/openclaw.json`** runs **`ainl-mcp`** as a stdio MCP server (see AINL docs: *OpenClaw integration* / *External orchestration*). **`ainl install-mcp --host openclaw`** merges that entry when missing.
 
 ## References
 

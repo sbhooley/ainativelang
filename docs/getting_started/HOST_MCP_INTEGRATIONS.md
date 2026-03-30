@@ -1,6 +1,6 @@
 # MCP host integrations (OpenClaw, ZeroClaw, Hermes Agent, …)
 
-Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcpServers.ainl`** (or YAML **`mcp_servers.ainl`** on Hermes), install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
+Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcp.servers.ainl`** (or YAML **`mcp_servers.ainl`** on Hermes), install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
 
 **Current PyPI release:** `ainativelang` **v1.3.3**.
 

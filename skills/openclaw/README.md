@@ -79,7 +79,7 @@ OPENCLAW_SKIP_NPM=1 ./install.sh
 
 1. **Optional `npm install -g openclaw@latest`** — refreshes the OpenClaw CLI when **npm** is on PATH (skipped if **`OPENCLAW_SKIP_NPM=1`**).
 2. **`pip install --upgrade 'ainativelang[mcp]'`** — compiler, importer extras, MCP dependencies.
-3. **`ainl install-mcp --host openclaw`** — pip self-upgrade path, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, and **`~/.openclaw/bin/ainl-run`**.
+3. **`ainl install-mcp --host openclaw`** — pip self-upgrade path, **`mcp.servers.ainl`** in **`~/.openclaw/openclaw.json`**, and **`~/.openclaw/bin/ainl-run`**.
 
 Add **`~/.openclaw/bin`** to **PATH** if you want to invoke **`ainl-run`** without a full path (the installer prints a hint).
 

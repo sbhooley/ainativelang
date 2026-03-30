@@ -278,7 +278,7 @@ Details: **[`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md)** · s
 
 [OpenClaw](https://openclaw.ai/) uses **npm** + **`openclaw onboard`** for the host CLI. AINL is added as a **skill folder** (not via **`zeroclaw skills install`**): copy **[`skills/openclaw/`](skills/openclaw/)** to **`~/.openclaw/skills/`** or **`<workspace>/skills/`**, or install from **ClawHub** when the skill is listed there.
 
-**Bootstrap** (PyPI self-upgrade, **`mcpServers.ainl`** in **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-mcp --host openclaw`** (use **`--dry-run`** / **`--verbose`** as needed). **`install.sh`** may run **`npm install -g openclaw@latest`** when npm is on PATH; set **`OPENCLAW_SKIP_NPM=1`** to skip.
+**Bootstrap** (PyPI self-upgrade, **`mcp.servers.ainl`** in **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-mcp --host openclaw`** (use **`--dry-run`** / **`--verbose`** as needed). **`install.sh`** may run **`npm install -g openclaw@latest`** when npm is on PATH; set **`OPENCLAW_SKIP_NPM=1`** to skip.
 
 Once bootstrapped, the OpenClaw bridge automatically activates AINL's intelligence layer, including the cap auto-tuner and memory hydration/embedding pilot. This creates a self-managing runtime that continuously adjusts execution caps and prunes caches based on observed token usage — helping sustain 90–95% token savings on high-frequency monitors and digests with zero recurring LLM orchestration cost.
 

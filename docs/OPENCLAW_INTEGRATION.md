@@ -6,7 +6,7 @@
 
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw%20Skill-AINL-blue)](https://github.com/sbhooley/ainativelang/tree/main/skills/openclaw)
 
-AINL ships an **OpenClaw skill** under [`skills/openclaw/`](../skills/openclaw/) (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-mcp --host openclaw`** (alias **`ainl install-openclaw`**), a user-side bootstrap that wires PyPI, **`~/.openclaw/openclaw.json`** (`mcpServers.ainl`), and **`~/.openclaw/bin/ainl-run`** without changing the OpenClaw application itself.
+AINL ships an **OpenClaw skill** under [`skills/openclaw/`](../skills/openclaw/) (deterministic graphs, Markdown importer, **`ainl-mcp`**) and **`ainl install-mcp --host openclaw`** (alias **`ainl install-openclaw`**), a user-side bootstrap that wires PyPI, **`~/.openclaw/openclaw.json`** (`mcp.servers.ainl`), and **`~/.openclaw/bin/ainl-run`** without changing the OpenClaw application itself.
 
 **Standalone skill repo (optional, later):** copy **[`skills/openclaw/`](../skills/openclaw/)** to **[github.com/sbhooley/ainl-openclaw-skill](https://github.com/sbhooley/ainl-openclaw-skill)** as the repository root (`SKILL.md`, `install.sh`, `README.md`) if you want a single-purpose repo for ClawHub or docs links.
 
@@ -58,7 +58,7 @@ Then use **`ainl import markdown …`**, ecosystem shortcuts (**`ainl import cla
 | Artifact | Purpose |
 |----------|---------|
 | `pip install --upgrade 'ainativelang[mcp]'` | Latest compiler, importer extras, MCP dependencies |
-| `~/.openclaw/openclaw.json` | Merges **`mcpServers.ainl`** stdio entry pointing at **`ainl-mcp`** (skipped if already present with the same resolved command); other top-level keys preserved |
+| `~/.openclaw/openclaw.json` | Merges **`mcp.servers.ainl`** stdio entry pointing at **`ainl-mcp`** (skipped if already present with the same resolved command); other top-level keys preserved |
 | `~/.openclaw/bin/ainl-run` | Shell wrapper: compile then **`exec ainl run`** with extra args forwarded |
 | `~/.bashrc` / `~/.zshrc` | Appends **`export PATH="$HOME/.openclaw/bin:$PATH"`** when those files exist and do not already mention **`~/.openclaw/bin`** |
 

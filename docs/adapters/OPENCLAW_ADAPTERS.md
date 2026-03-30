@@ -4,7 +4,7 @@ This document sketches how to expose **OpenClaw actions** as AINL adapters so th
 
 **Before implementation work:** Agents and contributors should follow **`../BOT_ONBOARDING.md`** and complete **`../OPENCLAW_IMPLEMENTATION_PREFLIGHT.md`** (see `tooling/bot_bootstrap.json`).
 
-**OpenClaw MCP skill (host config):** **`skills/openclaw/`**, **`ainl install-openclaw`**, **`~/.openclaw/openclaw.json`** (`mcpServers.ainl`), stdio **`ainl-mcp`** — see **[`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)**. This is **separate** from **`ocl.*`** adapter bindings and **`openclaw/bridge/`** cron runners below.
+**OpenClaw MCP skill (host config):** **`skills/openclaw/`**, **`ainl install-openclaw`**, **`~/.openclaw/openclaw.json`** (`mcp.servers.ainl`), stdio **`ainl-mcp`** — see **[`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)**. This is **separate** from **`ocl.*`** adapter bindings and **`openclaw/bridge/`** cron runners below.
 
 **ZeroClaw:** integrate via the **ZeroClaw skill**, **`ainl install-zeroclaw`**, and stdio **`ainl-mcp`** — see **[`../ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md)**. This guide documents **`ocl.*`** adapter patterns for **OpenClaw** hosts; ZeroClaw does not require the OpenClaw bridge layout.
 

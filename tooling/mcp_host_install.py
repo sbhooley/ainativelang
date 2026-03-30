@@ -35,7 +35,7 @@ PROFILES: dict[str, McpHostProfile] = {
         id="openclaw",
         dot_rel=Path(".openclaw"),
         config_filename="openclaw.json",
-        config_kind="json_mcpServers",
+        config_kind="json_mcp_servers_under_mcp",
         path_line='export PATH="$HOME/.openclaw/bin:$PATH"',
         path_marker=".openclaw/bin",
         success_tip='Now say in OpenClaw: "Import the morning briefing using AINL"',
@@ -125,6 +125,18 @@ def ensure_mcp_registration(
 
     if profile.config_kind == "yaml_mcp_servers":
         _ensure_mcp_registration_yaml_mcp_servers(
+            cfg_path,
+            server_key=MCP_SERVER_KEY,
+            desired=desired,
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+        if not dry_run:
+            print(f"Wrote MCP config: {cfg_path}")
+        return
+
+    if profile.config_kind == "json_mcp_servers_under_mcp":
+        _ensure_mcp_registration_json_under_mcp(
             cfg_path,
             server_key=MCP_SERVER_KEY,
             desired=desired,
@@ -236,6 +248,61 @@ def _ensure_mcp_registration_yaml_mcp_servers(
         return
 
     cfg_path.write_text(new_text, encoding="utf-8")
+
+
+def _ensure_mcp_registration_json_under_mcp(
+    cfg_path: Path,
+    *,
+    server_key: str,
+    desired: dict,
+    dry_run: bool,
+    verbose: bool,
+) -> None:
+    """
+    OpenClaw format: openclaw.json with top-level "mcp" containing "servers" mapping.
+    Writes/merges: {"mcp": {"servers": {"ainl": {"command": "...", "args": []}}}}
+    """
+    server_block = {server_key: desired}
+
+    if cfg_path.is_file():
+        try:
+            data = json.loads(cfg_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            data = {}
+    else:
+        data = {}
+
+    if not isinstance(data, dict):
+        data = {}
+
+    # Ensure "mcp" exists and is a dict
+    mcp = data.get("mcp")
+    if mcp is None or not isinstance(mcp, dict):
+        mcp = {}
+        data["mcp"] = mcp
+
+    # Ensure "servers" exists under mcp
+    servers = mcp.get("servers")
+    if servers is None or not isinstance(servers, dict):
+        servers = {}
+        mcp["servers"] = servers
+
+    # Check if already present with same command
+    existing = servers.get(server_key)
+    if isinstance(existing, dict) and existing.get("command") == desired["command"]:
+        _log(verbose, f"MCP: {server_key!r} already registered in {cfg_path} under mcp.servers")
+        return
+
+    servers[server_key] = desired
+
+    if dry_run:
+        print(f"[dry-run] would write/update {cfg_path} with mcp.servers.{server_key}")
+        _log(verbose, json.dumps({"mcp": {"servers": {server_key: desired}}}, indent=2))
+        return
+
+    cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    print(f"Wrote MCP config: {cfg_path}")
 
 
 def ensure_ainl_run_wrapper(

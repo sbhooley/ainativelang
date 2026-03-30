@@ -1,6 +1,6 @@
 # AI Native Lang (AINL) Glossary
 
-> **OpenClaw (MCP skill):** **[`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)** — **`skills/openclaw/`**, **`ainl install-openclaw`**, **`~/.openclaw/openclaw.json`** (`mcpServers.ainl`), stdio **`ainl-mcp`**. (Distinct from **OpenClaw bridge** cron/memory under **`openclaw/bridge/`**.)
+> **OpenClaw (MCP skill):** **[`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)** — **`skills/openclaw/`**, **`ainl install-openclaw`**, **`~/.openclaw/openclaw.json`** (`mcp.servers.ainl`), stdio **`ainl-mcp`**. (Distinct from **OpenClaw bridge** cron/memory under **`openclaw/bridge/`**.)
 >
 > **ZeroClaw:** Host integration via **ZeroClaw skill**, **`ainl install-zeroclaw`**, and **`ainl-mcp`** — see **[`../ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md)** (distinct from **OpenClaw** bridge/cron docs).
 

@@ -207,7 +207,7 @@ Run **`./install.sh`** or **`ainl install-mcp --host zeroclaw`** so **`ainl-mcp`
 
 **[OpenClaw](https://openclaw.ai/)** can consume AINL as a **skill** under **`~/.openclaw/skills`** or **`<workspace>/skills`** (copy **[`skills/openclaw/`](../skills/openclaw/)** or use **ClawHub** when available — not **`zeroclaw skills install`**).
 
-Run **`./install.sh`** or **`ainl install-mcp --host openclaw`** so **`mcpServers.ainl`** is merged into **`~/.openclaw/openclaw.json`** and **`~/.openclaw/bin/ainl-run`** is available. Walkthrough: **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **Try:** *“Import the morning briefing using AINL.”*
+Run **`./install.sh`** or **`ainl install-mcp --host openclaw`** so **`mcp.servers.ainl`** is merged into **`~/.openclaw/openclaw.json`** and **`~/.openclaw/bin/ainl-run`** is available. Walkthrough: **[`docs/OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)**. **Try:** *“Import the morning briefing using AINL.”*
 
 ### Import Clawflows & Agency-Agents via MCP
 
