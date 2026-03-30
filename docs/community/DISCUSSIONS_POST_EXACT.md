@@ -7,8 +7,21 @@
 | 14 | Share your first AINL workflow | https://github.com/sbhooley/ainativelang/discussions/14 |
 | 15 | LangGraph → AINL: migration experiences | https://github.com/sbhooley/ainativelang/discussions/15 |
 | 16 | Enterprise audit use cases with AINL | https://github.com/sbhooley/ainativelang/discussions/16 |
+| 13 | Welcome (hub reply links to #14–#16) | https://github.com/sbhooley/ainativelang/discussions/13 |
 
 Use these blocks as the canonical copy for edits or reposts. GitHub Discussions do **not** support tags like issues; **category** replaces that.
+
+**Welcome thread hub reply:** A maintainer reply on [#13](https://github.com/sbhooley/ainativelang/discussions/13) points newcomers to #14–#16.
+
+## Pin #14 as the top discussion (maintainer)
+
+GitHub does **not** expose a public GraphQL `pinDiscussion` mutation (verified March 2026). Pinning is **UI-only**:
+
+1. Open https://github.com/sbhooley/ainativelang/discussions/14
+2. In the discussion header, open the **⋯** menu (or use the **Pin** control if shown in your layout).
+3. Choose **Pin discussion** — you can pin up to **four** discussions per repository.
+
+Prefer pinning **#14** so “Share your first AINL workflow” stays visible at the top of the Discussions index.
 
 ---
 
@@ -88,4 +101,4 @@ Pointers: [`docs/enterprise/SOC2_CHECKLIST.md`](https://github.com/sbhooley/aina
 
 ## After posting
 
-Add the discussion URLs to [`DISCUSSIONS_SEED_TOPICS.md`](DISCUSSIONS_SEED_TOPICS.md) under **Posted:** for each topic, or pin Thread 1 for visibility.
+URLs are recorded in [`DISCUSSIONS_SEED_TOPICS.md`](DISCUSSIONS_SEED_TOPICS.md). Pin **#14** via the UI (see **Pin #14** above).
