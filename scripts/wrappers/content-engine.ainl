@@ -29,6 +29,16 @@ L_generate_content:
   Set i 0
   Set count (core.len repos)
   Set generated []
+  # Determine which model to use: respect budget override if present
+  R cache get "budget" "model_override" ->model_override
+  If model_override ->L_model_override ->L_model_default
+L_model_override:
+  X model model_override
+  J L_gen_loop
+L_model_default:
+  Set model "gpt-4o-mini"
+  J L_gen_loop
+
 L_gen_loop:
   If (core.ge i count) ->L_gen_done
   begin:
@@ -36,7 +46,7 @@ L_gen_loop:
     X title get repo "name"
     X desc (core.concat title " – " get repo "description" "")
     X prompt (core.concat "Write a tweet (280 chars) about " title ". Focus on why developers care. Info: " desc)
-    R openai chat "gpt-4o-mini" prompt ->resp
+    R openai chat model prompt ->resp
     X content get resp "choices"[0] "message" "content"
     X item { "repo_id": get repo "id", "title": title, "content": content }
     Set generated (core.append generated item)

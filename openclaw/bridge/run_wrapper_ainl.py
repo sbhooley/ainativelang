@@ -32,6 +32,7 @@ from adapters.github import GitHubAdapter
 from adapters.openclaw_defaults import DEFAULT_CRM_HEALTH_URL
 from adapters.openclaw_integration import openclaw_monitor_registry
 from adapters.openclaw_memory import OpenClawMemoryAdapter
+from adapters.openclaw_token_tracker import OpenClawTokenTrackerAdapter
 
 import importlib.util
 
@@ -93,7 +94,7 @@ def _should_skip_wrapper(name: str) -> Optional[dict]:
 
     This keeps scheduled bridge jobs from spending tokens when a host is already near exhaustion.
     """
-    critical = {"token-budget-alert"}
+    critical = {"token-budget-alert", "content-engine"}
     if name in critical:
         return None
     tb = _read_monitor_budget()
@@ -147,11 +148,12 @@ def build_wrapper_registry():
             "AINL_OPENROUTER_PLACEHOLDER_KEY", "unset-openrouter-key-wrapper-registry"
         )
     reg = openclaw_monitor_registry()
-    for name in ("openclaw_memory", "github", "crm"):
+    for name in ("openclaw_memory", "github", "crm", "openclaw_token_tracker"):
         reg.allow(name)
     reg.register("openclaw_memory", OpenClawMemoryAdapter())
     reg.register("github", GitHubAdapter())
     reg.register("crm", CrmAdapter())
+    reg.register("openclaw_token_tracker", OpenClawTokenTrackerAdapter())
     reg.allow("bridge")
     reg.register("bridge", BridgeTokenBudgetAdapter())
     return reg
