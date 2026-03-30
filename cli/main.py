@@ -703,7 +703,21 @@ def cmd_compile(args: argparse.Namespace) -> int:
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
-    """Alias for cmd_check — validates an .ainl file (compile + strict checks)."""
+    """Validate an .ainl file. With --json-output emits the full compiled IR."""
+    if getattr(args, "json_output", False):
+        src_path = str(Path(args.file).resolve())
+        with open(src_path, "r", encoding="utf-8") as f:
+            code = f.read()
+        c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
+        ir = c.compile(code, emit_graph=True, source_path=src_path)
+        ok = len(ir.get("errors", [])) == 0
+        ir["_validation"] = {
+            "ok": ok,
+            "source_path": src_path,
+            "strict": bool(getattr(args, "strict", False)),
+        }
+        print(json.dumps(ir, indent=2))
+        return 0 if ok else 1
     return cmd_check(args)
 
 
@@ -1983,6 +1997,7 @@ def main() -> None:
     val = sub.add_parser("validate", help="Validate an .ainl file (alias for 'check')")
     val.add_argument("file")
     val.add_argument("--strict", action="store_true")
+    val.add_argument("--json-output", action="store_true", help="Output full IR JSON instead of summary (for CI/tooling)")
     val.set_defaults(func=cmd_validate)
 
     # --- ainl emit (full emitter with all targets) ---
