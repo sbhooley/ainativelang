@@ -22,7 +22,10 @@ fi
 # shellcheck source=/dev/null
 source "${VENV_DIR}/bin/activate"
 python -m pip install --upgrade pip
-pip install -e ".[dev,web]"
+# Default extras align with CI (dev) + local OpenClaw/MCP (mcp) + web tooling (web).
+# Match dual-venv sync: bash scripts/sync_dual_venvs.sh
+AINL_PIP_EXTRAS="${AINL_PIP_EXTRAS:-dev,web,mcp}"
+pip install -e ".[${AINL_PIP_EXTRAS}]"
 
 echo
 echo "Bootstrap complete."

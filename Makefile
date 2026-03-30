@@ -1,4 +1,8 @@
-.PHONY: conformance benchmark benchmark-ci benchmark-deps check-apollo-promoter postgres-it postgres-it-deps mysql-it mysql-it-deps redis-it redis-it-deps dynamodb-it dynamodb-it-deps airtable-it airtable-it-deps supabase-it supabase-it-deps
+.PHONY: conformance benchmark benchmark-ci benchmark-deps check-apollo-promoter postgres-it postgres-it-deps mysql-it mysql-it-deps redis-it redis-it-deps dynamodb-it dynamodb-it-deps airtable-it airtable-it-deps supabase-it supabase-it-deps sync-venvs
+
+# Refresh .venv-py310 and .venv-ainl with the same editable install (CI + OpenClaw parity).
+sync-venvs:
+	bash scripts/sync_dual_venvs.sh
 
 # Apollo X promoter: strict IR + gateway integration tests (see scripts/check_apollo_promoter.sh).
 check-apollo-promoter:
@@ -12,8 +16,8 @@ check-apollo-promoter:
 #   make conformance PYTHON=./.venv-py310/bin/python
 CONFORMANCE_DIR ?= tests/conformance
 
-# Prefer .venv-py310 (documented CI/dev interpreter), then .venv, then system python3.
-PYTHON ?= $(if $(wildcard $(CURDIR)/.venv-py310/bin/python),$(CURDIR)/.venv-py310/bin/python,$(if $(wildcard $(CURDIR)/.venv/bin/python),$(CURDIR)/.venv/bin/python,python3))
+# Prefer .venv-py310 (CI), then .venv-ainl (OpenClaw), then .venv, then system python3.
+PYTHON ?= $(if $(wildcard $(CURDIR)/.venv-py310/bin/python),$(CURDIR)/.venv-py310/bin/python,$(if $(wildcard $(CURDIR)/.venv-ainl/bin/python),$(CURDIR)/.venv-ainl/bin/python,$(if $(wildcard $(CURDIR)/.venv/bin/python),$(CURDIR)/.venv/bin/python,python3))
 PYTEST ?= $(PYTHON) -m pytest
 SNAPSHOT_UPDATE ?= 0
 CONFORMANCE_LOG ?= tests/snapshots/conformance/last_run.log

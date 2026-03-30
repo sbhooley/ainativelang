@@ -2,6 +2,12 @@
 """
 Run named test profiles for CI/local workflows.
 
+Python interpreter: same resolution order as the Makefile and
+``scripts/precommit_docs_contract.sh``. Prefer ``.venv-py310`` (CI naming) or
+``.venv-ainl`` (OpenClaw naming) — keep both in sync with
+``bash scripts/sync_dual_venvs.sh``. Falls back to ``.venv``, then ``sys.executable``.
+Set ``AINL_PYTHON`` to force an interpreter.
+
 Profiles:
   - core: default stable suite (fast, no integration/emits/lsp)
   - emits: emitted artifact syntax checks
@@ -16,9 +22,39 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from typing import List
+
+
+def _resolve_python_executable(root: str) -> str:
+    """Prefer project venvs (CI parity) over sys.executable from a random system Python."""
+    env = (os.environ.get("AINL_PYTHON") or "").strip()
+    if env:
+        resolved = env if os.path.isfile(env) else (shutil.which(env) or "")
+        if resolved and os.path.isfile(resolved):
+            return resolved
+
+    if os.name == "nt":
+        candidates = [
+            os.path.join(root, ".venv-py310", "Scripts", "python.exe"),
+            os.path.join(root, ".venv-ainl", "Scripts", "python.exe"),
+            os.path.join(root, ".venv", "Scripts", "python.exe"),
+        ]
+    else:
+        candidates = [
+            os.path.join(root, ".venv-py310", "bin", "python"),
+            os.path.join(root, ".venv-py310", "bin", "python3"),
+            os.path.join(root, ".venv-ainl", "bin", "python"),
+            os.path.join(root, ".venv-ainl", "bin", "python3"),
+            os.path.join(root, ".venv", "bin", "python"),
+            os.path.join(root, ".venv", "bin", "python3"),
+        ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return sys.executable
 
 
 def _run(cmd: List[str], cwd: str) -> int:
@@ -42,7 +78,9 @@ def main() -> None:
     args = ap.parse_args()
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    py = sys.executable
+    py = _resolve_python_executable(root)
+    if py != sys.executable:
+        print(f"# using Python: {py}", file=sys.stderr)
     core_ignores = [
         "--ignore=tests/conformance",
         "--ignore=tests/test_bridge_shims.py",

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resolve a Python that matches the project baseline (prefer .venv-py310, then .venv).
+# Resolve a Python that matches the project baseline (prefer .venv-py310, .venv-ainl, then .venv).
 # Used by pre-commit so `python` on PATH is not required.
 set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
@@ -10,6 +10,7 @@ if [[ -n "${AINL_PYTHON:-}" ]]; then
   _candidates+=("${AINL_PYTHON}")
 fi
 _candidates+=("${ROOT}/.venv-py310/bin/python")
+_candidates+=("${ROOT}/.venv-ainl/bin/python")
 _candidates+=("${ROOT}/.venv/bin/python")
 if command -v python3 >/dev/null 2>&1; then
   _candidates+=("$(command -v python3)")

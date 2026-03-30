@@ -75,7 +75,7 @@ The **`[benchmark]`** extra includes **`aiohttp`**, **`langgraph`**, and **`temp
 
 **`make benchmark`** invokes **`scripts/benchmark_size.py --mode wide`**, which measures **`full_multitarget_core`** (six compiler emitters), **`full_multitarget`** (+ langgraph/temporal wrappers), and **`minimal_emit`**. Use **`--mode both`** for the older two-mode slice only.
 
-If you use **`.venv-py310`** but still have a **`.venv`** directory, **`make`** prefers **`.venv`** first—either remove the unused env or run **`make benchmark-ci PYTHON=./.venv-py310/bin/python`** (after **`pip install -e ".[benchmark]"`** in that venv).
+If **`make`** resolves the wrong interpreter (see **`Makefile`**: **`.venv-py310`**, then **`.venv-ainl`**, then **`.venv`**), pass an explicit **`PYTHON=`** (e.g. **`make benchmark-ci PYTHON=./.venv-py310/bin/python`**) after **`pip install -e ".[benchmark]"`** in that venv.
 
 CI-style (JSON only, smaller runtime sampling; matches the spirit of the `benchmark-regression` workflow):
 

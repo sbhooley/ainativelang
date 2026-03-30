@@ -32,8 +32,19 @@ source .venv/bin/activate
 ainl-validate examples/blog.lang --emit ir
 ```
 
-Automation / agents: prefer **`./.venv-py310/bin/python`** (after bootstrap above) for pytest,
+Automation / agents: prefer **`./.venv-py310/bin/python`** or **`./.venv-ainl/bin/python`** (after bootstrap or sync below) for pytest,
 scripts, and checks so results match the 3.10 CI matrix.
+
+**CI + OpenClaw parity (two venv names, one install):** OpenClaw scripts and docs often use **`.venv-ainl`**; CI docs use **`.venv-py310`**. They should carry the same extras (**`dev`**, **`web`**, **`mcp`**) so either path runs tests and MCP tooling. After cloning or when dependencies drift, run:
+
+```bash
+PYTHON_BIN=python3.10 bash scripts/sync_dual_venvs.sh
+# or: make sync-venvs
+```
+
+This creates or refreshes both directories with **`pip install -U -e ".[dev,web,mcp]"`**. Override extras with **`AINL_PIP_EXTRAS=...`** if needed. Single-venv bootstrap uses the same default extras: **`bash scripts/bootstrap.sh`** (see **`AINL_PIP_EXTRAS`** in **`scripts/bootstrap.sh`**).
+
+If **`.venv-ainl`** was created with a non-3.10 interpreter (e.g. an older manual **`python3 -m venv`**), remove that directory once and re-run **`sync_dual_venvs.sh`** so both envs use **`PYTHON_BIN=python3.10`** and match the Actions matrix.
 
 After upgrading the repo to a new **`pyproject.toml` / `RUNTIME_VERSION`** (see **`docs/CHANGELOG.md`**), reinstall editable installs with **`pip install -U -e .`** (or recreate the venv) so **`ainl`** / **`runtime`** imports match the tree and stale **`__pycache__`** does not shadow updated modules.
 
@@ -48,7 +59,7 @@ ainl-validate examples/blog.lang --emit ir
 ## Manual install
 
 ```bash
-python -m pip install -e ".[dev,web]"
+python -m pip install -e ".[dev,web,mcp]"
 ```
 
 ## No-root / sandbox install order (PEP 668 aware)

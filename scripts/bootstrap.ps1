@@ -8,7 +8,9 @@ Write-Host "==> AINL bootstrap (Windows)"
 & $PythonExe --version | Out-Null
 & $PythonExe -m venv .venv
 & .\.venv\Scripts\python -m pip install --upgrade pip
-& .\.venv\Scripts\pip install -e ".[dev,web]"
+$extras = if ($env:AINL_PIP_EXTRAS) { $env:AINL_PIP_EXTRAS } else { "dev,web,mcp" }
+$editable = ".[$extras]"
+& .\.venv\Scripts\pip install -e $editable
 
 Write-Host ""
 Write-Host "Bootstrap complete."
