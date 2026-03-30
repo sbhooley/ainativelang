@@ -20,7 +20,7 @@ After posting, add the discussion URL next to **Posted:** in each section (optio
 
 ## Topic 1 — Share your first AINL workflow
 
-**Posted:** _(add GitHub discussion URL after creating)_
+**Posted:** https://github.com/sbhooley/ainativelang/discussions/14
 
 **Title:** Share your first AINL workflow
 
@@ -40,7 +40,7 @@ No workflow is too small. Early examples help the next person ship faster.
 
 ## Topic 2 — LangGraph migration experiences
 
-**Posted:** _(add GitHub discussion URL after creating)_
+**Posted:** https://github.com/sbhooley/ainativelang/discussions/15
 
 **Title:** LangGraph → AINL: migration experiences
 
@@ -58,7 +58,7 @@ See also: [`docs/migration/LANGGRAPH_MIGRATION_GUIDE.md`](https://github.com/sbh
 
 ## Topic 3 — Enterprise audit use cases
 
-**Posted:** _(add GitHub discussion URL after creating)_
+**Posted:** https://github.com/sbhooley/ainativelang/discussions/16
 
 **Title:** Enterprise audit & compliance use cases
 

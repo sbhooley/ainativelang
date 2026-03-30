@@ -1,8 +1,14 @@
 # GitHub Discussions — exact posts (title + body)
 
-Use these blocks to create the first three threads in **[Discussions](https://github.com/sbhooley/ainativelang/discussions)**. Pick a **category** when posting (suggestions below). GitHub Discussions do **not** support tags like issues; category replaces that.
+**Live threads (created March 2026):**
 
-**Repo check:** If `https://github.com/sbhooley/ainativelang/discussions` shows Discussions as disabled, turn them on: **Settings → General → Features → Discussions**. The GraphQL field `hasDiscussionsEnabled` must be true before API or `gh` can create threads.
+| # | Topic | URL |
+|---|--------|-----|
+| 14 | Share your first AINL workflow | https://github.com/sbhooley/ainativelang/discussions/14 |
+| 15 | LangGraph → AINL: migration experiences | https://github.com/sbhooley/ainativelang/discussions/15 |
+| 16 | Enterprise audit use cases with AINL | https://github.com/sbhooley/ainativelang/discussions/16 |
+
+Use these blocks as the canonical copy for edits or reposts. GitHub Discussions do **not** support tags like issues; **category** replaces that.
 
 ---
 
