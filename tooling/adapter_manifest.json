@@ -506,6 +506,18 @@
       "sandbox_safe": false,
       "notes": "GitHub REST via requests; optional GITHUB_TOKEN; MONITOR_CACHE_JSON for short-lived GET caching; respects dry_run / AINL_DRY_RUN."
     },
+    "crm_db": {
+      "support_tier": "extension_openclaw",
+      "strict_contract": true,
+      "recommended_lane": "canonical",
+      "verbs": ["F", "P"],
+      "effect_default": "io",
+      "privilege_tier": "local_state",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
+      "notes": "SQLite IntelligenceReport table; CRM_DB_PATH (default workspace crm/prisma/dev.db). F = query, P = insert. See adapters/crm_db.py."
+    },
     "crm": {
       "support_tier": "extension_openclaw",
       "strict_contract": false,

@@ -1,0 +1,36 @@
+# examples/crm/simple-lead-router.ainl
+# CRM lead router — score-based branch, ops budget gate, audit row via crm_db (SQLite).
+# No runtime orchestration LLM. Set CRM_DB_PATH or rely on default under OPENCLAW_WORKSPACE/crm/prisma/dev.db.
+#
+# python3 scripts/validate_ainl.py examples/crm/simple-lead-router.ainl --strict
+# python3 -m cli.main run examples/crm/simple-lead-router.ainl --json --enable-adapter crm_db
+
+S app core noop
+
+L_start:
+  # Policy: max routing decisions per run (tune with your SLA / cost envelope).
+  X route_budget 100
+  X routes_used 0
+  X policy_ok (core.gt route_budget routes_used)
+  If policy_ok ->L_eval ->L_blocked
+
+L_eval:
+  # Representative score — in production, bind from CRM row (e.g. parse result_json from R crm_db F).
+  # Use lead_score below 70 to exercise the nurture branch on the next run.
+  X lead_score 82
+  X hot (core.gt lead_score 70)
+  If hot ->L_route_hot ->L_route_std
+
+L_route_hot:
+  R crm_db.P {"jobName": "lead:router", "status": "routed_hot", "result_json": "{\"score\":82,\"channel\":\"sales\",\"policy\":\"score_gt_70\"}"} ->_p
+  Set decision "hot"
+  J decision
+
+L_route_std:
+  R crm_db.P {"jobName": "lead:router", "status": "routed_std", "result_json": "{\"score\":65,\"channel\":\"nurture\",\"policy\":\"score_lte_70\"}"} ->_p
+  Set decision "standard"
+  J decision
+
+L_blocked:
+  Set decision "policy_block"
+  J decision

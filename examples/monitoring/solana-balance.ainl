@@ -1,0 +1,27 @@
+# examples/monitoring/solana-balance.ainl
+# Solana balance monitor — deterministic read of lamports, budget gate, no runtime LLM.
+# Pair with cron or OpenClaw schedule; run with --trace-jsonl for JSONL audit tape.
+#
+# Env: AINL_SOLANA_RPC_URL (default devnet), AINL_DRY_RUN=1 to rehearse without live RPC pressure.
+#
+# ainl check examples/monitoring/solana-balance.ainl --strict
+# AINL_DRY_RUN=1 ainl run examples/monitoring/solana-balance.ainl --trace-jsonl solana_balance.trace.jsonl
+
+S app core noop
+
+L_start:
+  # System program as stable demo pubkey; replace with your wallet / vault to monitor.
+  R solana.GET_BALANCE "11111111111111111111111111111111" ->bal
+  X lamports get bal lamports
+  # Budget gate: alert when balance is below min_lp lamports (tune per environment).
+  X min_lp 500000000
+  X below (core.gt min_lp lamports)
+  If below ->L_alert ->L_ok
+
+L_alert:
+  Set status "below_budget"
+  J status
+
+L_ok:
+  Set status "ok"
+  J status

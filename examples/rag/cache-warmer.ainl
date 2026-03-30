@@ -1,0 +1,27 @@
+# examples/rag/cache-warmer.ainl
+# RAG cache warmer — upserts fixed chunks into vector_memory, verifies with SEARCH,
+# with an explicit ops budget gate (no runtime orchestration LLM).
+#
+# Run (local vector store):
+#   python3 -m cli.main run examples/rag/cache-warmer.ainl --json --enable-adapter vector_memory
+# Validate:
+#   python3 scripts/validate_ainl.py examples/rag/cache-warmer.ainl --strict
+
+S app core noop
+
+L_start:
+  # Budget gate: only warm when remaining ops budget allows (tune ops_used / ops_budget per deploy).
+  X ops_budget 100
+  X ops_used 2
+  X within_budget (core.gt ops_budget ops_used)
+  If within_budget ->L_warm ->L_skip
+
+L_warm:
+  R vector_memory.UPSERT "rag_warm" "chunk" "c1" "placeholder doc body for warming" "{}" ->u1
+  R vector_memory.UPSERT "rag_warm" "chunk" "c2" "second chunk for cache priming" "{}" ->u2
+  R vector_memory.SEARCH "placeholder" 4 ->hits
+  J hits
+
+L_skip:
+  Set status "budget_exhausted"
+  J status

@@ -31,6 +31,9 @@ Canonical strict-valid examples:
 - `examples/if_call_workflow.ainl` — canonical branching + modular call composition (`If` + `Call ... ->out`).
 - `examples/webhook_automation.ainl` — canonical webhook-style automation branch (`validate` -> `accepted/ignored`) plus external action (`R http.POST`).
 - `examples/monitor_escalation.ainl` — canonical scheduled monitoring/escalation (`Cr` + condition branch -> `escalate/noop`).
+- `examples/monitoring/solana-balance.ainl` — Solana `GET_BALANCE` + budget gate (`core.gt`); no runtime orchestration LLM; see `docs/solana_quickstart.md`.
+- `examples/rag/cache-warmer.ainl` — `vector_memory` UPSERT/SEARCH with ops budget gate; run with `--enable-adapter vector_memory`.
+- `examples/crm/simple-lead-router.ainl` — `crm_db.P` audit rows + score branch + route budget gate; run with `--enable-adapter crm_db` (`CRM_DB_PATH` optional).
 - `examples/status_branching.ainl` — canonical status-branching example (`Set` + `If` -> `ok/alerted`).
 
 Canonical language scope reference:

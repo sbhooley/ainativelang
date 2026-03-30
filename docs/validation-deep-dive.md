@@ -87,3 +87,7 @@ Prompt loops can produce plausible text while silently drifting in control flow.
 - malformed graph exits
 
 This is the core difference between "the model seems right in chat" and "the workflow is valid, repeatable, and auditable in production."
+
+## Enterprise and SOC 2 mapping
+
+For teams mapping validation, policy gates, and execution tape to audit narratives (e.g., logical access and monitoring), see **[`docs/enterprise/SOC2_CHECKLIST.md`](enterprise/SOC2_CHECKLIST.md)**. It is guidance only, not legal advice — pair with your GRC process and counsel.
