@@ -1,0 +1,78 @@
+# Sample AINL Workflow Hand Manifest for OpenFang
+# This demonstrates how an AINL graph is packaged as an OpenFang Hand
+
+[hand]
+id = "ainl-workflow-example"
+name = "AINL Workflow Example"
+version = "1.0.0"
+description = "A simple AINL graph packaged as an OpenFang Hand"
+author = "AINL Team"
+
+# Entrypoint is the compiled AINL IR (produced by `ainl emit --target openfang`)
+entrypoint = "target/ainl_workflow_hand.ainl.json"
+
+# Runtime configuration
+[config]
+max_concurrency = 5
+default_timeout = 300  # seconds
+retry_policy = "exponential_backoff"
+max_retries = 3
+
+# OpenFang security policy: WASM sandbox with taint tracking
+[security]
+sandbox = "wasm"
+max_memory_mb = 256
+max_instructions = 10_000_000
+allowed_imports = ["env.print", "env.log", "env.sleep", "env.random"]
+taint_sources = ["input.user_data", "input.external_api"]
+merkle_audit = true
+
+# Input schema (what the Hand expects)
+[[inputs]]
+name = "trigger"
+type = "string"
+description = "Trigger event (e.g., 'run', 'status')"
+
+[[inputs]]
+name = "payload"
+type = "object"
+description = "Arbitrary payload data"
+
+# Output schema (what the Hand returns)
+[[outputs]]
+name = "result"
+type = "object"
+description = "Workflow execution result"
+
+[[outputs]]
+name = "metrics"
+type = "object"
+description = "Execution metrics (tokens, duration, etc.)"
+
+# Channel bindings (optional)
+[[channels]]
+name = "ainl_alerts"
+direction = "publish"
+description = "Publish alerts during workflow execution"
+
+[[channels]]
+name = "ainl_metrics"
+direction = "publish"
+description = "Publish metrics on completion"
+
+# Resource limits
+[resources]
+cpu_millicores = 500
+memory_mb = 256
+ephemeral_storage_mb = 100
+
+# Dependencies (other Hands or services)
+# [[dependencies]]
+# hand = "some-other-hand"
+# version = ">=1.2.0"
+
+# Metadata for marketplace/UI
+[metadata]
+tags = ["ainl", "workflow", "example"]
+icon = "🧠"
+color = "#6366f1"

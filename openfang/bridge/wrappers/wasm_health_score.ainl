@@ -1,0 +1,23 @@
+# WASM health score wrapper (bridge) — deterministic compute, no LLM.
+# Uses demo module demo/wasm/health.wat when wasmtime is installed.
+S core cron "0 * * * *"
+
+L0:
+  # Example counts (replace with real adapter reads in your stack)
+  Set email_count 3
+  Set cal_count 2
+  Set social_count 1
+  Set leads_count 4
+
+  # Deterministic WASM compute: weights email*2 + cal*3 + social*5 + leads
+  R wasm.CALL health total_score email_count cal_count social_count leads_count ->score
+  R core.stringify score ->score_s
+  X msg (core.concat "- wasm_health_score: " score_s)
+
+  If dry_run ->L_out ->L_append
+L_append:
+  R openclaw_memory append_today msg ->_
+  J L_out
+L_out:
+  J score
+
