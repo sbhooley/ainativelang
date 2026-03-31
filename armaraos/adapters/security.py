@@ -1,8 +1,11 @@
 """
-OpenFang Security Adapter
+ArmaraOS Security Adapter
 
 Provides hooks for WASM sandbox, Merkle trails, and taint tracking.
-Integrates with OpenFang's 16 security systems.
+
+This module is an integration-layer helper (not AINL core). It encodes
+portable policy *hints* into the compiled IR (`ir["_security"]`) so emitters
+and host runtimes can enforce sandboxing, taint tracking, and audit trails.
 """
 
 from __future__ import annotations
@@ -27,8 +30,8 @@ class WASMSandboxConfig:
             self.blocked_syscalls = ["filesystem", "network", "process"]
 
 
-class OpenFangSecurityAdapter:
-    """Security adapter that injects WASM sandbox hints and taint tracking into AINL graphs."""
+class ArmaraOSSecurityAdapter:
+    """Inject WASM sandbox hints + taint tracking into compiled AINL IR."""
 
     def __init__(self):
         self._taint_sources: Dict[str, uuid.UUID] = {}
@@ -64,10 +67,14 @@ class OpenFangSecurityAdapter:
         """Generate WASM wrapper code for the compiled graph."""
         # This would produce a .wat or precompiled .wasm module that enforces policy.
         # For now, return a placeholder.
-        return f"(;; OpenFang WASM sandbox for IR {ir.get('ir_version', 'unknown')} ;;)"
+        return f"(;; ArmaraOS WASM sandbox for IR {ir.get('ir_version', 'unknown')} ;;)"
 
     def validate_taint_propagation(self, execution_log: List[Dict[str, Any]]) -> bool:
         """Ensure taint does not leak to unmarked outputs."""
         # Simple check: any output node that isn't marked as sanitized should not contain tainted data.
         # Implementation would track taint bits through the execution trace.
         return True  # placeholder
+
+
+# Backward compatibility for older bridge code.
+OpenFangSecurityAdapter = ArmaraOSSecurityAdapter
