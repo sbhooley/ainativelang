@@ -1,0 +1,16 @@
+# Pilot: index SQLite workflow memory into embedding_memory, then top-k search + optional append to daily md.
+# Namespace: AINL_EMBEDDING_INDEX_NAMESPACE (default workflow). Embedding DB: AINL_EMBEDDING_MEMORY_DB.
+# Schedule: weekly example — adjust S core cron as needed.
+# dry_run: index step skipped; search is read-only and still runs.
+S core cron "15 4 * * 0"
+
+L0:
+  R bridge embedding_workflow_index 50 ->idx
+  R bridge embedding_workflow_search "token budget workflow memory" 5 ->hits
+  R core.stringify hits ->hits_s
+  If dry_run ->L_out ->L_append
+L_append:
+  R openclaw_memory append_today hits_s ->_
+  J L_out
+L_out:
+  J hits

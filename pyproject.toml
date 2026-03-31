@@ -96,6 +96,7 @@ ainl-runner-service = "scripts.runtime_runner_service:main"
 ainl-test-profiles = "scripts.run_test_profiles:main"
 ainl-check-docs = "scripts.check_docs_contracts:main"
 ainl-mcp = "scripts.ainl_mcp_server:main"
+ainl-install-openfang = "tooling.openfang_install:run_install_openfang_main"
 ainl-visualize = "scripts.visualize_ainl:main"
 ainl-bridge-sizing-probe = "scripts.bridge_sizing_probe:main"
 ainl-validate-s-cron = "scripts.validate_s_cron_schedules:main"
@@ -116,7 +117,7 @@ tooling = ["*.json", "*.yml"]
 where = ["."]
 # Explicit roots + globs so `tooling` / `adapters` are never skipped (CLI imports `tooling.*`; runtime.compat imports `adapters`).
 # OpenClaw bridge modules must be included for `ainl install openclaw` to work.
-include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*", "hermes", "hermes.*", "openclaw", "openclaw.*"]
+include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*", "hermes", "hermes.*", "openclaw", "openclaw.*", "openfang", "openfang.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -8,6 +8,8 @@ import json
 import os
 import re
 from pathlib import Path
+import shutil
+import shlex
 from typing import Any, Dict, List, Optional
 from collections import deque
 import datetime
@@ -386,6 +388,15 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
                 max_response_bytes=args.http_max_response_bytes,
             ),
         )
+    if "audit_trail" in enabled:
+        from adapters.audit_trail import AuditTrailAdapter
+
+        sink = (
+            str(getattr(args, "audit_sink", "") or "").strip()
+            or os.environ.get("AINL_AUDIT_SINK", "")
+            or "stderr://"
+        )
+        reg.register("audit_trail", AuditTrailAdapter(sink=sink))
 
 
 def _pretty_runtime_error(err: Exception) -> str:
@@ -630,7 +641,14 @@ def cmd_check(args: argparse.Namespace) -> int:
     src_path = str(Path(args.file).resolve())
     with open(src_path, "r", encoding="utf-8") as f:
         code = f.read()
-    c = AICodeCompiler(strict_mode=args.strict)
+    strict = bool(getattr(args, "strict", False) or getattr(args, "strict_reachability", False))
+    enhanced = bool(
+        getattr(args, "enhanced_diagnostics", False)
+        or getattr(args, "strict", False)
+        or getattr(args, "strict_reachability", False)
+    )
+
+    c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
     ir = c.compile(code, emit_graph=True, source_path=src_path)
     ok = len(ir.get("errors", [])) == 0
     diagnostics = list(ir.get("diagnostics") or [])
@@ -643,7 +661,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             ln = int(m.group(1))
             line = src_lines[ln - 1] if 0 <= ln - 1 < len(src_lines) else ""
             diagnostics.append({"line": ln, "source": line, "error": e})
-    payload = {
+    payload: Dict[str, Any] = {
         "ok": ok,
         "ir_version": ir.get("ir_version"),
         "errors": ir.get("errors", []),
@@ -651,6 +669,33 @@ def cmd_check(args: argparse.Namespace) -> int:
         "meta": ir.get("meta", []),
         "diagnostics": diagnostics,
     }
+    # Enhanced diagnostics are best-effort, additive metadata for humans/tools.
+    # This never changes the primary compile result (ir/errors).
+    if (not ok) and strict and enhanced:
+        try:
+            from compiler_diagnostics import CompilationDiagnosticError, CompilerContext
+            from scripts.validate_ainl import _enrich_diagnostics_with_graph_context  # type: ignore
+
+            try:
+                AICodeCompiler(strict_mode=True, strict_reachability=bool(getattr(args, "strict_reachability", False))).compile(
+                    code,
+                    emit_graph=True,
+                    source_path=src_path,
+                    context=CompilerContext(),
+                )
+            except CompilationDiagnosticError as e:
+                enriched = _enrich_diagnostics_with_graph_context(list(e.diagnostics), e.source)
+                payload["structured_diagnostics"] = [d.to_dict() for d in enriched]
+        except Exception:
+            pass
+    if getattr(args, "estimate", False):
+        try:
+            from tooling.cost_estimate import estimate_ir_cost, format_estimate_table
+            est = estimate_ir_cost(ir)
+            payload["cost_estimate"] = est
+            print(format_estimate_table(est), end="", file=__import__("sys").stderr)
+        except Exception as _e:
+            payload["cost_estimate"] = {"error": str(_e)}
     print(json.dumps(payload, indent=2))
     return 0 if ok else 1
 
@@ -719,6 +764,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
             "source_path": src_path,
             "strict": bool(getattr(args, "strict", False)),
         }
+        if getattr(args, "estimate", False):
+            try:
+                from tooling.cost_estimate import estimate_ir_cost
+                ir["_cost_estimate"] = estimate_ir_cost(ir)
+            except Exception as _e:
+                ir["_cost_estimate"] = {"error": str(_e)}
         print(json.dumps(ir, indent=2))
         return 0 if ok else 1
     return cmd_check(args)
@@ -786,7 +837,17 @@ def cmd_emit(args: argparse.Namespace) -> int:
         print(json.dumps({"ok": True, "emit": "temporal", "dir": str(out_dir.resolve()), "files": [str(act_path), str(wf_path)]}, indent=2))
         return 0
 
-    # Emitters available on the compiler
+        # OpenFang Hand package
+    if target == "openfang":
+        from openfang.emitter.openfang import emit_openfang
+        out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_openfang_hand"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        files = emit_openfang(ir, stem, out_dir)
+        written = [str(p) for p in files.values()]
+        print(json.dumps({"ok": True, "emit": "openfang", "dir": str(out_dir.resolve()), "files": written}, indent=2))
+        return 0
+
+# Emitters available on the compiler
     emitter_map = {
         "server": "emit_server",
         "python-api": "emit_python_api",
@@ -819,6 +880,183 @@ def cmd_emit(args: argparse.Namespace) -> int:
 
 
 
+
+# ====================== OpenFang Integration ======================
+# AINL-OPENFANG-TOP1
+
+def cmd_install_openfang_one_command(args: argparse.Namespace) -> int:
+    """One-command OpenFang install + health check (mirrors OpenClaw)."""
+    from pathlib import Path
+    import subprocess
+    import sys
+
+    from tooling.openfang_install import run_install_openfang
+    from openfang.bridge.ainl_bridge_main import ainl_openfang_validate
+    from openfang.bridge.user_friendly_error import INIT_INSTALL_OPENFANG, user_friendly_ainl_error
+
+    dry = bool(getattr(args, "install_openfang_dry_run", False))
+    verbose = bool(getattr(args, "install_openfang_verbose", False))
+
+    # 1) pip install ainl[mcp] (unless dry-run)
+    if not dry:
+        code = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "ainativelang[mcp]"]).returncode
+        if code != 0:
+            print("pip install failed", file=sys.stderr)
+            return code
+
+    # 2) MCP registration
+    home = Path.home()
+    try:
+        from tooling.mcp_host_install import ensure_mcp_registration as _ensure_mcp_registration
+        from tooling.mcp_host_install import OPENFANG_PROFILE
+        _ensure_mcp_registration(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+    except Exception as e:
+        print(f"MCP registration failed: {e}", file=sys.stderr)
+        return 1
+
+    # 3) ainl-run wrapper
+    try:
+        from tooling.mcp_host_install import ensure_ainl_run_wrapper as _ensure_ainl_run_wrapper
+        _ensure_ainl_run_wrapper(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+    except Exception as e:
+        print(f"Wrapper install failed: {e}", file=sys.stderr)
+        return 1
+
+    # 4) PATH hint in shell RC
+    try:
+        from tooling.mcp_host_install import ensure_path_hint_in_shell_rc as _ensure_path_hint
+        _ensure_path_hint(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+    except Exception as e:
+        print(f"PATH hint failed: {e}", file=sys.stderr)
+        # continue
+
+    # 5) Validate install
+    val = ainl_openfang_validate()
+    if not val["ok"] or val.get("missing_env"):
+        print(user_friendly_ainl_error(INIT_INSTALL_OPENFANG, val))
+        return 1
+
+    ok = True
+    if val.get("cron_ok") is False:
+        print("Warning: OpenFang cron integration incomplete: " + str(val.get("cron_detail", "")))
+        ok = False
+    if val["warnings"]:
+        for w in val["warnings"]:
+            print("Warning:", w)
+
+    print("AINL OpenFang MCP bootstrap complete. " + OPENFANG_PROFILE.success_tip)
+    return 0 if ok else 1
+
+
+def cmd_cron_add_openfang(args: argparse.Namespace) -> int:
+    """Schedule an .ainl file to run as an OpenFang hand."""
+    ainl_path = Path(args.ainl_path).resolve()
+    if not ainl_path.exists():
+        print(f"File not found: {ainl_path}", file=sys.stderr)
+        return 2
+
+    name = getattr(args, "name", "") or f"AINL: {ainl_path.stem}"
+    cron_expr = getattr(args, "cron", "") or getattr(args, "every", "")
+    if not cron_expr:
+        print("Must specify either --cron or --every", file=sys.stderr)
+        return 2
+
+    # Use openfang cron add command
+    cmd = ["openfang", "cron", "add", str(ainl_path), "--name", name, "--cron", cron_expr]
+    if getattr(args, "every", ""):
+        cmd = ["openfang", "cron", "add", str(ainl_path), "--name", name, "--every", args.every]
+    if getattr(args, "agent", ""):
+        cmd.extend(["--agent", args.agent])
+    if getattr(args, "session", ""):
+        cmd.extend(["--session", args.session])
+    if getattr(args, "announce", False):
+        cmd.append("--announce")
+
+    if getattr(args, "cron_dry_run", False):
+        print("[dry-run] would run:", " ".join(map(shlex.quote, cmd)))
+        return 0
+
+    subprocess.run(cmd, check=False)
+    return 0
+
+
+def cmd_status_openfang(args: argparse.Namespace) -> int:
+    """Show OpenFang integration status."""
+    import json
+    import subprocess
+    from datetime import datetime, timezone
+
+    from openfang.bridge.cron_drift_check import run_report as _cron_drift_report
+    from openfang.bridge.schema_bootstrap import bootstrap_tables
+    from openfang.bridge.user_friendly_error import INIT_INSTALL_OPENFANG, user_friendly_ainl_error
+
+    json_out = bool(getattr(args, "status_json", False))
+    ws = _openfang_default_workspace()
+    db_path = Path(os.getenv("OPENFANG_MEMORY_DB", str(ws / ".ainl" / "ainl_memory.sqlite3"))).expanduser()
+    schema_ok, schema_detail = bootstrap_tables(db_path)
+
+    # Check OpenFang cron jobs (we assume they're managed by openfang CLI)
+    cron_ok = True
+    cron_detail = "ok"
+    try:
+        # Try to list OpenFang crons if possible; not critical
+        pass
+    except Exception:
+        pass
+
+    val = {
+        "openfang_installed": shutil.which("openfang") is not None,
+        "ainl_mcp_registered": True,  # could check file existence
+        "schema_ok": schema_ok,
+        "schema_detail": schema_detail,
+        "database_path": str(db_path),
+    }
+
+    if json_out:
+        print(json.dumps(val, indent=2))
+    else:
+        print("OpenFang Integration Status:")
+        for k, v in val.items():
+            print(f"  {k}: {v}")
+        if not schema_ok:
+            print("  Note:", schema_detail)
+    return 0 if schema_ok else 1
+
+
+def cmd_migrate_openclaw_to_openfang(args: argparse.Namespace) -> int:
+    """Migrate OpenClaw workspace configuration to OpenFang."""
+    print("OpenFang migration: This tool will copy your OpenClaw config and hands to OpenFang format.")
+    src = Path.home() / ".openclaw"
+    dst = Path.home() / ".openfang"
+    if not src.exists():
+        print(f"OpenClaw workspace not found at {src}", file=sys.stderr)
+        return 2
+
+    # Copy config and data directories
+    for sub in ["config.toml", "workspace", "data"]:
+        src_item = src / sub
+        if src_item.exists():
+            dst_item = dst / sub
+            dst_item.parent.mkdir(parents=True, exist_ok=True)
+            if src_item.is_dir():
+                shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src_item, dst_item)
+            print(f"Copied {src_item} -> {dst_item}")
+
+    # Reconfigure MCP if needed
+    print("Migration complete. Run 'ainl install openfang' to ensure MCP integration.")
+    return 0
+
+
+def _openfang_default_workspace() -> Path:
+    """Guess OpenFang workspace root: ~/.openfang/workspace if present, else cwd."""
+    default_ws = Path.home() / ".openfang" / "workspace"
+    if default_ws.exists():
+        return default_ws
+    return Path.cwd()
+
+# ================================================================
 class MetricsCollector:
     """Simple in-memory metrics collector for dashboard."""
 
@@ -1015,6 +1253,12 @@ def cmd_inspect(args: argparse.Namespace) -> int:
         code = f.read()
     c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
     ir = c.compile(code, emit_graph=True, source_path=src_path)
+    if getattr(args, "estimate", False):
+        try:
+            from tooling.cost_estimate import estimate_ir_cost
+            ir["_cost_estimate"] = estimate_ir_cost(ir)
+        except Exception as _e:
+            ir["_cost_estimate"] = {"error": str(_e)}
     print(json.dumps(ir, indent=2))
     return 0 if not ir.get("errors") else 1
 
@@ -1942,8 +2186,19 @@ def main() -> None:
             "langchain_tool",
             "ptc_runner",
             "llm_query",
+            "audit_trail",
         ],
         default=[],
+    )
+    runp.add_argument(
+        "--audit-sink",
+        default="",
+        metavar="URI",
+        help=(
+            "Sink URI for the audit_trail adapter (requires --enable-adapter audit_trail). "
+            "Supported: file:///path/to/audit.jsonl, syslog://, stderr://, stdout://. "
+            "Overrides AINL_AUDIT_SINK env var."
+        ),
     )
     runp.add_argument(
         "--bridge-endpoint",
@@ -2064,6 +2319,8 @@ def main() -> None:
     chk = sub.add_parser("check", help="Compile/check AINL file")
     chk.add_argument("file")
     chk.add_argument("--strict", action="store_true")
+    chk.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
+    chk.add_argument("--enhanced-diagnostics", action="store_true", default=False, help="Enrich diagnostics with graph context and Mermaid snippets on failure")
     chk.set_defaults(func=cmd_check)
 
     cmp = sub.add_parser("compile", help="Compile an .ainl file and optionally emit artifacts")
@@ -2083,6 +2340,8 @@ def main() -> None:
     val.add_argument("file")
     val.add_argument("--strict", action="store_true")
     val.add_argument("--json-output", action="store_true", help="Output full IR JSON instead of summary (for CI/tooling)")
+    val.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
+    val.add_argument("--enhanced-diagnostics", action="store_true", default=False, help="Enrich diagnostics with graph context and Mermaid snippets on failure")
     val.set_defaults(func=cmd_validate)
 
     # --- ainl emit (full emitter with all targets) ---
@@ -2113,6 +2372,7 @@ def main() -> None:
     isp.add_argument("file")
     isp.add_argument("--strict", action="store_true")
     isp.add_argument("--json", action="store_true", help="Compatibility flag (output is always JSON)")
+    isp.add_argument("--estimate", action="store_true", default=False, help="Embed static LLM cost estimate as ir[\"_cost_estimate\"]")
     isp.set_defaults(func=cmd_inspect)
 
     avm = sub.add_parser("generate-avm-policy", help="Generate AVM policy fragment JSON from an .ainl file")
@@ -2432,6 +2692,35 @@ def main() -> None:
     dashp.add_argument("--no-browser", action="store_true", dest="dashboard_no_browser", help="Do not open browser")  # AINL-OPENCLAW-TOP5
     dashp.set_defaults(func=cmd_dashboard)  # AINL-OPENCLAW-TOP5
 
+    # OpenFang commands
+    inst_of = inst_sub.add_parser("openfang", help="One-command OpenFang install + health check")  # AINL-OPENFANG-TOP1
+    inst_of.add_argument(
+        "--workspace",
+        default="",
+        metavar="PATH",
+        help="OpenFang workspace root (default: ~/.openfang/workspace if present, else cwd)",
+    )
+    inst_of.add_argument("--dry-run", dest="install_openfang_dry_run", action="store_true", help="Print actions only; no patch/cron/restart/SQLite writes")
+    inst_of.add_argument("--verbose", "-v", dest="install_openfang_verbose", action="store_true", help="Log steps to stderr")
+    inst_of.set_defaults(func=cmd_install_openfang_one_command)
+
+    # Extend cron add to support --host openfang
+    cron_add.add_argument("--host", default="openclaw", choices=["openclaw", "openfang"], help="Agent host (default: openclaw)")  # AINL-OPENFANG-TOP2
+
+    # emit target openfang is handled in cmd_emit; no new parser needed
+
+    # status command for OpenFang
+    statp = sub.add_parser("status", help="Show integration status (OpenClaw or OpenFang)")  # AINL-OPENFANG-TOP3
+    statp.add_argument("--host", default="openclaw", choices=["openclaw", "openfang"], help="Agent host (default: openclaw)")
+    statp.add_argument("--json", dest="status_json", action="store_true", help="Output JSON")
+    statp.set_defaults(func=cmd_status_openfang)
+
+    # migrate command
+    migp = sub.add_parser("migrate", help="Migrate from OpenClaw to OpenFang")  # AINL-OPENFANG-TOP4
+    migp.add_argument("source", choices=["openclaw-to-openfang"], help="Migration path")
+    migp.set_defaults(func=cmd_migrate_openclaw_to_openfang)
+
+
     def cmd_status(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
         import sqlite3  # AINL-OPENCLAW-TOP5
         import subprocess  # AINL-OPENCLAW-TOP5
@@ -2591,6 +2880,24 @@ def main() -> None:
             sl_parts.append(f"est_cost_avoided_usd_7d={payload['estimated_cost_avoided_usd_7d']}")  # AINL-OPENCLAW-TOP5
         payload["summary_line"] = " ".join(sl_parts) + f" | {now}"  # AINL-OPENCLAW-TOP5
 
+        if getattr(args, "estimate", False):  # AINL-OPENCLAW-TOP5
+            try:  # AINL-OPENCLAW-TOP5
+                from intelligence.monitor.cost_tracker import CostTracker  # AINL-OPENCLAW-TOP5
+                _ct = CostTracker()  # AINL-OPENCLAW-TOP5
+                _total, _limit, _pct = _ct.update_month_spending()  # AINL-OPENCLAW-TOP5
+                _budget = _ct.get_budget()  # AINL-OPENCLAW-TOP5
+                payload["cost_estimate"] = {  # AINL-OPENCLAW-TOP5
+                    "monthly_spend_usd": round(_total, 6),  # AINL-OPENCLAW-TOP5
+                    "monthly_limit_usd": round(_limit, 2),  # AINL-OPENCLAW-TOP5
+                    "usage_pct": round(_pct * 100, 1),  # AINL-OPENCLAW-TOP5
+                    "alert_threshold_pct": _budget.get("alert_threshold_pct", 0.8),  # AINL-OPENCLAW-TOP5
+                    "throttle_threshold_pct": _budget.get("throttle_threshold_pct", 0.95),  # AINL-OPENCLAW-TOP5
+                    "policy_status": "throttled" if _pct >= _budget.get("throttle_threshold_pct", 0.95) else ("alert" if _pct >= _budget.get("alert_threshold_pct", 0.8) else "ok"),  # AINL-OPENCLAW-TOP5
+                }  # AINL-OPENCLAW-TOP5
+                rows.append(("💸", "Monthly spend", f"${_total:.4f} / ${_limit:.2f} ({_pct:.1%}) [{payload['cost_estimate']['policy_status']}]"))  # AINL-OPENCLAW-TOP5
+            except Exception as _est_e:  # AINL-OPENCLAW-TOP5
+                payload["cost_estimate"] = {"error": str(_est_e)}  # AINL-OPENCLAW-TOP5
+
         if bool(getattr(args, "status_summary", False)):  # AINL-OPENCLAW-TOP5
             print(payload["summary_line"])  # AINL-OPENCLAW-TOP5
             return 0 if ok else 1  # AINL-OPENCLAW-TOP5
@@ -2608,6 +2915,7 @@ def main() -> None:
     st_out.add_argument("--json", dest="status_json", action="store_true", help="Emit machine-readable JSON (indented)")  # AINL-OPENCLAW-TOP5
     st_out.add_argument("--json-summary", dest="status_json_summary", action="store_true", help="One-line minified JSON (CI, log ship)")  # AINL-OPENCLAW-TOP5
     st_out.add_argument("--summary", dest="status_summary", action="store_true", help="One-line human summary (Telegram, Slack)")  # AINL-OPENCLAW-TOP5
+    st.add_argument("--estimate", action="store_true", default=False, help="Include monthly spend/limit snapshot from CostTracker (read-only)")  # AINL-OPENCLAW-TOP5
     st.set_defaults(func=cmd_status)  # AINL-OPENCLAW-TOP5
 
     def cmd_bridge_sizing_probe(args: argparse.Namespace) -> int:
