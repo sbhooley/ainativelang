@@ -1,0 +1,202 @@
+# OpenFang Configuration Reference
+
+This document describes configuration options for AINL when running under OpenFang.
+
+## OpenFang Config Changes (`~/.openfang/config.toml`)
+
+AINL integration adds an MCP server entry. The minimal config is:
+
+```toml
+[[mcp_servers]]
+name = "ainl"
+command = "ainl-mcp"
+args = []
+```
+
+### Optional Settings
+
+| Setting      | Description                            | Default |
+|--------------|----------------------------------------|---------|
+| `name`       | MCP server identifier                  | `"ainl"`|
+| `command`    | Command to launch AINL MCP server     | `"ainl-mcp"`|
+| `args`       | Extra arguments for the command       | `[]`|
+
+## AINL Environment Variables
+
+When running as an OpenFang hand, these environment variables are used:
+
+| Variable                     | Description | Default |
+|------------------------------|-------------|---------|
+| `OPENFANG_WORKSPACE`         | OpenFang workspace root | `~/.openfang/workspace` |
+| `OPENFANG_MEMORY_DB`         | Path to SQLite memory DB | `$OPENFANG_WORKSPACE/.ainl/ainl_memory.sqlite3` |
+| `OPENFANG_TOKEN_AUDIT`       | Token usage audit log | `/var/log/openfang/token_audit.jsonl` |
+| `AINL_MEMORY_DB`             | Alias for OPENFANG_MEMORY_DB | (derived) |
+| `AINL_IR_CACHE_DIR`          | Compiled IR cache | `$OPENFANG_WORKSPACE/.ainl/ir_cache` |
+| `MONITOR_CACHE_JSON`         | Metrics cache | `$OPENFANG_WORKSPACE/.ainl/monitor_cache.json` |
+| `OPENFANG_BOOTSTRAP_PREFER_SESSION_CONTEXT` | Enable session context heuristics | `false` |
+
+## HAND.toml Manifest Options
+
+When emitting to OpenFang, the generated `HAND.toml` contains:
+
+```toml
+[hand]
+id = "ainl-<stem>"
+name = "<Stemmed Name>"
+version = "1.0.0"
+description = "AINL-generated hand"
+author = "AINL User"
+entrypoint = "<stem>.ainl.json"
+
+[config]
+max_concurrency = 5
+default_timeout = 300
+retry_policy = "exponential_backoff"
+max_retries = 3
+
+[security]
+sandbox = "wasm"
+max_memory_mb = 256
+max_instructions = 10_000_000
+allowed_imports = ["env.print", "env.log", "env.sleep", "env.random"]
+taint_sources = []
+merkle_audit = true
+
+[[inputs]]
+name = "input"
+type = "object"
+
+[[outputs]]
+name = "result"
+type = "object"
+
+[[outputs]]
+name = "metrics"
+type = "object"
+
+[resources]
+cpu_millicores = 500
+memory_mb = 256
+ephemeral_storage_mb = 100
+
+[metadata]
+tags = ["ainl", "<stem>"]
+```
+
+You can customize these before running the hand.
+
+## Security Policies
+
+The `security.json` file controls the WASM sandbox:
+
+```json
+{
+  "version": "1.0",
+  "sandbox": "wasm",
+  "wasm_config": {
+    "max_memory_mb": 256,
+    "max_instructions": 10000000,
+    "allowed_imports": ["env.print", "env.log", "env.sleep", "env.random"],
+    "blocked_syscalls": ["filesystem", "network", "process"],
+    "fuel_limit": null
+  },
+  "taint": {
+    "sources": [],
+    "tracking_enabled": true
+  },
+  "merkle": {
+    "hooks_enabled": true,
+    "incremental": true
+  },
+  "allowed_networks": [],
+  "max_execution_time_sec": 300
+}
+```
+
+Adjust `allowed_imports` and `allowed_networks` as needed, but be aware that relaxing security reduces isolation.
+
+## Channel Adapters
+
+AINL tools can publish to OpenFang channels via the `openfang_channel` tool spec. The adapter registers these channels automatically:
+
+- `ainl_control` – control messages (QoS 2)
+- `ainl_metrics` – metrics (QoS 1)
+- `ainl_alerts` – alerts (QoS 2)
+- `openfang_events` – OpenFang events (QoS 0)
+
+You can add custom channels by modifying `openfang/adapters/channel.py`.
+
+## Token Tracking & Merkle Audit
+
+Token usage is recorded to `OPENFANG_TOKEN_AUDIT` (default `/var/log/openfang/token_audit.jsonl`). Each entry includes a Merkle proof for tamper detection.
+
+To verify the audit trail integrity:
+
+```bash
+python -c "from openfang.bridge.token_tracker import OpenFangTokenTracker; print(OpenFangTokenTracker().verify_merkle_chain())"
+```
+
+## Troubleshooting
+
+### Schema Errors
+
+If `ainl status --host openfang` reports schema errors, run:
+
+```bash
+# The bootstrap should auto-create tables; if not:
+python -c "from openfang.bridge.schema_bootstrap import bootstrap_tables; bootstrap_tables(Path('~/.openfang/.ainl/ainl_memory.sqlite3').expanduser())"
+```
+
+### MCP Not Connecting
+
+Ensure `ainl-mcp` is on PATH and the `config.toml` entry is correct. Test:
+
+```bash
+ainl-mcp --help
+```
+
+Should show MCP server help.
+
+### WASM Sandbox Errors
+
+If your hand exceeds memory or instruction limits, adjust the `security` section in `HAND.toml` and re-emit.
+
+For more help, consult the OpenFang docs or AINL repository.
+
+
+## Tauri Sidecar Configuration
+
+OpenFang desktop applications can embed AINL as a sidecar process. Add this to your `tauri.conf.json`:
+
+```json
+{
+  "tauri": {
+    "allowlist": { "all": false },
+    "sidecar": {
+      " ainl-sidecar": {
+        "desc": "AINL bridge sidecar for OpenFang",
+        "cmd": "ainl-run",
+        "args": ["--bridge-endpoint", "openfang", "--workspace", "$APPDATA/openfang/workspace"]
+      }
+    }
+  }
+}
+```
+
+Then in your Rust code, you can invoke the sidecar:
+
+```rust
+// Example: Start AINL sidecar
+let mut sidecar = tauri::async_runtime::spawn(async move {
+    let mut child = tauri::api::process::Command::new("ainl-sidecar")
+        .args(&["run", "my_workflow.ainl"])
+        .spawn()
+        .expect("failed to start ainl-sidecar");
+    child.wait().await
+});
+```
+
+The sidecar communicates via stdin/stdout using the OpenFang bridge protocol. See `openfang/bridge/` for protocol details.
+
+For packaged applications, ensure `ainl` and its dependencies are bundled or available on the system PATH. PyInstaller or similar can create a standalone executable.
+

@@ -1,0 +1,105 @@
+# Token / budget digest (bridge). Cache size uses R bridge monitor_cache_stat (fs adapter has no stat and cannot read /tmp outside sandbox).
+# Schedule: daily 23:00 UTC. One consolidated R queue Put at end (live): "Daily AINL Status - …". Prune when cache_mb > 12. Pass `auto` to monitor_cache_prune so days_old comes from AINL_TOKEN_PRUNE_DAYS (default 60).
+# Test: AINL_BRIDGE_FAKE_CACHE_MB (float MB), AINL_BRIDGE_PRUNE_FORCE_ERROR=1 (simulated prune error).
+# Prevents duplicate appends on repeated manual runs same day: bridge checks /tmp/token_report_today_sent (date stamp); not R fs (sandbox). Override path with AINL_TOKEN_REPORT_SENTINEL.
+# Use X (core.gt var N) + If flag — If (core.gt cache_mb N) breaks the tokenizer.
+S core cron "0 23 * * *"
+
+L0:
+  Call L_run ->final
+  J final
+L_run:
+  R bridge token_budget_notify_reset ->_
+  R bridge monitor_cache_stat ->cache_mb
+  X c10 (core.gt cache_mb 10)
+  If c10 ->L_cache_big ->L_cache_ok_entry
+L_cache_big:
+  R core concat "- token_budget_alert: MONITOR_CACHE_JSON ~" cache_mb " MB (>10MB threshold)" ->bad_note
+  Set cache_ok 0
+  R openclaw_memory append_today bad_note ->_
+  X c15 (core.gt cache_mb 15)
+  If c15 ->L_crit_stub ->L_digest
+L_crit_stub:
+  If dry_run ->L_crit_skip_notify ->L_crit_with_notify
+L_crit_with_notify:
+  R bridge token_budget_notify_add "Cache critically large — consider manual prune" ->_
+  Call L_digest ->out
+  J out
+L_crit_skip_notify:
+  Call L_digest ->out
+  J out
+L_cache_ok_entry:
+  Set cache_ok 1
+  Call L_digest ->out
+  J out
+L_digest:
+  R bridge token_budget_warn 1 ->wb
+  R bridge token_budget_report 1 ->report
+  If dry_run ->L_digest_after_main ->L_digest_live_main
+L_digest_live_main:
+  R bridge token_report_today_sent ->dup
+  If dup ->L_digest_dup_skip ->L_digest_do_append
+L_digest_dup_skip:
+  J L_digest_after_main
+L_digest_do_append:
+  R openclaw_memory append_today report ->_
+  R bridge token_report_today_touch ->_
+  J L_digest_after_main
+L_digest_after_main:
+  X c12 (core.gt cache_mb 12)
+  If c12 ->L_do_prune ->L_after_prune
+L_do_prune:
+  R bridge monitor_cache_prune auto ->pr
+  X pe (get pr error)
+  If pe ->L_prune_failed ->L_prune_ok
+L_prune_failed:
+  R bridge monitor_cache_prune_error_markdown ->emd
+  R openclaw_memory append_today emd ->_
+  X report (core.concat report "\n\n" emd)
+  Call L_after_prune ->ap
+  J ap
+L_prune_ok:
+  R bridge monitor_cache_prune_markdown ->prune_md
+  R openclaw_memory append_today prune_md ->_
+  X report (core.concat report "\n\n" prune_md)
+  X pc_int (get pr pruned_count)
+  X did_prune (core.gt pc_int 0)
+  If did_prune ->L_prune_enqueue ->L_after_prune
+L_prune_enqueue:
+  If dry_run ->L_after_prune ->L_prune_add
+L_prune_add:
+  R bridge monitor_cache_prune_notify_text ->pmsg
+  R bridge token_budget_notify_add pmsg ->_
+  Call L_after_prune ->ap
+  J ap
+L_after_prune:
+  If wb ->L_notify_budget ->L_done
+L_notify_budget:
+  If cache_ok ->L_queue_gate ->L_done
+L_queue_gate:
+  Call L_done ->dg
+  J dg
+L_finalize_notify:
+  If dry_run ->L_fn_end ->L_fn_live
+L_fn_live:
+  X do_budget (core.and wb cache_ok)
+  If do_budget ->L_fn_budget_txt ->L_fn_build
+L_fn_budget_txt:
+  R bridge token_budget_notify_text 1 ->ntxt
+  R bridge token_budget_notify_add ntxt ->_
+  Call L_fn_build ->fb
+  J fb
+L_fn_build:
+  R core now ->nts
+  R bridge token_budget_notify_build nts ->daily
+  X nz (core.ne daily "")
+  If nz ->L_fn_put ->L_fn_end
+L_fn_put:
+  R queue Put "notify" daily
+  Call L_fn_end ->fe
+  J fe
+L_fn_end:
+  Ret 1
+L_done:
+  Call L_finalize_notify ->_
+  J report

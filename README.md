@@ -34,6 +34,26 @@
 
 > AI-led co-development project, human-initiated by Steven Hooley (`x.com/sbhooley`, `stevenhooley.com`, `linkedin.com/in/sbhooley`). Attribution details: `docs/PROJECT_ORIGIN_AND_ATTRIBUTION.md` and `tooling/project_provenance.json`.
 
+## Open-core boundary
+
+| Area | Status | Notes |
+|:-----|:------:|:------|
+| Core DSL, compiler, runtime, `ainl validate/check/inspect/visualize` | **Open** (Apache-2.0) | Language legitimacy; essential tooling |
+| MCP server / bridge (`ainl-mcp`, `scripts/ainl_mcp_server.py`) | **Open & pluggable** | Any MCP host; bring your own compliant LLMs |
+| OpenSpace / Lead AI style flows | **Open via BYO-LLM** | Implemented via MCP; operators choose their models |
+| Enterprise audit/policy packs, managed ops, deployment kits | **Paid / optional** | Governance, SLA-backed support, monitored hosted runtime |
+
+> Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
+
+## New in v1.3.4
+
+- **Enhanced diagnostics** (`--enhanced-diagnostics`): graph context + Mermaid snippets on compile errors
+- **Error highlighting** (`ainl visualize --highlight-errors`): error nodes styled in Mermaid output
+- **Static cost estimates** (`--estimate` on `check`, `inspect`, `status`): per-node token/USD estimates
+- **Audit trail adapter** (`--enable-adapter audit_trail --audit-sink file:///...`): immutable JSONL compliance log (graph must invoke `audit_trail.record`)
+
+> Tutorials: [Debugging with the Visualizer](docs/tutorials/debugging_with_visualizer.md) · [Production: Estimates & Audit](docs/tutorials/production_with_estimates_and_audit.md)
+
 **AINL helps turn AI from "a smart conversation" into "a structured worker."**
 
 > **v1.3.3 — Native Solana + prediction markets:** See [`docs/solana_quickstart.md`](docs/solana_quickstart.md) for strict graphs, env vars, dry-run-first flows, and `--emit solana-client` / `blockchain-client` usage, plus [`examples/prediction_market_demo.ainl`](examples/prediction_market_demo.ainl) for a concrete resolution → conditional payout pattern.
@@ -76,7 +96,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
   - **Agent guide index:** `docs/AGENT_GUIDE_INDEX.md` summarizes docs for OpenClaw, ZeroClaw, Hermes‑Agent, and generic AI agents.
 > - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · **`ainl install openclaw`**, **`ainl status`** (with **`--json`**, **`--json-summary`**, **`--summary`**), **`ainl cron add`**, **`ainl dashboard`**, **`ainl doctor --ainl`** · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). Agent discovery: **`tooling/bot_bootstrap.json`** → **`openclaw_commands`**. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 > - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-mcp --host openclaw`**
-> - **OpenClaw + AINL unified integration (v1.3.3; includes v1.3.0 Hermes + `ainl install openclaw` / `ainl status`, v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
+> - **OpenClaw + AINL unified integration (v1.3.3+; includes v1.3.0 Hermes + `ainl install openclaw` / `ainl status`, v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
 > - **Hermes Agent support (official; self-improving agents with deterministic graphs):** [`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md) · [`skills/hermes/`](skills/hermes/) · **`ainl install-mcp --host hermes`** · **`ainl compile --emit hermes-skill`**
 > - **PTC-Lisp integration (opt-in):** [`docs/adapters/PTC_RUNNER.md`](docs/adapters/PTC_RUNNER.md) · quick start: `ainl run-hybrid-ptc` · examples:
 >   - [`examples/hybrid_order_processor.ainl`](examples/hybrid_order_processor.ainl) — hybrid order processor (parallel batches, signatures, firewall, LangGraph bridge)
@@ -90,7 +110,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 > - **AINL → HTTP workers (bridge contract, secondary to MCP):** [`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md) · JSON Schema [`schemas/executor_bridge_request.schema.json`](schemas/executor_bridge_request.schema.json) · include [`modules/common/executor_bridge_request.ainl`](modules/common/executor_bridge_request.ainl)
 
 > TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
-> Positioning (current **v1.3.3**; monitoring pack since **v1.2.10**): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md). Since **v1.2.10**, AINL also ships an optional **monitoring pack** for LLM/tool adapters and OpenClaw-style intelligence programs: unified LLM usage tracking, budget policy, and a small Flask/Prometheus dashboard under `intelligence/monitor/` (see **`docs/MONITORING_OPERATIONS.md`** and **`docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md`**).
+> Positioning (current **v1.3.4**; monitoring pack since **v1.2.10**): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md). Since **v1.2.10**, AINL also ships an optional **monitoring pack** for LLM/tool adapters and OpenClaw-style intelligence programs: unified LLM usage tracking, budget policy, and a small Flask/Prometheus dashboard under `intelligence/monitor/` (see **`docs/MONITORING_OPERATIONS.md`** and **`docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md`**).
 
 **Compile-once, run-many:** you author (or import) a graph once; the runtime executes it deterministically without re-spending LLM tokens on orchestration each time. Size economics are tracked with **tiktoken cl100k_base**; the **viable subset** (e.g. **public_mixed**) shows about **~1.02×** leverage for **minimal_emit** vs unstructured baselines—see **[`BENCHMARK.md`](BENCHMARK.md)**, **[`docs/benchmarks.md`](docs/benchmarks.md)**, and **[`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](docs/architecture/COMPILE_ONCE_RUN_MANY.md)**.
 
@@ -1364,6 +1384,51 @@ AI Native Lang uses an open-core licensing model.
 All agent orchestration, cron unification, memory bridging, and OpenClaw-specific supervision glue lives in **`openclaw/bridge/`** (with backward-compatible **`scripts/`** shims). See **[`openclaw/bridge/README.md`](openclaw/bridge/README.md)** for runners, drift checks, `AINL_WORKSPACE` cron patterns, and the `ainl_bridge_main.py` entrypoint.
 
 ---
+
+
+## OpenFang Integration
+
+AINL integrates seamlessly with [OpenFang](https://github.com/RightNow-AI/openfang), the open-source Agent Operating System.
+
+### Quick Start
+
+```bash
+# Install AINL for OpenFang
+ainl install openfang
+
+# Emit a hand package
+ainl emit --target openfang -o my_hand/ workflow.ainl
+
+# Run with OpenFang
+openfang hand run my_hand --input '{}'
+
+# Check status
+ainl status --host openfang
+```
+
+### Features
+
+- **WASM Sandbox**: All hands run in a secure WASM sandbox with configurable memory/instruction limits
+- **Merkle Audit Trail**: Token usage is recorded with cryptographic proofs for accountability
+- **Taint Tracking**: Data lineage tracking for sensitive information
+- **MCP Native**: OpenFang uses AINL as a first-class MCP server
+- **Tauri Sidecar**: Desktop apps can embed AINL via OpenFang sidecar
+
+### Configuration
+
+After `ainl install openfang`, your `~/.openfang/config.toml` will contain:
+
+```toml
+[[mcp_servers]]
+name = "ainl"
+command = "ainl-mcp"
+args = []
+```
+
+Refer to [openfang/docs/](openfang/docs/) for detailed documentation.
+
+---
+
 
 ## Production monitoring
 

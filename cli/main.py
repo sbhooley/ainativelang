@@ -8,6 +8,8 @@ import json
 import os
 import re
 from pathlib import Path
+import shutil
+import shlex
 from typing import Any, Dict, List, Optional
 from collections import deque
 import datetime
@@ -389,7 +391,11 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
     if "audit_trail" in enabled:
         from adapters.audit_trail import AuditTrailAdapter
 
-        sink = str(getattr(args, "audit_sink", "") or "").strip() or os.environ.get("AINL_AUDIT_SINK", "").strip() or "stderr://"
+        sink = (
+            str(getattr(args, "audit_sink", "") or "").strip()
+            or os.environ.get("AINL_AUDIT_SINK", "").strip()
+            or "stderr://"
+        )
         reg.register("audit_trail", AuditTrailAdapter(sink=sink))
 
 
@@ -635,7 +641,14 @@ def cmd_check(args: argparse.Namespace) -> int:
     src_path = str(Path(args.file).resolve())
     with open(src_path, "r", encoding="utf-8") as f:
         code = f.read()
-    c = AICodeCompiler(strict_mode=args.strict)
+    strict = bool(getattr(args, "strict", False) or getattr(args, "strict_reachability", False))
+    enhanced = bool(
+        getattr(args, "enhanced_diagnostics", False)
+        or getattr(args, "strict", False)
+        or getattr(args, "strict_reachability", False)
+    )
+
+    c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
     ir = c.compile(code, emit_graph=True, source_path=src_path)
     ok = len(ir.get("errors", [])) == 0
     diagnostics = list(ir.get("diagnostics") or [])
@@ -648,7 +661,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             ln = int(m.group(1))
             line = src_lines[ln - 1] if 0 <= ln - 1 < len(src_lines) else ""
             diagnostics.append({"line": ln, "source": line, "error": e})
-    payload = {
+    payload: Dict[str, Any] = {
         "ok": ok,
         "ir_version": ir.get("ir_version"),
         "errors": ir.get("errors", []),
@@ -656,14 +669,31 @@ def cmd_check(args: argparse.Namespace) -> int:
         "meta": ir.get("meta", []),
         "diagnostics": diagnostics,
     }
+    # Enhanced diagnostics are best-effort, additive metadata for humans/tools.
+    # This never changes the primary compile result (ir/errors).
+    if (not ok) and strict and enhanced:
+        try:
+            from compiler_diagnostics import CompilationDiagnosticError, CompilerContext
+            from scripts.validate_ainl import _enrich_diagnostics_with_graph_context  # type: ignore
+
+            try:
+                AICodeCompiler(strict_mode=True, strict_reachability=bool(getattr(args, "strict_reachability", False))).compile(
+                    code,
+                    emit_graph=True,
+                    source_path=src_path,
+                    context=CompilerContext(),
+                )
+            except CompilationDiagnosticError as e:
+                enriched = _enrich_diagnostics_with_graph_context(list(e.diagnostics), e.source)
+                payload["structured_diagnostics"] = [d.to_dict() for d in enriched]
+        except Exception:
+            pass
     if bool(getattr(args, "estimate", False)):
         try:
             from tooling.cost_estimate import estimate_ir_cost, format_estimate_table
-
             est = estimate_ir_cost(ir)
             payload["cost_estimate"] = est
-            # Human table to stderr, JSON stays on stdout.
-            sys.stderr.write(format_estimate_table(est))
+            print(format_estimate_table(est), end="", file=sys.stderr)
         except Exception as _e:
             payload["cost_estimate"] = {"error": str(_e)}
     print(json.dumps(payload, indent=2))
@@ -734,6 +764,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
             "source_path": src_path,
             "strict": bool(getattr(args, "strict", False)),
         }
+        if getattr(args, "estimate", False):
+            try:
+                from tooling.cost_estimate import estimate_ir_cost
+                ir["_cost_estimate"] = estimate_ir_cost(ir)
+            except Exception as _e:
+                ir["_cost_estimate"] = {"error": str(_e)}
         print(json.dumps(ir, indent=2))
         return 0 if ok else 1
     return cmd_check(args)
@@ -801,7 +837,17 @@ def cmd_emit(args: argparse.Namespace) -> int:
         print(json.dumps({"ok": True, "emit": "temporal", "dir": str(out_dir.resolve()), "files": [str(act_path), str(wf_path)]}, indent=2))
         return 0
 
-    # Emitters available on the compiler
+        # OpenFang Hand package
+    if target == "openfang":
+        from openfang.emitter.openfang import emit_openfang
+        out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_openfang_hand"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        files = emit_openfang(ir, stem, out_dir)
+        written = [str(p) for p in files.values()]
+        print(json.dumps({"ok": True, "emit": "openfang", "dir": str(out_dir.resolve()), "files": written}, indent=2))
+        return 0
+
+# Emitters available on the compiler
     emitter_map = {
         "server": "emit_server",
         "python-api": "emit_python_api",
@@ -1208,7 +1254,6 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     if bool(getattr(args, "estimate", False)):
         try:
             from tooling.cost_estimate import estimate_ir_cost
-
             ir["_cost_estimate"] = estimate_ir_cost(ir)
         except Exception as _e:
             ir["_cost_estimate"] = {"error": str(_e)}
@@ -2148,7 +2193,11 @@ def main() -> None:
         dest="audit_sink",
         default="",
         metavar="URI",
-        help="With --enable-adapter audit_trail: sink URI (or env AINL_AUDIT_SINK). e.g. file:///tmp/ainl_audit.jsonl",
+        help=(
+            "Sink URI for the audit_trail adapter (requires --enable-adapter audit_trail). "
+            "Supported: file:///path/to/audit.jsonl, syslog://, stderr://, stdout://. "
+            "Overrides AINL_AUDIT_SINK env var."
+        ),
     )
     runp.add_argument(
         "--bridge-endpoint",
@@ -2270,6 +2319,7 @@ def main() -> None:
     chk.add_argument("file")
     chk.add_argument("--strict", action="store_true")
     chk.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
+    chk.add_argument("--enhanced-diagnostics", action="store_true", default=False, help="Enrich diagnostics with graph context and Mermaid snippets on failure")
     chk.set_defaults(func=cmd_check)
 
     cmp = sub.add_parser("compile", help="Compile an .ainl file and optionally emit artifacts")
@@ -2290,6 +2340,8 @@ def main() -> None:
     val.add_argument("--strict", action="store_true")
     val.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
     val.add_argument("--json-output", action="store_true", help="Output full IR JSON instead of summary (for CI/tooling)")
+    val.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
+    val.add_argument("--enhanced-diagnostics", action="store_true", default=False, help="Enrich diagnostics with graph context and Mermaid snippets on failure")
     val.set_defaults(func=cmd_validate)
 
     # --- ainl emit (full emitter with all targets) ---
@@ -2321,6 +2373,7 @@ def main() -> None:
     isp.add_argument("--strict", action="store_true")
     isp.add_argument("--estimate", action="store_true", default=False, help="Embed static LLM cost estimate into IR as _cost_estimate")
     isp.add_argument("--json", action="store_true", help="Compatibility flag (output is always JSON)")
+    isp.add_argument("--estimate", action="store_true", default=False, help="Embed static LLM cost estimate as ir[\"_cost_estimate\"]")
     isp.set_defaults(func=cmd_inspect)
 
     avm = sub.add_parser("generate-avm-policy", help="Generate AVM policy fragment JSON from an .ainl file")
@@ -2821,6 +2874,24 @@ def main() -> None:
             sl_parts.append(f"est_cost_avoided_usd_7d={payload['estimated_cost_avoided_usd_7d']}")  # AINL-OPENCLAW-TOP5
         payload["summary_line"] = " ".join(sl_parts) + f" | {now}"  # AINL-OPENCLAW-TOP5
 
+        if getattr(args, "estimate", False):  # AINL-OPENCLAW-TOP5
+            try:  # AINL-OPENCLAW-TOP5
+                from intelligence.monitor.cost_tracker import CostTracker  # AINL-OPENCLAW-TOP5
+                _ct = CostTracker()  # AINL-OPENCLAW-TOP5
+                _total, _limit, _pct = _ct.update_month_spending()  # AINL-OPENCLAW-TOP5
+                _budget = _ct.get_budget()  # AINL-OPENCLAW-TOP5
+                payload["cost_estimate"] = {  # AINL-OPENCLAW-TOP5
+                    "monthly_spend_usd": round(_total, 6),  # AINL-OPENCLAW-TOP5
+                    "monthly_limit_usd": round(_limit, 2),  # AINL-OPENCLAW-TOP5
+                    "usage_pct": round(_pct * 100, 1),  # AINL-OPENCLAW-TOP5
+                    "alert_threshold_pct": _budget.get("alert_threshold_pct", 0.8),  # AINL-OPENCLAW-TOP5
+                    "throttle_threshold_pct": _budget.get("throttle_threshold_pct", 0.95),  # AINL-OPENCLAW-TOP5
+                    "policy_status": "throttled" if _pct >= _budget.get("throttle_threshold_pct", 0.95) else ("alert" if _pct >= _budget.get("alert_threshold_pct", 0.8) else "ok"),  # AINL-OPENCLAW-TOP5
+                }  # AINL-OPENCLAW-TOP5
+                rows.append(("💸", "Monthly spend", f"${_total:.4f} / ${_limit:.2f} ({_pct:.1%}) [{payload['cost_estimate']['policy_status']}]"))  # AINL-OPENCLAW-TOP5
+            except Exception as _est_e:  # AINL-OPENCLAW-TOP5
+                payload["cost_estimate"] = {"error": str(_est_e)}  # AINL-OPENCLAW-TOP5
+
         if bool(getattr(args, "status_summary", False)):  # AINL-OPENCLAW-TOP5
             print(payload["summary_line"])  # AINL-OPENCLAW-TOP5
             return 0 if ok else 1  # AINL-OPENCLAW-TOP5
@@ -2844,10 +2915,6 @@ def main() -> None:
     st_out.add_argument("--json", dest="status_json", action="store_true", help="Emit machine-readable JSON (indented)")  # AINL-OPENCLAW-TOP5
     st_out.add_argument("--json-summary", dest="status_json_summary", action="store_true", help="One-line minified JSON (CI, log ship)")  # AINL-OPENCLAW-TOP5
     st_out.add_argument("--summary", dest="status_summary", action="store_true", help="One-line human summary (Telegram, Slack)")  # AINL-OPENCLAW-TOP5
-
-    st.set_defaults(func=cmd_status)  # AINL-OPENCLAW-TOP5
-
-    st.add_argument("--host", default="openclaw", choices=["openclaw", "openfang"], help="Agent host (default: openclaw)")  # AINL-OPENFANG-TOP3
     st.add_argument("--estimate", action="store_true", default=False, help="Include monthly spend/limit snapshot from CostTracker (read-only)")  # AINL-OPENCLAW-TOP5
     st.set_defaults(func=cmd_status_mux)  # AINL-OPENCLAW-TOP5
 

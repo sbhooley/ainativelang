@@ -1,0 +1,34 @@
+# Email Monitor — Immediate alerts (AINL Wrapper)
+# Checks Gmail for unread messages and sends a Telegram notification if any are found.
+# Uses the email adapter (R email G) and queue adapter for notifications.
+include "modules/common/core.ainl" as core
+
+# Schedule: every 15 minutes (adjust as needed; cron schedule is separate)
+S core cron "*/15 * * * *"
+
+L0:
+  # Fetch unread emails via email adapter
+  R email G ->data
+  # Extract messages list, default to empty if missing or null
+  X raw_msgs (get data "messages")
+  X msgs (or raw_msgs [])
+  X count (core.len msgs)
+  # If no emails, exit quietly
+  X has (gt count 0)
+  If has ->L_notify ->L_exit
+
+L_notify:
+  # Build notification message
+  X count_str (core.stringify count)
+  X base (core.concat "📧 You have " count_str " unread email(s).")
+  # Try to include first email's subject
+  X first (get msgs "0")
+  X subj_obj (get first "subject")
+  X subj (if subj_obj subj_obj "(no subject)")
+  X full_msg (core.concat base "\nLatest: " subj)
+  # Send via notification queue (Telegram)
+  R queue Put [ "notify", full_msg ] ->sent_status
+  Ret "notified"
+
+L_exit:
+  Ret "ok"

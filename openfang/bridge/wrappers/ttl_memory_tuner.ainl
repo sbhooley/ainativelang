@@ -1,0 +1,14 @@
+# TTL tuner: adjusts memory TTL for workflow rows tagged ttl_managed (see bridge_token_budget_adapter).
+# Schedule weekly after token trends (example): S core cron "30 9 * * 0"
+# Dry-run: bridge skips writes.
+S core cron "30 9 * * 0"
+
+L0:
+  R bridge ttl_memory_tuner_run ->res
+  If dry_run ->L_out ->L_append
+L_append:
+  R core.stringify res ->res_s
+  R openclaw_memory append_today res_s ->_
+  J L_out
+L_out:
+  J res
