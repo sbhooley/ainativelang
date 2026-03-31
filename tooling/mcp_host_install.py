@@ -275,6 +275,15 @@ def _ensure_mcp_registration_json_under_mcp(
     if not isinstance(data, dict):
         data = {}
 
+    # Compatibility: if a legacy top-level mcpServers mapping already has this
+    # server registered with the same command, keep the file unchanged.
+    legacy_servers = data.get("mcpServers")
+    if isinstance(legacy_servers, dict):
+        legacy_existing = legacy_servers.get(server_key)
+        if isinstance(legacy_existing, dict) and legacy_existing.get("command") == desired["command"]:
+            _log(verbose, f"MCP: {server_key!r} already registered in {cfg_path} under legacy mcpServers")
+            return
+
     # Ensure "mcp" exists and is a dict
     mcp = data.get("mcp")
     if mcp is None or not isinstance(mcp, dict):

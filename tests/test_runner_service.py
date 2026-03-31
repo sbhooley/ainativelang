@@ -10,12 +10,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import scripts.runtime_runner_service as _runner_mod
 from scripts.runtime_runner_service import app
 
-<<<<<<< Updated upstream
-=======
 # Widen the server grant for integration tests so ext/fs/http adapters
 # are allowed by the capability gate.  Production callers still cannot
 # widen beyond whatever the real server grant allows.
->>>>>>> Stashed changes
 _runner_mod._SERVER_GRANT = {
     "allowed_adapters": ["core", "ext", "http", "sqlite", "fs", "tools",
                           "cache", "queue", "txn", "auth", "wasm"],

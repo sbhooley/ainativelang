@@ -87,38 +87,6 @@ def _load_server_grant() -> Dict[str, Any]:
 _SERVER_GRANT_PROFILE: Optional[str] = os.environ.get("AINL_SECURITY_PROFILE")
 _SERVER_GRANT: Dict[str, Any] = _load_server_grant()
 
-# --- Server-level defaults (safety floor) --------------------------------
-# These apply to every /run and /enqueue request.  An operator can tighten
-# them further by setting AINL_SECURITY_PROFILE to a named profile.
-
-_SERVER_DEFAULT_LIMITS: Dict[str, int] = {
-    "max_steps": 2000,
-    "max_depth": 20,
-    "max_adapter_calls": 200,
-    "max_time_ms": 30000,
-}
-_SERVER_DEFAULT_ALLOWED: List[str] = ["core"]
-
-def _load_server_grant() -> Dict[str, Any]:
-    """Build the server-level capability grant from env/defaults."""
-    profile_name = os.environ.get("AINL_SECURITY_PROFILE")
-    if profile_name:
-        try:
-            return load_profile_as_grant(profile_name)
-        except ValueError:
-            logger.warning("unknown AINL_SECURITY_PROFILE %r; using defaults", profile_name)
-    return {
-        "allowed_adapters": list(_SERVER_DEFAULT_ALLOWED),
-        "forbidden_adapters": [],
-        "forbidden_effects": [],
-        "forbidden_effect_tiers": [],
-        "forbidden_privilege_tiers": [],
-        "limits": dict(_SERVER_DEFAULT_LIMITS),
-        "adapter_constraints": {},
-    }
-
-_SERVER_GRANT: Dict[str, Any] = _load_server_grant()
-
 _COMPILE_CACHE: Dict[str, Dict[str, Any]] = {}
 _JOBS: Dict[str, Dict[str, Any]] = {}
 _JOB_Q: "queue.Queue[tuple[str, Dict[str, Any]]]" = queue.Queue()
@@ -385,6 +353,17 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
     req["allowed_adapters"] = grant_to_allowed_adapters(effective)
     req["limits"] = grant_to_limits(effective)
 
+    _json_log(
+        {
+            "event": "run_start",
+            "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "trace_id": trace_id,
+            "replay_artifact_id": str(req.get("replay_artifact_id") or ""),
+            "limits_summary": dict(req.get("limits") or {}),
+            "policy_present": bool(effective_policy),
+        }
+    )
+
     reg = _build_registry(req)
     replay_artifact_id = str(req.get("replay_artifact_id") or "")
     per_adapter_durations = _instrument_registry(reg, trace_id=trace_id, replay_artifact_id=replay_artifact_id)
@@ -396,11 +375,6 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
         execution_mode=str(req.get("execution_mode") or "graph-preferred"),
         unknown_op_policy=req.get("unknown_op_policy"),
         limits=req["limits"],
-<<<<<<< Updated upstream
-        avm_event_hasher=_SANDBOX_CLIENT.event_hash if _SANDBOX_CLIENT.connected else None,
-        sandbox_metadata_provider=_SANDBOX_CLIENT.trajectory_metadata if _SANDBOX_CLIENT.connected else None,
-=======
->>>>>>> Stashed changes
     )
     label = str(req.get("label") or eng.default_entry_label())
     frame = req.get("frame") or {}

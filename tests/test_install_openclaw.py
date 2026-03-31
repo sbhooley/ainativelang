@@ -58,7 +58,8 @@ def test_run_install_openclaw_writes_wrapper_and_mcp(tmp_path: Path) -> None:
 
     cfg = oc / "openclaw.json"
     data = json.loads(cfg.read_text(encoding="utf-8"))
-    assert data["mcpServers"]["ainl"]["command"] == "/fake/ainl-mcp"
+    servers = (data.get("mcp", {}) or {}).get("servers", {}) or data.get("mcpServers", {}) or {}
+    assert servers["ainl"]["command"] == "/fake/ainl-mcp"
 
 
 def test_ensure_mcp_skips_when_same_command(tmp_path: Path) -> None:
@@ -67,10 +68,7 @@ def test_ensure_mcp_skips_when_same_command(tmp_path: Path) -> None:
     oc = home / ".openclaw"
     oc.mkdir()
     cfg = oc / "openclaw.json"
-    payload = {
-        "other": {"keep": True},
-        "mcpServers": {"ainl": {"command": "/usr/bin/ainl-mcp", "args": []}},
-    }
+    payload = {"other": {"keep": True}, "mcpServers": {"ainl": {"command": "/usr/bin/ainl-mcp", "args": []}}}
     cfg.write_text(json.dumps(payload), encoding="utf-8")
 
     with patch("tooling.mcp_host_install._which_or_fallback", return_value="/usr/bin/ainl-mcp"):

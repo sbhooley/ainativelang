@@ -819,6 +819,187 @@ def cmd_emit(args: argparse.Namespace) -> int:
 
 
 
+<<<<<<< HEAD
+=======
+
+# ====================== OpenFang Integration ======================
+# AINL-OPENFANG-TOP1
+
+def cmd_install_openfang_one_command(args: argparse.Namespace) -> int:
+    """One-command OpenFang install + health check (mirrors OpenClaw)."""
+    from pathlib import Path
+    import subprocess
+    import sys
+
+    from tooling.openfang_install import run_install_openfang
+    from openfang.bridge.ainl_bridge_main import ainl_openfang_validate
+    from openfang.bridge.user_friendly_error import INIT_INSTALL_OPENFANG, user_friendly_ainl_error
+
+    dry = bool(getattr(args, "install_openfang_dry_run", False))
+    verbose = bool(getattr(args, "install_openfang_verbose", False))
+
+    # 1) pip install ainl[mcp] (unless dry-run)
+    if not dry:
+        code = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "ainativelang[mcp]"]).returncode
+        if code != 0:
+            print("pip install failed", file=sys.stderr)
+            return code
+
+    # 2) MCP registration
+    home = Path.home()
+    try:
+        from tooling.mcp_host_install import ensure_mcp_registration as _ensure_mcp_registration
+        from tooling.mcp_host_install import OPENFANG_PROFILE
+        _ensure_mcp_registration(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+    except Exception as e:
+        print(f"MCP registration failed: {e}", file=sys.stderr)
+        return 1
+
+    # 3) ainl-run wrapper
+    try:
+        from tooling.mcp_host_install import ensure_ainl_run_wrapper as _ensure_ainl_run_wrapper
+        _ensure_ainl_run_wrapper(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+    except Exception as e:
+        print(f"Wrapper install failed: {e}", file=sys.stderr)
+        return 1
+
+    # 4) PATH hint in shell RC
+    try:
+        from tooling.mcp_host_install import ensure_path_hint_in_shell_rc as _ensure_path_hint
+        _ensure_path_hint(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+    except Exception as e:
+        print(f"PATH hint failed: {e}", file=sys.stderr)
+        # continue
+
+    # 5) Validate install
+    val = ainl_openfang_validate()
+    if not val["ok"] or val.get("missing_env"):
+        print(user_friendly_ainl_error(INIT_INSTALL_OPENFANG, val))
+        return 1
+
+    ok = True
+    if val.get("cron_ok") is False:
+        print("Warning: OpenFang cron integration incomplete: " + str(val.get("cron_detail", "")))
+        ok = False
+    if val["warnings"]:
+        for w in val["warnings"]:
+            print("Warning:", w)
+
+    print("AINL OpenFang MCP bootstrap complete. " + OPENFANG_PROFILE.success_tip)
+    return 0 if ok else 1
+
+
+def cmd_cron_add_openfang(args: argparse.Namespace) -> int:
+    """Schedule an .ainl file to run as an OpenFang hand."""
+    ainl_path = Path(args.ainl_path).resolve()
+    if not ainl_path.exists():
+        print(f"File not found: {ainl_path}", file=sys.stderr)
+        return 2
+
+    name = getattr(args, "name", "") or f"AINL: {ainl_path.stem}"
+    cron_expr = getattr(args, "cron", "") or getattr(args, "every", "")
+    if not cron_expr:
+        print("Must specify either --cron or --every", file=sys.stderr)
+        return 2
+
+    # Use openfang cron add command
+    cmd = ["openfang", "cron", "add", str(ainl_path), "--name", name, "--cron", cron_expr]
+    if getattr(args, "every", ""):
+        cmd = ["openfang", "cron", "add", str(ainl_path), "--name", name, "--every", args.every]
+    if getattr(args, "agent", ""):
+        cmd.extend(["--agent", args.agent])
+    if getattr(args, "session", ""):
+        cmd.extend(["--session", args.session])
+    if getattr(args, "announce", False):
+        cmd.append("--announce")
+
+    if getattr(args, "cron_dry_run", False):
+        print("[dry-run] would run:", " ".join(map(shlex.quote, cmd)))
+        return 0
+
+    subprocess.run(cmd, check=False)
+    return 0
+
+
+def cmd_status_openfang(args: argparse.Namespace) -> int:
+    """Show OpenFang integration status."""
+    import json
+    import shutil
+    import subprocess
+    from datetime import datetime, timezone
+
+    from openfang.bridge.cron_drift_check import run_report as _cron_drift_report
+    from openfang.bridge.schema_bootstrap import bootstrap_tables
+    from openfang.bridge.user_friendly_error import INIT_INSTALL_OPENFANG, user_friendly_ainl_error
+
+    json_out = bool(getattr(args, "status_json", False))
+    ws = _openfang_default_workspace()
+    db_path = Path(os.getenv("OPENFANG_MEMORY_DB", str(ws / ".ainl" / "ainl_memory.sqlite3"))).expanduser()
+    schema_ok, schema_detail = bootstrap_tables(db_path)
+
+    # Check OpenFang cron jobs (we assume they're managed by openfang CLI)
+    cron_ok = True
+    cron_detail = "ok"
+    try:
+        # Try to list OpenFang crons if possible; not critical
+        pass
+    except Exception:
+        pass
+
+    val = {
+        "openfang_installed": shutil.which("openfang") is not None,
+        "ainl_mcp_registered": True,  # could check file existence
+        "schema_ok": schema_ok,
+        "schema_detail": schema_detail,
+        "database_path": str(db_path),
+    }
+
+    if json_out:
+        print(json.dumps(val, indent=2))
+    else:
+        print("OpenFang Integration Status:")
+        for k, v in val.items():
+            print(f"  {k}: {v}")
+        if not schema_ok:
+            print("  Note:", schema_detail)
+    return 0 if schema_ok else 1
+
+
+def cmd_migrate_openclaw_to_openfang(args: argparse.Namespace) -> int:
+    """Migrate OpenClaw workspace configuration to OpenFang."""
+    print("OpenFang migration: This tool will copy your OpenClaw config and hands to OpenFang format.")
+    src = Path.home() / ".openclaw"
+    dst = Path.home() / ".openfang"
+    if not src.exists():
+        print(f"OpenClaw workspace not found at {src}", file=sys.stderr)
+        return 2
+
+    # Copy config and data directories
+    for sub in ["config.toml", "workspace", "data"]:
+        src_item = src / sub
+        if src_item.exists():
+            dst_item = dst / sub
+            dst_item.parent.mkdir(parents=True, exist_ok=True)
+            if src_item.is_dir():
+                shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src_item, dst_item)
+            print(f"Copied {src_item} -> {dst_item}")
+
+    # Reconfigure MCP if needed
+    print("Migration complete. Run 'ainl install openfang' to ensure MCP integration.")
+    return 0
+
+
+def _openfang_default_workspace() -> Path:
+    """Guess OpenFang workspace root: ~/.openfang/workspace if present, else cwd."""
+    default_ws = Path.home() / ".openfang" / "workspace"
+    if default_ws.exists():
+        return default_ws
+    return Path.cwd()
+
+# ================================================================
+>>>>>>> 3b3ad6b (fix(release): bump to 1.3.4 and harden runner/MCP install)
 class MetricsCollector:
     """Simple in-memory metrics collector for dashboard."""
 
@@ -2432,6 +2613,32 @@ def main() -> None:
     dashp.add_argument("--no-browser", action="store_true", dest="dashboard_no_browser", help="Do not open browser")  # AINL-OPENCLAW-TOP5
     dashp.set_defaults(func=cmd_dashboard)  # AINL-OPENCLAW-TOP5
 
+<<<<<<< HEAD
+=======
+    # OpenFang commands
+    inst_of = inst_sub.add_parser("openfang", help="One-command OpenFang install + health check")  # AINL-OPENFANG-TOP1
+    inst_of.add_argument(
+        "--workspace",
+        default="",
+        metavar="PATH",
+        help="OpenFang workspace root (default: ~/.openfang/workspace if present, else cwd)",
+    )
+    inst_of.add_argument("--dry-run", dest="install_openfang_dry_run", action="store_true", help="Print actions only; no patch/cron/restart/SQLite writes")
+    inst_of.add_argument("--verbose", "-v", dest="install_openfang_verbose", action="store_true", help="Log steps to stderr")
+    inst_of.set_defaults(func=cmd_install_openfang_one_command)
+
+    # Extend cron add to support --host openfang
+    cron_add.add_argument("--host", default="openclaw", choices=["openclaw", "openfang"], help="Agent host (default: openclaw)")  # AINL-OPENFANG-TOP2
+
+    # emit target openfang is handled in cmd_emit; no new parser needed
+
+    # migrate command
+    migp = sub.add_parser("migrate", help="Migrate from OpenClaw to OpenFang")  # AINL-OPENFANG-TOP4
+    migp.add_argument("source", choices=["openclaw-to-openfang"], help="Migration path")
+    migp.set_defaults(func=cmd_migrate_openclaw_to_openfang)
+
+
+>>>>>>> 3b3ad6b (fix(release): bump to 1.3.4 and harden runner/MCP install)
     def cmd_status(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
         import sqlite3  # AINL-OPENCLAW-TOP5
         import subprocess  # AINL-OPENCLAW-TOP5

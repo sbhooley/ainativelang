@@ -38,7 +38,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
->>>>>>> Stashed changes
+import time
 import uuid
 import yaml
 from pathlib import Path
@@ -53,6 +53,7 @@ except ImportError:
 
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
+from runtime.adapters.builtins import CoreBuiltinAdapter
 from runtime.sandbox_shim import SandboxClient
 from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
@@ -65,7 +66,6 @@ from tooling.capability_grant import (
     grant_to_allowed_adapters,
     load_profile_as_grant,
 )
-<<<<<<< Updated upstream
 from tooling.mcp_ecosystem_import import (
     import_agency_agent_mcp,
     import_clawflow_mcp,
@@ -75,9 +75,6 @@ from tooling.mcp_ecosystem_import import (
 from tooling.graph_diff import graph_diff
 from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
 from intelligence.trace_export_ptc_jsonl import export_file as export_ptc_trace_file
-=======
-
-
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
 _DEFAULT_ALLOWED_ADAPTERS: List[str] = ["core"]
@@ -91,7 +88,89 @@ _DEFAULT_LIMITS: Dict[str, Any] = {
     "max_time_ms": 5000,
 }
 
->>>>>>> Stashed changes
+
+# NOTE: These lists are part of the testing contract for exposure scoping.
+ALL_TOOL_NAMES: List[str] = [
+    "ainl_validate",
+    "ainl_compile",
+    "ainl_capabilities",
+    "ainl_security_report",
+    "ainl_run",
+    "ainl_import_clawflow",
+    "ainl_import_agency_agent",
+    "ainl_import_markdown",
+    "ainl_list_ecosystem",
+    "ainl_fitness_report",
+    "ainl_ir_diff",
+    "ainl_ptc_signature_check",
+    "ainl_trace_export",
+    "ainl_ptc_run",
+    "ainl_ptc_health_check",
+]
+ALL_RESOURCE_URIS: List[str] = [
+    "ainl://adapter-manifest",
+    "ainl://security-profiles",
+]
+
+
+def _csv_set(val: Optional[str]) -> Set[str]:
+    if not val:
+        return set()
+    parts = [p.strip() for p in str(val).split(",")]
+    return {p for p in parts if p}
+
+
+def _resolve_exposure() -> tuple[Set[str], Set[str]]:
+    """
+    Resolve allowed MCP tools/resources.
+
+    Precedence:
+    - Start from profile (if AINL_MCP_EXPOSURE_PROFILE is valid), else "full".
+    - Apply env inclusion lists (AINL_MCP_TOOLS / AINL_MCP_RESOURCES) if set (non-empty).
+    - Apply env exclusion lists (AINL_MCP_TOOLS_EXCLUDE / AINL_MCP_RESOURCES_EXCLUDE).
+    Unknown names/URIs are ignored.
+    """
+    base_tools = set(ALL_TOOL_NAMES)
+    base_resources = set(ALL_RESOURCE_URIS)
+
+    profile = (os.environ.get("AINL_MCP_EXPOSURE_PROFILE") or "").strip()
+    if profile:
+        try:
+            prof_path = _TOOLING_DIR / "mcp_exposure_profiles.json"
+            data = json.loads(prof_path.read_text(encoding="utf-8")) if prof_path.is_file() else {}
+            prof = ((data.get("profiles") or {}) if isinstance(data, dict) else {}).get(profile)
+            if isinstance(prof, dict):
+                prof_tools = prof.get("tools")
+                prof_res = prof.get("resources")
+                if isinstance(prof_tools, list):
+                    base_tools = set(x for x in prof_tools if isinstance(x, str) and x in base_tools)
+                if isinstance(prof_res, list):
+                    base_resources = set(x for x in prof_res if isinstance(x, str) and x in base_resources)
+        except Exception:
+            # Ignore profile errors; default to full exposure.
+            base_tools = set(ALL_TOOL_NAMES)
+            base_resources = set(ALL_RESOURCE_URIS)
+
+    tools_include_raw = os.environ.get("AINL_MCP_TOOLS")
+    if tools_include_raw is not None and str(tools_include_raw).strip():
+        include = {n for n in _csv_set(tools_include_raw) if n in set(ALL_TOOL_NAMES)}
+        base_tools = base_tools.intersection(include)
+
+    res_include_raw = os.environ.get("AINL_MCP_RESOURCES")
+    if res_include_raw is not None and str(res_include_raw).strip():
+        include = {u for u in _csv_set(res_include_raw) if u in set(ALL_RESOURCE_URIS)}
+        base_resources = base_resources.intersection(include)
+
+    tools_ex = {n for n in _csv_set(os.environ.get("AINL_MCP_TOOLS_EXCLUDE")) if n in set(ALL_TOOL_NAMES)}
+    res_ex = {u for u in _csv_set(os.environ.get("AINL_MCP_RESOURCES_EXCLUDE")) if u in set(ALL_RESOURCE_URIS)}
+    base_tools = {t for t in base_tools if t not in tools_ex}
+    base_resources = {r for r in base_resources if r not in res_ex}
+    return base_tools, base_resources
+
+
+_ALLOWED_TOOLS, _ALLOWED_RESOURCES = _resolve_exposure()
+
+
 def _load_mcp_server_grant() -> Dict[str, Any]:
     """Build the MCP server-level capability grant."""
     profile_name = os.environ.get("AINL_MCP_PROFILE")
@@ -100,11 +179,6 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
             return load_profile_as_grant(profile_name)
         except ValueError:
             pass
-<<<<<<< Updated upstream
-    # Base grant
-    grant = {
-        "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),  # core only
-=======
     return {
         "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),
 
@@ -115,7 +189,6 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
         "limits": dict(_DEFAULT_LIMITS),
         "adapter_constraints": {},
     }
-
 _MCP_SERVER_GRANT: Dict[str, Any] = _load_mcp_server_grant()
 
 
@@ -230,11 +303,6 @@ def _merge_limits(caller_limits: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return grant_to_limits(effective)
 
 
-class _EchoAdapter(RuntimeAdapter):
-    def call(self, target: str, args: list, context: dict) -> Any:
-        return args[0] if args else target
-
-
 def _register_tool(fn: Any) -> Any:
     """Register a function as an MCP tool if it is in the allowed set."""
     if _mcp_server is not None and fn.__name__ in _ALLOWED_TOOLS:
@@ -345,7 +413,7 @@ def ainl_run(
 
     merged_limits = _merge_limits(limits)
     reg = AdapterRegistry(allowed=list(_MCP_SERVER_GRANT.get("allowed_adapters", _DEFAULT_ALLOWED_ADAPTERS)))
-    reg.register("core", _EchoAdapter())
+    reg.register("core", CoreBuiltinAdapter())
     # Optional LLM adapter registration if AINL_CONFIG present
     config_path = os.environ.get("AINL_CONFIG")
     if config_path:
@@ -368,8 +436,6 @@ def ainl_run(
             step_fallback=True,
             execution_mode="graph-preferred",
             limits=merged_limits,
-            avm_event_hasher=_SANDBOX_CLIENT.event_hash if _SANDBOX_CLIENT.connected else None,
-            sandbox_metadata_provider=_SANDBOX_CLIENT.trajectory_metadata if _SANDBOX_CLIENT.connected else None,
         )
         entry = label or eng.default_entry_label()
         out = eng.run_label(entry, frame=frame or {})
@@ -489,7 +555,7 @@ def ainl_fitness_report(file: str, runs: int = 5, strict: bool = True) -> dict:
     sample_runs: List[Dict[str, Any]] = []
     for _ in range(runs):
         reg = AdapterRegistry(allowed=list(_MCP_SERVER_GRANT.get("allowed_adapters", _DEFAULT_ALLOWED_ADAPTERS)))
-        reg.register("core", _EchoAdapter())
+        reg.register("core", CoreBuiltinAdapter())
         start = time.perf_counter()
         run_summary: Dict[str, Any] = {"ok": False}
         try:
