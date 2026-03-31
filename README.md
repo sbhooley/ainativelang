@@ -1,5 +1,38 @@
 # AI Native Lang (AINL)
 
+> [!TIP]
+> **New to AINL? --> HUMANS: TO GET STARTED --> JUST HAVE YOUR AGENT INSTALL THIS & ASK IT TO USE IT !!** -- For more info visit **[ainativelang.com](https://ainativelang.com)** for the high-level product story, integrations, use cases, and commercial/enterprise paths.
+>
+> This GitHub repo is the technical source of truth for AINL:
+> - compiler, runtime, and canonical graph IR
+> - CLI, HTTP runner, and MCP server
+> - docs, examples, conformance, and implementation details
+>
+> **Start here**
+> - **Understand AINL first:** [ainativelang.com](https://ainativelang.com)
+> - **Run it now (CLI / runner / MCP):** Choose Your Path
+> - **Read the docs hub:** [`docs/README.md`](docs/README.md)
+> - **See updated benchmarks (tiktoken cl100k_base, viable subset, minimal_emit fallback stub):** [`BENCHMARK.md`](BENCHMARK.md) · [`docs/benchmarks.md`](docs/benchmarks.md) · comparative methodology [`docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
+> - **ZeroClaw skill (one-command install → deterministic graphs):** [`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md) · [`skills/ainl/`](skills/ainl/) · curated trees [`examples/ecosystem/`](examples/ecosystem/)
+> - **MCP host hub:** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) · `ainl install-mcp --host openclaw|zeroclaw|hermes`
+> - **Agent guide index:** `docs/AGENT_GUIDE_INDEX.md` summarizes docs for OpenClaw, ZeroClaw, Hermes‑Agent, and generic AI agents.
+> - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · `ainl install openclaw`, `ainl status` (with `--json`, `--json-summary`, `--summary`), `ainl cron add`, `ainl dashboard`, `ainl doctor --ainl` · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). Agent discovery: `tooling/bot_bootstrap.json` → `openclaw_commands`.
+> - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · `ainl install-mcp --host openclaw`
+> - **OpenClaw + AINL unified integration (v1.3.3+; includes v1.3.0 Hermes + `ainl install openclaw` / `ainl status`, v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
+> - **Hermes Agent support (official; self-improving agents with deterministic graphs):** [`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md) · [`skills/hermes/`](skills/hermes/) · `ainl install-mcp --host hermes` · `ainl compile --emit hermes-skill`
+> - **PTC-Lisp integration (opt-in):** [`docs/adapters/PTC_RUNNER.md`](docs/adapters/PTC_RUNNER.md) · quick start: `ainl run-hybrid-ptc` · examples:
+>   - examples/hybrid_order_processor.ainl — hybrid order processor (parallel batches, signatures, firewall, LangGraph bridge)
+>   - examples/price_monitor.ainl — PTC price monitor with parallel/recovery patterns
+>   - health + beam_metrics / beam_telemetry passthrough; optional subprocess BEAM mode (AINL_PTC_USE_SUBPROCESS)
+>   - _ context firewall + context_firewall_audit + ainl_ptc_audit MCP tool
+>   - reliability overlays: ptc_run.ainl (sugar), ptc_parallel.ainl (pcall-style), recovery_loop.ainl (bounded retries)
+>   - LangGraph bridge + PTC-compatible trace export; flow diagram
+>   - Run ainl run-hybrid-ptc --help for a mock-friendly onramp
+> - **Using Claude Code / Cowork / Dispatch-style tools?** See the MCP/integration guidance in docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md and docs/INTEGRATION_STORY.md
+> - **AINL → HTTP workers (bridge contract, secondary to MCP):** docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md · JSON Schema schemas/executor_bridge_request.schema.json · include modules/common/executor_bridge_request.ainl
+>
+> TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops. Positioning (current v1.3.4; monitoring pack since v1.2.10): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md). Since v1.2.10, AINL also ships an optional monitoring pack for LLM/tool adapters and OpenClaw-style intelligence programs: unified LLM usage tracking, budget policy, and a small Flask/Prometheus dashboard under intelligence/monitor/ (see docs/MONITORING_OPERATIONS.md and docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md).
+
 <p align="center">
   <img src="docs/assets/ainl_logo.png" alt="AINL logo" width="220" />
 </p>
@@ -76,41 +109,6 @@ AINL provides the deterministic, capability-declared graph layer. Pair it with H
 - New unified shim: optional `runtime/sandbox_shim.py` auto-detects AVM/general sandbox endpoints and falls back cleanly.
 
 It is designed for teams building AI workflows that need multiple steps, state and memory, tool use, repeatable execution, validation and control, and lower dependence on long prompt loops.
-
-> [!TIP]
-> **New to AINL?**
-> --> HUMANS: TO GET STARTED --> JUST HAVE YOUR AGENT INSTALL THIS & ASK IT TO USE IT !! -- For more info visit **[ainativelang.com](https://ainativelang.com)** for the high-level product story, integrations, use cases, and commercial/enterprise paths.
->
-> This GitHub repo is the **technical source of truth** for AINL:
-> - compiler, runtime, and canonical graph IR
-> - CLI, HTTP runner, and MCP server
-> - docs, examples, conformance, and implementation details
->
-> **Start here**
-> - **Understand AINL first:** [ainativelang.com](https://ainativelang.com)
-> - **Run it now (CLI / runner / MCP):** [Choose Your Path](#choose-your-path)
-> - **Read the docs hub:** [`docs/README.md`](docs/README.md)
-> - **See updated benchmarks (tiktoken cl100k_base, viable subset, minimal_emit fallback stub):** [`BENCHMARK.md`](BENCHMARK.md) · [`docs/benchmarks.md`](docs/benchmarks.md#benchmark-highlights-march-2026) · comparative methodology [`docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
-> - **ZeroClaw skill (one-command install → deterministic graphs):** [`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md) · [`skills/ainl/`](skills/ainl/) · curated trees **[`examples/ecosystem/`](examples/ecosystem/)**
-> - **MCP host hub:** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) · **`ainl install-mcp --host openclaw|zeroclaw|hermes`**
-  - **Agent guide index:** `docs/AGENT_GUIDE_INDEX.md` summarizes docs for OpenClaw, ZeroClaw, Hermes‑Agent, and generic AI agents.
-> - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · **`ainl install openclaw`**, **`ainl status`** (with **`--json`**, **`--json-summary`**, **`--summary`**), **`ainl cron add`**, **`ainl dashboard`**, **`ainl doctor --ainl`** · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). Agent discovery: **`tooling/bot_bootstrap.json`** → **`openclaw_commands`**. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
-> - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · **`ainl install-mcp --host openclaw`**
-> - **OpenClaw + AINL unified integration (v1.3.3+; includes v1.3.0 Hermes + `ainl install openclaw` / `ainl status`, v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
-> - **Hermes Agent support (official; self-improving agents with deterministic graphs):** [`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md) · [`skills/hermes/`](skills/hermes/) · **`ainl install-mcp --host hermes`** · **`ainl compile --emit hermes-skill`**
-> - **PTC-Lisp integration (opt-in):** [`docs/adapters/PTC_RUNNER.md`](docs/adapters/PTC_RUNNER.md) · quick start: `ainl run-hybrid-ptc` · examples:
->   - [`examples/hybrid_order_processor.ainl`](examples/hybrid_order_processor.ainl) — hybrid order processor (parallel batches, signatures, firewall, LangGraph bridge)
->   - [`examples/price_monitor.ainl`](examples/price_monitor.ainl) — PTC price monitor with parallel/recovery patterns
->   - health + `beam_metrics` / `beam_telemetry` passthrough; optional subprocess BEAM mode (`AINL_PTC_USE_SUBPROCESS`)
->   - `_` context firewall + `context_firewall_audit` + `ainl_ptc_audit` MCP tool
->   - reliability overlays: `ptc_run.ainl` (sugar), `ptc_parallel.ainl` (pcall-style), `recovery_loop.ainl` (bounded retries)
->   - LangGraph bridge + PTC-compatible trace export; [flow diagram](docs/assets/ptc_flow.mmd)
->   - Run `ainl run-hybrid-ptc --help` for a mock-friendly onramp
-> - **Using Claude Code / Cowork / Dispatch-style tools?** See the MCP/integration guidance in [`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`](docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md) and [`docs/INTEGRATION_STORY.md`](docs/INTEGRATION_STORY.md)
-> - **AINL → HTTP workers (bridge contract, secondary to MCP):** [`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md) · JSON Schema [`schemas/executor_bridge_request.schema.json`](schemas/executor_bridge_request.schema.json) · include [`modules/common/executor_bridge_request.ainl`](modules/common/executor_bridge_request.ainl)
-
-> TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops.
-> Positioning (current **v1.3.4**; monitoring pack since **v1.2.10**): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md). Since **v1.2.10**, AINL also ships an optional **monitoring pack** for LLM/tool adapters and OpenClaw-style intelligence programs: unified LLM usage tracking, budget policy, and a small Flask/Prometheus dashboard under `intelligence/monitor/` (see **`docs/MONITORING_OPERATIONS.md`** and **`docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md`**).
 
 **Compile-once, run-many:** you author (or import) a graph once; the runtime executes it deterministically without re-spending LLM tokens on orchestration each time. Size economics are tracked with **tiktoken cl100k_base**; the **viable subset** (e.g. **public_mixed**) shows about **~1.02×** leverage for **minimal_emit** vs unstructured baselines—see **[`BENCHMARK.md`](BENCHMARK.md)**, **[`docs/benchmarks.md`](docs/benchmarks.md)**, and **[`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](docs/architecture/COMPILE_ONCE_RUN_MANY.md)**.
 
