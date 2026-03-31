@@ -60,8 +60,9 @@ def test_emit_openfang_creates_hand_package(tmp_path):
     assert (out_dir / "README.md").exists()
 
     # Validate HAND.toml structure (basic)
-    import toml
-    hand = toml.loads((out_dir / "HAND.toml").read_text())
+    import tomllib
+
+    hand = tomllib.loads((out_dir / "HAND.toml").read_text(encoding="utf-8"))
     assert "hand" in hand
     assert hand["hand"]["entrypoint"] == "simple.ainl.json"
 

@@ -2340,7 +2340,6 @@ def main() -> None:
     val.add_argument("--strict", action="store_true")
     val.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
     val.add_argument("--json-output", action="store_true", help="Output full IR JSON instead of summary (for CI/tooling)")
-    val.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
     val.add_argument("--enhanced-diagnostics", action="store_true", default=False, help="Enrich diagnostics with graph context and Mermaid snippets on failure")
     val.set_defaults(func=cmd_validate)
 
@@ -2354,7 +2353,7 @@ def main() -> None:
             "ir", "langgraph", "temporal", "hermes-skill", "hermes",
             "solana-client", "blockchain-client",
             "server", "python-api", "react", "openapi", "prisma", "sql",
-            "docker", "k8s", "cron",
+            "docker", "k8s", "cron", "openfang",
         ],
         help="Emit target platform.",
     )
@@ -2373,7 +2372,6 @@ def main() -> None:
     isp.add_argument("--strict", action="store_true")
     isp.add_argument("--estimate", action="store_true", default=False, help="Embed static LLM cost estimate into IR as _cost_estimate")
     isp.add_argument("--json", action="store_true", help="Compatibility flag (output is always JSON)")
-    isp.add_argument("--estimate", action="store_true", default=False, help="Embed static LLM cost estimate as ir[\"_cost_estimate\"]")
     isp.set_defaults(func=cmd_inspect)
 
     avm = sub.add_parser("generate-avm-policy", help="Generate AVM policy fragment JSON from an .ainl file")
