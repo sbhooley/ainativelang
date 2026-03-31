@@ -999,7 +999,6 @@ def _openfang_default_workspace() -> Path:
     return Path.cwd()
 
 # ================================================================
->>>>>>> 3b3ad6b (fix(release): bump to 1.3.4 and harden runner/MCP install)
 class MetricsCollector:
     """Simple in-memory metrics collector for dashboard."""
 
