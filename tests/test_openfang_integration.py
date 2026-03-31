@@ -4,6 +4,7 @@ Integration tests for OpenFang support in AINL.
 Mirrors the OpenClaw test patterns but targeted at OpenFang.
 """
 
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -14,7 +15,7 @@ import pytest
 pytest_plugins = "pytester"
 
 
-pytest.mark.skipif(
+@pytest.mark.skipif(
     shutil.which("openfang") is None,
     reason="OpenFang CLI not installed",
 )
