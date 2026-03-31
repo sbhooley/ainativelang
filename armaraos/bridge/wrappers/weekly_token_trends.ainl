@@ -1,5 +1,5 @@
-# Weekly token trends: bridge scans last 14 daily `YYYY-MM-DD.md` files under OPENCLAW_MEMORY_DIR (or workspace memory/), parses `## Token Usage Report` blocks for heuristic token totals, emits markdown.
-# Dry-run: no append_today (openclaw_memory adapter skips write); JSON `out` still contains the report.
+# Weekly token trends: bridge scans last 14 daily `YYYY-MM-DD.md` files under ARMARAOS_MEMORY_DIR (or workspace memory/), parses `## Token Usage Report` blocks for heuristic token totals, emits markdown.
+# Dry-run: no append_today (armaraos_memory adapter skips write); JSON `out` still contains the report.
 # S core cron "0 9 * * 0"
 S core cron "0 9 * * 0"
 
@@ -8,7 +8,7 @@ L0:
   R bridge rolling_budget_publish ->rb
   If dry_run ->L_out ->L_append
 L_append:
-  R openclaw_memory append_today md ->_
+  R armaraos_memory append_today md ->_
   J L_out
 L_out:
   J md

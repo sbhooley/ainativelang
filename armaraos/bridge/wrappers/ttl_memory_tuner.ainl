@@ -8,7 +8,7 @@ L0:
   If dry_run ->L_out ->L_append
 L_append:
   R core.stringify res ->res_s
-  R openclaw_memory append_today res_s ->_
+  R armaraos_memory append_today res_s ->_
   J L_out
 L_out:
   J res

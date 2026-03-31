@@ -10,7 +10,7 @@ L0:
   R core.stringify hits ->hits_s
   If dry_run ->L_out ->L_append
 L_append:
-  R openclaw_memory append_today hits_s ->_
+  R armaraos_memory append_today hits_s ->_
   J L_out
 L_out:
   J hits

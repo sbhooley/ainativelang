@@ -13,7 +13,7 @@ This guide covers installing AINL and configuring it to work with ArmaraOS.
 
 - Python 3.10 or higher
 - Rust toolchain (for ArmaraOS)
-- ArmaraOS CLI (`armaraos`) installed and on PATH
+- ArmaraOS CLI (`armaraos`) installed and on PATH (**optional** — only required for ArmaraOS-specific operations like cron management and running hands)
 - Git
 
 ## One-Command Install

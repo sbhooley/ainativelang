@@ -182,8 +182,8 @@ L7:
 L11:
   X body (core.join "\n" selected)
   X output (core.concat "# Session Context (auto-injected)\n" body)
-  R fs mkdir ".openclaw/bootstrap" ->_
-  R fs write ".openclaw/bootstrap/session_context.md" output ->_
+  R fs mkdir ".armaraos/bootstrap" ->_
+  R fs write ".armaraos/bootstrap/session_context.md" output ->_
   # Persist stats to cache
   R cache set "workflow" "context_injection_tokens" usedTokens ->_
   R cache set "workflow" "context_injection_lines" count ->_

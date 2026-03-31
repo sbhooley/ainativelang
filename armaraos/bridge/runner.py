@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from compiler_v2 import AICodeCompiler
 from runtime.engine import RuntimeEngine
+from runtime.adapters.base import AdapterRegistry
 
 from adapters.crm import CrmAdapter
 from adapters.github import GitHubAdapter
@@ -60,7 +61,7 @@ WRAPPERS = {
     "github-intelligence": ROOT / "scripts" / "wrappers" / "github-intelligence.ainl",
     "content-engine": ROOT / "scripts" / "wrappers" / "content-engine.ainl",
     "supervisor": ROOT / "scripts" / "wrappers" / "supervisor.ainl",
-    "full-unification": ROOT / "examples" / "armaraos_full_unification.ainl",
+    "full-unification": ROOT / "examples" / "openclaw_full_unification.ainl",
     "token-budget-alert": _BRIDGE_DIR / "wrappers" / "token_budget_alert.ainl",
     "weekly-token-trends": _BRIDGE_DIR / "wrappers" / "weekly_token_trends.ainl",
     "ttl-memory-tuner": _BRIDGE_DIR / "wrappers" / "ttl_memory_tuner.ainl",
@@ -185,7 +186,9 @@ def build_wrapper_registry():
         os.environ["OPENROUTER_API_KEY"] = os.environ.get(
             "AINL_OPENROUTER_PLACEHOLDER_KEY", "unset-openrouter-key-wrapper-registry"
         )
-    reg = armaraos_monitor_registry()
+    # Keep registry construction simple: runtime AdapterRegistry + explicit allow/register.
+    # (armaraos_monitor_registry is a thin helper returning an empty registry.)
+    reg: AdapterRegistry = armaraos_monitor_registry()
     for name in ("armaraos_memory", "github", "crm", "armaraos_token_tracker"):
         reg.allow(name)
     reg.register("armaraos_memory", OpenFangMemoryAdapter())

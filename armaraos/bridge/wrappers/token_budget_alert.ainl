@@ -16,7 +16,7 @@ L_run:
 L_cache_big:
   R core concat "- token_budget_alert: MONITOR_CACHE_JSON ~" cache_mb " MB (>10MB threshold)" ->bad_note
   Set cache_ok 0
-  R openclaw_memory append_today bad_note ->_
+  R armaraos_memory append_today bad_note ->_
   X c15 (core.gt cache_mb 15)
   If c15 ->L_crit_stub ->L_digest
 L_crit_stub:
@@ -42,7 +42,7 @@ L_digest_live_main:
 L_digest_dup_skip:
   J L_digest_after_main
 L_digest_do_append:
-  R openclaw_memory append_today report ->_
+  R armaraos_memory append_today report ->_
   R bridge token_report_today_touch ->_
   J L_digest_after_main
 L_digest_after_main:
@@ -54,13 +54,13 @@ L_do_prune:
   If pe ->L_prune_failed ->L_prune_ok
 L_prune_failed:
   R bridge monitor_cache_prune_error_markdown ->emd
-  R openclaw_memory append_today emd ->_
+  R armaraos_memory append_today emd ->_
   X report (core.concat report "\n\n" emd)
   Call L_after_prune ->ap
   J ap
 L_prune_ok:
   R bridge monitor_cache_prune_markdown ->prune_md
-  R openclaw_memory append_today prune_md ->_
+  R armaraos_memory append_today prune_md ->_
   X report (core.concat report "\n\n" prune_md)
   X pc_int (get pr pruned_count)
   X did_prune (core.gt pc_int 0)

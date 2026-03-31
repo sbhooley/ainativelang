@@ -16,7 +16,7 @@ L0:
 
   If dry_run ->L_out ->L_append
 L_append:
-  R openclaw_memory append_today msg ->_
+  R armaraos_memory append_today msg ->_
   J L_out
 L_out:
   J score
