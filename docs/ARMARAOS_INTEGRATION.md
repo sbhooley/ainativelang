@@ -4,8 +4,8 @@ ArmaraOS is an **optional** host runtime for AINL workflows. AINL supports Armar
 
 ## What you get
 
-- **MCP support**: `ainl-mcp` registered into `~/.armaraos/config.toml` so ArmaraOS can call AINL tools over stdio.
-- **Run wrapper**: a host-local `ainl-run` shim (installed under `~/.armaraos/bin/`) that forwards to `ainl run`.
+- **MCP support**: `ainl-mcp` registered into the host’s `config.toml` so ArmaraOS can call AINL tools over stdio (**today:** `~/.openfang/config.toml` in the upstream fork; **after rebrand:** `~/.armaraos/config.toml`).
+- **Run wrapper**: a host-local `ainl-run` shim (installed under `~/.armaraos/bin/`) that forwards to `ainl run` (you may also mirror it under `~/.openfang/bin/` during the transition).
 - **Emit to Hand package**: `ainl emit --target armaraos` produces a directory with `HAND.toml`, compiled IR JSON, and a `security.json`.
 - **Status + schema bootstrap**: `ainl status --host armaraos` validates the local AINL memory DB schema and reports what’s installed.
 - **Cron helper**: `ainl cron add ... --host armaraos` shells out to `armaraos cron add` when the ArmaraOS CLI is present.
@@ -56,6 +56,22 @@ AINL prefers `ARMARAOS_*` for ArmaraOS integration, with `AINL_*` and legacy `OP
 
 - **`ainl status --host armaraos` reports schema errors**: the command bootstraps required tables automatically. If the DB path is unexpected, set `ARMARAOS_MEMORY_DB` (or `AINL_MEMORY_DB`) explicitly and re-run status.
 - **Cron helpers don’t work**: ensure the external `armaraos` CLI is installed and on PATH. AINL will skip cron checks when it is missing.
+
+## Config schema note (upstream fork)
+
+The current upstream fork’s MCP config schema expects a `[[mcp_servers]]` entry with a nested transport table:
+
+```toml
+[[mcp_servers]]
+name = "ainl"
+timeout_secs = 30
+env = []
+
+[mcp_servers.transport]
+type = "stdio"
+command = "ainl-mcp"
+args = []
+```
 
 ## See also
 

@@ -141,8 +141,21 @@ def ensure_mcp_registration(
             dry_run=dry_run,
             verbose=verbose,
         )
+        # Transitional support: the upstream ArmaraOS/OpenFang fork currently uses ~/.openfang/config.toml.
+        # We write/merge both locations so users can install AINL today and still be compatible after rebrand.
+        if profile.id == "armaraos":
+            legacy_cfg = home / ".openfang" / "config.toml"
+            _ensure_mcp_registration_toml_mcp_servers_array(
+                legacy_cfg,
+                server_key=MCP_SERVER_KEY,
+                desired=desired,
+                dry_run=dry_run,
+                verbose=verbose,
+            )
         if not dry_run:
             print(f"Wrote MCP config: {cfg_path}")
+            if profile.id == "armaraos":
+                print(f"Wrote MCP config: {home / '.openfang' / 'config.toml'}")
         return
 
     if profile.config_kind == "yaml_mcp_servers":
@@ -293,9 +306,16 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
     - if any `name = "<server_key>"` exists, do nothing
     - otherwise append a new [[mcp_servers]] block at EOF
     """
+    # OpenFang/ArmaraOS config schema expects a transport table under each entry.
+    # See armaraos repo docs/configuration.md: [[mcp_servers]] + [mcp_servers.transport] type="stdio".
     desired_block = (
         "[[mcp_servers]]\n"
         f"name = \"{server_key}\"\n"
+        "timeout_secs = 30\n"
+        "env = []\n"
+        "\n"
+        "[mcp_servers.transport]\n"
+        "type = \"stdio\"\n"
         f"command = \"{desired['command']}\"\n"
         "args = []\n"
     )
@@ -310,6 +330,7 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
         return
 
     text = cfg_path.read_text(encoding="utf-8", errors="replace")
+    # Idempotency: accept either name-only legacy blocks or the transport-style blocks.
     needle = f"name = \"{server_key}\""
     if needle in text:
         _log(verbose, f"MCP: {server_key!r} already registered in {cfg_path} (toml [[mcp_servers]])")

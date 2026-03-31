@@ -27,7 +27,7 @@ ainl install armaraos
 This performs the full bootstrap:
 
 1. Installs/upgrades `ainativelang[mcp]` via pip
-2. Registers AINL as an MCP server in `~/.armaraos/config.toml`
+2. Registers AINL as an MCP server in `config.toml` (during transition: `~/.openfang/config.toml` and/or `~/.armaraos/config.toml`)
 3. Installs the `ainl-run` wrapper script to `~/.armaraos/bin/`
 4. Adds `~/.armaraos/bin` to your `PATH` in `~/.bashrc`/`~/.zshrc`
 5. Validates the installation
@@ -53,11 +53,16 @@ pip install ainativelang[mcp]
 
 ### 2. MCP Registration
 
-Add to `~/.armaraos/config.toml`:
+Add to your host config (`~/.openfang/config.toml` today; `~/.armaraos/config.toml` after rebrand):
 
 ```toml
 [[mcp_servers]]
 name = "ainl"
+timeout_secs = 30
+env = []
+
+[mcp_servers.transport]
+type = "stdio"
 command = "ainl-mcp"
 args = []
 ```
