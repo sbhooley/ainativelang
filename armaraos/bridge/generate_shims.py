@@ -18,10 +18,10 @@ _SKIP = frozenset(
 )
 
 SHIM_TEMPLATE = '''#!/usr/bin/env python3
-"""# Shim: delegates to openfang/bridge/{target} — do NOT edit logic here; edit in bridge/.
+"""# Shim: delegates to armaraos/bridge/{target} — do NOT edit logic here; edit in bridge/.
 
-``scripts/`` is not a Python package, so relative imports like ``from ..openfang.bridge`` do not
-apply. This shim loads ``openfang/bridge/_shim_delegate.py`` via importlib and re-executes the
+``scripts/`` is not a Python package, so relative imports like ``from ..armaraos.bridge`` do not
+apply. This shim loads ``armaraos/bridge/_shim_delegate.py`` via importlib and re-executes the
 real script with the current ``sys.argv`` (so ``--dry-run`` and passthrough args behave identically).
 """
 from __future__ import annotations
@@ -31,9 +31,9 @@ import sys
 from pathlib import Path
 
 _TARGET = "{target}"
-_HELP = f"""{{_TARGET}} shim — delegates to openfang/bridge/{{_TARGET}} (via openfang/bridge/_shim_delegate.py).
+_HELP = f"""{{_TARGET}} shim — delegates to armaraos/bridge/{{_TARGET}} (via armaraos/bridge/_shim_delegate.py).
 
-Implementation and flags are defined in openfang/bridge/ only.
+Implementation and flags are defined in armaraos/bridge/ only.
 """
 
 
@@ -42,16 +42,16 @@ def main() -> None:
         print(_HELP, end="")
         sys.exit(0)
     root = Path(__file__).resolve().parent.parent
-    delegate_path = root / "openfang" / "bridge" / "_shim_delegate.py"
+    delegate_path = root / "armaraos" / "bridge" / "_shim_delegate.py"
     if not delegate_path.is_file():
         print(
             f"ainl shim: missing {{delegate_path}}\\n"
-            "  Clone or restore the repo so openfang/bridge/ is present.",
+            "  Clone or restore the repo so armaraos/bridge/ is present.",
             file=sys.stderr,
         )
         sys.exit(127)
     try:
-        spec = importlib.util.spec_from_file_location("ainl_openfang_shim_delegate", delegate_path)
+        spec = importlib.util.spec_from_file_location("ainl_armaraos_shim_delegate", delegate_path)
         if spec is None or spec.loader is None:
             raise ImportError("invalid spec for _shim_delegate.py")
         mod = importlib.util.module_from_spec(spec)
@@ -59,7 +59,7 @@ def main() -> None:
     except ImportError as e:
         print(
             f"ainl shim: ImportError loading bridge delegate ({{e}}).\\n"
-            "  Check that openfang/bridge/_shim_delegate.py exists and is readable.",
+            "  Check that armaraos/bridge/_shim_delegate.py exists and is readable.",
             file=sys.stderr,
         )
         sys.exit(127)
@@ -92,7 +92,7 @@ def iter_bridge_py() -> list[Path]:
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=(
-            "Suggest or create scripts/ shims for openfang/bridge/*.py. "
+            "Suggest or create scripts/ shims for armaraos/bridge/*.py. "
             "By default prints templates only (safe). "
             "Use --write only when you intend to add files under scripts/."
         ),
@@ -163,7 +163,7 @@ def main() -> None:
     print("=== Instructions ===")
     print("- chmod +x scripts/<tool>.py if you rely on shebang execution.")
     print("- Keep fingerprints in tooling/cron_registry.json aligned with payload strings you use.")
-    print("- Prefer openfang/bridge/ainl_bridge_main.py for CLI discovery when no scripts/ shim is required.")
+    print("- Prefer armaraos/bridge/ainl_bridge_main.py for CLI discovery when no scripts/ shim is required.")
 
 
 if __name__ == "__main__":

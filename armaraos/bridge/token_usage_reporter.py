@@ -14,7 +14,7 @@ _BRIDGE = Path(__file__).resolve().parent
 ROOT = _BRIDGE.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from adapters.openfang_memory import OpenFangMemoryAdapter
+from adapters.armaraos_memory import OpenFangMemoryAdapter
 
 _TOKEN_RE = re.compile(r"(?i)(?:tokens?|input[_-]?tokens?|output[_-]?tokens?|total[_-]?tokens?)[\s:=]+([\d_,]+)")
 _CACHE = Path(os.getenv("MONITOR_CACHE_JSON", "/tmp/monitor_state.json")).expanduser()
@@ -22,10 +22,10 @@ _DEFAULT_BUDGET = int(os.getenv("AINL_ADVOCATE_DAILY_TOKEN_BUDGET", "500000"))
 
 
 def _memory_dir() -> Path:
-    o = os.getenv("OPENFANG_MEMORY_DIR") or os.getenv("OPENFANG_DAILY_MEMORY_DIR")
+    o = os.getenv("ARMARAOS_MEMORY_DIR") or os.getenv("ARMARAOS_DAILY_MEMORY_DIR")
     if o:
         return Path(o).expanduser()
-    ws = os.getenv("OPENFANG_WORKSPACE", str(Path.home() / ".openfang" / "workspace"))
+    ws = os.getenv("ARMARAOS_WORKSPACE", str(Path.home() / ".armaraos" / "workspace"))
     return Path(ws).expanduser() / "memory"
 
 
@@ -110,7 +110,7 @@ def _scan_md_days(days: int) -> tuple[list[str], int]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Token usage / budget reporter for bridge + OpenFang memory.")
-    ap.add_argument("--dry-run", action="store_true", help="skip openfang_memory append (stdout/JSON only)")
+    ap.add_argument("--dry-run", action="store_true", help="skip armaraos_memory append (stdout/JSON only)")
     ap.add_argument("--json-output", action="store_true", help="emit one JSON object on stdout (for wrappers / parsing)")
     ap.add_argument("--notify", action="store_true", help="stub: stderr hint (wire QueuePut in ainl for Telegram)")
     ap.add_argument("--days-back", type=int, default=1, metavar="N", help="scan last N daily memory files (default 1)")
@@ -171,21 +171,21 @@ def main() -> None:
     mem.call("append_today", [body], {"dry_run": dry})
 
     if args.notify and not dry:
-        sys.stderr.write("[notify] stub: wire QueuePut in supervisor.ainl or OPENFANG notify hook.\n")
+        sys.stderr.write("[notify] stub: wire QueuePut in supervisor.ainl or ARMARAOS notify hook.\n")
     elif args.notify and dry:
         sys.stderr.write("[notify] skipped (--dry-run)\n")
 
 
 if __name__ == "__main__":
-    try:  # AINL-OPENFANG-TOP5
-        main()  # AINL-OPENFANG-TOP5
-    except SystemExit:  # AINL-OPENFANG-TOP5
-        raise  # AINL-OPENFANG-TOP5
-    except BaseException as _e:  # AINL-OPENFANG-TOP5
-        try:  # AINL-OPENFANG-TOP5
-            from openfang.bridge.user_friendly_error import user_friendly_ainl_error  # AINL-OPENFANG-TOP5
+    try:  # AINL-ARMARAOS-TOP5
+        main()  # AINL-ARMARAOS-TOP5
+    except SystemExit:  # AINL-ARMARAOS-TOP5
+        raise  # AINL-ARMARAOS-TOP5
+    except BaseException as _e:  # AINL-ARMARAOS-TOP5
+        try:  # AINL-ARMARAOS-TOP5
+            from armaraos.bridge.user_friendly_error import user_friendly_ainl_error  # AINL-ARMARAOS-TOP5
 
-            print(user_friendly_ainl_error(_e), file=sys.stderr)  # AINL-OPENFANG-TOP5
-        except Exception:  # AINL-OPENFANG-TOP5
-            print(str(_e), file=sys.stderr)  # AINL-OPENFANG-TOP5
-        raise SystemExit(1) from _e  # AINL-OPENFANG-TOP5
+            print(user_friendly_ainl_error(_e), file=sys.stderr)  # AINL-ARMARAOS-TOP5
+        except Exception:  # AINL-ARMARAOS-TOP5
+            print(str(_e), file=sys.stderr)  # AINL-ARMARAOS-TOP5
+        raise SystemExit(1) from _e  # AINL-ARMARAOS-TOP5

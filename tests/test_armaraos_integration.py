@@ -16,13 +16,13 @@ pytest_plugins = "pytester"
 
 
 @pytest.mark.skipif(
-    shutil.which("openfang") is None,
+    shutil.which("armaraos") is None,
     reason="OpenFang CLI not installed",
 )
-def test_openfang_install_dry_run():
-    """Test ainl install openfang --dry-run executes without error."""
+def test_armaraos_install_dry_run():
+    """Test ainl install armaraos --dry-run executes without error."""
     result = subprocess.run(
-        [sys.executable, "-m", "cli.main", "install", "openfang", "--dry-run"],
+        [sys.executable, "-m", "cli.main", "install", "armaraos", "--dry-run"],
         capture_output=True,
         text=True,
     )
@@ -30,8 +30,8 @@ def test_openfang_install_dry_run():
     assert "Wrote MCP config:" in result.stdout or "[dry-run]" in result.stdout
 
 
-def test_emit_openfang_creates_hand_package(tmp_path):
-    """Test ainl emit --target openfang produces a valid hand package."""
+def test_emit_armaraos_creates_hand_package(tmp_path):
+    """Test ainl emit --target armaraos produces a valid hand package."""
     # Create a simple AINL source
     source = tmp_path / "simple.ainl"
     source.write_text(
@@ -46,7 +46,7 @@ def test_emit_openfang_creates_hand_package(tmp_path):
 
     out_dir = tmp_path / "hand"
     result = subprocess.run(
-        [sys.executable, "-m", "cli.main", "emit", str(source), "--target", "openfang", "-o", str(out_dir)],
+        [sys.executable, "-m", "cli.main", "emit", str(source), "--target", "armaraos", "-o", str(out_dir)],
         capture_output=True,
         text=True,
     )
@@ -67,12 +67,12 @@ def test_emit_openfang_creates_hand_package(tmp_path):
     assert hand["hand"]["entrypoint"] == "simple.ainl.json"
 
 
-def test_openfang_bridge_validation():
-    """Test that openfang bridge validation passes with proper environment."""
-    from openfang.bridge.ainl_bridge_main import ainl_openfang_validate
+def test_armaraos_bridge_validation():
+    """Test that armaraos bridge validation passes with proper environment."""
+    from armaraos.bridge.ainl_bridge_main import ainl_armaraos_validate
 
     # This should not raise; it returns a dict with ok=True if everything is fine
-    val = ainl_openfang_validate()
+    val = ainl_armaraos_validate()
     assert isinstance(val, dict)
     assert "ok" in val
     # If schema is ok, that's enough for basic validation
@@ -84,18 +84,18 @@ def test_openfang_bridge_validation():
 
 
 def test_status_command_json():
-    """Test ainl status --host openfang --json returns parsable output."""
+    """Test ainl status --host armaraos --json returns parsable output."""
     import json
 
     result = subprocess.run(
-        [sys.executable, "-m", "cli.main", "status", "--host", "openfang", "--json"],
+        [sys.executable, "-m", "cli.main", "status", "--host", "armaraos", "--json"],
         capture_output=True,
         text=True,
     )
     # May fail if OpenFang not installed, but should not crash parser
     try:
         data = json.loads(result.stdout)
-        assert "openfang_installed" in data
+        assert "armaraos_installed" in data
         assert "ainl_mcp_registered" in data
     except json.JSONDecodeError:
         pytest.skip(f"Status command did not return JSON: {result.stdout}")

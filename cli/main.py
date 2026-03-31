@@ -29,6 +29,17 @@ from runtime.sandbox_shim import SandboxClient
 from runtime.engine import RuntimeEngine
 
 
+
+import warnings
+
+def _warn_openfang_deprecated(command: str) -> None:
+    warnings.warn(
+        f"`ainl {command} openfang` is deprecated; use `ainl {command} armaraos` instead. "
+        "Support for the 'openfang' alias will be removed in a future release.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
 def _parse_bridge_endpoints(items: List[str]) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for raw in items or []:
@@ -837,14 +848,14 @@ def cmd_emit(args: argparse.Namespace) -> int:
         print(json.dumps({"ok": True, "emit": "temporal", "dir": str(out_dir.resolve()), "files": [str(act_path), str(wf_path)]}, indent=2))
         return 0
 
-        # OpenFang Hand package
-    if target == "openfang":
-        from openfang.emitter.openfang import emit_openfang
-        out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_openfang_hand"
+        # ArmaraOS Hand package
+    if target == "armaraos":
+        from armaraos.emitter.amaraos import emit_armaraos
+        out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_armaraos_hand"
         out_dir.mkdir(parents=True, exist_ok=True)
-        files = emit_openfang(ir, stem, out_dir)
+        files = emit_armaraos(ir, stem, out_dir)
         written = [str(p) for p in files.values()]
-        print(json.dumps({"ok": True, "emit": "openfang", "dir": str(out_dir.resolve()), "files": written}, indent=2))
+        print(json.dumps({"ok": True, "emit": "armaraos", "dir": str(out_dir.resolve()), "files": written}, indent=2))
         return 0
 
 # Emitters available on the compiler
@@ -878,21 +889,24 @@ def cmd_emit(args: argparse.Namespace) -> int:
     print(json.dumps({"ok": False, "error": f"unknown --target: {target!r}"}, indent=2))
     return 2
 
-# ====================== OpenFang Integration ======================
+# ====================== ArmaraOS Integration ======================
 # AINL-OPENFANG-TOP1
 
-def cmd_install_openfang_one_command(args: argparse.Namespace) -> int:
-    """One-command OpenFang install + health check (mirrors OpenClaw)."""
+def cmd_install_armaraos_one_command(args: argparse.Namespace) -> int:
+    """One-command ArmaraOS install + health check (mirrors OpenClaw)."""
+    if args.target == 'armaraos':
+        _warn_armaraos_deprecated('install')
+        args.target = 'armaraos'
     from pathlib import Path
     import subprocess
     import sys
 
-    from tooling.openfang_install import run_install_openfang
-    from openfang.bridge.ainl_bridge_main import ainl_openfang_validate
-    from openfang.bridge.user_friendly_error import INIT_INSTALL_OPENFANG, user_friendly_ainl_error
+    from tooling.armaraos_install import run_install_armaraos
+    from armaraos.bridge.ainl_bridge_main import ainl_armaraos_validate
+    from armaraos.bridge.user_friendly_error import INIT_INSTALL_ARMARAOS, user_friendly_ainl_error
 
-    dry = bool(getattr(args, "install_openfang_dry_run", False))
-    verbose = bool(getattr(args, "install_openfang_verbose", False))
+    dry = bool(getattr(args, "install_armaraos_dry_run", False))
+    verbose = bool(getattr(args, "install_armaraos_verbose", False))
 
     # 1) pip install ainl[mcp] (unless dry-run)
     if not dry:
@@ -905,8 +919,8 @@ def cmd_install_openfang_one_command(args: argparse.Namespace) -> int:
     home = Path.home()
     try:
         from tooling.mcp_host_install import ensure_mcp_registration as _ensure_mcp_registration
-        from tooling.mcp_host_install import OPENFANG_PROFILE
-        _ensure_mcp_registration(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+        from tooling.mcp_host_install import ARMARAOS_PROFILE
+        _ensure_mcp_registration(ARMARAOS_PROFILE, home=home, dry_run=dry, verbose=verbose)
     except Exception as e:
         print(f"MCP registration failed: {e}", file=sys.stderr)
         return 1
@@ -914,7 +928,7 @@ def cmd_install_openfang_one_command(args: argparse.Namespace) -> int:
     # 3) ainl-run wrapper
     try:
         from tooling.mcp_host_install import ensure_ainl_run_wrapper as _ensure_ainl_run_wrapper
-        _ensure_ainl_run_wrapper(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+        _ensure_ainl_run_wrapper(ARMARAOS_PROFILE, home=home, dry_run=dry, verbose=verbose)
     except Exception as e:
         print(f"Wrapper install failed: {e}", file=sys.stderr)
         return 1
@@ -922,31 +936,34 @@ def cmd_install_openfang_one_command(args: argparse.Namespace) -> int:
     # 4) PATH hint in shell RC
     try:
         from tooling.mcp_host_install import ensure_path_hint_in_shell_rc as _ensure_path_hint
-        _ensure_path_hint(OPENFANG_PROFILE, home=home, dry_run=dry, verbose=verbose)
+        _ensure_path_hint(ARMARAOS_PROFILE, home=home, dry_run=dry, verbose=verbose)
     except Exception as e:
         print(f"PATH hint failed: {e}", file=sys.stderr)
         # continue
 
     # 5) Validate install
-    val = ainl_openfang_validate()
+    val = ainl_armaraos_validate()
     if not val["ok"] or val.get("missing_env"):
-        print(user_friendly_ainl_error(INIT_INSTALL_OPENFANG, val))
+        print(user_friendly_ainl_error(INIT_INSTALL_ARMARAOS, val))
         return 1
 
     ok = True
     if val.get("cron_ok") is False:
-        print("Warning: OpenFang cron integration incomplete: " + str(val.get("cron_detail", "")))
+        print("Warning: ArmaraOS cron integration incomplete: " + str(val.get("cron_detail", "")))
         ok = False
     if val["warnings"]:
         for w in val["warnings"]:
             print("Warning:", w)
 
-    print("AINL OpenFang MCP bootstrap complete. " + OPENFANG_PROFILE.success_tip)
+    print("AINL ArmaraOS MCP bootstrap complete. " + ARMARAOS_PROFILE.success_tip)
     return 0 if ok else 1
 
 
-def cmd_cron_add_openfang(args: argparse.Namespace) -> int:
-    """Schedule an .ainl file to run as an OpenFang hand."""
+def cmd_cron_add_armaraos(args: argparse.Namespace) -> int:
+    """Schedule an .ainl file to run as an ArmaraOS hand."""
+    if getattr(args, 'host', None) == 'armaraos':
+        _warn_armaraos_deprecated('cron add')
+        args.host = 'armaraos'
     ainl_path = Path(args.ainl_path).resolve()
     if not ainl_path.exists():
         print(f"File not found: {ainl_path}", file=sys.stderr)
@@ -958,10 +975,10 @@ def cmd_cron_add_openfang(args: argparse.Namespace) -> int:
         print("Must specify either --cron or --every", file=sys.stderr)
         return 2
 
-    # Use openfang cron add command
-    cmd = ["openfang", "cron", "add", str(ainl_path), "--name", name, "--cron", cron_expr]
+    # Use armaraos cron add command
+    cmd = ["armaraos", "cron", "add", str(ainl_path), "--name", name, "--cron", cron_expr]
     if getattr(args, "every", ""):
-        cmd = ["openfang", "cron", "add", str(ainl_path), "--name", name, "--every", args.every]
+        cmd = ["armaraos", "cron", "add", str(ainl_path), "--name", name, "--every", args.every]
     if getattr(args, "agent", ""):
         cmd.extend(["--agent", args.agent])
     if getattr(args, "session", ""):
@@ -977,33 +994,36 @@ def cmd_cron_add_openfang(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_status_openfang(args: argparse.Namespace) -> int:
-    """Show OpenFang integration status."""
+def cmd_status_armaraos(args: argparse.Namespace) -> int:
+    """Show ArmaraOS integration status."""
+    if getattr(args, 'host', None) == 'armaraos':
+        _warn_armaraos_deprecated('status')
+        args.host = 'armaraos'
     import json
     import shutil
     import subprocess
     from datetime import datetime, timezone
 
-    from openfang.bridge.cron_drift_check import run_report as _cron_drift_report
-    from openfang.bridge.schema_bootstrap import bootstrap_tables
-    from openfang.bridge.user_friendly_error import INIT_INSTALL_OPENFANG, user_friendly_ainl_error
+    from armaraos.bridge.cron_drift_check import run_report as _cron_drift_report
+    from armaraos.bridge.schema_bootstrap import bootstrap_tables
+    from armaraos.bridge.user_friendly_error import INIT_INSTALL_ARMARAOS, user_friendly_ainl_error
 
     json_out = bool(getattr(args, "status_json", False))
-    ws = _openfang_default_workspace()
+    ws = _armaraos_default_workspace()
     db_path = Path(os.getenv("OPENFANG_MEMORY_DB", str(ws / ".ainl" / "ainl_memory.sqlite3"))).expanduser()
     schema_ok, schema_detail = bootstrap_tables(db_path)
 
-    # Check OpenFang cron jobs (we assume they're managed by openfang CLI)
+    # Check ArmaraOS cron jobs (we assume they're managed by armaraos CLI)
     cron_ok = True
     cron_detail = "ok"
     try:
-        # Try to list OpenFang crons if possible; not critical
+        # Try to list ArmaraOS crons if possible; not critical
         pass
     except Exception:
         pass
 
     val = {
-        "openfang_installed": shutil.which("openfang") is not None,
+        "armaraos_installed": shutil.which("armaraos") is not None,
         "ainl_mcp_registered": True,  # could check file existence
         "schema_ok": schema_ok,
         "schema_detail": schema_detail,
@@ -1013,7 +1033,7 @@ def cmd_status_openfang(args: argparse.Namespace) -> int:
     if json_out:
         print(json.dumps(val, indent=2))
     else:
-        print("OpenFang Integration Status:")
+        print("ArmaraOS Integration Status:")
         for k, v in val.items():
             print(f"  {k}: {v}")
         if not schema_ok:
@@ -1021,11 +1041,11 @@ def cmd_status_openfang(args: argparse.Namespace) -> int:
     return 0 if schema_ok else 1
 
 
-def cmd_migrate_openclaw_to_openfang(args: argparse.Namespace) -> int:
-    """Migrate OpenClaw workspace configuration to OpenFang."""
-    print("OpenFang migration: This tool will copy your OpenClaw config and hands to OpenFang format.")
+def cmd_migrate_openclaw_to_armaraos(args: argparse.Namespace) -> int:
+    """Migrate OpenClaw workspace configuration to ArmaraOS."""
+    print("ArmaraOS migration: This tool will copy your OpenClaw config and hands to ArmaraOS format.")
     src = Path.home() / ".openclaw"
-    dst = Path.home() / ".openfang"
+    dst = Path.home() / ".armaraos"
     if not src.exists():
         print(f"OpenClaw workspace not found at {src}", file=sys.stderr)
         return 2
@@ -1043,13 +1063,13 @@ def cmd_migrate_openclaw_to_openfang(args: argparse.Namespace) -> int:
             print(f"Copied {src_item} -> {dst_item}")
 
     # Reconfigure MCP if needed
-    print("Migration complete. Run 'ainl install openfang' to ensure MCP integration.")
+    print("Migration complete. Run 'ainl install armaraos' to ensure MCP integration.")
     return 0
 
 
-def _openfang_default_workspace() -> Path:
-    """Guess OpenFang workspace root: ~/.openfang/workspace if present, else cwd."""
-    default_ws = Path.home() / ".openfang" / "workspace"
+def _armaraos_default_workspace() -> Path:
+    """Guess ArmaraOS workspace root: ~/.armaraos/workspace if present, else cwd."""
+    default_ws = Path.home() / ".armaraos" / "workspace"
     if default_ws.exists():
         return default_ws
     return Path.cwd()
@@ -2353,7 +2373,7 @@ def main() -> None:
             "ir", "langgraph", "temporal", "hermes-skill", "hermes",
             "solana-client", "blockchain-client",
             "server", "python-api", "react", "openapi", "prisma", "sql",
-            "docker", "k8s", "cron", "openfang",
+            "docker", "k8s", "cron", "armaraos",
         ],
         help="Emit target platform.",
     )
@@ -2691,27 +2711,27 @@ def main() -> None:
     dashp.add_argument("--no-browser", action="store_true", dest="dashboard_no_browser", help="Do not open browser")  # AINL-OPENCLAW-TOP5
     dashp.set_defaults(func=cmd_dashboard)  # AINL-OPENCLAW-TOP5
 
-    # OpenFang commands
-    inst_of = inst_sub.add_parser("openfang", help="One-command OpenFang install + health check")  # AINL-OPENFANG-TOP1
+    # ArmaraOS commands
+    inst_of = inst_sub.add_parser("armaraos", help="One-command ArmaraOS install + health check")  # AINL-OPENFANG-TOP1
     inst_of.add_argument(
         "--workspace",
         default="",
         metavar="PATH",
-        help="OpenFang workspace root (default: ~/.openfang/workspace if present, else cwd)",
+        help="ArmaraOS workspace root (default: ~/.armaraos/workspace if present, else cwd)",
     )
-    inst_of.add_argument("--dry-run", dest="install_openfang_dry_run", action="store_true", help="Print actions only; no patch/cron/restart/SQLite writes")
-    inst_of.add_argument("--verbose", "-v", dest="install_openfang_verbose", action="store_true", help="Log steps to stderr")
-    inst_of.set_defaults(func=cmd_install_openfang_one_command)
+    inst_of.add_argument("--dry-run", dest="install_armaraos_dry_run", action="store_true", help="Print actions only; no patch/cron/restart/SQLite writes")
+    inst_of.add_argument("--verbose", "-v", dest="install_armaraos_verbose", action="store_true", help="Log steps to stderr")
+    inst_of.set_defaults(func=cmd_install_armaraos_one_command)
 
-    # Extend cron add to support --host openfang
-    cron_add.add_argument("--host", default="openclaw", choices=["openclaw", "openfang"], help="Agent host (default: openclaw)")  # AINL-OPENFANG-TOP2
+    # Extend cron add to support --host armaraos
+    cron_add.add_argument("--host", default="openclaw", choices=["openclaw", "armaraos"], help="Agent host (default: openclaw)")  # AINL-OPENFANG-TOP2
 
-    # emit target openfang is handled in cmd_emit; no new parser needed
+    # emit target armaraos is handled in cmd_emit; no new parser needed
 
     # migrate command
-    migp = sub.add_parser("migrate", help="Migrate from OpenClaw to OpenFang")  # AINL-OPENFANG-TOP4
-    migp.add_argument("source", choices=["openclaw-to-openfang"], help="Migration path")
-    migp.set_defaults(func=cmd_migrate_openclaw_to_openfang)
+    migp = sub.add_parser("migrate", help="Migrate from OpenClaw to ArmaraOS")  # AINL-OPENFANG-TOP4
+    migp.add_argument("source", choices=["openclaw-to-armaraos"], help="Migration path")
+    migp.set_defaults(func=cmd_migrate_openclaw_to_armaraos)
 
     def cmd_status(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
         import sqlite3  # AINL-OPENCLAW-TOP5
@@ -2904,8 +2924,8 @@ def main() -> None:
 
     def cmd_status_mux(args: argparse.Namespace) -> int:
         host = str(getattr(args, "host", "openclaw") or "openclaw").strip().lower()
-        if host == "openfang":
-            return cmd_status_openfang(args)
+        if host == "armaraos":
+            return cmd_status_armaraos(args)
         return cmd_status(args)
 
     st = sub.add_parser("status", help="Unified OpenClaw + AINL status view")  # AINL-OPENCLAW-TOP5

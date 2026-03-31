@@ -11,36 +11,36 @@ from tooling.mcp_host_install import (
     ensure_path_hint_in_shell_rc as _ensure_path_hint,
     run_install_mcp_host,
 )
-from tooling.mcp_host_install import OPENFANG_PROFILE  # will be added
+from tooling.mcp_host_install import ARMARAOS_PROFILE  # will be added
 
 
 def ensure_mcp_registration(*, home: Path, dry_run: bool, verbose: bool) -> None:
-    _ensure_mcp_registration(OPENFANG_PROFILE, home=home, dry_run=dry_run, verbose=verbose)
+    _ensure_mcp_registration(ARMARAOS_PROFILE, home=home, dry_run=dry_run, verbose=verbose)
 
 
 def ensure_ainl_run_wrapper(*, home: Path, dry_run: bool, verbose: bool) -> Path:
-    return _ensure_ainl_run_wrapper(OPENFANG_PROFILE, home=home, dry_run=dry_run, verbose=verbose)
+    return _ensure_ainl_run_wrapper(ARMARAOS_PROFILE, home=home, dry_run=dry_run, verbose=verbose)
 
 
 def ensure_path_hint_in_shell_rc(*, home: Path, dry_run: bool, verbose: bool) -> list[str]:
-    return _ensure_path_hint(OPENFANG_PROFILE, home=home, dry_run=dry_run, verbose=verbose)
+    return _ensure_path_hint(ARMARAOS_PROFILE, home=home, dry_run=dry_run, verbose=verbose)
 
 
-def run_install_openfang(
+def run_install_armaraos(
     *,
     dry_run: bool,
     verbose: bool,
     home: Optional[Path] = None,
     run_pip: Optional[Callable[[bool], int]] = None,
 ) -> int:
-    return run_install_mcp_host("openfang", dry_run=dry_run, verbose=verbose, home=home, run_pip=run_pip)
+    return run_install_mcp_host("armaraos", dry_run=dry_run, verbose=verbose, home=home, run_pip=run_pip)
 
 
-def run_install_openfang_main(argv: Optional[list[str]] = None) -> int:
+def run_install_armaraos_main(argv: Optional[list[str]] = None) -> int:
     import argparse
 
-    p = argparse.ArgumentParser(prog="ainl install-openfang")
+    p = argparse.ArgumentParser(prog="ainl install-armaraos")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--verbose", "-v", action="store_true")
     ns = p.parse_args(argv)
-    return run_install_openfang(dry_run=ns.dry_run, verbose=ns.verbose)
+    return run_install_armaraos(dry_run=ns.dry_run, verbose=ns.verbose)

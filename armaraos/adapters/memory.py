@@ -30,7 +30,7 @@ class OpenFangMemoryAdapter:
     def __init__(self, db_path: str = None, use_sqlite: bool = True):
         self.use_sqlite = use_sqlite
         if db_path is None:
-            db_path = os.getenv("OPENFANG_MEMORY_DB", ":memory:")
+            db_path = os.getenv("ARMARAOS_MEMORY_DB", ":memory:")
         self.db_path = db_path
         self._conn: Optional[sqlite3.Connection] = None
         self._ensure_schema()
@@ -40,7 +40,7 @@ class OpenFangMemoryAdapter:
             return
         self._conn = sqlite3.connect(self.db_path)
         self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS openfang_memory (
+            CREATE TABLE IF NOT EXISTS armaraos_memory (
                 node_id TEXT PRIMARY KEY,
                 node_type TEXT NOT NULL,
                 properties JSON NOT NULL,
@@ -53,11 +53,11 @@ class OpenFangMemoryAdapter:
     def kg_to_ainl_memory(self, node: KnowledgeNode) -> Dict[str, Any]:
         """Convert OpenFang KG node to AINL memory dump format."""
         memory_entry = {
-            "key": f"openfang:node:{node.id}",
+            "key": f"armaraos:node:{node.id}",
             "value": {
                 "type": node.type,
                 "properties": node.properties,
-                "source": "openfang",
+                "source": "armaraos",
                 "updated_at": datetime.datetime.utcnow().isoformat() + "Z",
             },
             "embedding": node.embeddings,
@@ -67,7 +67,7 @@ class OpenFangMemoryAdapter:
     def ainl_memory_to_kg(self, memory_data: Dict[str, Any]) -> KnowledgeNode:
         """Convert AINL memory entry back to OpenFang KG node."""
         value = memory_data.get("value", {})
-        node_id = memory_data.get("key", "").replace("openfang:node:", "")
+        node_id = memory_data.get("key", "").replace("armaraos:node:", "")
         return KnowledgeNode(
             id=node_id,
             type=value.get("type", "unknown"),
@@ -83,7 +83,7 @@ class OpenFangMemoryAdapter:
             if node.embeddings:
                 emb_blob = json.dumps(node.embeddings).encode('utf-8')
             self._conn.execute(
-                "INSERT OR REPLACE INTO openfang_memory (node_id, node_type, properties, embeddings) VALUES (?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO armaraos_memory (node_id, node_type, properties, embeddings) VALUES (?, ?, ?, ?)",
                 (node.id, node.type, props_json, emb_blob)
             )
             self._conn.commit()
@@ -92,7 +92,7 @@ class OpenFangMemoryAdapter:
         """Load a KG node from AINL memory."""
         if self.use_sqlite and self._conn:
             cur = self._conn.execute(
-                "SELECT node_type, properties, embeddings FROM openfang_memory WHERE node_id = ?",
+                "SELECT node_type, properties, embeddings FROM armaraos_memory WHERE node_id = ?",
                 (node_id,)
             )
             row = cur.fetchone()

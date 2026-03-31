@@ -37,7 +37,7 @@ class OpenFangChannelAdapter:
             Channel("ainl_control", "ainl/control", qos=2),
             Channel("ainl_metrics", "ainl/metrics", qos=1),
             Channel("ainl_alerts", "ainl/alerts", qos=2),
-            Channel("openfang_events", "openfang/events", qos=0),
+            Channel("armaraos_events", "armaraos/events", qos=0),
         ]
         for ch in defaults:
             self._channels[ch.name] = ch
@@ -69,7 +69,7 @@ class OpenFangChannelAdapter:
     def to_ainl_tool_spec(self) -> Dict[str, Any]:
         """Generate an AINL tool specification for channel operations."""
         return {
-            "tool": "openfang_channel",
+            "tool": "armaraos_channel",
             "description": "Publish/subscribe to OpenFang channels",
             "inputs": {
                 "action": "string - 'publish' or 'subscribe'",

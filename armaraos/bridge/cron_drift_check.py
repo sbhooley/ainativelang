@@ -2,23 +2,23 @@
 """
 Compare canonical cron intent (tooling/cron_registry.json) with:
   - compiled AINL schedules (IR `crons` from each ainl_program)
-  - OpenFang cron jobs (`openfang cron list --json`), matched via payload_contains
+  - OpenFang cron jobs (`armaraos cron list --json`), matched via payload_contains
 
 Does not modify OpenFang or system cron — read-only drift report for humans/agents.
 
-Official location: openfang/bridge/ (OpenFang integration layer).
+Official location: armaraos/bridge/ (OpenFang integration layer).
 
 Usage:
-  python3 openfang/bridge/cron_drift_check.py
-  python3 openfang/bridge/cron_drift_check.py --json
-  CRON_DRIFT_STRICT=1 python3 openfang/bridge/cron_drift_check.py
-  CRON_DRIFT_FAIL_ON_UNTRACKED=1 python3 openfang/bridge/cron_drift_check.py
+  python3 armaraos/bridge/cron_drift_check.py
+  python3 armaraos/bridge/cron_drift_check.py --json
+  CRON_DRIFT_STRICT=1 python3 armaraos/bridge/cron_drift_check.py
+  CRON_DRIFT_FAIL_ON_UNTRACKED=1 python3 armaraos/bridge/cron_drift_check.py
 
   Shims: scripts/cron_drift_check.py
 
 Env:
-  OPENFANG_BIN — optional; else shutil.which("openfang")
-  AINL_REPO_ROOT — repo root (default: parent of openfang/)
+  ARMARAOS_BIN — optional; else shutil.which("armaraos")
+  AINL_REPO_ROOT — repo root (default: parent of armaraos/)
   CRON_REGISTRY_PATH — registry JSON path (absolute or relative to repo root)
   CRON_DRIFT_UNTRACKED_SUBSTRINGS — comma-separated override for untracked heuristic
 """
@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 _CRON_LINE = re.compile(r'^\s*S\s+core\s+cron\s+"([^"]+)"\s*$', re.MULTILINE)
 
-# openfang/bridge/ -> openfang/ -> repo root
+# armaraos/bridge/ -> armaraos/ -> repo root
 _BRIDGE_DIR = Path(__file__).resolve().parent
 DEFAULT_ROOT = _BRIDGE_DIR.parent.parent
 
@@ -58,14 +58,14 @@ def _load_registry(root: Path) -> Dict[str, Any]:
         return json.load(f)
 
 
-def _openfang_bin() -> str:
-    env = (os.environ.get("OPENFANG_BIN") or "").strip()
+def _armaraos_bin() -> str:
+    env = (os.environ.get("ARMARAOS_BIN") or "").strip()
     if env:
         return env
-    found = shutil.which("openfang")
+    found = shutil.which("armaraos")
     if found:
         return found
-    return "openfang"
+    return "armaraos"
 
 
 def _untracked_substrings(reg: Dict[str, Any]) -> List[str]:
@@ -103,8 +103,8 @@ def _compile_crons(root: Path, rel_program: str) -> List[Dict[str, str]]:
     return [c for c in crons if isinstance(c, dict)]
 
 
-def _openfang_jobs() -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
-    bin_path = _openfang_bin()
+def _armaraos_jobs() -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+    bin_path = _armaraos_bin()
     try:
         proc = subprocess.run(
             [bin_path, "cron", "list", "--json"],
@@ -113,18 +113,18 @@ def _openfang_jobs() -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
             timeout=60,
         )
     except FileNotFoundError:
-        return None, "openfang binary not found"
+        return None, "armaraos binary not found"
     except subprocess.TimeoutExpired:
-        return None, "openfang cron list timed out"
+        return None, "armaraos cron list timed out"
     if proc.returncode != 0:
-        return None, (proc.stderr or proc.stdout or "openfang cron list failed")[:500]
+        return None, (proc.stderr or proc.stdout or "armaraos cron list failed")[:500]
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
-        return None, f"invalid JSON from openfang: {e}"
+        return None, f"invalid JSON from armaraos: {e}"
     jobs = data.get("jobs")
     if not isinstance(jobs, list):
-        return None, "openfang JSON missing jobs[]"
+        return None, "armaraos JSON missing jobs[]"
     return jobs, None
 
 
@@ -143,7 +143,7 @@ def _job_expr(job: Dict[str, Any]) -> str:
     return ""
 
 
-def _find_openfang_job(jobs: List[Dict[str, Any]], payload_contains: str) -> Optional[Dict[str, Any]]:
+def _find_armaraos_job(jobs: List[Dict[str, Any]], payload_contains: str) -> Optional[Dict[str, Any]]:
     needle = payload_contains.strip()
     if not needle:
         return None
@@ -157,7 +157,7 @@ def run_report() -> Dict[str, Any]:
     root = _root()
     reg = _load_registry(root)
     jobs_def = [j for j in reg.get("jobs", []) if isinstance(j, dict)]
-    oc_jobs, oc_err = _openfang_jobs()
+    oc_jobs, oc_err = _armaraos_jobs()
 
     issues: List[Dict[str, Any]] = []
     rows: List[Dict[str, Any]] = []
@@ -192,33 +192,33 @@ def run_report() -> Dict[str, Any]:
                     "kind": "schedule_mismatch_registry_vs_ainl",
                     "registry_schedule_cron": expr_expected,
                     "ainl_schedule": ainl_authoritative,
-                    "detail": "Update tooling/cron_registry.json, modules/openfang/cron_*.ainl, and adapters/openfang_defaults.py together.",
+                    "detail": "Update tooling/cron_registry.json, modules/armaraos/cron_*.ainl, and adapters/armaraos_defaults.py together.",
                 }
             )
 
-        match = job.get("openfang_match") or {}
+        match = job.get("armaraos_match") or {}
         payload_contains = str(match.get("payload_contains") or "")
-        required = bool(job.get("openfang_required"))
+        required = bool(job.get("armaraos_required"))
 
         if oc_err:
-            row["checks"]["openfang"] = {"error": oc_err}
+            row["checks"]["armaraos"] = {"error": oc_err}
             if required:
-                issues.append({"job_id": jid, "kind": "openfang_unavailable", "detail": oc_err})
+                issues.append({"job_id": jid, "kind": "armaraos_unavailable", "detail": oc_err})
         else:
             assert oc_jobs is not None
-            hit = _find_openfang_job(oc_jobs, payload_contains) if payload_contains else None
-            row["checks"]["openfang"] = {
+            hit = _find_armaraos_job(oc_jobs, payload_contains) if payload_contains else None
+            row["checks"]["armaraos"] = {
                 "matched": hit is not None,
-                "openfang_name": (hit or {}).get("name"),
-                "openfang_expr": _job_expr(hit) if hit else None,
-                "openfang_enabled": (hit or {}).get("enabled"),
+                "armaraos_name": (hit or {}).get("name"),
+                "armaraos_expr": _job_expr(hit) if hit else None,
+                "armaraos_enabled": (hit or {}).get("enabled"),
             }
             if payload_contains and hit is None:
                 msg = "No OpenFang job whose payload contains the registry fingerprint."
                 issues.append(
                     {
                         "job_id": jid,
-                        "kind": "openfang_job_missing",
+                        "kind": "armaraos_job_missing",
                         "detail": msg,
                         "payload_contains": payload_contains,
                         "severity": "error" if required else "info",
@@ -230,9 +230,9 @@ def run_report() -> Dict[str, Any]:
                     issues.append(
                         {
                             "job_id": jid,
-                            "kind": "schedule_mismatch_openfang_vs_registry",
+                            "kind": "schedule_mismatch_armaraos_vs_registry",
                             "registry_schedule_cron": expr_expected,
-                            "openfang_schedule_expr": oexpr,
+                            "armaraos_schedule_expr": oexpr,
                             "detail": "OpenFang job exists but cron expression differs from registry/AINL.",
                         }
                     )
@@ -244,7 +244,7 @@ def run_report() -> Dict[str, Any]:
     if oc_jobs and needles:
         fingerprints: List[str] = []
         for job in jobs_def:
-            m = job.get("openfang_match") or {}
+            m = job.get("armaraos_match") or {}
             pc = str(m.get("payload_contains") or "")
             if pc:
                 fingerprints.append(pc)
@@ -258,7 +258,7 @@ def run_report() -> Dict[str, Any]:
     if untracked:
         issues.append(
             {
-                "kind": "openfang_untracked_ainlish",
+                "kind": "armaraos_untracked_ainlish",
                 "jobs": untracked,
                 "detail": "OpenFang job payloads matched untracked_payload_substrings but no registry fingerprint — add a row, clear meta.untracked_payload_substrings, or adjust CRON_DRIFT_UNTRACKED_SUBSTRINGS.",
             }
@@ -267,19 +267,19 @@ def run_report() -> Dict[str, Any]:
     serious_kinds = (
         "ainl_compile_error",
         "schedule_mismatch_registry_vs_ainl",
-        "schedule_mismatch_openfang_vs_registry",
+        "schedule_mismatch_armaraos_vs_registry",
     )
     serious = [
         i
         for i in issues
         if i.get("kind") in serious_kinds
-        or (i.get("kind") == "openfang_job_missing" and i.get("severity") == "error")
+        or (i.get("kind") == "armaraos_job_missing" and i.get("severity") == "error")
     ]
     return {
         "ok": len(serious) == 0,
         "repo_root": str(root),
         "registry_path": str(_registry_path(root)),
-        "openfang_bin": _openfang_bin(),
+        "armaraos_bin": _armaraos_bin(),
         "untracked_substrings_used": needles,
         "registry_schema_version": reg.get("schema_version"),
         "jobs": rows,
@@ -297,7 +297,7 @@ def main() -> None:
     else:
         print(f"Cron drift report (repo={report['repo_root']})")
         print(f"Registry: {report.get('registry_path')}")
-        print(f"openfang CLI: {report.get('openfang_bin')}")
+        print(f"armaraos CLI: {report.get('armaraos_bin')}")
         print(f"untracked heuristic substrings: {report.get('untracked_substrings_used')!r}")
         print(f"Registry schema: {report.get('registry_schema_version')}")
         print(f"ok (no serious drift): {report.get('ok')}")
@@ -315,20 +315,20 @@ def main() -> None:
         sys.exit(1)
     if os.environ.get("CRON_DRIFT_FAIL_ON_UNTRACKED", "").strip().lower() in ("1", "true", "yes"):
         for i in report.get("issues", []):
-            if i.get("kind") == "openfang_untracked_ainlish":
+            if i.get("kind") == "armaraos_untracked_ainlish":
                 sys.exit(1)
 
 
 if __name__ == "__main__":
-    try:  # AINL-OPENFANG-TOP5
-        main()  # AINL-OPENFANG-TOP5
-    except SystemExit:  # AINL-OPENFANG-TOP5
-        raise  # AINL-OPENFANG-TOP5
-    except BaseException as _e:  # AINL-OPENFANG-TOP5
-        try:  # AINL-OPENFANG-TOP5
-            from openfang.bridge.user_friendly_error import user_friendly_ainl_error  # AINL-OPENFANG-TOP5
+    try:  # AINL-ARMARAOS-TOP5
+        main()  # AINL-ARMARAOS-TOP5
+    except SystemExit:  # AINL-ARMARAOS-TOP5
+        raise  # AINL-ARMARAOS-TOP5
+    except BaseException as _e:  # AINL-ARMARAOS-TOP5
+        try:  # AINL-ARMARAOS-TOP5
+            from armaraos.bridge.user_friendly_error import user_friendly_ainl_error  # AINL-ARMARAOS-TOP5
 
-            print(user_friendly_ainl_error(_e), file=sys.stderr)  # AINL-OPENFANG-TOP5
-        except Exception:  # AINL-OPENFANG-TOP5
-            print(str(_e), file=sys.stderr)  # AINL-OPENFANG-TOP5
-        raise SystemExit(1) from _e  # AINL-OPENFANG-TOP5
+            print(user_friendly_ainl_error(_e), file=sys.stderr)  # AINL-ARMARAOS-TOP5
+        except Exception:  # AINL-ARMARAOS-TOP5
+            print(str(_e), file=sys.stderr)  # AINL-ARMARAOS-TOP5
+        raise SystemExit(1) from _e  # AINL-ARMARAOS-TOP5

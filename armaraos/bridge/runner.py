@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Run orchestration wrappers under the OpenFang monitor registry plus bridge adapters.
 
-Official location: openfang/bridge/ (OpenFang integration layer; not AINL core).
+Official location: armaraos/bridge/ (OpenFang integration layer; not AINL core).
 
 Usage:
-  python3 openfang/bridge/run_wrapper_ainl.py <name> [--dry-run] [--trace]
+  python3 armaraos/bridge/run_wrapper_ainl.py <name> [--dry-run] [--trace]
 
   Shims for legacy paths: scripts/run_wrapper_ainl.py
 
@@ -21,7 +21,7 @@ from tooling.capability_grant import load_profile_as_grant, grant_to_allowed_ada
 
 from typing import Any, Optional, Tuple
 
-# Repo root: openfang/bridge/ -> openfang/ -> repo
+# Repo root: armaraos/bridge/ -> armaraos/ -> repo
 _BRIDGE_DIR = Path(__file__).resolve().parent
 ROOT = _BRIDGE_DIR.parent.parent
 sys.path.insert(0, str(ROOT))
@@ -31,10 +31,10 @@ from runtime.engine import RuntimeEngine
 
 from adapters.crm import CrmAdapter
 from adapters.github import GitHubAdapter
-from adapters.openfang_defaults import DEFAULT_CRM_HEALTH_URL
-from adapters.openfang_integration import openfang_monitor_registry
-from adapters.openfang_memory import OpenFangMemoryAdapter
-from adapters.openfang_token_tracker import OpenFangTokenTrackerAdapter
+from adapters.armaraos_defaults import DEFAULT_CRM_HEALTH_URL
+from adapters.armaraos_integration import armaraos_monitor_registry
+from adapters.armaraos_memory import OpenFangMemoryAdapter
+from adapters.armaraos_token_tracker import OpenFangTokenTrackerAdapter
 
 import importlib.util
 
@@ -60,7 +60,7 @@ WRAPPERS = {
     "github-intelligence": ROOT / "scripts" / "wrappers" / "github-intelligence.ainl",
     "content-engine": ROOT / "scripts" / "wrappers" / "content-engine.ainl",
     "supervisor": ROOT / "scripts" / "wrappers" / "supervisor.ainl",
-    "full-unification": ROOT / "examples" / "openfang_full_unification.ainl",
+    "full-unification": ROOT / "examples" / "armaraos_full_unification.ainl",
     "token-budget-alert": _BRIDGE_DIR / "wrappers" / "token_budget_alert.ainl",
     "weekly-token-trends": _BRIDGE_DIR / "wrappers" / "weekly_token_trends.ainl",
     "ttl-memory-tuner": _BRIDGE_DIR / "wrappers" / "ttl_memory_tuner.ainl",
@@ -73,7 +73,7 @@ WRAPPERS = {
     "test-openspace-mcp": ROOT / "demo" / "test_openspace_mcp.ainl",
     "test-simple": ROOT / "demo" / "test_simple.ainl",
     "test-mcp-log": ROOT / "demo" / "test_mcp_log.ainl",
-    # "email-monitor": _BRIDGE_DIR / "wrappers" / "email_monitor.ainl",  # disabled: requires 'openfang mail' plugin
+    # "email-monitor": _BRIDGE_DIR / "wrappers" / "email_monitor.ainl",  # disabled: requires 'armaraos mail' plugin
 }
 
 
@@ -81,12 +81,12 @@ WRAPPERS = {
 # The bridge runs with a fixed set of adapters. We ensure the active security
 # profile (if any) allows all required adapters.
 def _load_bridge_grant() -> dict:
-    profile = os.environ.get("OPENFANG_SECURITY_PROFILE")
+    profile = os.environ.get("ARMARAOS_SECURITY_PROFILE")
     if profile:
         try:
             return load_profile_as_grant(profile)
         except ValueError as e:
-            logger.error("Invalid OPENFANG_SECURITY_PROFILE %s: %s", profile, e)
+            logger.error("Invalid ARMARAOS_SECURITY_PROFILE %s: %s", profile, e)
             return empty_grant()
     # Default: wide open (legacy behavior)
     return empty_grant()
@@ -96,10 +96,10 @@ _BRIDGE_GRANT = _load_bridge_grant()
 # Set of adapter names the bridge needs to function
 _REQUIRED_ADAPTERS = {
     "core",  # always required
-    "openfang_memory",
+    "armaraos_memory",
     "github",
     "crm",
-    "openfang_token_tracker",
+    "armaraos_token_tracker",
     "bridge",
 }
 
@@ -108,7 +108,7 @@ _allowed = set(grant_to_allowed_adapters(_BRIDGE_GRANT))
 _missing = _REQUIRED_ADAPTERS - _allowed
 if _missing:
     logger.error("OpenFang bridge missing required adapters due to security profile: %s", ", ".join(sorted(_missing)))
-    logger.error("Set OPENFANG_SECURITY_PROFILE to a grant that includes these adapters or unset to disable restriction.")
+    logger.error("Set ARMARAOS_SECURITY_PROFILE to a grant that includes these adapters or unset to disable restriction.")
     sys.exit(1)
 
 
@@ -185,13 +185,13 @@ def build_wrapper_registry():
         os.environ["OPENROUTER_API_KEY"] = os.environ.get(
             "AINL_OPENROUTER_PLACEHOLDER_KEY", "unset-openrouter-key-wrapper-registry"
         )
-    reg = openfang_monitor_registry()
-    for name in ("openfang_memory", "github", "crm", "openfang_token_tracker"):
+    reg = armaraos_monitor_registry()
+    for name in ("armaraos_memory", "github", "crm", "armaraos_token_tracker"):
         reg.allow(name)
-    reg.register("openfang_memory", OpenFangMemoryAdapter())
+    reg.register("armaraos_memory", OpenFangMemoryAdapter())
     reg.register("github", GitHubAdapter())
     reg.register("crm", CrmAdapter())
-    reg.register("openfang_token_tracker", OpenFangTokenTrackerAdapter())
+    reg.register("armaraos_token_tracker", OpenFangTokenTrackerAdapter())
     reg.allow("bridge")
     reg.register("bridge", BridgeTokenBudgetAdapter())
     return reg

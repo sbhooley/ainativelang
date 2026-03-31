@@ -1,8 +1,15 @@
-# OpenFang Configuration Reference
+---
+> ArmaraOS is an independent open-source project and is not affiliated with any entities using similar names (e.g., Amaros AI or others).
+> It is a customized fork and extension of OpenFang by RightNow-AI (https://github.com/RightNow-AI/openfang), licensed under Apache-2.0 OR MIT.
+> It includes and integrates AINativeLang (https://github.com/sbhooley/ainativelang) for deterministic AI workflows.
+> Modifications Copyright (c) 2026 sbhooley. Original OpenFang and AINativeLang works retain their respective licenses.
+---
 
-This document describes configuration options for AINL when running under OpenFang.
+# ArmaraOS Configuration Reference
 
-## OpenFang Config Changes (`~/.openfang/config.toml`)
+This document describes configuration options for AINL when running under ArmaraOS.
+
+## ArmaraOS Config Changes (`~/.armaraos/config.toml`)
 
 AINL integration adds an MCP server entry. The minimal config is:
 
@@ -23,13 +30,13 @@ args = []
 
 ## AINL Environment Variables
 
-When running as an OpenFang hand, these environment variables are used:
+When running as an ArmaraOS hand, these environment variables are used:
 
 | Variable                     | Description | Default |
 |------------------------------|-------------|---------|
-| `OPENFANG_WORKSPACE`         | OpenFang workspace root | `~/.openfang/workspace` |
+| `OPENFANG_WORKSPACE`         | ArmaraOS workspace root | `~/.armaraos/workspace` |
 | `OPENFANG_MEMORY_DB`         | Path to SQLite memory DB | `$OPENFANG_WORKSPACE/.ainl/ainl_memory.sqlite3` |
-| `OPENFANG_TOKEN_AUDIT`       | Token usage audit log | `/var/log/openfang/token_audit.jsonl` |
+| `OPENFANG_TOKEN_AUDIT`       | Token usage audit log | `/var/log/armaraos/token_audit.jsonl` |
 | `AINL_MEMORY_DB`             | Alias for OPENFANG_MEMORY_DB | (derived) |
 | `AINL_IR_CACHE_DIR`          | Compiled IR cache | `$OPENFANG_WORKSPACE/.ainl/ir_cache` |
 | `MONITOR_CACHE_JSON`         | Metrics cache | `$OPENFANG_WORKSPACE/.ainl/monitor_cache.json` |
@@ -37,7 +44,7 @@ When running as an OpenFang hand, these environment variables are used:
 
 ## HAND.toml Manifest Options
 
-When emitting to OpenFang, the generated `HAND.toml` contains:
+When emitting to ArmaraOS, the generated `HAND.toml` contains:
 
 ```toml
 [hand]
@@ -117,34 +124,34 @@ Adjust `allowed_imports` and `allowed_networks` as needed, but be aware that rel
 
 ## Channel Adapters
 
-AINL tools can publish to OpenFang channels via the `openfang_channel` tool spec. The adapter registers these channels automatically:
+AINL tools can publish to ArmaraOS channels via the `armaraos_channel` tool spec. The adapter registers these channels automatically:
 
 - `ainl_control` – control messages (QoS 2)
 - `ainl_metrics` – metrics (QoS 1)
 - `ainl_alerts` – alerts (QoS 2)
-- `openfang_events` – OpenFang events (QoS 0)
+- `armaraos_events` – ArmaraOS events (QoS 0)
 
-You can add custom channels by modifying `openfang/adapters/channel.py`.
+You can add custom channels by modifying `armaraos/adapters/channel.py`.
 
 ## Token Tracking & Merkle Audit
 
-Token usage is recorded to `OPENFANG_TOKEN_AUDIT` (default `/var/log/openfang/token_audit.jsonl`). Each entry includes a Merkle proof for tamper detection.
+Token usage is recorded to `OPENFANG_TOKEN_AUDIT` (default `/var/log/armaraos/token_audit.jsonl`). Each entry includes a Merkle proof for tamper detection.
 
 To verify the audit trail integrity:
 
 ```bash
-python -c "from openfang.bridge.token_tracker import OpenFangTokenTracker; print(OpenFangTokenTracker().verify_merkle_chain())"
+python -c "from armaraos.bridge.token_tracker import ArmaraOSTokenTracker; print(ArmaraOSTokenTracker().verify_merkle_chain())"
 ```
 
 ## Troubleshooting
 
 ### Schema Errors
 
-If `ainl status --host openfang` reports schema errors, run:
+If `ainl status --host armaraos` reports schema errors, run:
 
 ```bash
 # The bootstrap should auto-create tables; if not:
-python -c "from openfang.bridge.schema_bootstrap import bootstrap_tables; bootstrap_tables(Path('~/.openfang/.ainl/ainl_memory.sqlite3').expanduser())"
+python -c "from armaraos.bridge.schema_bootstrap import bootstrap_tables; bootstrap_tables(Path('~/.armaraos/.ainl/ainl_memory.sqlite3').expanduser())"
 ```
 
 ### MCP Not Connecting
@@ -161,12 +168,12 @@ Should show MCP server help.
 
 If your hand exceeds memory or instruction limits, adjust the `security` section in `HAND.toml` and re-emit.
 
-For more help, consult the OpenFang docs or AINL repository.
+For more help, consult the ArmaraOS docs or AINL repository.
 
 
 ## Tauri Sidecar Configuration
 
-OpenFang desktop applications can embed AINL as a sidecar process. Add this to your `tauri.conf.json`:
+ArmaraOS desktop applications can embed AINL as a sidecar process. Add this to your `tauri.conf.json`:
 
 ```json
 {
@@ -174,9 +181,9 @@ OpenFang desktop applications can embed AINL as a sidecar process. Add this to y
     "allowlist": { "all": false },
     "sidecar": {
       " ainl-sidecar": {
-        "desc": "AINL bridge sidecar for OpenFang",
+        "desc": "AINL bridge sidecar for ArmaraOS",
         "cmd": "ainl-run",
-        "args": ["--bridge-endpoint", "openfang", "--workspace", "$APPDATA/openfang/workspace"]
+        "args": ["--bridge-endpoint", "armaraos", "--workspace", "$APPDATA/armaraos/workspace"]
       }
     }
   }
@@ -196,7 +203,7 @@ let mut sidecar = tauri::async_runtime::spawn(async move {
 });
 ```
 
-The sidecar communicates via stdin/stdout using the OpenFang bridge protocol. See `openfang/bridge/` for protocol details.
+The sidecar communicates via stdin/stdout using the ArmaraOS bridge protocol. See `armaraos/bridge/` for protocol details.
 
 For packaged applications, ensure `ainl` and its dependencies are bundled or available on the system PATH. PyInstaller or similar can create a standalone executable.
 

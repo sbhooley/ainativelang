@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""One-liner-friendly append to OpenFang daily markdown (openfang_memory.append_today).
+"""One-liner-friendly append to OpenFang daily markdown (armaraos_memory.append_today).
 
-Official location: openfang/bridge/
+Official location: armaraos/bridge/
 
 Usage:
-  python3 openfang/bridge/ainl_memory_append_cli.py "your message"
-  AINL_DRY_RUN=1 python3 openfang/bridge/ainl_memory_append_cli.py "no-op"
+  python3 armaraos/bridge/ainl_memory_append_cli.py "your message"
+  AINL_DRY_RUN=1 python3 armaraos/bridge/ainl_memory_append_cli.py "no-op"
 
 Shim: scripts/ainl_memory_append_cli.py
 """
@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from adapters.openfang_memory import OpenFangMemoryAdapter
+from adapters.armaraos_memory import OpenFangMemoryAdapter
 
 
 def main() -> None:

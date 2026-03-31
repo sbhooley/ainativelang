@@ -287,7 +287,7 @@ See **Includes & modules** below for `timeout.ainl`, strict rules, and the start
 
 Import **Clawflows**-style `WORKFLOW.md` or **Agency-Agents**-style personality Markdown into a **deterministic** `.ainl` graph (cron trigger, sequential `Call` steps or agent gates, optional `memory` / `queue` hooks for OpenClaw-style bridges). If structured parsing cannot extract steps or agent fields, the importer **falls back** to a compiling **minimal_emit fallback stub** (Phase‑1 style) so you still get valid, reviewable graph source.
 
-**Host quick links:** [OpenClaw](https://openclaw.ai/) · [ZeroClaw skill (AINL)](https://github.com/sbhooley/ainativelang/tree/main/skills/ainl) · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** — AINL wiring for all three is in [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) (**`ainl install-mcp --host openclaw|zeroclaw|hermes`**).
+**Host quick links:** [OpenClaw](https://openclaw.ai/) · [ZeroClaw skill (AINL)](https://github.com/sbhooley/ainativelang/tree/main/skills/ainl) · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** · **[ArmaraOS](https://ainativelang.com/ArmaraOS)** — AINL wiring for all four is in [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) (**`ainl install-mcp --host openclaw|zeroclaw|hermes|armaraos|armaraos`**).
 
 The same path is exposed over MCP as **`ainl_list_ecosystem`**, **`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, and **`ainl_import_markdown`** (stdio **`ainl-mcp`**). **Weekly auto-sync** ( **[`.github/workflows/sync-ecosystem.yml`](.github/workflows/sync-ecosystem.yml)** ) refreshes **[`examples/ecosystem/`](examples/ecosystem/)** from upstream public Markdown; community additions use **[`.github/PULL_REQUEST_TEMPLATE/`](.github/PULL_REQUEST_TEMPLATE/)** (workflow / agent templates).
 
@@ -1384,7 +1384,7 @@ All agent orchestration, cron unification, memory bridging, and OpenClaw-specifi
 ---
 
 
-## OpenFang Integration
+## ArmaraOS Integration
 
 AINL integrates seamlessly with [OpenFang](https://github.com/RightNow-AI/openfang), the open-source Agent Operating System.
 
@@ -1392,16 +1392,16 @@ AINL integrates seamlessly with [OpenFang](https://github.com/RightNow-AI/openfa
 
 ```bash
 # Install AINL for OpenFang
-ainl install openfang
+ainl install armaraos
 
 # Emit a hand package
-ainl emit --target openfang -o my_hand/ workflow.ainl
+ainl emit --target armaraos -o my_hand/ workflow.ainl
 
 # Run with OpenFang
-openfang hand run my_hand --input '{}'
+armaraos hand run my_hand --input '{}'
 
 # Check status
-ainl status --host openfang
+ainl status --host armaraos
 ```
 
 ### Features
@@ -1414,7 +1414,7 @@ ainl status --host openfang
 
 ### Configuration
 
-After `ainl install openfang`, your `~/.openfang/config.toml` will contain:
+After `ainl install armaraos`, your `~/.armaraos/config.toml` will contain:
 
 ```toml
 [[mcp_servers]]
@@ -1423,7 +1423,7 @@ command = "ainl-mcp"
 args = []
 ```
 
-Refer to [openfang/docs/](openfang/docs/) for detailed documentation.
+Refer to [armaraos/docs/](armaraos/docs/) for detailed documentation.
 
 ---
 
@@ -1472,3 +1472,27 @@ Wrappers live under **`openclaw/bridge/wrappers/`** (`token_budget_alert.ainl`, 
 - CrewAI alternative
 - Temporal for AI agents
 - sandboxed agent deployment
+
+---
+
+---
+
+## ArmaraOS
+
+> ArmaraOS is an independent open-source project and is not affiliated with any entities using similar names (e.g., Amaros AI or other).
+> It is a customized fork and extension of OpenFang by RightNow-AI (https://github.com/RightNow-AI/openfang), licensed under Apache-2.0 OR MIT.
+> It includes and integrates AINativeLang (https://github.com/sbhooley/ainativelang) for deterministic AI workflows.
+> Modifications Copyright (c) 2026 sbhooley. Original OpenFang and AINativeLang works retain their respective licenses.
+
+**ArmaraOS — The regenerative Agent OS.**
+
+Powered by AINativeLang’s deterministic workflows.
+Like a starfish, it adapts, regrows reliable processes, and thrives with multiple arms (tools, channels, memory, and autonomous Hands) — never breaking, always regenerating.
+
+**Quickstart**
+```bash
+ainl init my-worker --target armaraos && ainl install armaraos
+```
+
+Downloads & full docs: https://ainativelang.com/ArmaraOS
+

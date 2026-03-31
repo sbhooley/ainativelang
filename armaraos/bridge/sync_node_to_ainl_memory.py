@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Pipe Node (or any process) output into OpenFang daily memory via openfang_memory.append_today.
+"""Pipe Node (or any process) output into OpenFang daily memory via armaraos_memory.append_today.
 
 Usage:
-  echo "note from node" | python3 openfang/bridge/sync_node_to_ainl_memory.py
-  python3 openfang/bridge/sync_node_to_ainl_memory.py "single line from argv"
+  echo "note from node" | python3 armaraos/bridge/sync_node_to_ainl_memory.py
+  python3 armaraos/bridge/sync_node_to_ainl_memory.py "single line from argv"
 
 Respects AINL_DRY_RUN=1 (no file write).
 """
@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from adapters.openfang_memory import OpenFangMemoryAdapter
+from adapters.armaraos_memory import OpenFangMemoryAdapter
 
 
 def main() -> None:

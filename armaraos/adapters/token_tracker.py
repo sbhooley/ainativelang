@@ -32,7 +32,7 @@ class OpenFangTokenTracker:
     """Tracks token usage and produces Merkle audit trails."""
 
     def __init__(self, audit_log_path: str = None):
-        self.audit_log_path = audit_log_path or os.getenv("OPENFANG_TOKEN_AUDIT", "/var/log/openfang/token_audit.jsonl")
+        self.audit_log_path = audit_log_path or os.getenv("ARMARAOS_TOKEN_AUDIT", "/var/log/armaraos/token_audit.jsonl")
         self._ensure_log_dir()
         self._pending: List[TokenUsage] = []
         self._merkle_tree: List[str] = []  # simplified Merkle chain

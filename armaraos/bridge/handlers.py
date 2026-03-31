@@ -4,7 +4,7 @@
 Use from cron, Node, or systemd without embedding a long python -c.
 
 Usage:
-  python3 openfang/bridge/trigger_ainl_wrapper.py supervisor --dry-run
+  python3 armaraos/bridge/trigger_ainl_wrapper.py supervisor --dry-run
 """
 from __future__ import annotations
 

@@ -32,7 +32,7 @@ _EXPLICIT: dict[str, str] = {
     "memory-append": "ainl_memory_append_cli.py",
 }
 
-# Run ainl_openfang_validate() only for these bridge commands (not for every tool).
+# Run ainl_armaraos_validate() only for these bridge commands (not for every tool).
 _VALIDATE_CMDS = frozenset({"run-wrapper", "token-usage", "drift-check", "memory-append"})
 
 _GOLD_STANDARD_CRON_NAMES = frozenset(
@@ -44,31 +44,31 @@ _GOLD_STANDARD_CRON_NAMES = frozenset(
 )
 
 
-def ainl_openfang_validate() -> dict:
+def ainl_armaraos_validate() -> dict:
     """Lightweight OpenFang integration validator (best-effort; auto-creates SQLite tables)."""
     import json
     import os
     import subprocess
     import time
     from pathlib import Path
-    from openfang.bridge.schema_bootstrap import bootstrap_tables
-    from openfang.bridge.user_friendly_error import INIT_INSTALL_OPENFANG
+    from armaraos.bridge.schema_bootstrap import bootstrap_tables
+    from armaraos.bridge.user_friendly_error import INIT_INSTALL_ARMARAOS
 
     t0 = time.time()
     warnings: list[str] = []
     required_env = [
-        "OPENFANG_WORKSPACE",
-        "OPENFANG_MEMORY_DIR",
+        "ARMARAOS_WORKSPACE",
+        "ARMARAOS_MEMORY_DIR",
         "AINL_FS_ROOT",
         "AINL_MEMORY_DB",
         "MONITOR_CACHE_JSON",
         "AINL_IR_CACHE_DIR",
     ]
     missing = [k for k in required_env if not str(os.getenv(k, "")).strip()]
-    prefer = str(os.getenv("OPENFANG_BOOTSTRAP_PREFER_SESSION_CONTEXT", "")).strip().lower()
+    prefer = str(os.getenv("ARMARAOS_BOOTSTRAP_PREFER_SESSION_CONTEXT", "")).strip().lower()
     prefer_ok = prefer in ("1", "true", "yes", "on")
     if not prefer_ok:
-        warnings.append("OPENFANG_BOOTSTRAP_PREFER_SESSION_CONTEXT is not true — " + INIT_INSTALL_OPENFANG)
+        warnings.append("ARMARAOS_BOOTSTRAP_PREFER_SESSION_CONTEXT is not true — " + INIT_INSTALL_ARMARAOS)
 
     db_path = Path(os.getenv("AINL_MEMORY_DB", "/tmp/ainl_memory.sqlite3")).expanduser()
     schema_ok, schema_detail = bootstrap_tables(db_path)
@@ -76,7 +76,7 @@ def ainl_openfang_validate() -> dict:
     cron_ok: bool | None = None
     cron_detail = "skipped"
     try:
-        proc = subprocess.run(["openfang", "cron", "list", "--json"], capture_output=True, text=True, timeout=2.0)
+        proc = subprocess.run(["armaraos", "cron", "list", "--json"], capture_output=True, text=True, timeout=2.0)
         if proc.returncode == 0:
             data = json.loads(proc.stdout)
             jobs = data.get("jobs") if isinstance(data, dict) else None
@@ -90,8 +90,8 @@ def ainl_openfang_validate() -> dict:
             warnings.append("could not list OpenFang crons: " + cron_detail)
     except FileNotFoundError:
         cron_ok = None
-        cron_detail = "openfang CLI not found"
-        warnings.append("openfang CLI not on PATH — cron check skipped")
+        cron_detail = "armaraos CLI not found"
+        warnings.append("armaraos CLI not on PATH — cron check skipped")
     except Exception as e:
         cron_ok = None
         cron_detail = str(e)[:200]
@@ -113,11 +113,11 @@ def ainl_openfang_validate() -> dict:
 def main() -> None:
     """Dispatch to a Python script in the bridge directory.
 
-    Usage: python -m openfang.bridge.ainl_bridge_main <script_name> [args...]
-    Example: python -m openfang.bridge.ainl_bridge_main run-wrapper --ainl foo.ainl
+    Usage: python -m armaraos.bridge.ainl_bridge_main <script_name> [args...]
+    Example: python -m armaraos.bridge.ainl_bridge_main run-wrapper --ainl foo.ainl
     """
     if len(sys.argv) < 2:
-        print("Usage: python -m openfang.bridge.ainl_bridge_main <script_name> [args...]", file=sys.stderr)
+        print("Usage: python -m armaraos.bridge.ainl_bridge_main <script_name> [args...]", file=sys.stderr)
         sys.exit(2)
 
     script_name = sys.argv[1]
