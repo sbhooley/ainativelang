@@ -1,4 +1,4 @@
-# Solana strict graphs — quickstart (AINL v1.3.3)
+# Solana strict graphs — quickstart (AINL v1.4.0)
 
 Use this page when you want **deterministic prediction-market style workflows** on Solana: PDAs, Pyth or Hermes prices, and `INVOKE` / `TRANSFER_SPL` with priority fees. The canonical end-to-end example is **`examples/prediction_market_demo.ainl`**.
 
@@ -52,7 +52,7 @@ See **`examples/prediction_market_demo.ainl`** comments for the full pattern.
 
 Example prompts you can use when searching or asking tools:
 
-- **"Where is the Solana adapter and what verbs does v1.3.3 support for prediction markets?"** → `adapters/solana.py` module docstring (DISCOVERABILITY section).
+- **"Where is the Solana adapter and what verbs does v1.4.0 support for prediction markets?"** → `adapters/solana.py` module docstring (DISCOVERABILITY section).
 - **"Show how to emit a runnable Python client from a strict Solana graph."** → `docs/emitters/README.md` Solana section, **`--emit solana-client`**.
 - **"What is the minimal strict example for Pyth + Hermes + INVOKE with priority fees?"** → `examples/prediction_market_demo.ainl`.
 

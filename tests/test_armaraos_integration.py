@@ -1,7 +1,7 @@
 """
-Integration tests for OpenFang support in AINL.
+Integration tests for ArmaraOS support in AINL.
 
-Mirrors the OpenClaw test patterns but targeted at OpenFang.
+Mirrors the OpenClaw test patterns but targeted at ArmaraOS.
 """
 
 import shutil
@@ -17,7 +17,7 @@ pytest_plugins = "pytester"
 
 @pytest.mark.skipif(
     shutil.which("armaraos") is None,
-    reason="OpenFang CLI not installed",
+    reason="ArmaraOS CLI not installed",
 )
 def test_armaraos_install_dry_run():
     """Test ainl install armaraos --dry-run executes without error."""
@@ -36,11 +36,10 @@ def test_emit_armaraos_creates_hand_package(tmp_path):
     source = tmp_path / "simple.ainl"
     source.write_text(
         """
-    graph test:
-      input: string msg
-      output: string result
-      steps:
-        - set result = msg + " processed by AINL"
+test:
+ in: msg
+ result = core.CONCAT msg " processed by AINL"
+ out result
     """
     )
 
@@ -76,7 +75,7 @@ def test_armaraos_bridge_validation():
     assert isinstance(val, dict)
     assert "ok" in val
     # If schema is ok, that's enough for basic validation
-    # We don't require OpenFang CLI to be present for this test
+    # We don't require ArmaraOS CLI to be present for this test
     if val.get("schema_ok"):
         pass
     else:
@@ -92,7 +91,7 @@ def test_status_command_json():
         capture_output=True,
         text=True,
     )
-    # May fail if OpenFang not installed, but should not crash parser
+    # May fail if ArmaraOS not installed, but should not crash parser
     try:
         data = json.loads(result.stdout)
         assert "armaraos_installed" in data

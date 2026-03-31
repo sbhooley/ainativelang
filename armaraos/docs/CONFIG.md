@@ -34,13 +34,15 @@ When running as an ArmaraOS hand, these environment variables are used:
 
 | Variable                     | Description | Default |
 |------------------------------|-------------|---------|
-| `OPENFANG_WORKSPACE`         | ArmaraOS workspace root | `~/.armaraos/workspace` |
-| `OPENFANG_MEMORY_DB`         | Path to SQLite memory DB | `$OPENFANG_WORKSPACE/.ainl/ainl_memory.sqlite3` |
-| `OPENFANG_TOKEN_AUDIT`       | Token usage audit log | `/var/log/armaraos/token_audit.jsonl` |
-| `AINL_MEMORY_DB`             | Alias for OPENFANG_MEMORY_DB | (derived) |
-| `AINL_IR_CACHE_DIR`          | Compiled IR cache | `$OPENFANG_WORKSPACE/.ainl/ir_cache` |
-| `MONITOR_CACHE_JSON`         | Metrics cache | `$OPENFANG_WORKSPACE/.ainl/monitor_cache.json` |
-| `OPENFANG_BOOTSTRAP_PREFER_SESSION_CONTEXT` | Enable session context heuristics | `false` |
+| `ARMARAOS_WORKSPACE`         | ArmaraOS workspace root | `~/.armaraos/workspace` |
+| `ARMARAOS_MEMORY_DB`         | Path to SQLite memory DB | `$ARMARAOS_WORKSPACE/.ainl/ainl_memory.sqlite3` |
+| `ARMARAOS_TOKEN_AUDIT`       | Token usage audit log | `/var/log/armaraos/token_audit.jsonl` |
+| `ARMARAOS_BOOTSTRAP_PREFER_SESSION_CONTEXT` | Enable session context heuristics | `false` |
+| `AINL_MEMORY_DB`             | Alias for ArmaraOS memory DB | (derived) |
+| `AINL_IR_CACHE_DIR`          | Compiled IR cache | `$ARMARAOS_WORKSPACE/.ainl/ir_cache` |
+| `MONITOR_CACHE_JSON`         | Metrics cache | `$ARMARAOS_WORKSPACE/.ainl/monitor_cache.json` |
+
+Legacy aliases (supported for compatibility): `OPENFANG_WORKSPACE`, `OPENFANG_MEMORY_DB`, `OPENFANG_TOKEN_AUDIT`, `OPENFANG_BOOTSTRAP_PREFER_SESSION_CONTEXT`.
 
 ## HAND.toml Manifest Options
 
@@ -135,7 +137,7 @@ You can add custom channels by modifying `armaraos/adapters/channel.py`.
 
 ## Token Tracking & Merkle Audit
 
-Token usage is recorded to `OPENFANG_TOKEN_AUDIT` (default `/var/log/armaraos/token_audit.jsonl`). Each entry includes a Merkle proof for tamper detection.
+Token usage is recorded to `ARMARAOS_TOKEN_AUDIT` (default `/var/log/armaraos/token_audit.jsonl`). Each entry includes a Merkle proof for tamper detection.
 
 To verify the audit trail integrity:
 

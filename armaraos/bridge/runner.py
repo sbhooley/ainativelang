@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Run orchestration wrappers under the OpenFang monitor registry plus bridge adapters.
+"""Run orchestration wrappers under the ArmaraOS monitor registry plus bridge adapters.
 
-Official location: armaraos/bridge/ (OpenFang integration layer; not AINL core).
+Official location: armaraos/bridge/ (ArmaraOS integration layer; not AINL core).
 
 Usage:
   python3 armaraos/bridge/run_wrapper_ainl.py <name> [--dry-run] [--trace]
@@ -77,7 +77,7 @@ WRAPPERS = {
 }
 
 
-# --- OpenFang Bridge Grant Validation ---
+# --- ArmaraOS Bridge Grant Validation ---
 # The bridge runs with a fixed set of adapters. We ensure the active security
 # profile (if any) allows all required adapters.
 def _load_bridge_grant() -> dict:
@@ -107,7 +107,7 @@ _REQUIRED_ADAPTERS = {
 _allowed = set(grant_to_allowed_adapters(_BRIDGE_GRANT))
 _missing = _REQUIRED_ADAPTERS - _allowed
 if _missing:
-    logger.error("OpenFang bridge missing required adapters due to security profile: %s", ", ".join(sorted(_missing)))
+    logger.error("ArmaraOS bridge missing required adapters due to security profile: %s", ", ".join(sorted(_missing)))
     logger.error("Set ARMARAOS_SECURITY_PROFILE to a grant that includes these adapters or unset to disable restriction.")
     sys.exit(1)
 

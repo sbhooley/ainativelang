@@ -850,7 +850,7 @@ def cmd_emit(args: argparse.Namespace) -> int:
 
         # ArmaraOS Hand package
     if target == "armaraos":
-        from armaraos.emitter.amaraos import emit_armaraos
+        from armaraos.emitter.armaraos import emit_armaraos
         out_dir = Path(out_raw).expanduser() if out_raw else Path.cwd() / f"{stem}_armaraos_hand"
         out_dir.mkdir(parents=True, exist_ok=True)
         files = emit_armaraos(ir, stem, out_dir)
@@ -1009,8 +1009,10 @@ def cmd_status_armaraos(args: argparse.Namespace) -> int:
     from armaraos.bridge.user_friendly_error import INIT_INSTALL_ARMARAOS, user_friendly_ainl_error
 
     json_out = bool(getattr(args, "status_json", False))
-    ws = _armaraos_default_workspace()
-    db_path = Path(os.getenv("OPENFANG_MEMORY_DB", str(ws / ".ainl" / "ainl_memory.sqlite3"))).expanduser()
+    from armaraos.env import resolve_armaraos_env
+    env = resolve_armaraos_env()
+    ws = env.workspace
+    db_path = env.memory_db
     schema_ok, schema_detail = bootstrap_tables(db_path)
 
     # Check ArmaraOS cron jobs (we assume they're managed by armaraos CLI)

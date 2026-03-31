@@ -1,4 +1,4 @@
-"""Bootstrap AINL for OpenFang: thin wrapper around tooling.mcp_host_install."""
+"""Bootstrap AINL for ArmaraOS: thin wrapper around tooling.mcp_host_install."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from tooling.mcp_host_install import (
     ensure_path_hint_in_shell_rc as _ensure_path_hint,
     run_install_mcp_host,
 )
-from tooling.mcp_host_install import ARMARAOS_PROFILE  # will be added
+from tooling.mcp_host_install import ARMARAOS_PROFILE
 
 
 def ensure_mcp_registration(*, home: Path, dry_run: bool, verbose: bool) -> None:

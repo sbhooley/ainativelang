@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pipe Node (or any process) output into OpenFang daily memory via armaraos_memory.append_today.
+"""Pipe Node (or any process) output into ArmaraOS daily memory via armaraos_memory.append_today.
 
 Usage:
   echo "note from node" | python3 armaraos/bridge/sync_node_to_ainl_memory.py

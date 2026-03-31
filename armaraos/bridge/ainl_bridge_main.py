@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Git-style entrypoint for OpenFang bridge tools (delegates to scripts in this directory)."""
+"""Git-style entrypoint for ArmaraOS bridge tools (delegates to scripts in this directory)."""
 from __future__ import annotations
 
 import runpy
@@ -45,32 +45,37 @@ _GOLD_STANDARD_CRON_NAMES = frozenset(
 
 
 def ainl_armaraos_validate() -> dict:
-    """Lightweight OpenFang integration validator (best-effort; auto-creates SQLite tables)."""
+    """Lightweight ArmaraOS integration validator (best-effort; auto-creates SQLite tables)."""
     import json
-    import os
     import subprocess
     import time
     from pathlib import Path
     from armaraos.bridge.schema_bootstrap import bootstrap_tables
     from armaraos.bridge.user_friendly_error import INIT_INSTALL_ARMARAOS
+    from armaraos.env import resolve_armaraos_env
 
     t0 = time.time()
     warnings: list[str] = []
-    required_env = [
-        "ARMARAOS_WORKSPACE",
-        "ARMARAOS_MEMORY_DIR",
-        "AINL_FS_ROOT",
-        "AINL_MEMORY_DB",
-        "MONITOR_CACHE_JSON",
-        "AINL_IR_CACHE_DIR",
-    ]
-    missing = [k for k in required_env if not str(os.getenv(k, "")).strip()]
-    prefer = str(os.getenv("ARMARAOS_BOOTSTRAP_PREFER_SESSION_CONTEXT", "")).strip().lower()
-    prefer_ok = prefer in ("1", "true", "yes", "on")
-    if not prefer_ok:
+    env = resolve_armaraos_env()
+
+    missing: list[str] = []
+    if not env.workspace:
+        missing.append("ARMARAOS_WORKSPACE")
+    if not env.memory_dir:
+        missing.append("ARMARAOS_MEMORY_DIR")
+    if not env.fs_root:
+        missing.append("AINL_FS_ROOT")
+    if not env.memory_db:
+        missing.append("AINL_MEMORY_DB")
+    if not env.monitor_cache_json:
+        missing.append("MONITOR_CACHE_JSON")
+    if not env.ir_cache_dir:
+        missing.append("AINL_IR_CACHE_DIR")
+
+    if not env.prefer_session_context:
         warnings.append("ARMARAOS_BOOTSTRAP_PREFER_SESSION_CONTEXT is not true — " + INIT_INSTALL_ARMARAOS)
 
-    db_path = Path(os.getenv("AINL_MEMORY_DB", "/tmp/ainl_memory.sqlite3")).expanduser()
+    db_path = Path(env.memory_db).expanduser()
     schema_ok, schema_detail = bootstrap_tables(db_path)
 
     cron_ok: bool | None = None
@@ -87,7 +92,7 @@ def ainl_armaraos_validate() -> dict:
         else:
             cron_ok = None
             cron_detail = (proc.stderr or proc.stdout or "").strip()[:200]
-            warnings.append("could not list OpenFang crons: " + cron_detail)
+            warnings.append("could not list ArmaraOS crons: " + cron_detail)
     except FileNotFoundError:
         cron_ok = None
         cron_detail = "armaraos CLI not found"

@@ -32,7 +32,7 @@ metadata:
 
 **AINL** is an AI-native language that compiles **deterministic graphs**. In [OpenClaw](https://openclaw.ai/), use it to import workflows, compile them, run them, and expose **`ainl-mcp`** tools to the agent via **`~/.openclaw/openclaw.json`**.
 
-**PyPI:** `ainativelang` **v1.3.3** (optional extras: `[mcp]`, `[solana]`).
+**PyPI:** `ainativelang` **v1.4.0** (optional extras: `[mcp]`, `[solana]`).
 
 ## Agent instructions
 
@@ -77,6 +77,6 @@ Configure the host so **`mcp.servers.ainl`** in **`~/.openclaw/openclaw.json`** 
 
 - AINL: [github.com/sbhooley/ainativelang](https://github.com/sbhooley/ainativelang)
 - **Gold standard (profiles, caps, cron, bootstrap, verification):** [docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md](https://github.com/sbhooley/ainativelang/blob/main/docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) — `openclaw_ainl_gold_standard`
-- **Host briefing — AINL v1.3.3 (what ships vs what OpenClaw must wire; doc key `openclaw_host_ainl_1_2_8`):** [docs/operations/OPENCLAW_HOST_AINL_1_2_8.md](https://github.com/sbhooley/ainativelang/blob/main/docs/operations/OPENCLAW_HOST_AINL_1_2_8.md) — `openclaw_host_ainl_1_2_8`
+- **Host briefing — AINL v1.4.0 (what ships vs what OpenClaw must wire; doc key `openclaw_host_ainl_1_2_8`):** [docs/operations/OPENCLAW_HOST_AINL_1_2_8.md](https://github.com/sbhooley/ainativelang/blob/main/docs/operations/OPENCLAW_HOST_AINL_1_2_8.md) — `openclaw_host_ainl_1_2_8`
 - OpenClaw: [openclaw.ai](https://openclaw.ai/)
-- Package: **`ainativelang`** on PyPI — **current release v1.3.3**
+- Package: **`ainativelang`** on PyPI — **current release v1.4.0**

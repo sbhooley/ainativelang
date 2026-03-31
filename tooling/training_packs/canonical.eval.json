@@ -294,7 +294,98 @@
       "primary_pattern": "solana_prediction_market",
       "secondary_pattern": "pda_pyth_invoke_payout",
       "strict_valid_expected": true,
-      "canonical_source": "# examples/prediction_market_demo.ainl\n# Prediction-market workflow (Polymarket-style on Solana): market PDA state \u2192 Pyth oracle quote \u2192 settlement/trade INVOKE\n# with ComputeBudget priority (microlamports/CU). Composable with DFlow routes and cross-listed (e.g. Kalshi-tokenized) books off-chain.\n# Strict parse: use real market PDA + Pyth feed pubkeys on your cluster; placeholders below are for compile-only demos.\n# Run with AINL_DRY_RUN=1 for mock blockhash/Pyth/tx sigs (no RPC parse pressure on dummy accounts).\n#\n# ainl-validate examples/prediction_market_demo.ainl --strict\n# ainl-validate examples/prediction_market_demo.ainl --strict --emit solana-client -o solana_client.py\n#\n# More (comment-only; strict graphs \u2014 wire labels/If as needed):\n#   R solana.DERIVE_PDA '[\"market\",\"MY_MARKET\"]' \"YourProgram1111111111111111111111111111111111\" ->mkt_pda\n#   (single-quoted JSON = one token; inner \" are literal \u2014 see compiler lossless lexer + adapters/solana.py)\n#   R solana.GET_PYTH_PRICE \"11111111111111111111111111111111\" true ->px_v2   # prefer PriceUpdateV2 path\n#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq   # SOL/USD (Crypto.SOL/USD) feed id hex\n#   # export AINL_PYTH_HERMES_URL=https://hermes.pyth.network   # optional; same default if unset\n#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq2   # duplicate example: explicit SOL/USD feed_id_hex\n\nL1:\n  R solana.GET_LATEST_BLOCKHASH _ ->bh\n  R solana.GET_MARKET_STATE \"11111111111111111111111111111111\" ->mst\n  R solana.GET_PYTH_PRICE \"11111111111111111111111111111111\" ->px\n  # Conditional resolution \u2192 payout (strict graphs: use If on px.ok / threshold \u2192 label with INVOKE + priority fee):\n  #   If px_ok ->Lpayout ->Lskip\n  # Lpayout: R solana.INVOKE <program> <settlement_ix_b64> \"[]\" 5000 ->payout_sig\n  # Lskip: J px\n  R solana.INVOKE \"11111111111111111111111111111111\" \"AA==\" \"[]\" 5000 ->inv\n  R core.STRINGIFY inv ->out\n  J out\n",
+      "canonical_source": "# examples/prediction_market_demo.ainl\n# AINL v1.3.1 \u2014 Solana prediction markets (strict-valid on-ramp)\n#\n# This file demonstrates a full resolution \u2192 conditional payout pattern on Solana: read market state, resolve prices\n# with Pyth on-chain (legacy + PriceUpdateV2) and/or Hermes off-chain, then rehearse settlement with INVOKE and\n# ComputeBudget priority fees (micro-lamports per CU). Placeholders are compile-only; use real PDAs and feed pubkeys\n# on your cluster for production.\n#\n# Single-quoted JSON for DERIVE_PDA seeds (recommended): R solana.DERIVE_PDA '[\"market\",\"MY_MARKET\"]' \"<program_id>\" ->pda\n# \u2014 one lexer token; inner double quotes are literal (see docs/solana_quickstart.md and adapters/solana.py).\n#\n# Dry-run first: export AINL_DRY_RUN=1 for mock blockhash, Pyth/Hermes-shaped quotes, and simulated INVOKE/TRANSFER\n# envelopes without sending transactions or requiring live keypairs for many paths.\n#\n# Broader guidance (env vars, compile flags, agent-oriented prompts): docs/solana_quickstart.md\n#\n# Validate / emit standalone client:\n#   ainl-validate examples/prediction_market_demo.ainl --strict\n#   ainl-validate examples/prediction_market_demo.ainl --strict --emit solana-client -o solana_client.py\n#\n# More (comment-only; strict graphs \u2014 wire labels/If as needed):\n#   R solana.DERIVE_PDA '[\"market\",\"MY_MARKET\"]' \"YourProgram1111111111111111111111111111111111\" ->mkt_pda\n#   R solana.GET_PYTH_PRICE \"11111111111111111111111111111111\" true ->px_v2   # prefer PriceUpdateV2 path\n#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq   # SOL/USD (Crypto.SOL/USD) feed id hex\n#   # export AINL_PYTH_HERMES_URL=https://hermes.pyth.network   # optional; same default if unset\n#   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq2   # duplicate example: explicit SOL/USD feed_id_hex\n\nL1:\n  R solana.GET_LATEST_BLOCKHASH _ ->bh\n  R solana.GET_MARKET_STATE \"11111111111111111111111111111111\" ->mst\n  R solana.GET_PYTH_PRICE \"11111111111111111111111111111111\" ->px\n  # Conditional resolution \u2192 payout (strict graphs: use If on px.ok / threshold \u2192 label with INVOKE + priority fee):\n  #   If px_ok ->Lpayout ->Lskip\n  # Lpayout: R solana.INVOKE <program> <settlement_ix_b64> \"[]\" 5000 ->payout_sig\n  # Lskip: J px\n  R solana.INVOKE \"11111111111111111111111111111111\" \"AA==\" \"[]\" 5000 ->inv\n  R core.STRINGIFY inv ->out\n  J out\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__compact__hello_compact_ainl",
+      "order": 24,
+      "path": "examples/compact/hello_compact.ainl",
+      "primary_pattern": "compute_return_compact",
+      "secondary_pattern": "compact_syntax",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/compact/hello_compact.ainl\n# The simplest compact AINL program.\n# Equivalent to examples/hello.ainl but in compact syntax.\n\nadder:\n  result = core.ADD 2 3\n  out result\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__compact__classifier_compact_ainl",
+      "order": 25,
+      "path": "examples/compact/classifier_compact.ainl",
+      "primary_pattern": "if_branching_compact",
+      "secondary_pattern": "compact_syntax",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/compact/classifier_compact.ainl\n# Multi-branch classifier in compact syntax.\n# Demonstrates if/branching, inputs, and string outputs.\n\nclassifier:\n  in: level message\n\n  if level == \"critical\":\n    out \"ALERT: critical\"\n\n  if level == \"warning\":\n    out \"WARN: warning\"\n\n  out \"INFO: logged\"\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__compact__cache_lookup_compact_ainl",
+      "order": 26,
+      "path": "examples/compact/cache_lookup_compact.ainl",
+      "primary_pattern": "cache_lookup_compact",
+      "secondary_pattern": "compact_syntax",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/compact/cache_lookup_compact.ainl\n# Cache-first pattern: check cache before calling API.\n\ncached_fetch:\n  in: url\n\n  cached = cache.get url\n  if cached:\n    out cached\n\n  fresh = http.GET url\n  cache.set url fresh\n  out fresh\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__rag__cache-warmer_ainl",
+      "order": 27,
+      "path": "examples/rag/cache-warmer.ainl",
+      "primary_pattern": "rag_cache_warmer",
+      "secondary_pattern": "memory_and_cache",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/rag/cache-warmer.ainl\n# RAG cache warmer \u2014 upserts fixed chunks into vector_memory, verifies with SEARCH,\n# with an explicit ops budget gate (no runtime orchestration LLM).\n#\n# Run (local vector store):\n#   python3 -m cli.main run examples/rag/cache-warmer.ainl --json --enable-adapter vector_memory\n# Validate:\n#   python3 scripts/validate_ainl.py examples/rag/cache-warmer.ainl --strict\n\nS app core noop\n\nL_start:\n  # Budget gate: only warm when remaining ops budget allows (tune ops_used / ops_budget per deploy).\n  X ops_budget 100\n  X ops_used 2\n  X within_budget (core.gt ops_budget ops_used)\n  If within_budget ->L_warm ->L_skip\n\nL_warm:\n  R vector_memory.UPSERT \"rag_warm\" \"chunk\" \"c1\" \"placeholder doc body for warming\" \"{}\" ->u1\n  R vector_memory.UPSERT \"rag_warm\" \"chunk\" \"c2\" \"second chunk for cache priming\" \"{}\" ->u2\n  R vector_memory.SEARCH \"placeholder\" 4 ->hits\n  J hits\n\nL_skip:\n  Set status \"budget_exhausted\"\n  J status\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__crm__simple-lead-router_ainl",
+      "order": 28,
+      "path": "examples/crm/simple-lead-router.ainl",
+      "primary_pattern": "crm_routing",
+      "secondary_pattern": "http_and_filters",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/crm/simple-lead-router.ainl\n# CRM lead router \u2014 score-based branch, ops budget gate, audit row via crm_db (SQLite).\n# No runtime orchestration LLM. Set CRM_DB_PATH or rely on default under OPENCLAW_WORKSPACE/crm/prisma/dev.db.\n#\n# python3 scripts/validate_ainl.py examples/crm/simple-lead-router.ainl --strict\n# python3 -m cli.main run examples/crm/simple-lead-router.ainl --json --enable-adapter crm_db\n\nS app core noop\n\nL_start:\n  # Policy: max routing decisions per run (tune with your SLA / cost envelope).\n  X route_budget 100\n  X routes_used 0\n  X policy_ok (core.gt route_budget routes_used)\n  If policy_ok ->L_eval ->L_blocked\n\nL_eval:\n  # Representative score \u2014 in production, bind from CRM row (e.g. parse result_json from R crm_db F).\n  # Use lead_score below 70 to exercise the nurture branch on the next run.\n  X lead_score 82\n  X hot (core.gt lead_score 70)\n  If hot ->L_route_hot ->L_route_std\n\nL_route_hot:\n  R crm_db.P {\"jobName\": \"lead:router\", \"status\": \"routed_hot\", \"result_json\": \"{\\\"score\\\":82,\\\"channel\\\":\\\"sales\\\",\\\"policy\\\":\\\"score_gt_70\\\"}\"} ->_p\n  Set decision \"hot\"\n  J decision\n\nL_route_std:\n  R crm_db.P {\"jobName\": \"lead:router\", \"status\": \"routed_std\", \"result_json\": \"{\\\"score\\\":65,\\\"channel\\\":\\\"nurture\\\",\\\"policy\\\":\\\"score_lte_70\\\"}\"} ->_p\n  Set decision \"standard\"\n  J decision\n\nL_blocked:\n  Set decision \"policy_block\"\n  J decision\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__enterprise__audit-log-demo_ainl",
+      "order": 29,
+      "path": "examples/enterprise/audit-log-demo.ainl",
+      "primary_pattern": "audit_logging",
+      "secondary_pattern": "structured_envelopes",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/enterprise/audit-log-demo.ainl\n#\n# Production-style audit demo: deterministic monitoring slice with explicit policy gates\n# and JSONL execution tape suitable for SOC 2\u2013style narratives (illustrative, not certification).\n#\n# \u2500\u2500 CC7.2 (monitoring) \u2014 \"continuous monitoring and feedback\"\n#   Each scheduled or on-demand run emits a chronological JSONL tape (node-level steps).\n#   Retained tapes give reviewers a replay-oriented trail: what the graph evaluated, which\n#   branch executed, and what outcome string was joined \u2014 without inferring intent from chat.\n#   Pair tape retention, access control, and alerting with your SIEM / log management controls.\n#\n# \u2500\u2500 CC8.1 (change management)\n#   The `.ainl` source and `ainl check --strict` output are versionable artifacts; promote\n#   the same graph IR through PR review and CI like any other code change.\n#\n# \u2500\u2500 CC6.1 (logical access / capability boundaries)\n#   This file uses only the `core` adapter so it runs in restricted sandboxes. In production,\n#   you would attach http/email/chain adapters only where policy allows; undeclared effects\n#   cannot appear in the compiled graph.\n#\n# Validate and capture tape (from repo root):\n#   uv run ainl check examples/enterprise/audit-log-demo.ainl --strict\n#   uv run ainl run examples/enterprise/audit-log-demo.ainl --trace-jsonl audit_demo.tape.jsonl\n#\n# Replay narrative for auditors: re-run the same binary graph with the same inputs; the tape\n# reproduces the branch decision. For investigations, diff tapes across runs or correlate\n# timestamps with external telemetry (outside AINL).\n\nS app core noop\n\n# Simulated KPIs \u2014 replace with adapter reads (HTTP health, chain RPC, queue depth) under your\n# capability policy; keep thresholds as data your team reviews in PR.\nL_tick:\n  Set latency_ms 120\n  Set error_rate_bp 15\n  Set max_latency_ms 100\n  Set max_error_bp 20\n  X lat_bad (core.gt latency_ms max_latency_ms)\n  If lat_bad ->L_violation ->L_err_check\n\nL_err_check:\n  X err_bad (core.gt error_rate_bp max_error_bp)\n  If err_bad ->L_violation ->L_ok\n\nL_violation:\n  Set out \"audit:policy_violation\"\n  J out\n\nL_ok:\n  Set out \"audit:within_policy\"\n  J out\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__monitoring__solana-balance_ainl",
+      "order": 30,
+      "path": "examples/monitoring/solana-balance.ainl",
+      "primary_pattern": "monitoring_solana_balance",
+      "secondary_pattern": "scheduled_branch",
+      "strict_valid_expected": true,
+      "canonical_source": "# examples/monitoring/solana-balance.ainl\n# Solana balance monitor \u2014 deterministic read of lamports, budget gate, no runtime LLM.\n# Pair with cron or OpenClaw schedule; run with --trace-jsonl for JSONL audit tape.\n#\n# Env: AINL_SOLANA_RPC_URL (default devnet), AINL_DRY_RUN=1 to rehearse without live RPC pressure.\n#\n# ainl check examples/monitoring/solana-balance.ainl --strict\n# AINL_DRY_RUN=1 ainl run examples/monitoring/solana-balance.ainl --trace-jsonl solana_balance.trace.jsonl\n\nS app core noop\n\nL_start:\n  # System program as stable demo pubkey; replace with your wallet / vault to monitor.\n  R solana.GET_BALANCE \"11111111111111111111111111111111\" ->bal\n  X lamports get bal lamports\n  # Budget gate: alert when balance is below min_lp lamports (tune per environment).\n  X min_lp 500000000\n  X below (core.gt min_lp lamports)\n  If below ->L_alert ->L_ok\n\nL_alert:\n  Set status \"below_budget\"\n  J status\n\nL_ok:\n  Set status \"ok\"\n  J status\n",
       "checks": {
         "no_compat_return_binding": true,
         "uppercase_adapter_verbs_preferred": true

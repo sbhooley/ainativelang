@@ -520,17 +520,27 @@ L1:
 
 ```ainl
 # examples/prediction_market_demo.ainl
-# Prediction-market workflow (Polymarket-style on Solana): market PDA state → Pyth oracle quote → settlement/trade INVOKE
-# with ComputeBudget priority (microlamports/CU). Composable with DFlow routes and cross-listed (e.g. Kalshi-tokenized) books off-chain.
-# Strict parse: use real market PDA + Pyth feed pubkeys on your cluster; placeholders below are for compile-only demos.
-# Run with AINL_DRY_RUN=1 for mock blockhash/Pyth/tx sigs (no RPC parse pressure on dummy accounts).
+# AINL v1.3.1 — Solana prediction markets (strict-valid on-ramp)
 #
-# ainl-validate examples/prediction_market_demo.ainl --strict
-# ainl-validate examples/prediction_market_demo.ainl --strict --emit solana-client -o solana_client.py
+# This file demonstrates a full resolution → conditional payout pattern on Solana: read market state, resolve prices
+# with Pyth on-chain (legacy + PriceUpdateV2) and/or Hermes off-chain, then rehearse settlement with INVOKE and
+# ComputeBudget priority fees (micro-lamports per CU). Placeholders are compile-only; use real PDAs and feed pubkeys
+# on your cluster for production.
+#
+# Single-quoted JSON for DERIVE_PDA seeds (recommended): R solana.DERIVE_PDA '["market","MY_MARKET"]' "<program_id>" ->pda
+# — one lexer token; inner double quotes are literal (see docs/solana_quickstart.md and adapters/solana.py).
+#
+# Dry-run first: export AINL_DRY_RUN=1 for mock blockhash, Pyth/Hermes-shaped quotes, and simulated INVOKE/TRANSFER
+# envelopes without sending transactions or requiring live keypairs for many paths.
+#
+# Broader guidance (env vars, compile flags, agent-oriented prompts): docs/solana_quickstart.md
+#
+# Validate / emit standalone client:
+#   ainl-validate examples/prediction_market_demo.ainl --strict
+#   ainl-validate examples/prediction_market_demo.ainl --strict --emit solana-client -o solana_client.py
 #
 # More (comment-only; strict graphs — wire labels/If as needed):
 #   R solana.DERIVE_PDA '["market","MY_MARKET"]' "YourProgram1111111111111111111111111111111111" ->mkt_pda
-#   (single-quoted JSON = one token; inner " are literal — see compiler lossless lexer + adapters/solana.py)
 #   R solana.GET_PYTH_PRICE "11111111111111111111111111111111" true ->px_v2   # prefer PriceUpdateV2 path
 #   R solana.HERMES_FALLBACK ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d ->hq   # SOL/USD (Crypto.SOL/USD) feed id hex
 #   # export AINL_PYTH_HERMES_URL=https://hermes.pyth.network   # optional; same default if unset
@@ -547,4 +557,228 @@ L1:
   R solana.INVOKE "11111111111111111111111111111111" "AA==" "[]" 5000 ->inv
   R core.STRINGIFY inv ->out
   J out
+```
+
+## 24. `examples/compact/hello_compact.ainl`
+- Primary: `compute_return_compact`
+- Secondary: `compact_syntax`
+
+```ainl
+# examples/compact/hello_compact.ainl
+# The simplest compact AINL program.
+# Equivalent to examples/hello.ainl but in compact syntax.
+
+adder:
+  result = core.ADD 2 3
+  out result
+```
+
+## 25. `examples/compact/classifier_compact.ainl`
+- Primary: `if_branching_compact`
+- Secondary: `compact_syntax`
+
+```ainl
+# examples/compact/classifier_compact.ainl
+# Multi-branch classifier in compact syntax.
+# Demonstrates if/branching, inputs, and string outputs.
+
+classifier:
+  in: level message
+
+  if level == "critical":
+    out "ALERT: critical"
+
+  if level == "warning":
+    out "WARN: warning"
+
+  out "INFO: logged"
+```
+
+## 26. `examples/compact/cache_lookup_compact.ainl`
+- Primary: `cache_lookup_compact`
+- Secondary: `compact_syntax`
+
+```ainl
+# examples/compact/cache_lookup_compact.ainl
+# Cache-first pattern: check cache before calling API.
+
+cached_fetch:
+  in: url
+
+  cached = cache.get url
+  if cached:
+    out cached
+
+  fresh = http.GET url
+  cache.set url fresh
+  out fresh
+```
+
+## 27. `examples/rag/cache-warmer.ainl`
+- Primary: `rag_cache_warmer`
+- Secondary: `memory_and_cache`
+
+```ainl
+# examples/rag/cache-warmer.ainl
+# RAG cache warmer — upserts fixed chunks into vector_memory, verifies with SEARCH,
+# with an explicit ops budget gate (no runtime orchestration LLM).
+#
+# Run (local vector store):
+#   python3 -m cli.main run examples/rag/cache-warmer.ainl --json --enable-adapter vector_memory
+# Validate:
+#   python3 scripts/validate_ainl.py examples/rag/cache-warmer.ainl --strict
+
+S app core noop
+
+L_start:
+  # Budget gate: only warm when remaining ops budget allows (tune ops_used / ops_budget per deploy).
+  X ops_budget 100
+  X ops_used 2
+  X within_budget (core.gt ops_budget ops_used)
+  If within_budget ->L_warm ->L_skip
+
+L_warm:
+  R vector_memory.UPSERT "rag_warm" "chunk" "c1" "placeholder doc body for warming" "{}" ->u1
+  R vector_memory.UPSERT "rag_warm" "chunk" "c2" "second chunk for cache priming" "{}" ->u2
+  R vector_memory.SEARCH "placeholder" 4 ->hits
+  J hits
+
+L_skip:
+  Set status "budget_exhausted"
+  J status
+```
+
+## 28. `examples/crm/simple-lead-router.ainl`
+- Primary: `crm_routing`
+- Secondary: `http_and_filters`
+
+```ainl
+# examples/crm/simple-lead-router.ainl
+# CRM lead router — score-based branch, ops budget gate, audit row via crm_db (SQLite).
+# No runtime orchestration LLM. Set CRM_DB_PATH or rely on default under OPENCLAW_WORKSPACE/crm/prisma/dev.db.
+#
+# python3 scripts/validate_ainl.py examples/crm/simple-lead-router.ainl --strict
+# python3 -m cli.main run examples/crm/simple-lead-router.ainl --json --enable-adapter crm_db
+
+S app core noop
+
+L_start:
+  # Policy: max routing decisions per run (tune with your SLA / cost envelope).
+  X route_budget 100
+  X routes_used 0
+  X policy_ok (core.gt route_budget routes_used)
+  If policy_ok ->L_eval ->L_blocked
+
+L_eval:
+  # Representative score — in production, bind from CRM row (e.g. parse result_json from R crm_db F).
+  # Use lead_score below 70 to exercise the nurture branch on the next run.
+  X lead_score 82
+  X hot (core.gt lead_score 70)
+  If hot ->L_route_hot ->L_route_std
+
+L_route_hot:
+  R crm_db.P {"jobName": "lead:router", "status": "routed_hot", "result_json": "{\"score\":82,\"channel\":\"sales\",\"policy\":\"score_gt_70\"}"} ->_p
+  Set decision "hot"
+  J decision
+
+L_route_std:
+  R crm_db.P {"jobName": "lead:router", "status": "routed_std", "result_json": "{\"score\":65,\"channel\":\"nurture\",\"policy\":\"score_lte_70\"}"} ->_p
+  Set decision "standard"
+  J decision
+
+L_blocked:
+  Set decision "policy_block"
+  J decision
+```
+
+## 29. `examples/enterprise/audit-log-demo.ainl`
+- Primary: `audit_logging`
+- Secondary: `structured_envelopes`
+
+```ainl
+# examples/enterprise/audit-log-demo.ainl
+#
+# Production-style audit demo: deterministic monitoring slice with explicit policy gates
+# and JSONL execution tape suitable for SOC 2–style narratives (illustrative, not certification).
+#
+# ── CC7.2 (monitoring) — "continuous monitoring and feedback"
+#   Each scheduled or on-demand run emits a chronological JSONL tape (node-level steps).
+#   Retained tapes give reviewers a replay-oriented trail: what the graph evaluated, which
+#   branch executed, and what outcome string was joined — without inferring intent from chat.
+#   Pair tape retention, access control, and alerting with your SIEM / log management controls.
+#
+# ── CC8.1 (change management)
+#   The `.ainl` source and `ainl check --strict` output are versionable artifacts; promote
+#   the same graph IR through PR review and CI like any other code change.
+#
+# ── CC6.1 (logical access / capability boundaries)
+#   This file uses only the `core` adapter so it runs in restricted sandboxes. In production,
+#   you would attach http/email/chain adapters only where policy allows; undeclared effects
+#   cannot appear in the compiled graph.
+#
+# Validate and capture tape (from repo root):
+#   uv run ainl check examples/enterprise/audit-log-demo.ainl --strict
+#   uv run ainl run examples/enterprise/audit-log-demo.ainl --trace-jsonl audit_demo.tape.jsonl
+#
+# Replay narrative for auditors: re-run the same binary graph with the same inputs; the tape
+# reproduces the branch decision. For investigations, diff tapes across runs or correlate
+# timestamps with external telemetry (outside AINL).
+
+S app core noop
+
+# Simulated KPIs — replace with adapter reads (HTTP health, chain RPC, queue depth) under your
+# capability policy; keep thresholds as data your team reviews in PR.
+L_tick:
+  Set latency_ms 120
+  Set error_rate_bp 15
+  Set max_latency_ms 100
+  Set max_error_bp 20
+  X lat_bad (core.gt latency_ms max_latency_ms)
+  If lat_bad ->L_violation ->L_err_check
+
+L_err_check:
+  X err_bad (core.gt error_rate_bp max_error_bp)
+  If err_bad ->L_violation ->L_ok
+
+L_violation:
+  Set out "audit:policy_violation"
+  J out
+
+L_ok:
+  Set out "audit:within_policy"
+  J out
+```
+
+## 30. `examples/monitoring/solana-balance.ainl`
+- Primary: `monitoring_solana_balance`
+- Secondary: `scheduled_branch`
+
+```ainl
+# examples/monitoring/solana-balance.ainl
+# Solana balance monitor — deterministic read of lamports, budget gate, no runtime LLM.
+# Pair with cron or OpenClaw schedule; run with --trace-jsonl for JSONL audit tape.
+#
+# Env: AINL_SOLANA_RPC_URL (default devnet), AINL_DRY_RUN=1 to rehearse without live RPC pressure.
+#
+# ainl check examples/monitoring/solana-balance.ainl --strict
+# AINL_DRY_RUN=1 ainl run examples/monitoring/solana-balance.ainl --trace-jsonl solana_balance.trace.jsonl
+
+S app core noop
+
+L_start:
+  # System program as stable demo pubkey; replace with your wallet / vault to monitor.
+  R solana.GET_BALANCE "11111111111111111111111111111111" ->bal
+  X lamports get bal lamports
+  # Budget gate: alert when balance is below min_lp lamports (tune per environment).
+  X min_lp 500000000
+  X below (core.gt min_lp lamports)
+  If below ->L_alert ->L_ok
+
+L_alert:
+  Set status "below_budget"
+  J status
+
+L_ok:
+  Set status "ok"
+  J status
 ```

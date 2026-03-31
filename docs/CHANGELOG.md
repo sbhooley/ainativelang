@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.4.0 (March 31, 2026) — ArmaraOS host pack + release readiness
+
+- **release**: bump **`pyproject.toml`** / PyPI **`ainl` 1.4.0** and align **`RUNTIME_VERSION` 1.4.0** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**).
+- **feat(armaraos)**: first-class ArmaraOS host-pack support:
+  - `ainl emit --target armaraos` emits a hand package (`HAND.toml`, `<stem>.ainl.json`, `security.json`, `README.md`).
+  - `ainl status --host armaraos` uses consistent env resolution (canonical **`ARMARAOS_*`**, legacy **`OPENFANG_*`** aliases).
+  - `ainl install-mcp --host armaraos` supports ArmaraOS `~/.armaraos/config.toml` format (**`[[mcp_servers]]`** array) and installs `~/.armaraos/bin/ainl-run` + PATH hints.
+- **docs(armaraos)**: new integration doc **`docs/ARMARAOS_INTEGRATION.md`**; linked from the host hub **`docs/getting_started/HOST_MCP_INTEGRATIONS.md`** and **`docs/DOCS_INDEX.md`**.
+- **fix(tests)**: repair ArmaraOS integration tests to use supported AINL syntax and fix ArmaraOS emitter import path.
+
 ## v1.3.3 (March 29, 2026) — PyYAML for ainl-mcp entrypoint
 
 - **fix(packaging)**: add **`PyYAML`** to core **`dependencies`**. **`scripts/ainl_mcp_server.py`** imports **`yaml`** at module load; **`ainl-mcp --help`** / CI **wheel-integrity** must not fail with **`ModuleNotFoundError: yaml`** after **`pip install ainativelang[mcp]`**.

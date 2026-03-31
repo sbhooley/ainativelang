@@ -139,6 +139,48 @@
       "path": "examples/prediction_market_demo.ainl",
       "primary_pattern": "solana_prediction_market",
       "secondary_pattern": "pda_pyth_invoke_payout"
+    },
+    {
+      "order": 24,
+      "path": "examples/compact/hello_compact.ainl",
+      "primary_pattern": "compute_return_compact",
+      "secondary_pattern": "compact_syntax"
+    },
+    {
+      "order": 25,
+      "path": "examples/compact/classifier_compact.ainl",
+      "primary_pattern": "if_branching_compact",
+      "secondary_pattern": "compact_syntax"
+    },
+    {
+      "order": 26,
+      "path": "examples/compact/cache_lookup_compact.ainl",
+      "primary_pattern": "cache_lookup_compact",
+      "secondary_pattern": "compact_syntax"
+    },
+    {
+      "order": 27,
+      "path": "examples/rag/cache-warmer.ainl",
+      "primary_pattern": "rag_cache_warmer",
+      "secondary_pattern": "memory_and_cache"
+    },
+    {
+      "order": 28,
+      "path": "examples/crm/simple-lead-router.ainl",
+      "primary_pattern": "crm_routing",
+      "secondary_pattern": "http_and_filters"
+    },
+    {
+      "order": 29,
+      "path": "examples/enterprise/audit-log-demo.ainl",
+      "primary_pattern": "audit_logging",
+      "secondary_pattern": "structured_envelopes"
+    },
+    {
+      "order": 30,
+      "path": "examples/monitoring/solana-balance.ainl",
+      "primary_pattern": "monitoring_solana_balance",
+      "secondary_pattern": "scheduled_branch"
     }
   ]
 }

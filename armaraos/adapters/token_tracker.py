@@ -1,7 +1,7 @@
 """
-OpenFang Token Tracker Adapter
+ArmaraOS Token Tracker Adapter
 
-Integrates OpenFang's token metering with AINL's token budget system.
+Integrates ArmaraOS token metering with AINL's token budget system.
 Provides Merkle audit trails for token consumption.
 """
 
@@ -18,7 +18,7 @@ from pathlib import Path
 
 @dataclass
 class TokenUsage:
-    """Record of token consumption for an OpenFang hand."""
+    """Record of token consumption for an ArmaraOS hand."""
     hand_id: str
     prompt_tokens: int
     completion_tokens: int
@@ -32,7 +32,12 @@ class OpenFangTokenTracker:
     """Tracks token usage and produces Merkle audit trails."""
 
     def __init__(self, audit_log_path: str = None):
-        self.audit_log_path = audit_log_path or os.getenv("ARMARAOS_TOKEN_AUDIT", "/var/log/armaraos/token_audit.jsonl")
+        self.audit_log_path = (
+            audit_log_path
+            or os.getenv("ARMARAOS_TOKEN_AUDIT")
+            or os.getenv("OPENFANG_TOKEN_AUDIT")
+            or "/var/log/armaraos/token_audit.jsonl"
+        )
         self._ensure_log_dir()
         self._pending: List[TokenUsage] = []
         self._merkle_tree: List[str] = []  # simplified Merkle chain

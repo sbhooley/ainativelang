@@ -12,7 +12,7 @@ def user_friendly_ainl_error(e: BaseException) -> str:  # AINL-ARMARAOS-TOP5
         if "weekly_remaining_v1" in low:  # AINL-ARMARAOS-TOP5
             return "`weekly_remaining_v1` missing — " + INIT_INSTALL_ARMARAOS  # AINL-ARMARAOS-TOP5
         if "intelligencereport" in low:  # AINL-ARMARAOS-TOP5
-            return "IntelligenceReport is not used by OpenFang install (reports are Markdown). " + INIT_INSTALL_ARMARAOS  # AINL-ARMARAOS-TOP5
+            return "IntelligenceReport is not used by ArmaraOS install (reports are Markdown). " + INIT_INSTALL_ARMARAOS  # AINL-ARMARAOS-TOP5
         return "SQLite table missing — " + INIT_INSTALL_ARMARAOS  # AINL-ARMARAOS-TOP5
     # Cron — match gold-standard job names in message  # AINL-ARMARAOS-TOP5
     if ("cron" in low or "job" in low) and "not found" in low:  # AINL-ARMARAOS-TOP5
@@ -25,9 +25,9 @@ def user_friendly_ainl_error(e: BaseException) -> str:  # AINL-ARMARAOS-TOP5
         return "Cron job not found — " + INIT_INSTALL_ARMARAOS  # AINL-ARMARAOS-TOP5
     # RPC / bridge / gateway down  # AINL-ARMARAOS-TOP5
     if "rpcwireerror" in low or "rpc wire" in low:  # AINL-ARMARAOS-TOP5
-        return "RPCWireError from host RPC. Ensure the OpenFang gateway is running, then retry (or run `ainl doctor --ainl`)."  # AINL-ARMARAOS-TOP5
+        return "RPCWireError from host RPC. Ensure the ArmaraOS gateway is running, then retry (or run `ainl doctor --ainl`)."  # AINL-ARMARAOS-TOP5
     if "econnrefused" in low or "connection refused" in low:  # AINL-ARMARAOS-TOP5
-        return "Connection refused — OpenFang gateway may be down. Start or restart it (`armaraos gateway restart`), then retry."  # AINL-ARMARAOS-TOP5
+        return "Connection refused — ArmaraOS gateway may be down. Start or restart it (`armaraos gateway restart`), then retry."  # AINL-ARMARAOS-TOP5
     # Env — bootstrap preference  # AINL-ARMARAOS-TOP5
     if "armaraos_bootstrap_prefer_session_context" in low or (  # AINL-ARMARAOS-TOP5
         "armaraos_bootstrap" in low and "prefer" in low  # AINL-ARMARAOS-TOP5
@@ -38,7 +38,7 @@ def user_friendly_ainl_error(e: BaseException) -> str:  # AINL-ARMARAOS-TOP5
         )  # AINL-ARMARAOS-TOP5
     if "not set" in low and ("env" in low or "environment" in low or "missing" in low or "required" in low):  # AINL-ARMARAOS-TOP5
         if "armaraos" in low or "ainl_memory" in low or "monitor_cache" in low:  # AINL-ARMARAOS-TOP5
-            return "Required OpenFang env var missing — " + INIT_INSTALL_ARMARAOS + " Or set paths manually."  # AINL-ARMARAOS-TOP5
+            return "Required ArmaraOS env var missing — " + INIT_INSTALL_ARMARAOS + " Or set paths manually."  # AINL-ARMARAOS-TOP5
         return "Required environment variable missing — " + INIT_INSTALL_ARMARAOS  # AINL-ARMARAOS-TOP5
     if "workspace" in low and ("mismatch" in low or "wrong" in low):  # AINL-ARMARAOS-TOP5
         return "Workspace path mismatch — confirm `ARMARAOS_WORKSPACE` / `AINL_MEMORY_DB`; " + INIT_INSTALL_ARMARAOS  # AINL-ARMARAOS-TOP5

@@ -1,7 +1,7 @@
 """
-OpenFang Knowledge Graph ↔ AINL Memory Adapter
+ArmaraOS Knowledge Graph ↔ AINL Memory Adapter
 
-This adapter provides a bidirectional mapping between OpenFang's knowledge graph
+This adapter provides a bidirectional mapping between ArmaraOS' knowledge graph
 and AINL's memory system, enabling seamless data sharing and persistence.
 """
 
@@ -17,7 +17,7 @@ from pathlib import Path
 
 @dataclass
 class KnowledgeNode:
-    """Represents a node in OpenFang's knowledge graph."""
+    """Represents a node in the ArmaraOS knowledge graph."""
     id: str
     type: str
     properties: Dict[str, Any]
@@ -25,12 +25,12 @@ class KnowledgeNode:
 
 
 class OpenFangMemoryAdapter:
-    """Adapter that translates between OpenFang KG and AINL memory."""
+    """Adapter that translates between the ArmaraOS KG and AINL memory."""
 
     def __init__(self, db_path: str = None, use_sqlite: bool = True):
         self.use_sqlite = use_sqlite
         if db_path is None:
-            db_path = os.getenv("ARMARAOS_MEMORY_DB", ":memory:")
+            db_path = os.getenv("ARMARAOS_MEMORY_DB") or os.getenv("AINL_MEMORY_DB") or os.getenv("OPENFANG_MEMORY_DB") or ":memory:"
         self.db_path = db_path
         self._conn: Optional[sqlite3.Connection] = None
         self._ensure_schema()
@@ -51,7 +51,7 @@ class OpenFangMemoryAdapter:
         self._conn.commit()
 
     def kg_to_ainl_memory(self, node: KnowledgeNode) -> Dict[str, Any]:
-        """Convert OpenFang KG node to AINL memory dump format."""
+        """Convert ArmaraOS KG node to AINL memory dump format."""
         memory_entry = {
             "key": f"armaraos:node:{node.id}",
             "value": {
@@ -65,7 +65,7 @@ class OpenFangMemoryAdapter:
         return memory_entry
 
     def ainl_memory_to_kg(self, memory_data: Dict[str, Any]) -> KnowledgeNode:
-        """Convert AINL memory entry back to OpenFang KG node."""
+        """Convert AINL memory entry back to ArmaraOS KG node."""
         value = memory_data.get("value", {})
         node_id = memory_data.get("key", "").replace("armaraos:node:", "")
         return KnowledgeNode(

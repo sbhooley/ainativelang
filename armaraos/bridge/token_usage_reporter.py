@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize token/budget signals for OpenFang crons and ainl-advocate continuity."""
+"""Summarize token/budget signals for ArmaraOS crons and ainl-advocate continuity."""
 from __future__ import annotations
 
 import argparse
@@ -109,7 +109,7 @@ def _scan_md_days(days: int) -> tuple[list[str], int]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Token usage / budget reporter for bridge + OpenFang memory.")
+    ap = argparse.ArgumentParser(description="Token usage / budget reporter for bridge + ArmaraOS memory.")
     ap.add_argument("--dry-run", action="store_true", help="skip armaraos_memory append (stdout/JSON only)")
     ap.add_argument("--json-output", action="store_true", help="emit one JSON object on stdout (for wrappers / parsing)")
     ap.add_argument("--notify", action="store_true", help="stub: stderr hint (wire QueuePut in ainl for Telegram)")

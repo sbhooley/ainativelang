@@ -24,7 +24,7 @@ class McpHostProfile:
     id: str
     dot_rel: Path
     config_filename: str
-    config_kind: str  # "json_mcpServers" | "yaml_mcp_servers"
+    config_kind: str  # "json_mcpServers" | "json_mcp_servers_under_mcp" | "yaml_mcp_servers" | "toml_mcp_servers_array"
     path_line: str
     path_marker: str
     success_tip: str
@@ -67,10 +67,20 @@ PROFILES: dict[str, McpHostProfile] = {
         path_marker=".hermes/bin",
         success_tip='Now say in Hermes Gateway: "Import the morning briefing using AINL"',
     ),
+    "armaraos": McpHostProfile(
+        id="armaraos",
+        dot_rel=Path(".armaraos"),
+        config_filename="config.toml",
+        config_kind="toml_mcp_servers_array",
+        path_line='export PATH="$HOME/.armaraos/bin:$PATH"',
+        path_marker=".armaraos/bin",
+        success_tip='Now run: ainl status --host armaraos (then: ainl emit --target armaraos ...)',
+    ),
 }
 
 OPENCLAW_PROFILE = PROFILES["openclaw"]
 ZEROCLAW_PROFILE = PROFILES["zeroclaw"]
+ARMARAOS_PROFILE = PROFILES["armaraos"]
 
 
 def list_mcp_host_ids() -> tuple[str, ...]:
@@ -122,6 +132,18 @@ def ensure_mcp_registration(
     cfg_path = host_dir / profile.config_filename
     ainl_mcp = _which_or_fallback("ainl-mcp", "ainl-mcp")
     desired = {"command": ainl_mcp, "args": []}
+
+    if profile.config_kind == "toml_mcp_servers_array":
+        _ensure_mcp_registration_toml_mcp_servers_array(
+            cfg_path,
+            server_key=MCP_SERVER_KEY,
+            desired=desired,
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+        if not dry_run:
+            print(f"Wrote MCP config: {cfg_path}")
+        return
 
     if profile.config_kind == "yaml_mcp_servers":
         _ensure_mcp_registration_yaml_mcp_servers(
@@ -244,6 +266,64 @@ def _ensure_mcp_registration_yaml_mcp_servers(
 
     if dry_run:
         print(f"[dry-run] would update {cfg_path} with mcp_servers.{server_key}")
+        _log(verbose, desired_block)
+        return
+
+    cfg_path.write_text(new_text, encoding="utf-8")
+
+
+def _ensure_mcp_registration_toml_mcp_servers_array(
+    cfg_path: Path,
+    *,
+    server_key: str,
+    desired: dict,
+    dry_run: bool,
+    verbose: bool,
+) -> None:
+    """
+    ArmaraOS config format: ~/.armaraos/config.toml with a top-level array:
+
+      [[mcp_servers]]
+      name = "ainl"
+      command = "ainl-mcp"
+      args = []
+
+    We perform a minimal, idempotent text merge without a TOML parser:
+    - if the file is missing, create it with the block
+    - if any `name = "<server_key>"` exists, do nothing
+    - otherwise append a new [[mcp_servers]] block at EOF
+    """
+    desired_block = (
+        "[[mcp_servers]]\n"
+        f"name = \"{server_key}\"\n"
+        f"command = \"{desired['command']}\"\n"
+        "args = []\n"
+    )
+
+    if not cfg_path.exists():
+        if dry_run:
+            print(f"[dry-run] would write {cfg_path} with mcp_servers {server_key}")
+            _log(verbose, desired_block)
+            return
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        cfg_path.write_text(desired_block, encoding="utf-8")
+        return
+
+    text = cfg_path.read_text(encoding="utf-8", errors="replace")
+    needle = f"name = \"{server_key}\""
+    if needle in text:
+        _log(verbose, f"MCP: {server_key!r} already registered in {cfg_path} (toml [[mcp_servers]])")
+        return
+
+    new_text = text
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+    if not new_text.endswith("\n\n"):
+        new_text += "\n"
+    new_text += desired_block
+
+    if dry_run:
+        print(f"[dry-run] would append [[mcp_servers]] block to {cfg_path} for {server_key}")
         _log(verbose, desired_block)
         return
 

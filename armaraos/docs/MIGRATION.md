@@ -79,7 +79,7 @@ ainl cron add my_job.ainl --host armaraos --cron "0 9 * * *"
 
 ### 6. Verify Workspace
 
-If you have custom workspace settings (non-standard location), update `OPENFANG_WORKSPACE` accordingly.
+If you have custom workspace settings (non-standard location), update `ARMARAOS_WORKSPACE` accordingly.
 
 ### 7. Update Scripts
 

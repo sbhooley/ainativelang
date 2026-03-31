@@ -1,17 +1,17 @@
-# Sample AINL Workflow Hand Manifest for OpenFang
+# Sample AINL Workflow Hand Manifest for ArmaraOS
 #
 # ArmaraOS is an independent open-source project and is not affiliated with any entities using similar names (e.g., Amaros AI or others).
 # It is a customized fork and extension of OpenFang by RightNow-AI (https://github.com/RightNow-AI/openfang), licensed under Apache-2.0 OR MIT.
 # It includes and integrates AINativeLang (https://github.com/sbhooley/ainativelang) for deterministic AI workflows.
 # Modifications Copyright (c) 2026 sbhooley. Original OpenFang and AINativeLang works retain their respective licenses.
 #
-# This demonstrates how an AINL graph is packaged as an OpenFang Hand
+# This demonstrates how an AINL graph is packaged as an ArmaraOS Hand
 
 [hand]
 id = "ainl-workflow-example"
 name = "AINL Workflow Example"
 version = "1.0.0"
-description = "A simple AINL graph packaged as an OpenFang Hand"
+description = "A simple AINL graph packaged as an ArmaraOS Hand"
 author = "AINL Team"
 
 # Entrypoint is the compiled AINL IR (produced by `ainl emit --target armaraos`)
@@ -24,7 +24,7 @@ default_timeout = 300  # seconds
 retry_policy = "exponential_backoff"
 max_retries = 3
 
-# OpenFang security policy: WASM sandbox with taint tracking
+# ArmaraOS security policy: WASM sandbox with taint tracking
 [security]
 sandbox = "wasm"
 max_memory_mb = 256
