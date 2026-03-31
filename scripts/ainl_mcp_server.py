@@ -38,7 +38,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import time
+>>>>>>> Stashed changes
 import uuid
 import yaml
 from pathlib import Path
@@ -65,6 +65,7 @@ from tooling.capability_grant import (
     grant_to_allowed_adapters,
     load_profile_as_grant,
 )
+<<<<<<< Updated upstream
 from tooling.mcp_ecosystem_import import (
     import_agency_agent_mcp,
     import_clawflow_mcp,
@@ -74,6 +75,8 @@ from tooling.mcp_ecosystem_import import (
 from tooling.graph_diff import graph_diff
 from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
 from intelligence.trace_export_ptc_jsonl import export_file as export_ptc_trace_file
+=======
+
 
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
@@ -88,105 +91,7 @@ _DEFAULT_LIMITS: Dict[str, Any] = {
     "max_time_ms": 5000,
 }
 
-ALL_TOOL_NAMES: List[str] = [
-    "ainl_validate",
-    "ainl_compile",
-    "ainl_capabilities",
-    "ainl_security_report",
-    "ainl_run",
-    "ainl_import_clawflow",
-    "ainl_import_agency_agent",
-    "ainl_import_markdown",
-    "ainl_list_ecosystem",
-    "ainl_fitness_report",
-    "ainl_ir_diff",
-    "ainl_ptc_signature_check",
-    "ainl_trace_export",
-    "ainl_ptc_run",
-    "ainl_ptc_health_check",
-]
-
-ALL_RESOURCE_URIS: List[str] = [
-    "ainl://adapter-manifest",
-    "ainl://security-profiles",
-]
-
-
-# ---------------------------------------------------------------------------
-# Exposure scoping
-# ---------------------------------------------------------------------------
-
-def _load_exposure_profiles() -> Dict[str, Any]:
-    path = _TOOLING_DIR / "mcp_exposure_profiles.json"
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def _csv_set(env_key: str) -> Optional[Set[str]]:
-    """Parse a comma-separated env var into a set, or None if unset/empty."""
-    raw = os.environ.get(env_key, "").strip()
-    if not raw:
-        return None
-    return {s.strip() for s in raw.split(",") if s.strip()}
-
-
-def _resolve_exposure() -> tuple[Set[str], Set[str]]:
-    """Return (allowed_tools, allowed_resources) after applying profile + env.
-
-    Resolution order:
-    1. Start with everything allowed.
-    2. If AINL_MCP_EXPOSURE_PROFILE is set, restrict to profile's sets.
-    3. If AINL_MCP_TOOLS / AINL_MCP_RESOURCES inclusion env vars are set,
-       intersect with them (narrowing further).
-    4. If AINL_MCP_TOOLS_EXCLUDE / AINL_MCP_RESOURCES_EXCLUDE are set,
-       subtract from the remaining set.
-    Inclusion always takes precedence: if both include and exclude are set,
-    the result is include minus exclude.
-    """
-    tools: Set[str] = set(ALL_TOOL_NAMES)
-    resources: Set[str] = set(ALL_RESOURCE_URIS)
-
-    profile_name = os.environ.get("AINL_MCP_EXPOSURE_PROFILE", "").strip()
-    if profile_name:
-        profiles = _load_exposure_profiles()
-        profile = (profiles.get("profiles") or {}).get(profile_name)
-        if isinstance(profile, dict):
-            p_tools = profile.get("tools")
-            if isinstance(p_tools, list):
-                tools &= set(p_tools)
-            p_resources = profile.get("resources")
-            if isinstance(p_resources, list):
-                resources &= set(p_resources)
-
-    inc_tools = _csv_set("AINL_MCP_TOOLS")
-    if inc_tools is not None:
-        tools &= inc_tools
-    exc_tools = _csv_set("AINL_MCP_TOOLS_EXCLUDE")
-    if exc_tools is not None:
-        tools -= exc_tools
-
-    inc_res = _csv_set("AINL_MCP_RESOURCES")
-    if inc_res is not None:
-        resources &= inc_res
-    exc_res = _csv_set("AINL_MCP_RESOURCES_EXCLUDE")
-    if exc_res is not None:
-        resources -= exc_res
-
-    return tools, resources
-
-
-_ALLOWED_TOOLS: Set[str] = set()
-_ALLOWED_RESOURCES: Set[str] = set()
-
-def _init_exposure() -> None:
-    global _ALLOWED_TOOLS, _ALLOWED_RESOURCES
-    _ALLOWED_TOOLS, _ALLOWED_RESOURCES = _resolve_exposure()
-
-_init_exposure()
-
-
+>>>>>>> Stashed changes
 def _load_mcp_server_grant() -> Dict[str, Any]:
     """Build the MCP server-level capability grant."""
     profile_name = os.environ.get("AINL_MCP_PROFILE")
@@ -195,9 +100,14 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
             return load_profile_as_grant(profile_name)
         except ValueError:
             pass
+<<<<<<< Updated upstream
     # Base grant
     grant = {
         "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),  # core only
+=======
+    return {
+        "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),
+
         "forbidden_adapters": [],
         "forbidden_effects": [],
         "forbidden_effect_tiers": [],
@@ -205,19 +115,9 @@ def _load_mcp_server_grant() -> Dict[str, Any]:
         "limits": dict(_DEFAULT_LIMITS),
         "adapter_constraints": {},
     }
-    # If LLM usage is enabled via env var or config presence, relax constraints
-    if os.environ.get("AINL_MCP_LLM_ENABLED") == "1" or os.environ.get("AINL_CONFIG"):
-        # Add common LLM provider names to allowed adapters
-        grant["allowed_adapters"].extend(["openrouter", "anthropic", "cohere", "ollama", "llm"])
-        # Remove network from forbidden privilege tiers (LLM adapters have network_facing=True)
-        grant["forbidden_privilege_tiers"] = [
-            tier for tier in grant["forbidden_privilege_tiers"] if tier != "network"
-        ]
-    return grant
 
 _MCP_SERVER_GRANT: Dict[str, Any] = _load_mcp_server_grant()
-# Optional sandbox discovery at startup; MCP behavior is unchanged when unavailable.
-_SANDBOX_CLIENT = SandboxClient.try_connect(logger=lambda msg: print(msg))
+
 
 _mcp_server: Any = None
 
