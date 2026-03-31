@@ -17,6 +17,8 @@ import logging
 import os
 import sys
 from pathlib import Path
+from tooling.capability_grant import load_profile_as_grant, grant_to_allowed_adapters, empty_grant
+
 from typing import Any, Optional, Tuple
 
 # Repo root: openfang/bridge/ -> openfang/ -> repo
@@ -73,6 +75,42 @@ WRAPPERS = {
     "test-mcp-log": ROOT / "demo" / "test_mcp_log.ainl",
     # "email-monitor": _BRIDGE_DIR / "wrappers" / "email_monitor.ainl",  # disabled: requires 'openfang mail' plugin
 }
+
+
+# --- OpenFang Bridge Grant Validation ---
+# The bridge runs with a fixed set of adapters. We ensure the active security
+# profile (if any) allows all required adapters.
+def _load_bridge_grant() -> dict:
+    profile = os.environ.get("OPENFANG_SECURITY_PROFILE")
+    if profile:
+        try:
+            return load_profile_as_grant(profile)
+        except ValueError as e:
+            logger.error("Invalid OPENFANG_SECURITY_PROFILE %s: %s", profile, e)
+            return empty_grant()
+    # Default: wide open (legacy behavior)
+    return empty_grant()
+
+_BRIDGE_GRANT = _load_bridge_grant()
+
+# Set of adapter names the bridge needs to function
+_REQUIRED_ADAPTERS = {
+    "core",  # always required
+    "openfang_memory",
+    "github",
+    "crm",
+    "openfang_token_tracker",
+    "bridge",
+}
+
+# Validate at import time (before main)
+_allowed = set(grant_to_allowed_adapters(_BRIDGE_GRANT))
+_missing = _REQUIRED_ADAPTERS - _allowed
+if _missing:
+    logger.error("OpenFang bridge missing required adapters due to security profile: %s", ", ".join(sorted(_missing)))
+    logger.error("Set OPENFANG_SECURITY_PROFILE to a grant that includes these adapters or unset to disable restriction.")
+    sys.exit(1)
+
 
 def _read_monitor_budget() -> dict:
     """Best-effort read of rolling budget from MONITOR_CACHE_JSON.
