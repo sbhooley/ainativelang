@@ -817,11 +817,6 @@ def cmd_emit(args: argparse.Namespace) -> int:
     print(json.dumps({"ok": False, "error": f"unknown --target: {target!r}"}, indent=2))
     return 2
 
-
-
-<<<<<<< HEAD
-=======
-
 # ====================== OpenFang Integration ======================
 # AINL-OPENFANG-TOP1
 
@@ -2612,8 +2607,6 @@ def main() -> None:
     dashp.add_argument("--no-browser", action="store_true", dest="dashboard_no_browser", help="Do not open browser")  # AINL-OPENCLAW-TOP5
     dashp.set_defaults(func=cmd_dashboard)  # AINL-OPENCLAW-TOP5
 
-<<<<<<< HEAD
-=======
     # OpenFang commands
     inst_of = inst_sub.add_parser("openfang", help="One-command OpenFang install + health check")  # AINL-OPENFANG-TOP1
     inst_of.add_argument(
@@ -2636,8 +2629,6 @@ def main() -> None:
     migp.add_argument("source", choices=["openclaw-to-openfang"], help="Migration path")
     migp.set_defaults(func=cmd_migrate_openclaw_to_openfang)
 
-
->>>>>>> 3b3ad6b (fix(release): bump to 1.3.4 and harden runner/MCP install)
     def cmd_status(args: argparse.Namespace) -> int:  # AINL-OPENCLAW-TOP5
         import sqlite3  # AINL-OPENCLAW-TOP5
         import subprocess  # AINL-OPENCLAW-TOP5
@@ -2809,12 +2800,23 @@ def main() -> None:
             print(_markdown_health_table(rows))  # AINL-OPENCLAW-TOP5
         return 0 if ok else 1  # AINL-OPENCLAW-TOP5
 
+    def cmd_status_mux(args: argparse.Namespace) -> int:
+        host = str(getattr(args, "host", "openclaw") or "openclaw").strip().lower()
+        if host == "openfang":
+            return cmd_status_openfang(args)
+        return cmd_status(args)
+
     st = sub.add_parser("status", help="Unified OpenClaw + AINL status view")  # AINL-OPENCLAW-TOP5
     st_out = st.add_mutually_exclusive_group()  # AINL-OPENCLAW-TOP5
     st_out.add_argument("--json", dest="status_json", action="store_true", help="Emit machine-readable JSON (indented)")  # AINL-OPENCLAW-TOP5
     st_out.add_argument("--json-summary", dest="status_json_summary", action="store_true", help="One-line minified JSON (CI, log ship)")  # AINL-OPENCLAW-TOP5
     st_out.add_argument("--summary", dest="status_summary", action="store_true", help="One-line human summary (Telegram, Slack)")  # AINL-OPENCLAW-TOP5
+
     st.set_defaults(func=cmd_status)  # AINL-OPENCLAW-TOP5
+
+    st.add_argument("--host", default="openclaw", choices=["openclaw", "openfang"], help="Agent host (default: openclaw)")  # AINL-OPENFANG-TOP3
+    st.add_argument("--estimate", action="store_true", default=False, help="Include monthly spend/limit snapshot from CostTracker (read-only)")  # AINL-OPENCLAW-TOP5
+    st.set_defaults(func=cmd_status_mux)  # AINL-OPENCLAW-TOP5
 
     def cmd_bridge_sizing_probe(args: argparse.Namespace) -> int:
         import json
