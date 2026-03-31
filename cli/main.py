@@ -9,6 +9,9 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from collections import deque
+import datetime
+import time
 
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
@@ -815,6 +818,60 @@ def cmd_emit(args: argparse.Namespace) -> int:
     return 2
 
 
+
+class MetricsCollector:
+    """Simple in-memory metrics collector for dashboard."""
+
+    def __init__(self):
+        self.total_validations = 0
+        self.successes = 0
+        self.errors = 0
+        self.error_categories: Dict[str, int] = {}
+        # Keep last 1000 validation results for history
+        self.history: deque = deque(maxlen=1000)
+
+    def record_validation(self, ok: bool, errors: List[Dict], duration_ms: float = 0):
+        self.total_validations += 1
+        if ok:
+            self.successes += 1
+        else:
+            self.errors += 1
+            for err in errors:
+                cat = self._categorize_error(err)
+                self.error_categories[cat] = self.error_categories.get(cat, 0) + 1
+        self.history.append({
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+            "ok": ok,
+            "errors": errors if not ok else [],
+            "duration_ms": duration_ms,
+        })
+
+    def _categorize_error(self, err: Dict) -> str:
+        msg = err.get("message", "").lower()
+        if "strict" in msg or "if" in msg:
+            return "compile"
+        if "adapter" in msg or "connection" in msg or "timeout" in msg:
+            return "adapter"
+        if "input" in msg or "missing" in msg or "required" in msg:
+            return "input"
+        return "other"
+
+    def get_metrics(self) -> Dict[str, Any]:
+        return {
+            "period": "24h",
+            "total_validations": self.total_validations,
+            "successes": self.successes,
+            "errors": self.errors,
+            "success_rate": self.successes / self.total_validations if self.total_validations > 0 else 0,
+            "adapter_metrics": {},  # TODO: instrument adapter calls
+            "top_errors": sorted([
+                {"category": cat, "count": cnt, "sample": ""}
+                for cat, cnt in self.error_categories.items()
+            ], key=lambda x: x["count"], reverse=True)[:5],
+        }
+
+    def get_history(self, limit: int = 100):
+        return list(self.history)[-limit:]
 def cmd_serve(args: argparse.Namespace) -> int:
     """Start an HTTP server that validates and runs AINL files via REST API."""
     host = getattr(args, "host", "0.0.0.0")
@@ -825,29 +882,34 @@ def cmd_serve(args: argparse.Namespace) -> int:
     except ImportError:
         print(json.dumps({"ok": False, "error": "http.server not available"}))
         return 1
+    metrics = MetricsCollector()
+
 
     class AINLRequestHandler(BaseHTTPRequestHandler):
         def do_POST(self):
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else ""
-
             if self.path == "/validate" or self.path == "/check":
                 try:
                     payload = json.loads(body) if body.strip().startswith("{") else {"source": body}
                     source = payload.get("source", body)
                     strict = payload.get("strict", False)
+                    start = time.time()
                     c = AICodeCompiler(strict_mode=strict)
                     ir = c.compile(source, emit_graph=True)
-                    ok = len(ir.get("errors", [])) == 0
+                    duration = (time.time() - start) * 1000
+                    errors = ir.get("errors", [])
+                    ok = len(errors) == 0
+                    metrics.record_validation(ok, errors, duration)
                     result = {
                         "ok": ok,
                         "ir_version": ir.get("ir_version"),
-                        "errors": ir.get("errors", []),
+                        "errors": errors,
                         "warnings": ir.get("warnings", []),
                         "diagnostics": list(ir.get("diagnostics") or []),
                     }
                     self._json_response(200 if ok else 400, result)
                 except Exception as e:
+                    duration = (time.time() - start) * 1000 if "start" in locals() else 0
+                    metrics.record_validation(False, [{"message": str(e)}], duration)
                     self._json_response(500, {"ok": False, "error": str(e)})
 
             elif self.path == "/compile":
@@ -855,13 +917,20 @@ def cmd_serve(args: argparse.Namespace) -> int:
                     payload = json.loads(body) if body.strip().startswith("{") else {"source": body}
                     source = payload.get("source", body)
                     strict = payload.get("strict", False)
+                    start = time.time()
                     c = AICodeCompiler(strict_mode=strict)
                     ir = c.compile(source, emit_graph=True)
-                    if ir.get("errors"):
-                        self._json_response(400, {"ok": False, "errors": ir.get("errors", [])})
+                    duration = (time.time() - start) * 1000
+                    errors = ir.get("errors", [])
+                    if errors:
+                        metrics.record_validation(False, errors, duration)
+                        self._json_response(400, {"ok": False, "errors": errors})
                     else:
+                        metrics.record_validation(True, [], duration)
                         self._json_response(200, ir)
                 except Exception as e:
+                    duration = (time.time() - start) * 1000 if "start" in locals() else 0
+                    metrics.record_validation(False, [{"message": str(e)}], duration)
                     self._json_response(500, {"ok": False, "error": str(e)})
 
             elif self.path == "/run":
@@ -870,20 +939,29 @@ def cmd_serve(args: argparse.Namespace) -> int:
                     source = payload.get("source", body)
                     strict = payload.get("strict", False)
                     frame = payload.get("frame", {})
+                    start = time.time()
                     c = AICodeCompiler(strict_mode=strict)
                     ir = c.compile(source, emit_graph=True)
-                    if ir.get("errors"):
-                        self._json_response(400, {"ok": False, "errors": ir.get("errors", [])})
+                    compile_errors = ir.get("errors", [])
+                    compile_duration = (time.time() - start) * 1000
+                    if compile_errors:
+                        metrics.record_validation(False, compile_errors, compile_duration)
+                        self._json_response(400, {"ok": False, "errors": compile_errors})
                         return
                     engine = RuntimeEngine(ir)
                     result = engine.run(source, frame=frame)
+                    run_duration = (time.time() - start) * 1000
+                    ok = result.get("ok", False) if isinstance(result, dict) else False
+                    errors = result.get("errors", []) if isinstance(result, dict) else []
+                    metrics.record_validation(ok, errors, run_duration)
                     self._json_response(200, result)
                 except Exception as e:
+                    duration = (time.time() - start) * 1000 if "start" in locals() else 0
+                    metrics.record_validation(False, [{"message": str(e)}], duration)
                     self._json_response(500, {"ok": False, "error": str(e)})
 
             else:
                 self._json_response(404, {"error": f"Unknown endpoint: {self.path}", "endpoints": ["/validate", "/compile", "/run"]})
-
         def do_GET(self):
             if self.path == "/health" or self.path == "/":
                 self._json_response(200, {
@@ -895,8 +973,15 @@ def cmd_serve(args: argparse.Namespace) -> int:
                         "POST /compile": "Compile AINL source to IR (JSON body: {source, strict?})",
                         "POST /run": "Compile and run AINL source (JSON body: {source, strict?, frame?})",
                         "GET /health": "Health check",
+                        "GET /metrics": "Get aggregated validation metrics",
+                        "GET /history": "Get recent validation history (X-Limit header)",
                     },
                 })
+            elif self.path == "/metrics":
+                self._json_response(200, metrics.get_metrics())
+            elif self.path == "/history":
+                limit = int(self.headers.get("X-Limit", "100"))
+                self._json_response(200, {"history": metrics.get_history(limit)})
             else:
                 self._json_response(404, {"error": "Not found"})
 
