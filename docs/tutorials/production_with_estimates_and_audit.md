@@ -111,7 +111,7 @@ The `audit_trail` adapter appends an **immutable JSONL record** for each `record
 | `timestamp` | ISO-8601 UTC with milliseconds |
 | `label_id` | Current graph label |
 | `node_id` | Current node |
-| `event` | The adapter target (e.g. `record`) |
+| `event` | The audit event name (defaults to the adapter target like `record`, but if the first arg is an object containing `event`, that value is used) |
 | `args` | Redacted call arguments |
 | `output` | Redacted last output |
 | `event_hash` | SHA-256 of the record (tamper evidence) |

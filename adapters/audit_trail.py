@@ -116,7 +116,16 @@ class AuditTrailAdapter(RuntimeAdapter):
         and ``_last_output`` keys (populated by the runtime engine).
         """
         context = context or {}
+
+        # The runtime calls adapter targets like "record". For human audit logs,
+        # prefer an explicit event name when provided in the first arg dict.
+        # (Keeps adapter stable while making logs more informative.)
         event = str(target) if target else "record"
+        if args and isinstance(args[0], dict) and args[0].get("event"):
+            try:
+                event = str(args[0].get("event"))
+            except Exception:
+                pass
 
         trace_id = (
             context.get("trace_id")

@@ -947,6 +947,28 @@
         "Use split form: R tool_registry list / discover / get name / register ... ->out."
       ]
     },
+    "audit_trail": {
+      "description": "Append-only JSONL audit trail adapter for regulated teams (compliance logging; no network).",
+      "privilege_tier": "local_state",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
+      "targets": {
+        "record": {
+          "args": ["payload_json"],
+          "returns": "{ok, event, trace_id}",
+          "pure": false
+        }
+      },
+      "config": {
+        "sink_env": "AINL_AUDIT_SINK (or CLI: --audit-sink)"
+      },
+      "notes": [
+        "This adapter only writes when your graph invokes it (e.g. R audit_trail.record {...}). Enabling the adapter alone is not enough.",
+        "Supported sinks: file://, syslog://, stderr://, stdout:// (see adapters/audit_trail.py).",
+        "Best-effort redaction: sensitive keys are replaced with [REDACTED]."
+      ]
+    },
     "ptc_runner": {
       "description": "Optional external PTC Runner bridge for executing PTC-Lisp snippets from AINL graphs.",
       "privilege_tier": "network",

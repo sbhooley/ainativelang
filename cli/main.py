@@ -386,6 +386,11 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
                 max_response_bytes=args.http_max_response_bytes,
             ),
         )
+    if "audit_trail" in enabled:
+        from adapters.audit_trail import AuditTrailAdapter
+
+        sink = str(getattr(args, "audit_sink", "") or "").strip() or os.environ.get("AINL_AUDIT_SINK", "").strip() or "stderr://"
+        reg.register("audit_trail", AuditTrailAdapter(sink=sink))
 
 
 def _pretty_runtime_error(err: Exception) -> str:
@@ -651,6 +656,16 @@ def cmd_check(args: argparse.Namespace) -> int:
         "meta": ir.get("meta", []),
         "diagnostics": diagnostics,
     }
+    if bool(getattr(args, "estimate", False)):
+        try:
+            from tooling.cost_estimate import estimate_ir_cost, format_estimate_table
+
+            est = estimate_ir_cost(ir)
+            payload["cost_estimate"] = est
+            # Human table to stderr, JSON stays on stdout.
+            sys.stderr.write(format_estimate_table(est))
+        except Exception as _e:
+            payload["cost_estimate"] = {"error": str(_e)}
     print(json.dumps(payload, indent=2))
     return 0 if ok else 1
 
@@ -1190,6 +1205,13 @@ def cmd_inspect(args: argparse.Namespace) -> int:
         code = f.read()
     c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
     ir = c.compile(code, emit_graph=True, source_path=src_path)
+    if bool(getattr(args, "estimate", False)):
+        try:
+            from tooling.cost_estimate import estimate_ir_cost
+
+            ir["_cost_estimate"] = estimate_ir_cost(ir)
+        except Exception as _e:
+            ir["_cost_estimate"] = {"error": str(_e)}
     print(json.dumps(ir, indent=2))
     return 0 if not ir.get("errors") else 1
 
@@ -2117,8 +2139,16 @@ def main() -> None:
             "langchain_tool",
             "ptc_runner",
             "llm_query",
+            "audit_trail",
         ],
         default=[],
+    )
+    runp.add_argument(
+        "--audit-sink",
+        dest="audit_sink",
+        default="",
+        metavar="URI",
+        help="With --enable-adapter audit_trail: sink URI (or env AINL_AUDIT_SINK). e.g. file:///tmp/ainl_audit.jsonl",
     )
     runp.add_argument(
         "--bridge-endpoint",
@@ -2239,6 +2269,7 @@ def main() -> None:
     chk = sub.add_parser("check", help="Compile/check AINL file")
     chk.add_argument("file")
     chk.add_argument("--strict", action="store_true")
+    chk.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
     chk.set_defaults(func=cmd_check)
 
     cmp = sub.add_parser("compile", help="Compile an .ainl file and optionally emit artifacts")
@@ -2257,6 +2288,7 @@ def main() -> None:
     val = sub.add_parser("validate", help="Validate an .ainl file (alias for 'check')")
     val.add_argument("file")
     val.add_argument("--strict", action="store_true")
+    val.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
     val.add_argument("--json-output", action="store_true", help="Output full IR JSON instead of summary (for CI/tooling)")
     val.set_defaults(func=cmd_validate)
 
@@ -2287,6 +2319,7 @@ def main() -> None:
     isp = sub.add_parser("inspect", help="Compile an .ainl file and dump full canonical IR JSON")
     isp.add_argument("file")
     isp.add_argument("--strict", action="store_true")
+    isp.add_argument("--estimate", action="store_true", default=False, help="Embed static LLM cost estimate into IR as _cost_estimate")
     isp.add_argument("--json", action="store_true", help="Compatibility flag (output is always JSON)")
     isp.set_defaults(func=cmd_inspect)
 
