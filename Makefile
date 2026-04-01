@@ -17,7 +17,8 @@ check-apollo-promoter:
 CONFORMANCE_DIR ?= tests/conformance
 
 # Prefer .venv-py310 (CI), then .venv-ainl (OpenClaw), then .venv, then system python3.
-PYTHON ?= $(if $(wildcard $(CURDIR)/.venv-py310/bin/python),$(CURDIR)/.venv-py310/bin/python,$(if $(wildcard $(CURDIR)/.venv-ainl/bin/python),$(CURDIR)/.venv-ainl/bin/python,$(if $(wildcard $(CURDIR)/.venv/bin/python),$(CURDIR)/.venv/bin/python,python3))
+# Shell-based (nested $(if $(wildcard …)) breaks some Make parsers on long lines).
+PYTHON ?= $(shell if test -x "$(CURDIR)/.venv-py310/bin/python"; then echo "$(CURDIR)/.venv-py310/bin/python"; elif test -x "$(CURDIR)/.venv-ainl/bin/python"; then echo "$(CURDIR)/.venv-ainl/bin/python"; elif test -x "$(CURDIR)/.venv/bin/python"; then echo "$(CURDIR)/.venv/bin/python"; else echo python3; fi)
 PYTEST ?= $(PYTHON) -m pytest
 SNAPSHOT_UPDATE ?= 0
 CONFORMANCE_LOG ?= tests/snapshots/conformance/last_run.log

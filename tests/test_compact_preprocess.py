@@ -110,8 +110,8 @@ class TestTranspilation:
     def test_input_fields(self):
         compact = "greet:\n  in: name greeting\n  out name\n"
         opcodes = preprocess(compact)
-        assert "X name ctx.name" in opcodes
-        assert "X greeting ctx.greeting" in opcodes
+        assert "Set name $name" in opcodes
+        assert "Set greeting $greeting" in opcodes
 
     def test_if_equality(self):
         compact = 'checker:\n  if x == "yes":\n    out "matched"\n  out "nope"\n'

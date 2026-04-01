@@ -1,8 +1,8 @@
 # Changelog
 
-## v1.4.0 (March 31, 2026) — ArmaraOS host pack + release readiness
+## v1.4.0 (April 1, 2026) — ArmaraOS host pack + release readiness
 
-- **release**: bump **`pyproject.toml`** / PyPI **`ainl` 1.4.0** and align **`RUNTIME_VERSION` 1.4.0** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**).
+- **release**: bump **`pyproject.toml`** / PyPI **`ainl` 1.4.0**; align **`RUNTIME_VERSION` 1.4.0** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** **`version`** / **`date-released`**; **`tooling/bot_bootstrap.json`** schema **`version`**; **`ainl serve`** **`GET /health`** reports **`version`** from **`RUNTIME_VERSION`**.
 - **feat(armaraos)**: first-class ArmaraOS host-pack support:
   - `ainl emit --target armaraos` emits a hand package (`HAND.toml`, `<stem>.ainl.json`, `security.json`, `README.md`).
   - `ainl status --host armaraos` uses consistent env resolution (canonical **`ARMARAOS_*`**, legacy **`OPENFANG_*`** aliases).

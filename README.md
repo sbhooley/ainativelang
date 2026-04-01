@@ -52,7 +52,7 @@
 > - **Agent guide index:** `docs/AGENT_GUIDE_INDEX.md` summarizes docs for OpenClaw, ZeroClaw, Hermes‑Agent, and generic AI agents.
 > - **OpenClaw one-command env + crons + status:** [`docs/QUICKSTART_OPENCLAW.md`](docs/QUICKSTART_OPENCLAW.md) · `ainl install openclaw`, `ainl status` (with `--json`, `--json-summary`, `--summary`), `ainl cron add`, `ainl dashboard`, `ainl doctor --ainl` · rolling-budget storage: [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c (`memory_records` primary, legacy `weekly_remaining_v1` secondary). Agent discovery: `tooling/bot_bootstrap.json` → `openclaw_commands`.
 > - **OpenClaw skill + bootstrap:** [`docs/OPENCLAW_INTEGRATION.md`](docs/OPENCLAW_INTEGRATION.md) · [`skills/openclaw/`](skills/openclaw/) · `ainl install-mcp --host openclaw`
-> - **OpenClaw + AINL unified integration (v1.3.3+; includes v1.3.0 Hermes + `ainl install openclaw` / `ainl status`, v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
+> - **OpenClaw + AINL unified integration (v1.4.0+; includes v1.3.0 Hermes + `ainl install openclaw` / `ainl status`, v1.2.8 token optimizations, bridge, cron):** [`docs/ainl_openclaw_unified_integration.md`](docs/ainl_openclaw_unified_integration.md)
 > - **Hermes Agent support (official; self-improving agents with deterministic graphs):** [`docs/HERMES_INTEGRATION.md`](docs/HERMES_INTEGRATION.md) · [`skills/hermes/`](skills/hermes/) · `ainl install-mcp --host hermes` · `ainl compile --emit hermes-skill`
 > - **PTC-Lisp integration (opt-in):** [`docs/adapters/PTC_RUNNER.md`](docs/adapters/PTC_RUNNER.md) · quick start: `ainl run-hybrid-ptc` · examples:
 >   - examples/hybrid_order_processor.ainl — hybrid order processor (parallel batches, signatures, firewall, LangGraph bridge)
@@ -65,7 +65,7 @@
 > - **Using Claude Code / Cowork / Dispatch-style tools?** See the MCP/integration guidance in docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md and docs/INTEGRATION_STORY.md
 > - **AINL → HTTP workers (bridge contract, secondary to MCP):** docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md · JSON Schema schemas/executor_bridge_request.schema.json · include modules/common/executor_bridge_request.ainl
 >
-> TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops. Positioning (current v1.3.4; monitoring pack since v1.2.10): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md). Since v1.2.10, AINL also ships an optional monitoring pack for LLM/tool adapters and OpenClaw-style intelligence programs: unified LLM usage tracking, budget policy, and a small Flask/Prometheus dashboard under intelligence/monitor/ (see docs/MONITORING_OPERATIONS.md and docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md).
+> TECHNICALS: AINL is a compact, graph-canonical, AI-native programming system for building deterministic workflows, multi-target applications, and operational agents without relying on ever-growing prompt loops. Positioning (current v1.4.0; monitoring pack since v1.2.10): AINL is the system that lets you author with an LLM once, validate with a compiler (strict mode, reachability, single-exit discipline), and emit production artifacts for LangGraph, Temporal, FastAPI, React, Hyperspace, Prisma, cron, and more — while deterministic execution, policy, and audit (runner service, trajectory JSONL) stay on the AINL side. Write in AINL → emit LangGraph or Temporal when you need their ecosystem today; keep the .ainl source as the single source of truth (docs/HYBRID_GUIDE.md, docs/competitive/README.md). Since v1.2.10, AINL also ships an optional monitoring pack for LLM/tool adapters and OpenClaw-style intelligence programs: unified LLM usage tracking, budget policy, and a small Flask/Prometheus dashboard under intelligence/monitor/ (see docs/MONITORING_OPERATIONS.md and docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md).
 
 ## Open-core boundary
 
@@ -77,6 +77,10 @@
 | Enterprise audit/policy packs, managed ops, deployment kits | **Paid / optional** | Governance, SLA-backed support, monitored hosted runtime |
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
+
+## New in v1.4.0
+
+- **ArmaraOS host pack**: `ainl emit --target armaraos`, `ainl status --host armaraos`, `ainl install-mcp --host armaraos` — see [`docs/ARMARAOS_INTEGRATION.md`](docs/ARMARAOS_INTEGRATION.md) and [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
 ## New in v1.3.4
 
@@ -830,7 +834,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainl` 1.3.3** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.4.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

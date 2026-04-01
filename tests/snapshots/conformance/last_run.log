@@ -13,4 +13,4 @@ created: 12/12 workers
     warnings.warn(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 13 passed, 12 warnings in 2.15s ========================
+======================= 13 passed, 12 warnings in 2.12s ========================

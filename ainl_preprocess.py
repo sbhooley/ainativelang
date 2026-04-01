@@ -276,8 +276,9 @@ class _Transpiler:
 
             if cl.kind == "in":
                 for field in cl.data["fields"]:
-                    # Use X ctx.<field> pattern — works in both strict and non-strict
-                    self._output.append(f"  X {field} ctx.{field}")
+                    # Bind from initial frame: $field reads frame[field] at runtime (see runtime _resolve).
+                    # Prefer Set over X — avoids bogus "X fn: ctx.<field>" (AINL policy).
+                    self._output.append(f"  Set {field} ${field}")
                 i += 1
                 continue
 

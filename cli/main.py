@@ -26,7 +26,7 @@ from runtime.adapters.tools import ToolBridgeAdapter
 from runtime.adapters.wasm import WasmAdapter
 from runtime.adapters.memory import MemoryAdapter
 from runtime.sandbox_shim import SandboxClient
-from runtime.engine import RuntimeEngine
+from runtime.engine import RUNTIME_VERSION, RuntimeEngine
 
 
 
@@ -507,6 +507,17 @@ def cmd_run_hybrid_ptc(args: argparse.Namespace) -> int:
     return cmd_run(run_args)
 
 
+def _parse_frame_json_arg(raw: str) -> Dict[str, Any]:
+    """Parse --frame-json: inline JSON object or @path/to/frame.json."""
+    s = (raw or "").strip()
+    if not s:
+        return {}
+    if s.startswith("@"):
+        path = Path(s[1:]).expanduser()
+        return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(s)
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     if args.self_test_graph:
         return cmd_self_test_graph(args)
@@ -548,13 +559,14 @@ def cmd_run(args: argparse.Namespace) -> int:
         observability=bool(getattr(args, "observability", False)),
         observability_jsonl_path=str(getattr(args, "observability_jsonl", "") or "").strip() or None,
     )
+    frame = _parse_frame_json_arg(getattr(args, "frame_json", "") or "")
     try:
         label = args.label or eng.default_entry_label()
         try:
             if getattr(eng, "runtime_async", False):
-                result = asyncio.run(eng.run_label_async(label, frame={}))
+                result = asyncio.run(eng.run_label_async(label, frame=frame))
             else:
-                result = eng.run_label(label, frame={})
+                result = eng.run_label(label, frame=frame)
             payload = {"ok": True, "label": str(label), "result": result, "runtime_version": eng.runtime_version}
         except Exception as e:
             payload = {"ok": False, "label": str(label), "error": str(e), "runtime_version": eng.runtime_version}
@@ -1225,7 +1237,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
                 self._json_response(200, {
                     "status": "ok",
                     "service": "ainl-serve",
-                    "version": "1.3.3",
+                    "version": RUNTIME_VERSION,
                     "endpoints": {
                         "POST /validate": "Validate AINL source (JSON body: {source, strict?})",
                         "POST /compile": "Compile AINL source to IR (JSON body: {source, strict?})",
@@ -2142,6 +2154,12 @@ def main() -> None:
     runp.add_argument("file", nargs="?")
     runp.add_argument("--config", help="Path to AINL config YAML (for LLM adapter configuration)", default=None)
     runp.add_argument("--label", default="")
+    runp.add_argument(
+        "--frame-json",
+        default="",
+        metavar="PATH_OR_JSON",
+        help="Initial runtime frame as a JSON object, or @/path/to/frame.json (merged into graph inputs).",
+    )
     runp.add_argument("--strict", action="store_true")
     runp.add_argument("--strict-reachability", action="store_true")
     runp.add_argument("--trace", action="store_true")

@@ -1,8 +1,8 @@
 # Release notes
 
-## AINL v1.4.0 — ArmaraOS host pack + release readiness (2026-03-31)
+## AINL v1.4.0 — ArmaraOS host pack + release readiness (2026-04-01)
 
-**PyPI / runtime:** **`ainl` 1.4.0** — **`RUNTIME_VERSION` `1.4.0`**.
+**PyPI / runtime:** **`ainativelang` 1.4.0** — **`RUNTIME_VERSION` `1.4.0`**.
 
 - **ArmaraOS integration (host pack):** ArmaraOS support is first-class and optional (no hard dependency on the `armaraos` binary). Docs: `docs/ARMARAOS_INTEGRATION.md` and `docs/getting_started/HOST_MCP_INTEGRATIONS.md`.
 - **MCP bootstrap:** `ainl install-mcp --host armaraos` now supports ArmaraOS’ `~/.armaraos/config.toml` format (`[[mcp_servers]]`).
