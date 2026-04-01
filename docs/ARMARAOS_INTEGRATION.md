@@ -12,6 +12,17 @@ ArmaraOS is an **optional** host runtime for AINL workflows. AINL supports Armar
 
 ArmaraOS CLI is **not required** for AINL to install or run; ArmaraOS-only features (cron listing/adding) are best-effort when the `armaraos` binary is on PATH.
 
+## Library layout on disk (daemon / desktop)
+
+When ArmaraOS runs, graphs under `~/.armaraos/ainl-library/` may include:
+
+| Path | Origin |
+|------|--------|
+| `armaraos-programs/` | First-party graphs **materialized** from the ArmaraOS build (health checks, learning-frame samples, stubs). |
+| `demo/`, `examples/`, `intelligence/` | Mirrored from the public [ainativelang](https://github.com/sbhooley/ainativelang) repo when desktop sync runs (or equivalent). |
+
+Paths in tutorials (e.g. `examples/compact/hello_compact.ainl`) match the **mirror** after sync. Paths documented in ArmaraOS as `armaraos-programs/...` refer to the **embedded** tree. See ArmaraOS `docs/ootb-ainl.md`.
+
 ## Quickstart (MCP bootstrap)
 
 ```bash
