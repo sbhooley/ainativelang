@@ -1,0 +1,17 @@
+# 8) Code-review style context pack — INDEX then QUERY + COMPRESS (sequential; code_context is not fanout-safe).
+# For parallel *pure* fanout patterns see 03; for HTTP see 07.
+# AINL: code_context + core. ArmaraOS: workspace root, adapter allowlist, optional llm keys for review.
+#
+# Run (from AI_Native_Lang repo root; enable code_context):
+#   python -m cli.main run examples/wishlist/08_code_review_context.ainl --json \
+#     --enable-adapter code_context
+# Validate: python -m cli.main validate examples/wishlist/08_code_review_context.ainl --strict
+
+wishlist_08_code_review_context:
+  in:
+
+  R code_context.INDEX "examples/wishlist" ->_idx
+  R code_context.QUERY_CONTEXT "syntax" 1 6 ->ctx
+  R code_context.COMPRESS_CONTEXT "syntax" 1200 ->packed
+  R core.concat ctx "\n---\n" packed ->bundle
+  out bundle

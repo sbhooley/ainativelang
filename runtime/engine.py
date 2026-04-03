@@ -65,7 +65,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.4.0"
+RUNTIME_VERSION = "1.4.1"
 
 # Stable, machine-readable runtime error codes for agents.
 ERROR_CODE_MAX_DEPTH = "RUNTIME_MAX_DEPTH"
@@ -193,6 +193,7 @@ class RuntimeEngine:
         strict: bool = False,
         strict_reachability: bool = False,
         trace: bool = False,
+        adapters: Optional[AdapterRegistry] = None,
         step_fallback: bool = True,
         execution_mode: str = "graph-preferred",
         unknown_op_policy: Optional[str] = None,
@@ -207,6 +208,7 @@ class RuntimeEngine:
             strict=strict,
             strict_reachability=strict_reachability,
             trace=trace,
+            adapters=adapters,
             step_fallback=step_fallback,
             execution_mode=execution_mode,
             unknown_op_policy=unknown_op_policy,
@@ -697,6 +699,7 @@ class RuntimeEngine:
             call_ctx = dict(frame)
             call_ctx["_runtime_async"] = self.runtime_async
             call_ctx["_observability"] = self.observability
+            call_ctx["_adapter_registry"] = self.adapters
             try:
                 out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
                 return out
@@ -712,6 +715,7 @@ class RuntimeEngine:
         call_ctx = dict(frame)
         call_ctx["_runtime_async"] = self.runtime_async
         call_ctx["_observability"] = self.observability
+        call_ctx["_adapter_registry"] = self.adapters
         try:
             out = self.adapters.call(adapter, target, args, call_ctx)
             return out
@@ -733,6 +737,7 @@ class RuntimeEngine:
         call_ctx = dict(frame)
         call_ctx["_runtime_async"] = True
         call_ctx["_observability"] = self.observability
+        call_ctx["_adapter_registry"] = self.adapters
         if "." in adapter:
             adp_name, verb = adapter.split(".", 1)
             t0 = self._resolve(target, frame) if isinstance(target, str) else target

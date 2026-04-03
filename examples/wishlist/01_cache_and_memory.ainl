@@ -1,0 +1,21 @@
+# 1) Knowledge caching + structured memory (AINL: cache + memory adapters).
+# ArmaraOS: pass session_key from host; set AINL_MEMORY_DB / paths via env policy.
+#
+# Run (from AI_Native_Lang repo root):
+#   AINL_CACHE_JSON=/tmp/w01_cache.json AINL_MEMORY_DB=/tmp/w01_mem.sqlite3 \
+#     python -m cli.main run examples/wishlist/01_cache_and_memory.ainl --json \
+#     --frame '{"session_key":"sess1","note":"hello memory"}'
+# Validate: python -m cli.main validate examples/wishlist/01_cache_and_memory.ainl --strict
+
+wishlist_01_cache_and_memory:
+  in: session_key note
+
+  R cache.GET session_key ->cached
+  if cached:
+    out cached
+
+  R core.concat "{\"note\":\"" note "\"}" ->blob
+  R core.parse blob ->payload
+  R memory.PUT "workflow" "turn" session_key payload null ->_m
+  R cache.SET session_key note ->_
+  out note

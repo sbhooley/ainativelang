@@ -1,0 +1,15 @@
+# 7) Real-time data enrichment — parallel HTTP GET via fanout (independent I/O).
+# AINL: http + fanout. ArmaraOS: HTTP allowlists, timeouts, and egress policy.
+#
+# This file uses opcode lines for the JSON plan string so URLs with ":" are not misparsed by compact.
+#
+# Run (needs network; from repo root):
+#   python -m cli.main run examples/wishlist/07_parallel_http.ainl --json --enable-adapter http
+# Validate: python -m cli.main validate examples/wishlist/07_parallel_http.ainl --strict
+
+S app core noop
+
+L1:
+  Set fan_json "[[\"http\",\"GET\",\"http://example.com/\"],[\"http\",\"GET\",\"http://example.com/\"]]"
+  R fanout.ALL fan_json ->bundle
+  J bundle

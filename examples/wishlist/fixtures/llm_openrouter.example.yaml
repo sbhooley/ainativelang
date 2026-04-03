@@ -1,0 +1,17 @@
+# Copy to a path outside the repo (e.g. ~/.config/ainl/llm.yaml) and set OPENROUTER_API_KEY.
+# Run 05b:
+#   export AINL_CONFIG=$HOME/.config/ainl/llm.yaml
+#   python -m cli.main run examples/wishlist/05b_unified_llm_offline_config.ainl --json \
+#     --frame-json '{"user_query":"Summarize AINL in one sentence."}'
+llm:
+  default_provider: openrouter
+  fallback_chain: [openrouter]
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_timeout_s: 120
+  providers:
+    openrouter:
+      api_key: ${OPENROUTER_API_KEY}
+      base_url: https://openrouter.ai/api/v1
+      model: openai/gpt-4o-mini
+      json_mode: false

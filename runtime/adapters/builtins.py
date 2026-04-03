@@ -6,7 +6,7 @@ import time
 from typing import Any, Dict, List
 
 from runtime.adapters.base import RuntimeAdapter
-from runtime.values import coerce_number
+from runtime.values import coerce_number, deep_get
 
 
 class CoreBuiltinAdapter(RuntimeAdapter):
@@ -20,6 +20,8 @@ class CoreBuiltinAdapter(RuntimeAdapter):
       parse/stringify
       now/iso/iso_ts/sleep/echo
       filter_high_score(list, min) — keep dict items with score/relevance >= min
+      id(value) — identity; returns first arg (used to materialize object literals in R lines)
+      get(obj, key) — deep key/index read (objects and lists)
     """
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
@@ -79,6 +81,8 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             if needle == "":
                 return True
             return needle in hay
+        if t == "get":
+            return deep_get(args[0], str(args[1])) if len(args) >= 2 else None
         if t == "parse":
             return json.loads(str(args[0]))
         if t == "stringify":
@@ -90,7 +94,7 @@ class CoreBuiltinAdapter(RuntimeAdapter):
         if t == "iso_ts":
             ts = int(_num(args[0])) if args else int(time.time())
             return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
-        if t == "echo":
+        if t in ("echo", "id"):
             return args[0] if args else None
         if t == "env":
             # os.getenv(name, default=None); optional second arg is default string
@@ -113,14 +117,14 @@ class CoreBuiltinAdapter(RuntimeAdapter):
                 time.sleep(ms / 1000.0)
             return None
         if t == "filter_high_score":
-            # FILTER_HIGH_SCORE <list_var> <min_int> — keep dict-like items with numeric score >= min.
+            # FILTER_HIGH_SCORE <list_var> <min_number> — keep dict-like items with numeric score >= min.
             items = args[0] if args else []
             # IR often passes the list variable name as a string; resolve from frame when present.
             if isinstance(items, str) and isinstance(context, dict) and items in context:
                 items = context.get(items)
             if not isinstance(items, list):
                 return []
-            floor = int(_num(args[1])) if len(args) > 1 else 0
+            floor = float(_num(args[1])) if len(args) > 1 else 0.0
             out = []
             for it in items:
                 if not isinstance(it, dict):

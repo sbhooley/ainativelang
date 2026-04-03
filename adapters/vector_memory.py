@@ -5,12 +5,12 @@ Local JSON-backed semantic-ish memory: keyword overlap scoring (no extra deps).
 Enable: ``--enable-adapter vector_memory`` on the CLI host.
 
 AINL (examples):
-  R vector_memory.SEARCH "query" [limit] ->hits
-  R vector_memory.LIST_SIMILAR "query" [limit] ->hits
+  R vector_memory.SEARCH "query" [limit] [min_score] ->hits
+  R vector_memory.LIST_SIMILAR "query" [limit] [min_score] ->hits
   R vector_memory upsert namespace kind record_id text [payload_json] ->ok
 
 Env:
-  AINL_VECTOR_MEMORY_PATH — store file (default: .ainl_vector_memory.json in cwd)
+  AINL_VECTOR_MEMORY_PATH — store file (default: ``~/.openclaw/ainl_vector_memory.json``)
 
 Verbs (target, case-insensitive): SEARCH, LIST_SIMILAR, UPSERT
 """
@@ -43,7 +43,10 @@ def _score(query: str, doc: str) -> float:
 class VectorMemoryAdapter(RuntimeAdapter):
     def __init__(self, path: Optional[str] = None):
         raw = (path or os.environ.get("AINL_VECTOR_MEMORY_PATH") or "").strip()
-        self.path = Path(raw) if raw else Path.cwd() / ".ainl_vector_memory.json"
+        if raw:
+            self.path = Path(raw)
+        else:
+            self.path = Path.home() / ".openclaw" / "ainl_vector_memory.json"
         self._records: List[Dict[str, Any]] = []
         self._load()
 
@@ -63,13 +66,14 @@ class VectorMemoryAdapter(RuntimeAdapter):
         payload = {"version": 1, "updated_at": time.time(), "records": self._records}
         self.path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    def _search(self, query: str, limit: int) -> List[Dict[str, Any]]:
+    def _search(self, query: str, limit: int, min_score: float = 0.0) -> List[Dict[str, Any]]:
         lim = max(1, min(int(limit), 500))
+        floor = max(0.0, float(min_score))
         ranked: List[Tuple[float, Dict[str, Any]]] = []
         for rec in self._records:
             text = str(rec.get("text") or "")
             s = _score(query, text)
-            if s > 0:
+            if s > floor:
                 ranked.append((s, rec))
         ranked.sort(key=lambda x: -x[0])
         out: List[Dict[str, Any]] = []
@@ -118,7 +122,13 @@ class VectorMemoryAdapter(RuntimeAdapter):
                 raise AdapterError(f"vector_memory.{verb} requires query string")
             query = str(args[0])
             limit = int(args[1]) if len(args) > 1 and args[1] is not None else 20
-            return self._search(query, limit)
+            min_score = 0.0
+            if len(args) > 2 and args[2] is not None:
+                try:
+                    min_score = float(args[2])
+                except (TypeError, ValueError) as e:
+                    raise AdapterError(f"vector_memory.{verb} min_score must be a number") from e
+            return self._search(query, limit, min_score=min_score)
         if verb == "UPSERT":
             if len(args) < 4:
                 raise AdapterError("vector_memory.UPSERT requires namespace kind record_id text [payload_json]")

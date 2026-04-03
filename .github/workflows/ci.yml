@@ -104,6 +104,18 @@ jobs:
             tests/test_emits_artifacts.py \
             tests/test_conformance.py::test_minimal_api_emit_openapi_has_path
 
+      - name: Wishlist examples strict + no-network smoke (01, 05b)
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/test_wishlist_examples_strict.py
+          python -m cli.main run examples/wishlist/01_cache_and_memory.ainl --json \
+            --frame-json '{"session_key":"ci","note":"hello"}' 2>/dev/null \
+            | python -c "import sys,json; d=json.load(sys.stdin); assert d.get('ok') is True, d"
+          python -m cli.main run examples/wishlist/05b_unified_llm_offline_config.ainl --json \
+            --config examples/wishlist/fixtures/llm_offline.yaml \
+            --frame-json '{"user_query":"ci rust smoke"}' 2>/dev/null \
+            | python -c "import sys,json; d=json.load(sys.stdin); assert d.get('ok') is True, d; assert 'OFFLINE_LLM' in str(d.get('result')), d"
+
   conformance-matrix:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest

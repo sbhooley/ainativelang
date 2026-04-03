@@ -1,0 +1,20 @@
+# 5) Multi-model orchestration — route by keyword, then llm_query (mock or real bridge).
+# Prefer unified llm + config.yaml: see 05b_unified_llm_offline_config.ainl + fixtures/llm_offline.yaml (docs/LLM_ADAPTER_USAGE.md).
+# AINL: routing graph + llm_query.QUERY. ArmaraOS: API keys, AINL_LLM_QUERY_URL, and model policy live on the host.
+#
+# Run (deterministic mock; no network):
+#   AINL_ENABLE_LLM_QUERY=true AINL_LLM_QUERY_MOCK=true \
+#     python -m cli.main run examples/wishlist/05_route_then_llm_mock.ainl --json \
+#     --enable-adapter llm_query \
+#     --frame '{"user_query":"debug my rust borrow checker error"}'
+# Validate: python -m cli.main validate examples/wishlist/05_route_then_llm_mock.ainl --strict
+
+wishlist_05_route_then_llm_mock:
+  in: user_query
+
+  is_rust = core.contains user_query "rust"
+  if is_rust:
+    R llm_query.QUERY user_query "rust-expert" 256 ->out
+    out out
+  R llm_query.QUERY user_query "general-assistant" 256 ->out
+  out out

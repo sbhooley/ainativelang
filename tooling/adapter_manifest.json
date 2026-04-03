@@ -22,6 +22,7 @@
         "UPPER",
         "REPLACE",
         "CONTAINS",
+        "GET",
         "SUBSTR",
         "PARSE",
         "STRINGIFY",
@@ -30,7 +31,8 @@
         "ISO_TS",
         "ENV",
         "SLEEP",
-        "ECHO"
+        "ECHO",
+        "ID"
       ],
       "effect_default": "pure",
       "privilege_tier": "pure",
@@ -103,13 +105,25 @@
       "support_tier": "compatibility",
       "strict_contract": true,
       "recommended_lane": "noncanonical",
-      "verbs": ["G", "P", "NEXT", "ECHO", "OP"],
+      "verbs": ["G", "P", "NEXT", "ECHO", "OP", "EXEC", "RUN"],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
       "destructive": true,
       "network_facing": false,
       "sandbox_safe": false,
       "notes": "External extension adapter namespace used in runtime tests."
+    },
+    "fanout": {
+      "support_tier": "core",
+      "strict_contract": true,
+      "recommended_lane": "canonical",
+      "verbs": ["ALL"],
+      "effect_default": "io",
+      "privilege_tier": "operator_sensitive",
+      "destructive": true,
+      "network_facing": false,
+      "sandbox_safe": false,
+      "notes": "Parallel fan-out over the runtime adapter registry (ThreadPoolExecutor); each sub-call inherits policy context."
     },
     "wasm": {
       "support_tier": "core",
@@ -481,6 +495,18 @@
       "network_facing": true,
       "sandbox_safe": false,
       "notes": "Optional ad-hoc LLM query adapter. Enable via --enable-adapter llm_query or AINL_ENABLE_LLM_QUERY=true. Supports R llm_query query ... and R llm_query.QUERY ..."
+    },
+    "llm": {
+      "support_tier": "core",
+      "strict_contract": true,
+      "recommended_lane": "canonical",
+      "verbs": ["COMPLETION"],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "Unified LLM runtime adapter from config.yaml via register_llm_adapters; use R llm.COMPLETION prompt [max_tokens]. Provider selection comes from llm.fallback_chain (includes offline for tests)."
     },
     "openclaw_memory": {
       "support_tier": "extension_openclaw",

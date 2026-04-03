@@ -1,0 +1,16 @@
+# 2) Semantic-ish retrieval via vector_memory (keyword overlap scoring in core repo).
+# ArmaraOS: point AINL_VECTOR_MEMORY_PATH at a host-writable file; optional retention policy in host.
+#
+# Run:
+#   AINL_VECTOR_MEMORY_PATH=/tmp/w02_vm.json \
+#     python -m cli.main run examples/wishlist/02_vector_semantic_search.ainl --json \
+#     --frame '{"namespace":"sessions","doc_id":"d1","text":"asyncio task groups","query":"asyncio"}'
+# Validate: python -m cli.main validate examples/wishlist/02_vector_semantic_search.ainl --strict
+
+wishlist_02_vector_semantic_search:
+  in: namespace doc_id text query
+
+  R vector_memory.UPSERT namespace "chunk" doc_id text "{}" ->_u
+  R vector_memory.SEARCH query 8 0.1 ->raw_hits
+  R core.filter_high_score raw_hits 0.1 ->hits
+  out hits

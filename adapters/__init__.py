@@ -20,6 +20,7 @@ from .registry import LLMAdapterRegistry  # noqa: F401
 from .llm.base import AbstractLLMAdapter, LLMResponse, LLMUsage  # noqa: F401
 from .llm.openrouter import OpenRouterAdapter  # noqa: F401
 from .llm.ollama import OllamaAdapter  # noqa: F401
+from .llm.offline import OfflineLLMAdapter  # noqa: F401
 from .llm.anthropic import AnthropicAdapter  # noqa: F401
 from .llm.cohere import CohereAdapter  # noqa: F401
 from .llm_runtime import LLMRuntimeAdapter  # noqa: F401
@@ -44,6 +45,7 @@ __all__ = [
     "LLMUsage",
     "OpenRouterAdapter",
     "OllamaAdapter",
+    "OfflineLLMAdapter",
     "AnthropicAdapter",
     "CohereAdapter",
     "LLMRuntimeAdapter",

@@ -1,0 +1,7 @@
+# Minimal LLM config for wishlist 05b: unified `llm` adapter (no network).
+llm:
+  default_provider: offline
+  fallback_chain: [offline]
+  providers:
+    offline:
+      prefix: OFFLINE_LLM

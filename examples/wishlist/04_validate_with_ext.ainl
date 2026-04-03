@@ -1,0 +1,14 @@
+# 4) Automated validation — ext.EXEC runs a subprocess (e.g. py_compile).
+# AINL: graph + ext adapter (env-gated). ArmaraOS: never pass user-controlled argv; set cwd + allowlist.
+#
+# Run (repo root; requires AINL_EXT_ALLOW_EXEC=1):
+#   AINL_EXT_ALLOW_EXEC=1 python -m cli.main run examples/wishlist/04_validate_with_ext.ainl --json \
+#     --enable-adapter ext \
+#     --frame '{"py_file":"examples/wishlist/fixtures/syntax_ok.py"}'
+# Validate: python -m cli.main validate examples/wishlist/04_validate_with_ext.ainl --strict
+
+wishlist_04_validate_with_ext:
+  in: py_file
+
+  R ext.EXEC python3 -m py_compile py_file ->ex
+  out ex

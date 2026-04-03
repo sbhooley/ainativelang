@@ -20,6 +20,7 @@ class LLMAdapterRegistry:
 try:
     from adapters.llm import openrouter as _openrouter_adapter  # noqa: F401
     from adapters.llm import ollama as _ollama_adapter  # noqa: F401
+    from adapters.llm import offline as _offline_adapter  # noqa: F401
 except Exception:
     # Adapters are optional; registry can still be used without them.
     pass

@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "project": "AINL",
   "description": "Discoverable bootstrap for bots and agents working in the AINL/OpenClaw repo. Pointers only; not an execution engine.",
   "primary_onboarding_doc": "docs/BOT_ONBOARDING.md",

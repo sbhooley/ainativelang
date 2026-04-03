@@ -1,0 +1,14 @@
+# Requires a running Ollama daemon (default http://127.0.0.1:11434) and a pulled model.
+# Example: `ollama pull llama3.2`
+# Run 05b:
+#   export AINL_CONFIG=examples/wishlist/fixtures/llm_ollama.example.yaml
+#   python -m cli.main run examples/wishlist/05b_unified_llm_offline_config.ainl --json \
+#     --frame-json '{"user_query":"Say hello in 5 words."}'
+llm:
+  default_provider: ollama
+  fallback_chain: [ollama]
+  providers:
+    ollama:
+      base_url: http://127.0.0.1:11434
+      model: llama3.2
+      json_mode: false

@@ -2,7 +2,7 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.4.0** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.4.1** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
 ## Public API surface (for downstream apps)
 
@@ -87,6 +87,23 @@ git push origin vX.Y.Z
 ```
 
 Tags should match **`pyproject.toml`** `version` (with or without `v` prefix — pick one convention and stick to it).
+
+### GitHub Release → PyPI (OIDC)
+
+The workflow **`.github/workflows/publish-pypi.yml`** runs on **`release: published`**. After **`main`** is green (especially **`parser-compat`** — wishlist strict + smoke), create a **GitHub Release** for tag **`vX.Y.Z`** and publish it; trusted publishing uploads the wheel/sdist to PyPI. Alternatively use **Actions → Publish PyPI → Run workflow** once the tag exists.
+
+**Pre-flight (local parity with CI wishlist gate):**
+
+```bash
+python -m pytest -q tests/test_wishlist_examples_strict.py
+python -m cli.main run examples/wishlist/01_cache_and_memory.ainl --json \
+  --frame-json '{"session_key":"local","note":"ok"}' 2>/dev/null
+python -m cli.main run examples/wishlist/05b_unified_llm_offline_config.ainl --json \
+  --config examples/wishlist/fixtures/llm_offline.yaml \
+  --frame-json '{"user_query":"local smoke"}' 2>/dev/null
+```
+
+(`2>/dev/null` drops the optional sandbox shim line so **`--json`** stdout is clean when piping.)
 
 ## Optional extras (document for users)
 

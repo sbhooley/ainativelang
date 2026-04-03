@@ -32,6 +32,38 @@ llm:
 
 Environment variables are expanded automatically (e.g., `${OPENROUTER_API_KEY}`).
 
+### Offline provider (no network)
+
+For **strict validation**, **CI**, or **local demos** without API keys, register the built-in **`offline`** provider — deterministic text, no HTTP:
+
+```yaml
+llm:
+  default_provider: offline
+  fallback_chain: [offline]
+  providers:
+    offline:
+      prefix: OFFLINE_LLM   # optional; echoed in completion text
+```
+
+Example graph + fixture: **`examples/wishlist/05b_unified_llm_offline_config.ainl`** and **`examples/wishlist/fixtures/llm_offline.yaml`**. Compare with legacy **`llm_query`** + **`AINL_LLM_QUERY_MOCK`** in **`examples/wishlist/05_route_then_llm_mock.ainl`**.
+
+### OpenRouter or Ollama (live smoke)
+
+Use the same graph (**`05b`**) with a **network-facing** provider — copy and edit the checked-in **examples** (do not commit API keys):
+
+- **`examples/wishlist/fixtures/llm_openrouter.example.yaml`** — set **`OPENROUTER_API_KEY`** in the environment, then point **`AINL_CONFIG`** at your copy (or pass **`--config`**).
+- **`examples/wishlist/fixtures/llm_ollama.example.yaml`** — start **Ollama** locally and ensure the **`model`** is pulled (**`ollama pull …`**).
+
+Example:
+
+```bash
+export OPENROUTER_API_KEY=sk-or-...
+export AINL_CONFIG=/path/to/your/llm_openrouter.yaml   # copy of llm_openrouter.example.yaml
+python -m cli.main run examples/wishlist/05b_unified_llm_offline_config.ainl --json \
+  --frame-json '{"user_query":"Say hi in five words."}'
+```
+
+The result **`result`** field is the completion **string** extracted via **`R core.GET … "content"`** from the **`llm`** adapter envelope.
 
 Tell AINL to load this configuration:
 

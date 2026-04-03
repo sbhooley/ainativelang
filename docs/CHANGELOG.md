@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.4.1 (April 3, 2026) — Wishlist CI, offline LLM provider, core.GET
+
+- **feat(llm)**: register **`offline`** **`AbstractLLMAdapter`** (deterministic, no network) for **`config.yaml`** + **`register_llm_adapters`** demos and CI; **`LLMRuntimeAdapter`** normalizes verb casing so **`R llm.COMPLETION`** matches **`completion`**.
+- **feat(core)**: implement **`core.GET`** on **`CoreBuiltinAdapter`** (deep key/index read via **`deep_get`**); add strict **`core.GET`** + **`llm.COMPLETION`** entries to **`tooling/effect_analysis.py`**.
+- **examples(wishlist)**: add **`05b_unified_llm_offline_config.ainl`** + **`fixtures/llm_offline.yaml`** — unified **`llm`** path vs **`05_route_then_llm_mock.ainl`** (**`llm_query`** + mock env).
+- **ci**: **`parser-compat`** runs **`tests/test_wishlist_examples_strict.py`** plus no-network smoke runs for wishlist **01** and **05b**.
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.1**.
+
 ## v1.4.0 (April 1, 2026) — ArmaraOS host pack + release readiness
 
 - **release**: bump **`pyproject.toml`** / PyPI **`ainl` 1.4.0**; align **`RUNTIME_VERSION` 1.4.0** in **`runtime/engine.py`** (mirrored **`tests/emits/server/runtime/engine.py`**); **`CITATION.cff`** **`version`** / **`date-released`**; **`tooling/bot_bootstrap.json`** schema **`version`**; **`ainl serve`** **`GET /health`** reports **`version`** from **`RUNTIME_VERSION`**.

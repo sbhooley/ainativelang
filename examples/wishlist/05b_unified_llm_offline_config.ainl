@@ -1,0 +1,22 @@
+# 5b) Same routing as 05 — unified `llm` adapter + config.yaml (see docs/LLM_ADAPTER_USAGE.md).
+# Compare: `05_route_then_llm_mock.ainl` uses deprecated `llm_query` + mock env.
+#
+# Run (offline deterministic; no API keys):
+#   python -m cli.main run examples/wishlist/05b_unified_llm_offline_config.ainl --json \
+#     --config examples/wishlist/fixtures/llm_offline.yaml \
+#     --frame-json '{"user_query":"debug my rust borrow checker error"}'
+# Or:  export AINL_CONFIG=examples/wishlist/fixtures/llm_offline.yaml   (same command without --config)
+# Live providers: copy fixtures/llm_openrouter.example.yaml or llm_ollama.example.yaml, set AINL_CONFIG, then run as above.
+# Validate: python -m cli.main validate examples/wishlist/05b_unified_llm_offline_config.ainl --strict
+
+wishlist_05b_unified_llm_offline_config:
+  in: user_query
+
+  is_rust = core.contains user_query "rust"
+  if is_rust:
+    R llm.COMPLETION user_query 256 ->resp_r
+    R core.GET resp_r "content" ->out
+    out out
+  R llm.COMPLETION user_query 256 ->resp_g
+  R core.GET resp_g "content" ->out
+  out out

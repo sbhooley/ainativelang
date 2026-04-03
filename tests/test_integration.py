@@ -32,3 +32,18 @@ def test_register_llm_adapters_registers_llm_and_providers():
     assert isinstance(llm_adapter._direct_adapter, FallbackLLMAdapter)
     # The fallback should have 2 adapters inside
     assert len(llm_adapter._direct_adapter._adapters_with_breakers) == 2
+
+
+def test_register_llm_adapters_offline_provider_no_network():
+    config = {
+        "llm": {
+            "fallback_chain": ["offline"],
+            "providers": {"offline": {"prefix": "TEST_OFFLINE"}},
+        }
+    }
+    runtime_reg = RuntimeAdapterRegistry(allowed=["core", "llm"])
+    register_llm_adapters(runtime_reg, config)
+    llm_adapter = runtime_reg._adapters["llm"]
+    out = llm_adapter.call("completion", ["hello"], {})
+    assert isinstance(out, dict)
+    assert out.get("content", "").startswith("TEST_OFFLINE:")

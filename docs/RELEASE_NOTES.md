@@ -1,5 +1,13 @@
 # Release notes
 
+## AINL v1.4.1 — Wishlist smoke + offline LLM provider (2026-04-03)
+
+**PyPI / runtime:** **`ainativelang` 1.4.1** — **`RUNTIME_VERSION` `1.4.1`**.
+
+- **Offline LLM provider** (`offline`): use in **`config.yaml`** `llm.fallback_chain` for deterministic **`R llm.COMPLETION`** without API keys (see **`examples/wishlist/fixtures/llm_offline.yaml`** and **`05b_unified_llm_offline_config.ainl`**).
+- **Core:** **`R core.GET`** is implemented on **`CoreBuiltinAdapter`** (structured field reads).
+- **CI:** strict wishlist validation + smoke runs for graphs **01** and **05b** in **`parser-compat`**.
+
 ## AINL v1.4.0 — ArmaraOS host pack + release readiness (2026-04-01)
 
 **PyPI / runtime:** **`ainativelang` 1.4.0** — **`RUNTIME_VERSION` `1.4.0`**.

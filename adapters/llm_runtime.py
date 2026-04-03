@@ -58,6 +58,7 @@ class LLMRuntimeAdapter(RuntimeAdapter):
         args expected: [prompt: str, max_tokens: int (optional)]
         Returns dict with keys: 'content', 'usage' (with prompt_tokens, completion_tokens, total_tokens)
         """
+        target = (target or "").strip().lower()
         if target != "completion":
             raise AdapterError(f"Unsupported target for LLM adapter: {target}. Use 'completion'.")
         if not args:

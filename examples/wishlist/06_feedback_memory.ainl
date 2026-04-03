@@ -1,0 +1,17 @@
+# 6) Persistent learning loop — memory.APPEND for corrections; memory.GET reads prior turn payload.
+# AINL: memory adapter. ArmaraOS: retention, encryption, and which namespaces are allowed for which agent.
+#
+# Run:
+#   AINL_MEMORY_DB=/tmp/w06_mem.sqlite3 \
+#     python -m cli.main run examples/wishlist/06_feedback_memory.ainl --json \
+#     --frame '{"session_id":"u1","correction":"use pathlib instead of os.path"}'
+# Validate: python -m cli.main validate examples/wishlist/06_feedback_memory.ainl --strict
+
+wishlist_06_feedback_memory:
+  in: session_id correction
+
+  R core.concat "{\"correction\":\"" correction "\"}" ->blob
+  R core.parse blob ->entry
+  R memory.APPEND "workflow" "feedback" session_id entry null ->_a
+  R memory.GET "workflow" "turn" session_id ->prior
+  out prior

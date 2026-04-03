@@ -144,6 +144,14 @@
           ],
           "returns": "null",
           "side_effect": "blocks"
+        },
+        "id": {
+          "args": [
+            "any"
+          ],
+          "returns": "any",
+          "pure": true,
+          "notes": "Identity / object literal materialization (same as echo for values)."
         }
       }
     },
@@ -679,6 +687,19 @@
       },
       "returns": "List of lead objects with enriched fields (name, city, phone, website, etc.)"
     },
+    "fanout": {
+      "description": "Parallel execution of multiple adapter calls via the runtime registry",
+      "targets": {
+        "ALL": {
+          "args": [
+            "json_plans"
+          ],
+          "returns": "[any]",
+          "pure": false,
+          "notes": "Each plan is [adapter, target, ...args]; requires _adapter_registry in call context."
+        }
+      }
+    },
     "cache": {
       "description": "Persistent key-value store (JSON file)",
       "targets": {
@@ -904,7 +925,7 @@
         }
       },
       "config": {
-        "path_env": "AINL_VECTOR_MEMORY_PATH (default: .ainl_vector_memory.json)"
+        "path_env": "AINL_VECTOR_MEMORY_PATH (default: ~/.openclaw/ainl_vector_memory.json)"
       },
       "notes": [
         "Canonical dotted: R vector_memory.SEARCH \"q\" [limit] ->out; upsert uses split form R vector_memory upsert ... ->out.",

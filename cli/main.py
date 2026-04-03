@@ -6,6 +6,7 @@ import asyncio
 import ast
 import json
 import os
+import sys
 import re
 from pathlib import Path
 import shutil
@@ -92,6 +93,9 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "code_context",
         "tool_registry",
         "langchain_tool",
+        "llm",
+        "llm_query",
+        "fanout",
     ]
     if args.replay_adapters:
         data = json.loads(Path(args.replay_adapters).read_text(encoding="utf-8"))
@@ -355,6 +359,11 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
         or str(Path.home() / ".openclaw" / "ainl_memory.sqlite3")
     )
     reg.register("memory", MemoryAdapter(db_path=mem_db))
+    from adapters.fanout import FanoutAdapter
+    from adapters.local_cache import LocalFileCacheAdapter
+
+    reg.register("fanout", FanoutAdapter())
+    reg.register("cache", LocalFileCacheAdapter())
     if "vector_memory" in enabled:
         from adapters.vector_memory import VectorMemoryAdapter
 
@@ -540,7 +549,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         trajectory_path = "/dev/stdout" if raw == "-" else str(Path(raw).expanduser())
     elif getattr(args, "log_trajectory", False) or env_traj in ("1", "true", "yes", "on"):
         trajectory_path = str(Path(src_path).parent / (Path(src_path).stem + ".trajectory.jsonl"))
-    sandbox_client = SandboxClient.try_connect(logger=lambda msg: print(msg))
+    sandbox_client = SandboxClient.try_connect(logger=lambda msg: print(msg, file=sys.stderr))
     eng = RuntimeEngine.from_code(
         code,
         strict=args.strict,
@@ -1154,6 +1163,24 @@ def cmd_serve(args: argparse.Namespace) -> int:
         return 1
     metrics = MetricsCollector()
 
+    serve_args = argparse.Namespace(
+        enable_adapter=[],
+        http_allow_host=["localhost"],
+        http_timeout_s=5.0,
+        http_max_response_bytes=1_000_000,
+        record_adapters="",
+        replay_adapters="",
+        memory_db="",
+    )
+    serve_reg = _adapter_registry_from_args(serve_args)
+    serve_cfg = _load_config(serve_args)
+    if serve_cfg.get("llm") and (
+        serve_cfg["llm"].get("fallback_chain") or serve_cfg["llm"].get("providers")
+    ):
+        from adapters import register_llm_adapters
+
+        register_llm_adapters(serve_reg, serve_cfg)
+    _register_enabled_adapters(serve_reg, serve_args)
 
     class AINLRequestHandler(BaseHTTPRequestHandler):
         def do_POST(self):
@@ -1210,16 +1237,21 @@ def cmd_serve(args: argparse.Namespace) -> int:
                     strict = payload.get("strict", False)
                     frame = payload.get("frame", {})
                     start = time.time()
-                    c = AICodeCompiler(strict_mode=strict)
-                    ir = c.compile(source, emit_graph=True)
-                    compile_errors = ir.get("errors", [])
-                    compile_duration = (time.time() - start) * 1000
-                    if compile_errors:
-                        metrics.record_validation(False, compile_errors, compile_duration)
-                        self._json_response(400, {"ok": False, "errors": compile_errors})
-                        return
-                    engine = RuntimeEngine(ir)
-                    result = engine.run(source, frame=frame)
+                    try:
+                        result = RuntimeEngine.run(
+                            source,
+                            frame=frame,
+                            strict=strict,
+                            adapters=serve_reg,
+                        )
+                    except RuntimeError as e:
+                        msg = str(e)
+                        if msg.startswith("compile failed"):
+                            compile_duration = (time.time() - start) * 1000
+                            metrics.record_validation(False, [{"message": msg}], compile_duration)
+                            self._json_response(400, {"ok": False, "errors": [{"message": msg}]})
+                            return
+                        raise
                     run_duration = (time.time() - start) * 1000
                     ok = result.get("ok", False) if isinstance(result, dict) else False
                     errors = result.get("errors", []) if isinstance(result, dict) else []

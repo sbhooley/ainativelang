@@ -4334,7 +4334,7 @@ class AICodeCompiler:
         stem = str(source_stem or "ainl_graph").replace("\\", "/").split("/")[-1]
 
         py = (
-            '"""DISCOVERABILITY / GETTING STARTED (AINL v1.4.0 – Solana strict graphs)\n'
+            '"""DISCOVERABILITY / GETTING STARTED (AINL v1.4.1 – Solana strict graphs)\n'
             "\n"
             "AINL provides native Solana support for deterministic prediction-market agents: PDA derivation, Pyth\n"
             "oracles (legacy PriceAccount + PriceUpdateV2), Hermes fallback, and low-cost settlement flows with\n"

@@ -1,0 +1,13 @@
+# 3) Parallel tool execution — fanout.ALL over adapter plans (thread pool).
+# ArmaraOS: optional AINL_FANOUT_MAX_WORKERS / AINL_FANOUT_DISABLE for host policy.
+#
+# Run:
+#   python -m cli.main run examples/wishlist/03_parallel_fanout.ainl --json
+# Validate: python -m cli.main validate examples/wishlist/03_parallel_fanout.ainl --strict
+
+wishlist_03_parallel_fanout:
+  in:
+
+  fan_json = "[[\"core\",\"add\",2,3],[\"core\",\"mul\",4,5],[\"core\",\"concat\",\"a\",\"b\"]]"
+  R fanout.ALL fan_json ->results
+  out results

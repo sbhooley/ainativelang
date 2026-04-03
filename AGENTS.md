@@ -4,7 +4,7 @@
 
 ## What This Repo Is
 
-Python compiler + runtime for AINL (AI Native Language), version 1.4.0.
+Python compiler + runtime for AINL (AI Native Language), version 1.4.1.
 AINL compiles `.ainl` source files into an IR (intermediate representation)
 graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
