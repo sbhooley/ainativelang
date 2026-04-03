@@ -52,7 +52,16 @@
       "examples/code_context_demo.ainl",
       "examples/test_adapters_full.ainl",
       "examples/test_nested.ainl",
-      "examples/test_phase2_common_modules.ainl"
+      "examples/test_phase2_common_modules.ainl",
+      "examples/wishlist/01_cache_and_memory.ainl",
+      "examples/wishlist/02_vector_semantic_search.ainl",
+      "examples/wishlist/03_parallel_fanout.ainl",
+      "examples/wishlist/04_validate_with_ext.ainl",
+      "examples/wishlist/05_route_then_llm_mock.ainl",
+      "examples/wishlist/05b_unified_llm_offline_config.ainl",
+      "examples/wishlist/06_feedback_memory.ainl",
+      "examples/wishlist/07_parallel_http.ainl",
+      "examples/wishlist/08_code_review_context.ainl"
     ],
     "non-strict-only": [
       "examples/api_only.lang",
