@@ -2,10 +2,10 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.2.8
+**Version:** 1.4.1
 **Project status:** active human + AI co-development
-**Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `scripts/runtime_runner_service.py`
-**Reference ecosystem:** OpenClaw/NemoClaw-integrated autonomous workflows, canonical strict validation, multi-target emitters, sandboxed operator deployments
+**Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `cli/main.py` (including **`ainl serve`** REST: validate / compile / run / health), optional FastAPI runner (`scripts/runtime_runner_service.py` for richer operator endpoints)
+**Reference ecosystem:** OpenClaw / NemoClaw / Hermes Agent / ArmaraOS host integrations, canonical strict validation, multi-target emitters (including Solana clients and Hermes skill bundles), sandboxed operator deployments
 
 ---
 
@@ -14,6 +14,8 @@ Graph-based agent orchestration, canonical IR, and compile-once / run-many execu
 AI Native Lang (AINL) is a graph-first programming system designed for AI-oriented workflow generation, validation, and execution. It provides a compact domain-specific language (DSL) that compiles into a canonical intermediate representation (IR) consisting of nodes and edges. The system is built around deterministic runtime execution, strict validation, explicit side effects, pluggable adapters, and optional multi-target emission to downstream artifacts such as FastAPI, React/TypeScript, Prisma, OpenAPI, Docker, cron, and other deployment surfaces.
 
 AINL addresses an emerging systems problem in modern AI engineering: as large language models (LLMs) gain larger context windows and stronger reasoning capabilities, many agent systems still rely on prompt loops for orchestration, state handling, and tool invocation. This creates rising token cost, hidden state, degraded predictability, and weak auditability. AINL proposes a different architecture: use the model to generate a compact graph workflow once, then rely on a deterministic runtime to execute it repeatedly. In this framing, AINL makes workflow orchestration an explicit **energy consumption pattern design** problem, shifting economics from recurring "pay-per-run thinking" toward compile-once, run-many execution with bounded model use.
+
+The surface language ships **two equivalent syntaxes**—compact (Python-like, recommended for new code; see `examples/compact/`) and opcode (low-level)—both compiling to the same IR. As of **v1.4.1**, the reference tree adds first-class **Solana** workflows (strict-valid demos, optional `ainativelang[solana]`), **Hermes Agent** skill emission (`--emit hermes-skill`), **ArmaraOS** hand packages (`--target armaraos`), an optional tiered **`code_context`** adapter for repository indexing, and a packaged **LLM adapter layer** under `adapters/llm/` (with an **`offline`** deterministic provider for tests and CI).
 
 The language has been exercised in production-style OpenClaw workflows involving email, calendar, social monitoring, database access, infrastructure checks, queues, WebAssembly modules, cache, memory, and autonomous operational monitors. This whitepaper describes AINL's architecture, semantics, strict-mode guarantees, operational role, benchmark posture, and relevance to AI-native systems design.
 
@@ -25,11 +27,19 @@ AINL is positioned as the **authoring and validation layer** where an LLM (or hu
 
 AINL now emits optional runtime handoff metadata in compiled IR (`execution_requirements`, including `avm_policy_fragment` plus neutral isolation/capability/resource hints) so operators can pair the deterministic graph layer with AVM (`avmd`) or general sandbox runtimes (for example Firecracker, gVisor, Kubernetes Agent Sandbox, E2B-style environments) without changing language/runtime semantics.
 
-### Positioning note (v1.2.8–v1.3.3): OpenClaw operations, token economics, graph-authored intelligence, self-monitoring, and native Solana (since v1.3.1)
+### Positioning note (v1.2.8–v1.4.1): OpenClaw operations, host integrations, token economics, graph-authored intelligence, self-monitoring, Solana, and ArmaraOS
 
 Production OpenClaw stacks pin **workspace and adapter paths** (`OPENCLAW_WORKSPACE`, `AINL_MEMORY_DB`, `MONITOR_CACHE_JSON`, `AINL_FS_ROOT`), use **named profiles** (`tooling/ainl_profiles.json`, `ainl profile emit-shell`), and schedule **`scripts/run_intelligence.py`** for **startup context** (`intelligence/token_aware_startup_context.lang`), **session summarization** (`proactive_session_summarizer.lang`), **memory consolidation**, and **rolling budget hydration** into the monitor cache (`tooling/intelligence_budget_hydrate.py`). **v1.2.8** hardens **graph-preferred** intelligence programs against runtime pitfalls: no raw `{…}` object literals in **`X`** (use `core.parse`, **`obj`/`put`**, or **`arr`**); **`J`** returns a value in graph mode—it is **not** a jump to a label (use **`Call`** for subgraph entry); optional **`memory.list`** filters use **`null`** for omitted **`record_id_prefix`**, not `""`. Specs: **`docs/AINL_SPEC.md`**, **`docs/RUNTIME_COMPILER_CONTRACT.md`** (graph pitfalls), **`docs/INTELLIGENCE_PROGRAMS.md`**.
 
 Optional **embedding-backed** startup context (`AINL_STARTUP_USE_EMBEDDINGS`, non-stub **`AINL_EMBEDDING_MODE`**, **`bridge`** `embedding_workflow_index` / `embedding_workflow_search`, **`embedding_memory`**) and **startup token clamps** (`AINL_STARTUP_CONTEXT_TOKEN_MIN` / `AINL_STARTUP_CONTEXT_TOKEN_MAX`) complement **`ainl bridge-sizing-probe`** and observability docs toward **90–95%** token savings in stable paths—without changing core language semantics. Operator playbooks: **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**, **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`**, **`docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`**, **`docs/operations/TOKEN_CAPS_STAGING.md`**, **`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`**. A **weekly cap auto-tuner** (`scripts/auto_tune_ainl_caps.py`, also `intelligence/auto_tune_ainl_caps.lang`; invoke via `python3 scripts/run_intelligence.py auto_tune_ainl_caps` or `scripts/run_auto_tune_ainl_caps.sh`) reads monitor / bridge / host config and writes **`tuning_recommendations.json`** (optional apply via `OPENCLAW_AINL_AUTO_APPLY`). In **1.2.10**, this intelligence lane is complemented by an optional **AINL-native monitoring pack** (`intelligence/monitor/`) with **LLM adapter interfaces**, **cost tracking**, and **budget enforcement** wired into a small Flask/Prometheus dashboard; see **`docs/MONITORING_OPERATIONS.md`** and **`docs/INTELLIGENCE_PROGRAMS_INTEGRATION.md`** for how AINL’s language-level graphs, OpenClaw intelligence programs, and low-level cost telemetry align.
+
+### Positioning note (v1.3.0–v1.4.1): Hermes, OpenClaw CLI, Solana, ArmaraOS, and core/runtime polish
+
+- **v1.3.0 — Hermes Agent + OpenClaw UX:** official **`ainl install-mcp --host hermes`** / **`ainl hermes-install`**, Hermes skill pack under **`skills/hermes/`**, **`ainl compile --emit hermes-skill`** (alias **`--target hermes`**) for drop-in skill bundles; **`ainl install openclaw --workspace PATH`** one-shot setup; **`ainl status`** unified budget/cron/token view; **`ainl doctor --ainl`** OpenClaw integration checks; optional **`code_context`** adapter (index/query/compress/impact) — **`docs/adapters/CODE_CONTEXT.md`**, **`docs/HERMES_INTEGRATION.md`**, **`docs/QUICKSTART_OPENCLAW.md`**.
+- **v1.3.1 — Solana:** strict-valid **`examples/solana_demo.ainl`**, **`examples/prediction_market_demo.ainl`**; **`adapters/solana`** prediction-market and Pyth flows; **`--emit solana-client`** / **`blockchain-client`**; **`docs/solana_quickstart.md`**.
+- **v1.3.2–v1.3.3 — Packaging:** core dependencies **`httpx`**, **`requests`**, **`PyYAML`** so wheel installs and **`ainl-mcp`** load cleanly on minimal environments.
+- **v1.4.0 — ArmaraOS:** **`ainl emit --target armaraos`** hand package (`HAND.toml`, IR JSON, `security.json`); **`ainl install-mcp --host armaraos`** for **`~/.armaraos/config.toml`**; **`ainl status --host armaraos`**; **`docs/ARMARAOS_INTEGRATION.md`**.
+- **v1.4.1 — Core + LLM:** **`R core.GET`** (structured reads on **`CoreBuiltinAdapter`**); register **`offline`** **`AbstractLLMAdapter`** for deterministic **`R llm.COMPLETION`** in config-driven demos/CI; strict wishlist smoke in **`parser-compat`**. See **`docs/CHANGELOG.md`**, **`docs/RELEASE_NOTES.md`**.
 
 ---
 
@@ -138,7 +148,7 @@ AINL's design reflects a specific AI-native philosophy.
 
 ### 4.1 Compact and Low-Entropy by Design
 
-AINL is intentionally not optimized for traditional human readability. Its surface syntax is compact and regularized to improve generation reliability for AI systems.
+AINL is intentionally not optimized for traditional human readability. Its **opcode** surface syntax is compact and regularized to improve generation reliability for AI systems. The reference implementation also accepts **compact syntax** (Python-like blocks; see `examples/compact/`) as an equivalent authoring path—both lower to the same canonical IR.
 
 This is not a rejection of human use; it is a choice about primary optimization target.
 
@@ -333,7 +343,7 @@ Canonical specs: `docs/architecture/STATE_DISCIPLINE.md`,
 `docs/adapters/MEMORY_CONTRACT.md`, `docs/getting_started/HOST_MCP_INTEGRATIONS.md`,
 `docs/ainl_openclaw_unified_integration.md`, `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 
-**OpenClaw operator bundle (v1.2.8–v1.3.3):** **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** (install, upgrade survival, profiles, cron, bootstrap preference, verification) and **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`** (what the repo ships vs what the host must configure). **`docs/BOT_ONBOARDING.md`** exposes machine-readable keys (`openclaw_ainl_gold_standard`, `openclaw_host_ainl_1_2_8`) for agents.
+**OpenClaw operator bundle (v1.2.8–v1.4.1):** **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** (install, upgrade survival, profiles, cron, bootstrap preference, verification) and **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`** (what the repo ships vs what the host must configure). **`docs/BOT_ONBOARDING.md`** exposes machine-readable keys (`openclaw_ainl_gold_standard`, `openclaw_host_ainl_1_2_8`) for agents. **v1.3.0+** adds **`ainl install openclaw`**, **`ainl status`**, and **`ainl doctor --ainl`** as first-class operator entrypoints (see **`docs/QUICKSTART_OPENCLAW.md`**).
 
 ---
 
@@ -347,7 +357,7 @@ Adapters provide the implementation layer for effects while keeping the language
 
 Examples include:
 
-- `core`
+- `core` (including **`core.GET`** for structured field reads as of v1.4.1)
 - `http`
 - `sqlite`
 - `postgres`
@@ -365,6 +375,9 @@ Examples include:
 - `queue`
 - `wasm`
 - `memory`
+- `solana` (on-chain RPC and prediction-market oriented verbs; optional **`pip install "ainativelang[solana]"`** for live signing)
+- `llm` (unified LLM surface with provider implementations under **`adapters/llm/`**, including an **`offline`** deterministic adapter for tests and CI — v1.4.1)
+- `code_context` (optional tiered repository index/query/compress for agent tooling — v1.3.0)
 - OpenClaw-specific operational extensions
 
 Relational adapters (`sqlite`, `postgres`, `mysql`) and service adapters (`redis`, `dynamodb`, `airtable`, `supabase`) share a common contract surface exposed through `ADAPTER_REGISTRY.json` and `tooling/adapter_manifest.json` (verbs, privilege tiers, destructive/network-facing flags, async capability). Several of them also expose **reactive/event feeds**—DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, and Airtable webhooks—normalized into bounded, checkpointable event batches suitable for async graphs (see `docs/reactive/REACTIVE_EVENTS.md` and the `examples/reactive/` gallery). For production deployments, AINL now ships explicit durability and rollout guidance with `docs/reactive/ADVANCED_DURABILITY.md`, reusable helpers in `templates/durability/`, and combined worker starters in `templates/production/`, all using existing adapters with no additional runtime code.
@@ -405,16 +418,22 @@ AINL is not just a runtime language. It is also an emitter source.
 
 Supported target classes include:
 
-- FastAPI
+- FastAPI / Python API surfaces
 - React/TypeScript
 - Prisma
 - OpenAPI
 - SQL
 - Docker / Compose
 - Kubernetes
+- Hermes skill bundles (`hermes-skill` / `hermes` alias)
+- Solana / generic blockchain Python clients (`solana-client`, `blockchain-client`)
+- ArmaraOS hand packages (`armaraos` — `HAND.toml` + IR + security manifest)
+- LangGraph / Temporal (via dedicated emitters and hybrid `S` lines — see **`docs/HYBRID_GUIDE.md`**)
 - MT5
 - Scraper outputs
 - Cron / queue related projections
+
+The CLI **`ainl emit --target <name>`** enumerates the current set (see **`docs/emitters/README.md`** and **`docs/RELEASING.md`**).
 
 ### 9.1 Single Spec, Many Targets
 
@@ -499,7 +518,7 @@ memory path via MCP without depending on OpenClaw's markdown layout. See
 **[AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents)**
 and `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 
-### 10.5 Intelligence runner, hydration, and cap tuning (v1.2.8–v1.3.3)
+### 10.5 Intelligence runner, hydration, and cap tuning (v1.2.8–v1.4.1)
 
 - **`scripts/run_intelligence.py`** — dispatches **`context`**, **`summarizer`**, **`consolidation`**, optional **`continuity`**, and **`auto_tune_ainl_caps`** (Python tool executed via subprocess). **`all`** runs the core trio (excludes auto-tune). Rolling **budget hydrate** merges workflow memory into the monitor cache when configured.
 - **`tooling/openclaw_workspace_env.example.sh`** — template for pinning **`OPENCLAW_WORKSPACE`** and AINL paths in cron/systemd.
@@ -719,9 +738,11 @@ Pre/post-run reports and graph-level tracing provide operational visibility beyo
 
 ## 15. Runner Service and Operator Boundary
 
-AINL includes a FastAPI-based runner service (`scripts/runtime_runner_service.py`) that exposes the runtime as a framework-agnostic HTTP boundary for external orchestrators, sandbox controllers, and agent platforms.
+AINL exposes the compiler and runtime over HTTP in two complementary ways: the **`ainl serve`** CLI (built from `cli/main.py`) provides a lean REST API (**`/health`**, **`/validate`**, **`/compile`**, **`/run`**) suitable for quick integration and CI; a fuller FastAPI runner service (`scripts/runtime_runner_service.py`) adds policy-gated execution, queues, metrics, and operator-oriented endpoints for external orchestrators, sandbox controllers, and agent platforms. Both report **`RUNTIME_VERSION`** (e.g. **1.4.1**) on versioned surfaces.
 
 ### 15.1 Endpoints
+
+The table below summarizes the **full FastAPI runner** (`scripts/runtime_runner_service.py`). The lean **`ainl serve`** command exposes **`GET /health`**, **`POST /validate`**, **`POST /compile`**, and **`POST /run`** with JSON request bodies (see **`AGENTS.md`**).
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -897,6 +918,11 @@ OpenClaw-specific adapters reflect a real deployment context and may require rei
 
 The following capabilities were listed as future work in earlier drafts and have since been implemented:
 
+- **Hermes Agent + OpenClaw operator UX (v1.3.0)** — **`ainl install-mcp --host hermes`**, **`ainl hermes-install`**, **`skills/hermes/`**, **`ainl compile --emit hermes-skill`**, docs **`docs/HERMES_INTEGRATION.md`**; **`ainl install openclaw`**, **`ainl status`**, **`ainl doctor --ainl`**; optional **`code_context`** adapter (**`docs/adapters/CODE_CONTEXT.md`**)
+- **Solana + emit clients (v1.3.0–v1.3.1)** — strict-valid **`examples/solana_demo.ainl`**, **`examples/prediction_market_demo.ainl`**; **`--emit solana-client`** / **`blockchain-client`**; **`docs/solana_quickstart.md`**
+- **ArmaraOS host pack (v1.4.0)** — **`ainl emit --target armaraos`**, **`ainl install-mcp --host armaraos`**, **`ainl status --host armaraos`**, **`docs/ARMARAOS_INTEGRATION.md`**
+- **Core + LLM CI polish (v1.4.1)** — **`R core.GET`**; **`offline`** LLM adapter for deterministic **`R llm.COMPLETION`**; packaging/tests per **`docs/CHANGELOG.md`**
+- **Lean HTTP API** — **`ainl serve`** (`/health`, `/validate`, `/compile`, `/run`) alongside the fuller runner service
 - **Policy tooling** — declarative policy validation at the runner boundary (`/run` with optional `policy` parameter, HTTP 403 on violation), including `forbidden_privilege_tiers` for privilege-class enforcement
 - **Runtime observability** — structured JSON logging, label-level tracing, adapter call recording and replay
 - **Capability discovery** — `GET /capabilities` endpoint for external orchestrators, now including adapter privilege tiers
@@ -921,7 +947,7 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Memory v1.1 deterministic contract upgrade** — extension-level memory now supports additive deterministic metadata (`source`, `confidence`, `tags`, `valid_at`), bounded list filters (`tags_any`/`tags_all`, created/updated windows, `limit`/`offset`), namespace TTL/prune policy hooks, response operational counters, and capability-advertised memory profile metadata (`memory_profile`) without introducing semantic retrieval or policy cognition into core runtime semantics.
 - **External executor bridge (HTTP)** — documented contract in `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` for calling non-MCP workers via `http.Post` (and optional host-mapped **`bridge`** adapter for executor keys → URLs). **MCP (`ainl-mcp`) remains primary** for OpenClaw/NemoClaw; the HTTP bridge is the secondary pattern for generic gateways and plugins.
 - **Reproducible benchmark suite** — `tiktoken` **cl100k_base** default sizing with **`BENCHMARK.md`** transparency (viable subset, legacy-inclusive tables, **minimal_emit fallback stub**, Mar 2026 **prisma/react_ts** compaction notes), **Compile ms (mean×3)** in size tables, runtime benchmark (latency/RSS, optional reliability and scalability probe), shared **economics** helpers (`tooling/bench_metrics.py`), handwritten **baseline** comparison, **CI regression** gating (`scripts/compare_benchmark_json.py`, `make benchmark` / `make benchmark-ci`, workflow `benchmark-regression` — **preferring committed `*_ci.json` baselines on the baseline git SHA when present**), hub **`docs/benchmarks.md`**, and **`ainl-ollama-benchmark --cloud-model`** for an optional **Anthropic Claude** baseline (`temperature=0`, graceful skip without key/SDK).
-- **OpenClaw intelligence + ops (v1.2.8–v1.3.3)** — **`scripts/run_intelligence.py`** with rolling **budget hydrate**; graph-safe intelligence and **`modules/common/generic_memory.ainl`**; **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** and **`OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context, **`payload.summary`** for summarizer indexing, **startup token** env clamps; **`scripts/auto_tune_ainl_caps.py`** / **`run_intelligence.py auto_tune_ainl_caps`**.
+- **OpenClaw intelligence + ops (v1.2.8–v1.4.1)** — **`scripts/run_intelligence.py`** with rolling **budget hydrate**; graph-safe intelligence and **`modules/common/generic_memory.ainl`**; **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** and **`OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context, **`payload.summary`** for summarizer indexing, **startup token** env clamps; **`scripts/auto_tune_ainl_caps.py`** / **`run_intelligence.py auto_tune_ainl_caps`**; **v1.3.0+** one-command **`ainl install openclaw`**, unified **`ainl status`**, and **`ainl doctor --ainl`**.
 
 ### 17.2 Remaining Future Work
 
@@ -1097,7 +1123,7 @@ Its value is especially clear in recurring, stateful, branching, and operational
 
 Stated economically, AINL turns recurring AI operations from a **pay-per-run orchestration** model into a **pay-once pattern design + deterministic execution** model, often with bounded or near-zero recurring inference in stable paths.
 
-AINL is designed to fit inside agent platforms and orchestrators — OpenClaw, NemoClaw, custom hosts — as the structured workflow execution layer. It does not replace these platforms; it sits inside them and makes agent workflows reproducible, inspectable, and controllable.
+AINL is designed to fit inside agent platforms and orchestrators — OpenClaw, NemoClaw, Hermes Agent, ArmaraOS, and custom hosts — as the structured workflow execution layer. It does not replace these platforms; it sits inside them and makes agent workflows reproducible, inspectable, and controllable.
 
 ---
 
@@ -1108,8 +1134,10 @@ Paths are relative to the repository root.
 ### Core system
 - `compiler_v2.py` — main compiler
 - `runtime/engine.py` — graph-first runtime engine
-- `runtime/adapters/` — adapter implementations (memory, SQLite, filesystem, cache, HTTP, optional executor `bridge`, agent, etc.)
-- `scripts/runtime_runner_service.py` — FastAPI runner service (`/run`, `/capabilities`, `/health`, etc.)
+- `cli/main.py` — CLI including **`ainl serve`** (REST: `/health`, `/validate`, `/compile`, `/run`)
+- `runtime/adapters/` — adapter implementations (memory, SQLite, filesystem, cache, HTTP, Solana, LLM, optional `code_context`, optional executor `bridge`, agent, etc.)
+- `adapters/llm/` — LLM provider implementations and **`offline`** test/CI adapter (v1.4.1)
+- `scripts/runtime_runner_service.py` — FastAPI runner service (`/run`, `/capabilities`, `/health`, queues, metrics, etc.)
 - `SEMANTICS.md` — runtime semantics
 - `docs/AINL_SPEC.md` — language specification
 
@@ -1144,9 +1172,16 @@ Paths are relative to the repository root.
 - `docs/case_studies/` — graph-native vs prompt-loop, cost analysis, long-context memory
 - `docs/PATTERNS.md` — workflow patterns (RetryWithBackoff, RateLimit, BatchProcess, CacheWarm)
 
-### OpenClaw operations and intelligence (v1.2.8–v1.3.3)
+### OpenClaw operations and intelligence (v1.2.8–v1.4.1)
 - `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md` — profiles, caps, cron, bootstrap, verification
-- `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — repo vs host responsibilities (v1.2.8–v1.3.3)
+- `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — repo vs host responsibilities (v1.2.8–current)
+- `docs/QUICKSTART_OPENCLAW.md` — v1.3.0+ **`ainl install openclaw`**, **`ainl status`**, **`ainl doctor --ainl`**
+
+### Hermes, Solana, ArmaraOS (v1.3.0–v1.4.1)
+- `docs/HERMES_INTEGRATION.md`, `docs/integrations/hermes-agent.md` — Hermes Agent host + skill emission
+- `docs/solana_quickstart.md`, `docs/emitters/README.md` — Solana / blockchain client emitters
+- `docs/ARMARAOS_INTEGRATION.md` — ArmaraOS hand packages and MCP bootstrap
+- `docs/adapters/CODE_CONTEXT.md`, `examples/code_context_demo.ainl` — optional `code_context` adapter
 - `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`, `docs/operations/TOKEN_CAPS_STAGING.md`, `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
 - `intelligence/*.lang` — scheduled programs (startup context, summarizer, consolidation, auto-tune lang companion)
 - `scripts/run_intelligence.py`, `scripts/auto_tune_ainl_caps.py`, `scripts/run_auto_tune_ainl_caps.sh`
