@@ -181,6 +181,60 @@
       "path": "examples/monitoring/solana-balance.ainl",
       "primary_pattern": "monitoring_solana_balance",
       "secondary_pattern": "scheduled_branch"
+    },
+    {
+      "order": 31,
+      "path": "examples/wishlist/01_cache_and_memory.ainl",
+      "primary_pattern": "wishlist_cache_memory",
+      "secondary_pattern": "adapter_cache_memory"
+    },
+    {
+      "order": 32,
+      "path": "examples/wishlist/02_vector_semantic_search.ainl",
+      "primary_pattern": "wishlist_vector_semantic_search",
+      "secondary_pattern": "vector_memory_search"
+    },
+    {
+      "order": 33,
+      "path": "examples/wishlist/03_parallel_fanout.ainl",
+      "primary_pattern": "wishlist_fanout_parallel",
+      "secondary_pattern": "fanout_adapter_plans"
+    },
+    {
+      "order": 34,
+      "path": "examples/wishlist/04_validate_with_ext.ainl",
+      "primary_pattern": "wishlist_ext_validate",
+      "secondary_pattern": "optional_ext_adapter"
+    },
+    {
+      "order": 35,
+      "path": "examples/wishlist/05_route_then_llm_mock.ainl",
+      "primary_pattern": "wishlist_llm_query_routing",
+      "secondary_pattern": "llm_query_branch"
+    },
+    {
+      "order": 36,
+      "path": "examples/wishlist/05b_unified_llm_offline_config.ainl",
+      "primary_pattern": "wishlist_unified_llm_offline",
+      "secondary_pattern": "llm_completion_fallback"
+    },
+    {
+      "order": 37,
+      "path": "examples/wishlist/06_feedback_memory.ainl",
+      "primary_pattern": "wishlist_feedback_memory",
+      "secondary_pattern": "memory_feedback_loop"
+    },
+    {
+      "order": 38,
+      "path": "examples/wishlist/07_parallel_http.ainl",
+      "primary_pattern": "wishlist_fanout_http",
+      "secondary_pattern": "fanout_http_get"
+    },
+    {
+      "order": 39,
+      "path": "examples/wishlist/08_code_review_context.ainl",
+      "primary_pattern": "wishlist_code_review_context",
+      "secondary_pattern": "code_context_pack"
     }
   ]
 }

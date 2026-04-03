@@ -876,7 +876,13 @@ def cmd_emit(args: argparse.Namespace) -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         files = emit_armaraos(ir, stem, out_dir)
         written = [str(p) for p in files.values()]
-        print(json.dumps({"ok": True, "emit": "armaraos", "dir": str(out_dir.resolve()), "files": written}, indent=2))
+        print(
+            json.dumps(
+                {"ok": True, "emit": "armaraos", "dir": str(out_dir.resolve()), "files": written},
+                indent=2,
+                ensure_ascii=True,
+            )
+        )
         return 0
 
 # Emitters available on the compiler

@@ -80,5 +80,5 @@ ephemeral_storage_mb = 100
 # Metadata for marketplace/UI
 [metadata]
 tags = ["ainl", "workflow", "example"]
-icon = "🧠"
+icon = "brain"
 color = "#6366f1"

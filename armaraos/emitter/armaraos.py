@@ -107,7 +107,7 @@ def _generate_hand_toml(ir: Dict[str, Any], stem: str) -> str:
         "",
         "[metadata]",
         f'tags = ["ainl", "{stem}"]',
-        'icon = "🧠"',
+        'icon = "brain"',
         'color = "#6366f1"',
         "",
     ]

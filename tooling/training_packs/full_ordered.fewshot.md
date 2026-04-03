@@ -782,3 +782,221 @@ L_ok:
   Set status "ok"
   J status
 ```
+
+## 31. `examples/wishlist/01_cache_and_memory.ainl`
+- Primary: `wishlist_cache_memory`
+- Secondary: `adapter_cache_memory`
+
+```ainl
+# 1) Knowledge caching + structured memory (AINL: cache + memory adapters).
+# ArmaraOS: pass session_key from host; set AINL_MEMORY_DB / paths via env policy.
+#
+# Run (from AI_Native_Lang repo root):
+#   AINL_CACHE_JSON=/tmp/w01_cache.json AINL_MEMORY_DB=/tmp/w01_mem.sqlite3 \
+#     python -m cli.main run examples/wishlist/01_cache_and_memory.ainl --json \
+#     --frame '{"session_key":"sess1","note":"hello memory"}'
+# Validate: python -m cli.main validate examples/wishlist/01_cache_and_memory.ainl --strict
+
+wishlist_01_cache_and_memory:
+  in: session_key note
+
+  R cache.GET session_key ->cached
+  if cached:
+    out cached
+
+  R core.concat "{\"note\":\"" note "\"}" ->blob
+  R core.parse blob ->payload
+  R memory.PUT "workflow" "turn" session_key payload null ->_m
+  R cache.SET session_key note ->_
+  out note
+```
+
+## 32. `examples/wishlist/02_vector_semantic_search.ainl`
+- Primary: `wishlist_vector_semantic_search`
+- Secondary: `vector_memory_search`
+
+```ainl
+# 2) Semantic-ish retrieval via vector_memory (keyword overlap scoring in core repo).
+# ArmaraOS: point AINL_VECTOR_MEMORY_PATH at a host-writable file; optional retention policy in host.
+#
+# Run:
+#   AINL_VECTOR_MEMORY_PATH=/tmp/w02_vm.json \
+#     python -m cli.main run examples/wishlist/02_vector_semantic_search.ainl --json \
+#     --frame '{"namespace":"sessions","doc_id":"d1","text":"asyncio task groups","query":"asyncio"}'
+# Validate: python -m cli.main validate examples/wishlist/02_vector_semantic_search.ainl --strict
+
+wishlist_02_vector_semantic_search:
+  in: namespace doc_id text query
+
+  R vector_memory.UPSERT namespace "chunk" doc_id text "{}" ->_u
+  R vector_memory.SEARCH query 8 0.1 ->raw_hits
+  R core.filter_high_score raw_hits 0.1 ->hits
+  out hits
+```
+
+## 33. `examples/wishlist/03_parallel_fanout.ainl`
+- Primary: `wishlist_fanout_parallel`
+- Secondary: `fanout_adapter_plans`
+
+```ainl
+# 3) Parallel tool execution — fanout.ALL over adapter plans (thread pool).
+# ArmaraOS: optional AINL_FANOUT_MAX_WORKERS / AINL_FANOUT_DISABLE for host policy.
+#
+# Run:
+#   python -m cli.main run examples/wishlist/03_parallel_fanout.ainl --json
+# Validate: python -m cli.main validate examples/wishlist/03_parallel_fanout.ainl --strict
+
+wishlist_03_parallel_fanout:
+  in:
+
+  fan_json = "[[\"core\",\"add\",2,3],[\"core\",\"mul\",4,5],[\"core\",\"concat\",\"a\",\"b\"]]"
+  R fanout.ALL fan_json ->results
+  out results
+```
+
+## 34. `examples/wishlist/04_validate_with_ext.ainl`
+- Primary: `wishlist_ext_validate`
+- Secondary: `optional_ext_adapter`
+
+```ainl
+# 4) Automated validation — ext.EXEC runs a subprocess (e.g. py_compile).
+# AINL: graph + ext adapter (env-gated). ArmaraOS: never pass user-controlled argv; set cwd + allowlist.
+#
+# Run (repo root; requires AINL_EXT_ALLOW_EXEC=1):
+#   AINL_EXT_ALLOW_EXEC=1 python -m cli.main run examples/wishlist/04_validate_with_ext.ainl --json \
+#     --enable-adapter ext \
+#     --frame '{"py_file":"examples/wishlist/fixtures/syntax_ok.py"}'
+# Validate: python -m cli.main validate examples/wishlist/04_validate_with_ext.ainl --strict
+
+wishlist_04_validate_with_ext:
+  in: py_file
+
+  R ext.EXEC python3 -m py_compile py_file ->ex
+  out ex
+```
+
+## 35. `examples/wishlist/05_route_then_llm_mock.ainl`
+- Primary: `wishlist_llm_query_routing`
+- Secondary: `llm_query_branch`
+
+```ainl
+# 5) Multi-model orchestration — route by keyword, then llm_query (mock or real bridge).
+# Prefer unified llm + config.yaml: see 05b_unified_llm_offline_config.ainl + fixtures/llm_offline.yaml (docs/LLM_ADAPTER_USAGE.md).
+# AINL: routing graph + llm_query.QUERY. ArmaraOS: API keys, AINL_LLM_QUERY_URL, and model policy live on the host.
+#
+# Run (deterministic mock; no network):
+#   AINL_ENABLE_LLM_QUERY=true AINL_LLM_QUERY_MOCK=true \
+#     python -m cli.main run examples/wishlist/05_route_then_llm_mock.ainl --json \
+#     --enable-adapter llm_query \
+#     --frame '{"user_query":"debug my rust borrow checker error"}'
+# Validate: python -m cli.main validate examples/wishlist/05_route_then_llm_mock.ainl --strict
+
+wishlist_05_route_then_llm_mock:
+  in: user_query
+
+  is_rust = core.contains user_query "rust"
+  if is_rust:
+    R llm_query.QUERY user_query "rust-expert" 256 ->out
+    out out
+  R llm_query.QUERY user_query "general-assistant" 256 ->out
+  out out
+```
+
+## 36. `examples/wishlist/05b_unified_llm_offline_config.ainl`
+- Primary: `wishlist_unified_llm_offline`
+- Secondary: `llm_completion_fallback`
+
+```ainl
+# 5b) Same routing as 05 — unified `llm` adapter + config.yaml (see docs/LLM_ADAPTER_USAGE.md).
+# Compare: `05_route_then_llm_mock.ainl` uses deprecated `llm_query` + mock env.
+#
+# Run (offline deterministic; no API keys):
+#   python -m cli.main run examples/wishlist/05b_unified_llm_offline_config.ainl --json \
+#     --config examples/wishlist/fixtures/llm_offline.yaml \
+#     --frame-json '{"user_query":"debug my rust borrow checker error"}'
+# Or:  export AINL_CONFIG=examples/wishlist/fixtures/llm_offline.yaml   (same command without --config)
+# Live providers: copy fixtures/llm_openrouter.example.yaml or llm_ollama.example.yaml, set AINL_CONFIG, then run as above.
+# Validate: python -m cli.main validate examples/wishlist/05b_unified_llm_offline_config.ainl --strict
+
+wishlist_05b_unified_llm_offline_config:
+  in: user_query
+
+  is_rust = core.contains user_query "rust"
+  if is_rust:
+    R llm.COMPLETION user_query 256 ->resp_r
+    R core.GET resp_r "content" ->out
+    out out
+  R llm.COMPLETION user_query 256 ->resp_g
+  R core.GET resp_g "content" ->out
+  out out
+```
+
+## 37. `examples/wishlist/06_feedback_memory.ainl`
+- Primary: `wishlist_feedback_memory`
+- Secondary: `memory_feedback_loop`
+
+```ainl
+# 6) Persistent learning loop — memory.APPEND for corrections; memory.GET reads prior turn payload.
+# AINL: memory adapter. ArmaraOS: retention, encryption, and which namespaces are allowed for which agent.
+#
+# Run:
+#   AINL_MEMORY_DB=/tmp/w06_mem.sqlite3 \
+#     python -m cli.main run examples/wishlist/06_feedback_memory.ainl --json \
+#     --frame '{"session_id":"u1","correction":"use pathlib instead of os.path"}'
+# Validate: python -m cli.main validate examples/wishlist/06_feedback_memory.ainl --strict
+
+wishlist_06_feedback_memory:
+  in: session_id correction
+
+  R core.concat "{\"correction\":\"" correction "\"}" ->blob
+  R core.parse blob ->entry
+  R memory.APPEND "workflow" "feedback" session_id entry null ->_a
+  R memory.GET "workflow" "turn" session_id ->prior
+  out prior
+```
+
+## 38. `examples/wishlist/07_parallel_http.ainl`
+- Primary: `wishlist_fanout_http`
+- Secondary: `fanout_http_get`
+
+```ainl
+# 7) Real-time data enrichment — parallel HTTP GET via fanout (independent I/O).
+# AINL: http + fanout. ArmaraOS: HTTP allowlists, timeouts, and egress policy.
+#
+# This file uses opcode lines for the JSON plan string so URLs with ":" are not misparsed by compact.
+#
+# Run (needs network; from repo root):
+#   python -m cli.main run examples/wishlist/07_parallel_http.ainl --json --enable-adapter http
+# Validate: python -m cli.main validate examples/wishlist/07_parallel_http.ainl --strict
+
+S app core noop
+
+L1:
+  Set fan_json "[[\"http\",\"GET\",\"http://example.com/\"],[\"http\",\"GET\",\"http://example.com/\"]]"
+  R fanout.ALL fan_json ->bundle
+  J bundle
+```
+
+## 39. `examples/wishlist/08_code_review_context.ainl`
+- Primary: `wishlist_code_review_context`
+- Secondary: `code_context_pack`
+
+```ainl
+# 8) Code-review style context pack — INDEX then QUERY + COMPRESS (sequential; code_context is not fanout-safe).
+# For parallel *pure* fanout patterns see 03; for HTTP see 07.
+# AINL: code_context + core. ArmaraOS: workspace root, adapter allowlist, optional llm keys for review.
+#
+# Run (from AI_Native_Lang repo root; enable code_context):
+#   python -m cli.main run examples/wishlist/08_code_review_context.ainl --json \
+#     --enable-adapter code_context
+# Validate: python -m cli.main validate examples/wishlist/08_code_review_context.ainl --strict
+
+wishlist_08_code_review_context:
+  in:
+
+  R code_context.INDEX "examples/wishlist" ->_idx
+  R code_context.QUERY_CONTEXT "syntax" 1 6 ->ctx
+  R code_context.COMPRESS_CONTEXT "syntax" 1200 ->packed
+  R core.concat ctx "\n---\n" packed ->bundle
+  out bundle
+```
