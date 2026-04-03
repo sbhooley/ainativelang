@@ -58,12 +58,10 @@ test:
     assert (out_dir / "security.json").exists()
     assert (out_dir / "README.md").exists()
 
-    # Validate HAND.toml structure (basic)
-    import tomllib
-
-    hand = tomllib.loads((out_dir / "HAND.toml").read_text(encoding="utf-8"))
-    assert "hand" in hand
-    assert hand["hand"]["entrypoint"] == "simple.ainl.json"
+    # Validate HAND.toml structure (basic; avoid tomllib — not in Python 3.10 stdlib)
+    hand_text = (out_dir / "HAND.toml").read_text(encoding="utf-8")
+    assert "[hand]" in hand_text
+    assert 'entrypoint = "simple.ainl.json"' in hand_text
 
 
 def test_armaraos_bridge_validation():
