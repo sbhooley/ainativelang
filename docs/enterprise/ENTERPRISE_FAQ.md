@@ -135,8 +135,8 @@ Hosted runtimes support:
 
 Typical latencies:
 - LLM node: 1–5s (depending on model)
-- HTTP node: <100ms (local services), 200–1000ms (external APIs)
-- Internal nodes: <10ms
+- HTTP node: &lt;100ms (local services), 200–1000ms (external APIs)
+- Internal nodes: &lt;10ms
 
 ---
 
