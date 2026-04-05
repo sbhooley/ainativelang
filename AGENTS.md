@@ -58,6 +58,15 @@ POST /compile    — Compile to IR (JSON: {source, strict?})
 POST /run        — Compile and execute (JSON: {source, strict?, frame?})
 ```
 
+### Production defaults (runner + mass-market UX)
+
+- **Default runner grant** (`scripts/runtime_runner_service.py`): adapter cap is **unset** at the grant layer so IR-declared adapters (e.g. `web`, `http`) work out of the box; **resource limits** (`max_steps`, `max_time_ms`, …) remain the universal safety floor.
+- **`AINL_STRICT_MODE=1`** (when **`AINL_SECURITY_PROFILE`** is unset): merges profile **`consumer_secure_default`** (or **`AINL_STRICT_PROFILE`**) with that floor — named allowlist + `operator_sensitive` tier blocked; good for “strict” product mode without hand-maintaining env lists.
+- **`AINL_SECURITY_PROFILE`**: if set, loads that profile **as the full grant** (same as before); use for org/enterprise lockdown.
+- **`AINL_HOST_ADAPTER_ALLOWLIST`** / **`AINL_HOST_ADAPTER_DENYLIST`**: comma-separated; applied in the runtime after IR resolution (denylist wins last). CLI: `--host-adapter-allowlist` / `--host-adapter-denylist`.
+- **Capability blocks**: errors include a short **what to change** hint; runner **`GET /metrics`** exposes `adapter_capability_blocks_total` and `adapter_capability_blocks_by_adapter` for telemetry. **`GET /capabilities`** includes a `host_security_env` key describing these variables.
+- **`ainl doctor`**: reports current **runtime security env** (profiles / strict / allowlist presence).
+
 ## AINL Syntax — Two Formats
 
 AINL supports TWO equivalent syntaxes. Both compile to the same IR.
@@ -212,7 +221,13 @@ The files in `docs/learning/intermediate/` contain TWO syntax styles:
 - Skip running `ainl validate --strict` before committing .ainl files
 - Use `X var value` for assignments — use `Set var value` instead (X has runtime quirks)
 
+## OpenClaw workspace handoff (ClawHub skills → AINL)
+
+Validated example that marks the ingestion slot for promoted digest text: `examples/compact/openclaw_learning_handoff.ainl`.  
+Workspace-level contract (load order, `.learnings/`, export script): see `INTEGRATION.md` in the OpenClaw workspace root (sibling layout when this repo lives under `~/.openclaw/workspace/`).
+
 ## Related Repositories
 
-- `sbhooley/ainativelangweb` — Marketing website (Next.js)
+- `sbhooley/ainativelangweb` — Marketing website (Next.js); **ArmaraOS** desktop installers on `/` and `/download` (manifest under `/downloads/armaraos/latest.json` when release CI syncs from **armaraos**)
+- `sbhooley/armaraos` — ArmaraOS / OpenFang agent OS (Rust); desktop app + embedded dashboard; docs for Home folder API and `[dashboard]` home-editing allowlists
 - `sbhooley/ainativelangcloud` — Cloud platform plans (private)
