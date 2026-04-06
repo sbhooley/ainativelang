@@ -40,9 +40,9 @@
 
 **Just want something working on your desktop in under 3 minutes?**
 
-ArmaraOS is the desktop agent OS built on AINL — download once, install, and your agents are live with a full dashboard. No terminal, no config files, no setup.
+ArmaraOS is the desktop agent OS built on AI Native Lang (AINL) — download once, install, and your agents are live with a full dashboard. No terminal, no config files, just plug in your API key.
 
-> **[Download ArmaraOS — ainativelang.com/ArmaraOS](https://ainativelang.com/ArmaraOS)**
+> **[Download ArmaraOS — ainativelang.com](https://ainativelang.com/)**
 > *macOS · Windows · Linux — free to start*
 
 Autonomous agents, 7 pre-built Hands (researcher, lead gen, clip editor, and more), 40 channel adapters (Telegram, Discord, Slack, WhatsApp…), 27 LLM providers, 16 security layers — all in a single ~32 MB binary.
@@ -67,9 +67,9 @@ After install, ask your agent: *"Use AINL to build this workflow"* — it compil
 
 | Workload | Typical savings |
 |:---------|:----------------|
-| Recurring monitors, digests, scheduled jobs | **90–95% fewer tokens** vs prompt loops |
-| Multi-step automations and workflows | **2–5× reduction** per task |
-| Simple one-off tasks | Smaller but still positive |
+| Recurring monitors, digests, scheduled jobs | [**90–95% fewer tokens** vs prompt loops](agent_reports/Grok-analysis-as-of-March-25-2026–v1-2-8-Token-Cost-Savings.md) — field analysis (OpenClaw monitors, compile-once / run-many) |
+| Multi-step automations and workflows | [**2–5× reduction** per task](agent_reports/2026-03-27-ainl-cost-savings.md) — Apollo cost report (OpenRouter lifetime usage, architectural efficiency) |
+| Simple one-off tasks | [Smaller but still positive](agent_reports/plushifier-openclaw-2026-03-18.md) — early OpenClaw operator field report (Plushify) |
 
 The reason: AINL compiles your workflow once. The runtime executes it deterministically — no LLM re-generation on each run, no prompt bloat, no orchestration chatter. The model authors the graph once; the runtime runs it on every invocation.
 
@@ -100,20 +100,28 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 ## New in v1.4.1
 
-- **Wishlist / offline LLM**: `examples/wishlist/05b_unified_llm_offline_config.ainl` + `fixtures/llm_offline.yaml` — unified `llm` + `config.yaml` path (vs `llm_query` mock in `05_route_then_llm_mock.ainl`). **`core.GET`** is now a real `R` target for structured reads.
+- **Offline LLM provider (`offline`)**: deterministic **`AbstractLLMAdapter`** for **`config.yaml`** + **`register_llm_adapters`** demos and CI; use in **`llm.fallback_chain`** without live API keys (see **`fixtures/llm_offline.yaml`**).
+- **Wishlist examples + CI**: **`05b_unified_llm_offline_config.ainl`** — unified **`llm`** path vs **`llm_query`** mock in **`05_route_then_llm_mock.ainl`**; **`parser-compat`** runs strict wishlist validation + no-network smoke for graphs **01** and **05b**.
+- **`core.GET`**: real **`R`** target on **`CoreBuiltinAdapter`** (deep key/index reads via **`deep_get`**); strict entries in **`tooling/effect_analysis.py`** alongside **`llm.COMPLETION`**.
+- **LLM runtime**: **`LLMRuntimeAdapter`** normalizes verb casing so **`R llm.COMPLETION`** matches registry verbs (e.g. **`completion`**).
 
 ## New in v1.4.0
 
-- **ArmaraOS host pack**: `ainl emit --target armaraos`, `ainl status --host armaraos`, `ainl install-mcp --host armaraos` — see [`docs/ARMARAOS_INTEGRATION.md`](docs/ARMARAOS_INTEGRATION.md) and [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
+- **ArmaraOS host pack** (optional — no hard dependency on the ArmaraOS binary): **`ainl emit --target armaraos`** (hand package: **`HAND.toml`**, **`<stem>.ainl.json`**, **`security.json`**, README), **`ainl status --host armaraos`** (canonical **`ARMARAOS_*`** + legacy **`OPENFANG_*`** env), **`ainl install-mcp --host armaraos`** (**`[[mcp_servers]]`** in **`~/.armaraos/config.toml`**, **`~/.armaraos/bin/ainl-run`**, PATH hints).
+- **Release / surfaces**: version alignment across **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**; **`ainl serve`** **`GET /health`** reports **`version`** from **`RUNTIME_VERSION`**.
+- **Docs**: [`docs/ARMARAOS_INTEGRATION.md`](docs/ARMARAOS_INTEGRATION.md), host hub [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md); integration tests and emitter import path fixes.
 
 ## New in v1.3.4
 
-- **Enhanced diagnostics** (`--enhanced-diagnostics`): graph context + Mermaid snippets on compile errors
-- **Error highlighting** (`ainl visualize --highlight-errors`): error nodes styled in Mermaid output
-- **Static cost estimates** (`--estimate` on `check`, `inspect`, `status`): per-node token/USD estimates
-- **Audit trail adapter** (`--enable-adapter audit_trail --audit-sink file:///...`): immutable JSONL compliance log (graph must invoke `audit_trail.record`)
+- **Enhanced diagnostics** (`--enhanced-diagnostics`): graph context + Mermaid snippets on compile errors.
+- **Error highlighting** (`ainl visualize --highlight-errors`): error nodes styled in Mermaid output.
+- **Static cost estimates** (`--estimate` on `check`, `inspect`, `status`): per-node token/USD estimates.
+- **Audit trail adapter** (`--enable-adapter audit_trail --audit-sink file:///...`): immutable JSONL compliance log (graph must invoke `audit_trail.record`).
+- **Compact syntax preprocessor** (`ainl_preprocess.py`): Python-like **compact** `.ainl` authoring alongside opcodes — same IR, fewer surface tokens; see [`examples/compact/`](examples/compact/) and [`AGENTS.md`](AGENTS.md).
 
 > Tutorials: [Debugging with the Visualizer](docs/tutorials/debugging_with_visualizer.md) · [Production: Estimates & Audit](docs/tutorials/production_with_estimates_and_audit.md)
+
+**Full version history:** [`docs/CHANGELOG.md`](docs/CHANGELOG.md) · [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)
 
 **AINL helps turn AI from "a smart conversation" into "a structured worker."**
 
@@ -315,7 +323,7 @@ See **Includes & modules** below for `timeout.ainl`, strict rules, and the start
 
 Import **Clawflows**-style `WORKFLOW.md` or **Agency-Agents**-style personality Markdown into a **deterministic** `.ainl` graph (cron trigger, sequential `Call` steps or agent gates, optional `memory` / `queue` hooks for OpenClaw-style bridges). If structured parsing cannot extract steps or agent fields, the importer **falls back** to a compiling **minimal_emit fallback stub** (Phase‑1 style) so you still get valid, reviewable graph source.
 
-**Host quick links:** [OpenClaw](https://openclaw.ai/) · [ZeroClaw skill (AINL)](https://github.com/sbhooley/ainativelang/tree/main/skills/ainl) · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** · **[ArmaraOS](https://ainativelang.com/ArmaraOS)** — AINL wiring for all four is in [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) (**`ainl install-mcp --host openclaw|zeroclaw|hermes|armaraos|armaraos`**).
+**Host quick links:** [OpenClaw](https://openclaw.ai/) · [ZeroClaw skill (AINL)](https://github.com/sbhooley/ainativelang/tree/main/skills/ainl) · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** · **[ArmaraOS](https://ainativelang.com/)** — AINL wiring for all four is in [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](docs/getting_started/HOST_MCP_INTEGRATIONS.md) (**`ainl install-mcp --host openclaw|zeroclaw|hermes|armaraos|armaraos`**).
 
 The same path is exposed over MCP as **`ainl_list_ecosystem`**, **`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, and **`ainl_import_markdown`** (stdio **`ainl-mcp`**). **Weekly auto-sync** ( **[`.github/workflows/sync-ecosystem.yml`](.github/workflows/sync-ecosystem.yml)** ) refreshes **[`examples/ecosystem/`](examples/ecosystem/)** from upstream public Markdown; community additions use **[`.github/PULL_REQUEST_TEMPLATE/`](.github/PULL_REQUEST_TEMPLATE/)** (workflow / agent templates).
 
@@ -1522,5 +1530,5 @@ Like a starfish, it adapts, regrows reliable processes, and thrives with multipl
 ainl init my-worker --target armaraos && ainl install armaraos
 ```
 
-Downloads & full docs: https://ainativelang.com/ArmaraOS
+Downloads & full docs: https://ainativelang.com/
 
