@@ -5,6 +5,10 @@
 # Then run from Actions → "Publish PyPI" → Run workflow, or publish a GitHub Release.
 #
 # Option B — Local: `uv build && UV_PUBLISH_TOKEN=... uv publish` (see docs/RELEASING.md).
+#
+# Option C — API token in CI: add repository secret **PYPI_API_TOKEN** (PyPI → Account → API tokens,
+# scope **ainativelang**). When set, this workflow uses token auth; when unset, it uses trusted
+# publishing (OIDC). Empty secret falls through to OIDC.
 
 name: Publish PyPI
 
@@ -36,3 +40,5 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}

@@ -46,7 +46,10 @@ UV_PUBLISH_TOKEN=pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 `uv publish` reads **`UV_PUBLISH_TOKEN`** (or **`--token`**). Do not commit tokens.
 
-**CI / OIDC:** After you register **Trusted publishing** for this GitHub repo on the PyPI project, use **Actions → Publish PyPI → Run workflow**, or publish a **GitHub Release** (workflow triggers on `release: published`). See **`.github/workflows/publish-pypi.yml`**.
+**CI:** See **`.github/workflows/publish-pypi.yml`**.
+
+- **Trusted publishing (OIDC):** Register this repo + workflow on the PyPI project (**Publishing** → GitHub). Then use **Actions → Publish PyPI → Run workflow**, or publish a **GitHub Release** (`release: published`).
+- **API token:** Add a repository secret **`PYPI_API_TOKEN`** (PyPI API token scoped to **`ainativelang`**). When this secret is set, the workflow uploads with **`__token__`** + that password; when unset, the action uses OIDC only (same as before).
 
 **Classic tools** (equivalent):
 
