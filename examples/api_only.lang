@@ -5,8 +5,15 @@ D User id:I name:S email:S
 D Session id:I userId:I token:S expires:D
 
 E /users G ->L1 ->users
-L1: R db.F User * ->users J users
 E /users P ->L2 ->user
-L2: R db.P User * ->user J user
 E /sessions G ->L3 ->sessions
-L3: R db.F Session * ->sessions J sessions
+
+L1:
+  R db.F User * ->users
+  J users
+L2:
+  R db.P User * ->user
+  J user
+L3:
+  R db.F Session * ->sessions
+  J sessions

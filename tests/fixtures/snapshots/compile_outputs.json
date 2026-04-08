@@ -134,7 +134,7 @@
     {
       "path": "examples/openclaw/daily_digest.lang",
       "strict": false,
-      "graph_semantic_checksum": "sha256:0f7355b24cc333001574d86837dd040fd643679e80bc31a5bcbdbb1885f784ae",
+      "graph_semantic_checksum": "sha256:4b0177dae43e6343021eaa85fda50aa2db0c21714b2d0d17f0bb2e23eeec887f",
       "labels": [
         "0",
         "1",
@@ -164,7 +164,7 @@
     {
       "path": "examples/golden/01_web_server.ainl",
       "strict": false,
-      "graph_semantic_checksum": "sha256:09d15ed179d6d411fd2b851f4d720655cde652edbc11eeeb62a4fdc07c7acb51",
+      "graph_semantic_checksum": "sha256:079dd0bc35ba83582c152d5deffba5963ffe55a01295e4ab5d9b4d0f82e7728c",
       "labels": [
         "0",
         "1",

@@ -7,15 +7,10 @@ D Event id:I name:S venue:S date:D capacity:I
 D Ticket id:I eventId:I uid:I status:E[Reserved,Paid,Cancelled]
 
 E /events G ->L1 ->events
-L1: R db.F Event * ->events J events
 E /events P ->L2 ->event
-L2: R db.P Event * ->event J event
 E /tickets G ->L3 ->tickets
-L3: R db.F Ticket * ->tickets J tickets
 E /tickets P ->L4 ->ticket
-L4: R db.P Ticket * ->ticket J ticket
 E /my-tickets G ->L5 ->tickets
-L5: R db.F Ticket * ->tickets J tickets
 
 Rt / Dashboard
 Rt /events EventList
@@ -35,3 +30,19 @@ Tbl MyTickets Ticket id eventId status
 Fm TicketForm Ticket eventId uid status
 
 P reserve 999 usd "Ticket reservation"
+
+L1:
+  R db.F Event * ->events
+  J events
+L2:
+  R db.P Event * ->event
+  J event
+L3:
+  R db.F Ticket * ->tickets
+  J tickets
+L4:
+  R db.P Ticket * ->ticket
+  J ticket
+L5:
+  R db.F Ticket * ->tickets
+  J tickets

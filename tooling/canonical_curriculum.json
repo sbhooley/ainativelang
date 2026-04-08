@@ -235,6 +235,72 @@
       "path": "examples/wishlist/08_code_review_context.ainl",
       "primary_pattern": "wishlist_code_review_context",
       "secondary_pattern": "code_context_pack"
+    },
+    {
+      "order": 40,
+      "path": "examples/api_only.lang",
+      "primary_pattern": "api_only_rest",
+      "secondary_pattern": "rest_api_definitions"
+    },
+    {
+      "order": 41,
+      "path": "examples/blog.lang",
+      "primary_pattern": "blog_web_app",
+      "secondary_pattern": "content_management"
+    },
+    {
+      "order": 42,
+      "path": "examples/ecom.lang",
+      "primary_pattern": "ecom_storefront",
+      "secondary_pattern": "ecommerce_workflow"
+    },
+    {
+      "order": 43,
+      "path": "examples/internal_tool.lang",
+      "primary_pattern": "internal_tool",
+      "secondary_pattern": "admin_crud"
+    },
+    {
+      "order": 44,
+      "path": "examples/ticketing.lang",
+      "primary_pattern": "ticketing_system",
+      "secondary_pattern": "issue_tracking"
+    },
+    {
+      "order": 45,
+      "path": "examples/openclaw/daily_lead_summary.lang",
+      "primary_pattern": "daily_lead_summary",
+      "secondary_pattern": "crm_digest"
+    },
+    {
+      "order": 46,
+      "path": "examples/openclaw_full_unification.ainl",
+      "primary_pattern": "openclaw_full_unification",
+      "secondary_pattern": "workspace_unification"
+    },
+    {
+      "order": 47,
+      "path": "examples/test_if_var.ainl",
+      "primary_pattern": "if_var_branch",
+      "secondary_pattern": "conditional_branch"
+    },
+    {
+      "order": 48,
+      "path": "examples/test_mul.ainl",
+      "primary_pattern": "multiply_ops",
+      "secondary_pattern": "arithmetic_mul"
+    },
+    {
+      "order": 49,
+      "path": "examples/test_X_sub.ainl",
+      "primary_pattern": "subtract_expr",
+      "secondary_pattern": "arithmetic_sub"
+    },
+    {
+      "order": 50,
+      "path": "examples/compact/openclaw_learning_handoff.ainl",
+      "primary_pattern": "openclaw_learning_handoff",
+      "secondary_pattern": "learning_digest"
     }
   ]
 }

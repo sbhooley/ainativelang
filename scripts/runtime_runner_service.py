@@ -39,6 +39,7 @@ from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
 from tooling.capability_grant import (
     empty_grant,
+    env_truthy,
     merge_grants,
     grant_to_policy,
     grant_to_limits,
@@ -62,18 +63,12 @@ _SERVER_DEFAULT_LIMITS: Dict[str, int] = {
     "max_adapter_calls": 200,
     "max_time_ms": 30000,
 }
-_SERVER_DEFAULT_ALLOWED: List[str] = ["core", "fs"]
 
-def _load_server_grant() -> Dict[str, Any]:
-    """Build the server-level capability grant from env/defaults."""
-    profile_name = os.environ.get("AINL_SECURITY_PROFILE")
-    if profile_name:
-        try:
-            return load_profile_as_grant(profile_name)
-        except ValueError:
-            logger.warning("unknown AINL_SECURITY_PROFILE %r; using defaults", profile_name)
+
+def _bare_runner_floor() -> Dict[str, Any]:
+    """Resource floor + permissive adapter cap (None) for merge with strict preset."""
     return {
-        "allowed_adapters": list(_SERVER_DEFAULT_ALLOWED),
+        "allowed_adapters": None,
         "forbidden_adapters": [],
         "forbidden_effects": [],
         "forbidden_effect_tiers": [],
@@ -81,6 +76,24 @@ def _load_server_grant() -> Dict[str, Any]:
         "limits": dict(_SERVER_DEFAULT_LIMITS),
         "adapter_constraints": {},
     }
+
+
+def _load_server_grant() -> Dict[str, Any]:
+    """Build the server-level capability grant from env/defaults."""
+    profile_name = (os.environ.get("AINL_SECURITY_PROFILE") or "").strip()
+    if profile_name:
+        try:
+            return load_profile_as_grant(profile_name)
+        except ValueError:
+            logger.warning("unknown AINL_SECURITY_PROFILE %r; using defaults", profile_name)
+            return _bare_runner_floor()
+    if env_truthy(os.environ.get("AINL_STRICT_MODE")):
+        sp = (os.environ.get("AINL_STRICT_PROFILE") or "consumer_secure_default").strip()
+        try:
+            return merge_grants(_bare_runner_floor(), load_profile_as_grant(sp))
+        except ValueError:
+            logger.warning("unknown AINL_STRICT_PROFILE %r; using permissive defaults", sp)
+    return _bare_runner_floor()
 
 # Cached default grant; request execution refreshes from env to keep tests and
 # long-lived runner processes aligned with dynamic profile changes.
@@ -102,6 +115,8 @@ _METRICS: Dict[str, Any] = {
     "compile_cache_misses": 0,
     "adapter_counts": {},
     "adapter_durations_ms": {},
+    "adapter_capability_blocks_total": 0,
+    "adapter_capability_blocks_by_adapter": {},
 }
 _SENSITIVE_TOKENS = ("authorization", "token", "secret", "password", "api_key", "apikey", "x-api-key")
 
@@ -183,6 +198,13 @@ def _instrument_registry(reg: AdapterRegistry, trace_id: str, replay_artifact_id
             status = "error"
             raw = str(exc)[:200]
             error_summary = _redact_value(raw) if isinstance(raw, str) else raw
+            if isinstance(raw, str) and "capability gate" in raw:
+                with _LOCK:
+                    _METRICS["adapter_capability_blocks_total"] = (
+                        int(_METRICS.get("adapter_capability_blocks_total", 0)) + 1
+                    )
+                    by = _METRICS.setdefault("adapter_capability_blocks_by_adapter", {})
+                    by[adapter_name] = int(by.get(adapter_name, 0)) + 1
             raise
         finally:
             dt = round((time.perf_counter() - t0) * 1000, 3)
@@ -223,7 +245,10 @@ def _get_ir_from_code(code: str, strict: bool = True) -> Dict[str, Any]:
 def _build_registry(req: Dict[str, Any]) -> AdapterRegistry:
     replay_log = req.get("replay_log")
     record_calls = bool(req.get("record_calls"))
-    allowed = req.get("allowed_adapters") or list(_SERVER_DEFAULT_ALLOWED)
+    raw_allowed = req.get("allowed_adapters")
+    # None = no host allowlist for the registry bootstrap; RuntimeEngine will
+    # .allow() every adapter the IR references. Non-None includes [] (deny-all).
+    allowed: List[str] = [] if raw_allowed is None else list(raw_allowed)
     if replay_log is not None:
         if not isinstance(replay_log, list):
             raise ValueError("replay_log must be a list")
@@ -375,6 +400,7 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
         execution_mode=str(req.get("execution_mode") or "graph-preferred"),
         unknown_op_policy=req.get("unknown_op_policy"),
         limits=req["limits"],
+        host_adapter_allowlist=req.get("allowed_adapters"),
     )
     label = str(req.get("label") or eng.default_entry_label())
     frame = req.get("frame") or {}
@@ -546,6 +572,8 @@ def metrics():
             "compile_cache_hits": _METRICS["compile_cache_hits"],
             "compile_cache_misses": _METRICS["compile_cache_misses"],
             "queue_depth": _JOB_Q.qsize(),
+            "adapter_capability_blocks_total": int(_METRICS.get("adapter_capability_blocks_total", 0)),
+            "adapter_capability_blocks_by_adapter": dict(_METRICS.get("adapter_capability_blocks_by_adapter") or {}),
         }
 
 
@@ -576,6 +604,14 @@ def _load_capabilities() -> Dict[str, Any]:
         "runtime_version": RUNTIME_VERSION,
         "policy_support": True,
         "adapters": adapters,
+        "host_security_env": {
+            "AINL_SECURITY_PROFILE": "Named preset from tooling/security_profiles.json (replaces default grant when set).",
+            "AINL_STRICT_MODE": "If true and AINL_SECURITY_PROFILE is unset, merge consumer_secure_default (or AINL_STRICT_PROFILE) with runner resource floors.",
+            "AINL_STRICT_PROFILE": "Override profile name for AINL_STRICT_MODE (default consumer_secure_default).",
+            "AINL_HOST_ADAPTER_ALLOWLIST": "Comma-separated: intersect IR adapters with this set.",
+            "AINL_HOST_ADAPTER_DENYLIST": "Comma-separated: remove these adapters after allowlist intersection.",
+            "AINL_ALLOW_IR_DECLARED_ADAPTERS": "If true, RuntimeEngine ignores AINL_HOST_ADAPTER_ALLOWLIST from the environment (IR-declared adapters allowed; denylist still applies).",
+        },
     }
 
 

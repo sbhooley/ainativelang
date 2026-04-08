@@ -507,6 +507,149 @@
         "no_compat_return_binding": true,
         "uppercase_adapter_verbs_preferred": true
       }
+    },
+    {
+      "id": "examples__api_only_lang",
+      "order": 40,
+      "path": "examples/api_only.lang",
+      "primary_pattern": "api_only_rest",
+      "secondary_pattern": "rest_api_definitions",
+      "strict_valid_expected": true,
+      "canonical_source": "# API-only: no frontend, core service and types\nS core web /api\n\nD User id:I name:S email:S\nD Session id:I userId:I token:S expires:D\n\nE /users G ->L1 ->users\nE /users P ->L2 ->user\nE /sessions G ->L3 ->sessions\n\nL1:\n  R db.F User * ->users\n  J users\nL2:\n  R db.P User * ->user\n  J user\nL3:\n  R db.F Session * ->sessions\n  J sessions\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__blog_lang",
+      "order": 41,
+      "path": "examples/blog.lang",
+      "primary_pattern": "blog_web_app",
+      "secondary_pattern": "content_management",
+      "strict_valid_expected": true,
+      "canonical_source": "# Blog: posts and comments, full stack\nS core web /api\nS fe web /\n\nD Post id:I title:S body:S created:D author:S\nD Comment id:I postId:I body:S author:S created:D\n\nE /posts G ->L1 ->posts\nE /posts P ->L2 ->post\nE /comments G ->L3 ->comments\nE /comments P ->L4 ->comment\n\nRt / PostList\nRt /posts PostList\nRt /post PostDetail\nRt /comments CommentList\nLay Shell Sidebar Main\n\nU PostList posts\nT posts:A[Post]\nU PostDetail post\nT post:Post\nU CommentList comments\nT comments:A[Comment]\nFm CommentForm Comment body author\nTbl PostList Post id title author created\nTbl CommentList Comment id body author created\n\nC cache postList 3600\n\nL1:\n  R db.F Post * ->posts\n  J posts\nL2:\n  R db.P Post * ->post\n  J post\nL3:\n  R db.F Comment * ->comments\n  J comments\nL4:\n  R db.P Comment * ->comment\n  J comment\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__ecom_lang",
+      "order": 42,
+      "path": "examples/ecom.lang",
+      "primary_pattern": "ecom_storefront",
+      "secondary_pattern": "ecommerce_workflow",
+      "strict_valid_expected": true,
+      "canonical_source": "# Ecom dashboard + Stripe pay (explicit E binding + routes, layout, forms, tables, events)\nS core web /api\nS fe web /\n\nD Product id:I name:S price:F sku:S\nD Order id:I uid:I total:F status:E[Pending,Paid,Shipped]\n\nE /products G ->L1 ->products\nE /orders G ->L2 ->orders\nE /checkout P ->L3\n\nRt / Dashboard\nRt /products ProductList\nRt /orders OrderTable\nLay Shell Sidebar Main\n\nU Dashboard\nT products:A[Product]\nT orders:A[Order]\nU ProductList products\nU OrderTable orders\nU CheckoutBtn\n\nFm OrderForm Order id uid total status\nTbl OrderTable Order id uid total status\nTbl ProductList Product id name price sku\n\nEv CheckoutBtn click /checkout\n\nP checkout 1999 usd \"Order payment\"\n\nC cart sessionId 3600\n\nL1:\n  R db.F Product * ->products\n  J products\nL2:\n  R db.F Order * ->orders\n  J orders\nL3:\n  R db.F Order * ->ord\n  J ord\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__internal_tool_lang",
+      "order": 43,
+      "path": "examples/internal_tool.lang",
+      "primary_pattern": "internal_tool",
+      "secondary_pattern": "admin_crud",
+      "strict_valid_expected": true,
+      "canonical_source": "# Internal tool: tasks and users (API + minimal frontend)\nS core web /api\nS fe web /\n\nD Task id:I title:S assignee:I status:E[Todo,InProgress,Done] due:D\nD User id:I name:S email:S role:E[Admin,User]\n\nE /tasks G ->L1 ->tasks\nE /tasks P ->L2 ->task\nE /users G ->L3 ->users\n\nRt / TaskBoard\nRt /tasks TaskList\nRt /users UserList\nLay Shell Sidebar Main\n\nU TaskBoard tasks\nT tasks:A[Task]\nU TaskList tasks\nT tasks:A[Task]\nU UserList users\nT users:A[User]\nFm TaskForm Task title assignee status due\nTbl TaskList Task id title assignee status due\nTbl UserList User id name email role\n\nCr L1 */15 * * * *\n\nL1:\n  R db.F Task * ->tasks\n  J tasks\nL2:\n  R db.P Task * ->task\n  J task\nL3:\n  R db.F User * ->users\n  J users\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__ticketing_lang",
+      "order": 44,
+      "path": "examples/ticketing.lang",
+      "primary_pattern": "ticketing_system",
+      "secondary_pattern": "issue_tracking",
+      "strict_valid_expected": true,
+      "canonical_source": "# Ticketing: events and tickets\nS core web /api\nS fe web /\nA jwt Authorization\n\nD Event id:I name:S venue:S date:D capacity:I\nD Ticket id:I eventId:I uid:I status:E[Reserved,Paid,Cancelled]\n\nE /events G ->L1 ->events\nE /events P ->L2 ->event\nE /tickets G ->L3 ->tickets\nE /tickets P ->L4 ->ticket\nE /my-tickets G ->L5 ->tickets\n\nRt / Dashboard\nRt /events EventList\nRt /event EventDetail\nRt /my-tickets MyTickets\nLay Shell Nav Main\n\nU Dashboard\nU EventList events\nT events:A[Event]\nU EventDetail event\nT event:Event\nU MyTickets tickets\nT tickets:A[Ticket]\nTbl EventList Event id name venue date capacity\nTbl MyTickets Ticket id eventId status\nFm TicketForm Ticket eventId uid status\n\nP reserve 999 usd \"Ticket reservation\"\n\nL1:\n  R db.F Event * ->events\n  J events\nL2:\n  R db.P Event * ->event\n  J event\nL3:\n  R db.F Ticket * ->tickets\n  J tickets\nL4:\n  R db.P Ticket * ->ticket\n  J ticket\nL5:\n  R db.F Ticket * ->tickets\n  J tickets\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__openclaw__daily_lead_summary_lang",
+      "order": 45,
+      "path": "examples/openclaw/daily_lead_summary.lang",
+      "primary_pattern": "daily_lead_summary",
+      "secondary_pattern": "crm_digest",
+      "strict_valid_expected": true,
+      "canonical_source": "# Daily Lead Summary (simplified)\n# Reports number of leads created in the last day.\nS core cron \"0 7 * * *\"\n\nD Config lookback_days:N\nD State last_run:T\n\nL0:\n    R core now ->ts\n    R cache get \"state\" \"last_run\" ->last_run\n    R core sub ts 86400 ->cutoff\n    R db F ->rows\n    X total len rows\n    R core stringify total ->s_total\n    R core concat \"Leads: \" s_total ->summary\n    X notify_payload obj text summary\n    R queue Put notify notify_payload ->_\n    R cache set \"state\" \"last_run\" ts ->_\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__openclaw_full_unification_ainl",
+      "order": 46,
+      "path": "examples/openclaw_full_unification.ainl",
+      "primary_pattern": "openclaw_full_unification",
+      "secondary_pattern": "workspace_unification",
+      "strict_valid_expected": true,
+      "canonical_source": "# Meta-supervisor sample \u2014 polls health endpoint and writes a status log entry.\n# Runs every 15 minutes via cron.\nS core cron \"*/15 * * * *\"\n\nL0:\n  R http.GET \"http://localhost:4200/api/health\" ->st\n  R core.concat \"supervisor status=\" st ->line\n  R memory.put \"ops\" \"supervisor\" \"status\" line 86400 {} ->_\n  J st\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__test_if_var_ainl",
+      "order": 47,
+      "path": "examples/test_if_var.ainl",
+      "primary_pattern": "if_var_branch",
+      "secondary_pattern": "conditional_branch",
+      "strict_valid_expected": true,
+      "canonical_source": "S app core noop\n\nL0:\n  R core.sub 100 85 ->x\n  If x ->L2 ->L3\n\nL2:\n  J \"true\"\n\nL3:\n  J \"false\"\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__test_mul_ainl",
+      "order": 48,
+      "path": "examples/test_mul.ainl",
+      "primary_pattern": "multiply_ops",
+      "secondary_pattern": "arithmetic_mul",
+      "strict_valid_expected": true,
+      "canonical_source": "S app core noop\n\nL0:\n  R core.sub 100 85 ->x\n  R core.mul x 2 ->y\n  J y\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__test_X_sub_ainl",
+      "order": 49,
+      "path": "examples/test_X_sub.ainl",
+      "primary_pattern": "subtract_expr",
+      "secondary_pattern": "arithmetic_sub",
+      "strict_valid_expected": true,
+      "canonical_source": "S app core noop\n\nL0:\n  X diff (core.sub 100 85)\n  X out (core.mul diff 2)\n  J out\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__compact__openclaw_learning_handoff_ainl",
+      "order": 50,
+      "path": "examples/compact/openclaw_learning_handoff.ainl",
+      "primary_pattern": "openclaw_learning_handoff",
+      "secondary_pattern": "learning_digest",
+      "strict_valid_expected": true,
+      "canonical_source": "# OpenClaw \u2194 AINL pipeline handoff (template).\n# ClawHub skills capture into ~/.openclaw/workspace/.learnings/; export script\n# promotes a digest into memory/. This graph is the slot where a host passes\n# promoted text or JSON into AINL as inputs \u2014 replace with real ops as needed.\n\nopenclaw_handoff:\n  in: digest_summary\n  merged = core.CONCAT \"openclaw_stage=ainl_ingest \" digest_summary\n  out merged\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
     }
   ]
 }

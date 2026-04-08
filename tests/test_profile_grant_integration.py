@@ -136,10 +136,29 @@ class TestRunnerProfileEnvVar:
         try:
             os.environ["AINL_SECURITY_PROFILE"] = "nonexistent_fake"
             new_grant = _runner_mod._load_server_grant()
-            assert new_grant["allowed_adapters"] == ["core", "fs"]
+            assert new_grant["allowed_adapters"] is None
         finally:
             os.environ.pop("AINL_SECURITY_PROFILE", None)
             _runner_mod._SERVER_GRANT = old
+
+    def test_runner_strict_mode_merges_consumer_preset(self):
+        import scripts.runtime_runner_service as _runner_mod
+        old_grant = _runner_mod._SERVER_GRANT
+        try:
+            os.environ.pop("AINL_SECURITY_PROFILE", None)
+            os.environ["AINL_STRICT_MODE"] = "1"
+            os.environ.pop("AINL_STRICT_PROFILE", None)
+            new_grant = _runner_mod._load_server_grant()
+            aa = grant_to_allowed_adapters(new_grant)
+            assert aa is not None
+            assert "web" in aa
+            assert "core" in aa
+            assert "operator_sensitive" in (new_grant.get("forbidden_privilege_tiers") or [])
+            assert new_grant["limits"]["max_steps"] == 2000
+        finally:
+            os.environ.pop("AINL_STRICT_MODE", None)
+            os.environ.pop("AINL_STRICT_PROFILE", None)
+            _runner_mod._SERVER_GRANT = old_grant
 
 
 class TestMcpProfileEnvVar:
@@ -156,3 +175,25 @@ class TestMcpProfileEnvVar:
                 os.environ.pop("AINL_MCP_PROFILE", None)
             else:
                 os.environ["AINL_MCP_PROFILE"] = old_val
+
+    def test_mcp_strict_mode_without_mcp_profile(self):
+        old_mcp = os.environ.get("AINL_MCP_PROFILE")
+        old_strict = os.environ.get("AINL_STRICT_MODE")
+        try:
+            os.environ.pop("AINL_MCP_PROFILE", None)
+            os.environ["AINL_STRICT_MODE"] = "1"
+            from scripts.ainl_mcp_server import _load_mcp_server_grant
+
+            new_grant = _load_mcp_server_grant()
+            aa = grant_to_allowed_adapters(new_grant)
+            assert aa is not None
+            assert "web" in aa
+        finally:
+            if old_mcp is None:
+                os.environ.pop("AINL_MCP_PROFILE", None)
+            else:
+                os.environ["AINL_MCP_PROFILE"] = old_mcp
+            if old_strict is None:
+                os.environ.pop("AINL_STRICT_MODE", None)
+            else:
+                os.environ["AINL_STRICT_MODE"] = old_strict

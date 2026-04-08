@@ -28,6 +28,9 @@ def test_runtime_path_snapshots_match_current_envelope():
             execution_mode="graph-preferred",
         )
         assert payload["ok"] is True
-        assert payload["result"] == case["expected_result"], case["name"]
+        if "expected_result_contains" in case:
+            assert case["expected_result_contains"] in str(payload["result"]), case["name"]
+        else:
+            assert payload["result"] == case["expected_result"], case["name"]
         trace_ops = [event.get("op") for event in payload.get("trace", [])]
         assert trace_ops == case["expected_trace_ops"], case["name"]

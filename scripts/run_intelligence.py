@@ -7,6 +7,7 @@ Usage:
 Programs:
     context    — Token-aware startup context injection
     summarizer — Proactive session summarizer (LLM-backed)
+    digest     — intelligence_digest.lang (web + TikTok snapshot, cache, memory, notify)
     consolidation — Memory consolidation (keyword-based)
     auto_tune_ainl_caps — Weekly auto-tuning of AINL/OpenClaw caps
     all        — Run context, consolidation, summarizer (excludes auto-tune)
@@ -21,6 +22,7 @@ import os
 import json
 import logging
 import time
+from pathlib import Path
 
 # Ensure project root is on path
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,6 +39,7 @@ logger = logging.getLogger('ainl.intelligence')
 PROGRAMS = {
     'context': 'intelligence/token_aware_startup_context.lang',
     'summarizer': 'intelligence/proactive_session_summarizer.lang',
+    'digest': 'intelligence/intelligence_digest.lang',
     'consolidation': 'intelligence/memory_consolidation.lang',
     'continuity': 'intelligence/session_continuity_enhanced.lang',
     'signature_enforcer': 'intelligence/signature_enforcer.py',
@@ -50,6 +53,8 @@ PROGRAMS = {
 def compile_and_run(program_path: str, trace: bool = False, dry_run: bool = False) -> dict:
     """Run an AINL program or Python tool."""
     full_path = os.path.join(PROJECT_ROOT, program_path)
+    if "intelligence" in Path(full_path).parts and "AINL_ALLOW_IR_DECLARED_ADAPTERS" not in os.environ:
+        os.environ["AINL_ALLOW_IR_DECLARED_ADAPTERS"] = "1"
     logger.info(f'Loading: {program_path}')
 
     # If it's a Python script, run it directly

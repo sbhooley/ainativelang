@@ -96,6 +96,8 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "llm",
         "llm_query",
         "fanout",
+        "web",
+        "tiktok",
     ]
     if args.replay_adapters:
         data = json.loads(Path(args.replay_adapters).read_text(encoding="utf-8"))
@@ -364,6 +366,11 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
 
     reg.register("fanout", FanoutAdapter())
     reg.register("cache", LocalFileCacheAdapter())
+    from adapters.openclaw_integration import NotificationQueueAdapter, TiktokAdapter, WebAdapter
+
+    reg.register("web", WebAdapter())
+    reg.register("tiktok", TiktokAdapter())
+    reg.register("queue", NotificationQueueAdapter())
     if "vector_memory" in enabled:
         from adapters.vector_memory import VectorMemoryAdapter
 
@@ -533,6 +540,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not args.file:
         raise SystemExit("run requires <file> unless --self-test-graph is set")
     src_path = str(Path(args.file).resolve())
+    # Operator workflows under intelligence/ expect web/tiktok/cache/queue; many hosts export a
+    # narrow AINL_HOST_ADAPTER_ALLOWLIST — allow IR-declared adapters unless explicitly opted out.
+    if "intelligence" in Path(src_path).parts and "AINL_ALLOW_IR_DECLARED_ADAPTERS" not in os.environ:
+        os.environ["AINL_ALLOW_IR_DECLARED_ADAPTERS"] = "1"
     with open(src_path, "r", encoding="utf-8") as f:
         code = f.read()
     reg = _adapter_registry_from_args(args)
@@ -550,6 +561,14 @@ def cmd_run(args: argparse.Namespace) -> int:
     elif getattr(args, "log_trajectory", False) or env_traj in ("1", "true", "yes", "on"):
         trajectory_path = str(Path(src_path).parent / (Path(src_path).stem + ".trajectory.jsonl"))
     sandbox_client = SandboxClient.try_connect(logger=lambda msg: print(msg, file=sys.stderr))
+    host_allow: Optional[List[str]] = None
+    raw_h = str(getattr(args, "host_adapter_allowlist", "") or "").strip()
+    if raw_h:
+        host_allow = [x.strip() for x in raw_h.split(",") if x.strip()]
+    host_deny: Optional[List[str]] = None
+    raw_d = str(getattr(args, "host_adapter_denylist", "") or "").strip()
+    if raw_d:
+        host_deny = [x.strip() for x in raw_d.split(",") if x.strip()]
     eng = RuntimeEngine.from_code(
         code,
         strict=args.strict,
@@ -567,6 +586,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         runtime_async=bool(getattr(args, "runtime_async", False)),
         observability=bool(getattr(args, "observability", False)),
         observability_jsonl_path=str(getattr(args, "observability_jsonl", "") or "").strip() or None,
+        host_adapter_allowlist=host_allow,
+        host_adapter_denylist=host_deny,
     )
     frame = _parse_frame_json_arg(getattr(args, "frame_json", "") or "")
     try:
@@ -2374,6 +2395,24 @@ def main() -> None:
     runp.add_argument("--max-time-ms", type=int, default=None)
     runp.add_argument("--max-frame-bytes", type=int, default=None)
     runp.add_argument("--max-loop-iters", type=int, default=None)
+    runp.add_argument(
+        "--host-adapter-allowlist",
+        default="",
+        metavar="NAMES",
+        help=(
+            "Comma-separated adapter names intersected with IR policy "
+            "(overrides env AINL_HOST_ADAPTER_ALLOWLIST when set)."
+        ),
+    )
+    runp.add_argument(
+        "--host-adapter-denylist",
+        default="",
+        metavar="NAMES",
+        help=(
+            "Comma-separated adapters removed after allowlist intersection "
+            "(overrides env AINL_HOST_ADAPTER_DENYLIST when set)."
+        ),
+    )
     runp.add_argument("--self-test-graph", action="store_true")
     runp.set_defaults(func=cmd_run)
 

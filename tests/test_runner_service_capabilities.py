@@ -33,6 +33,9 @@ def test_capabilities_has_required_fields():
     assert "runtime_version" in body
     assert "adapters" in body
     assert "policy_support" in body
+    assert "host_security_env" in body
+    assert isinstance(body["host_security_env"], dict)
+    assert "AINL_STRICT_MODE" in body["host_security_env"]
     assert body["schema_version"] == "1.1"
     assert isinstance(body["runtime_version"], str)
     assert body["policy_support"] is True

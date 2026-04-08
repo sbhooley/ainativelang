@@ -2,6 +2,6 @@
   "name": "err_handler_path",
   "code": "L1: R ext.echo x ->out Err ->L9 J out\nL9: Set handled _error J handled\n",
   "input_frame": {},
-  "expected_result_contains": "adapter blocked by capability gate",
+  "expected_result_contains": "adapter not registered",
   "expected_trace_ops_contains": ["Set", "J"]
 }

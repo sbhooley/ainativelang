@@ -201,6 +201,8 @@ See `docs/AGENT_GUIDE_INDEX.md` for a full feature map.
 
 ## Using LLM Adapters with MCP (Hermes‑Agent / OpenClaw Skill)
 
+**Adapter policy (non-LLM):** the MCP server’s **`ainl_run`** and related tool paths use the same mass-market defaults as the HTTP runner: IR-declared adapters are not blocked by a core-only grant at the policy layer; **resource limits** and **`AINL_STRICT_MODE` / security profiles** still apply. A narrow **`AINL_HOST_ADAPTER_ALLOWLIST`** in the parent environment can still affect runs unless **`AINL_ALLOW_IR_DECLARED_ADAPTERS=1`** (see `AGENTS.md`).
+
 When running the AINL MCP server (`scripts/ainl_mcp_server.py`), LLM adapters are **not** enabled by default to preserve a minimal attack surface. To enable them:
 
 1. Set `AINL_CONFIG` to point to your YAML config file **or** set `AINL_MCP_LLM_ENABLED=1`.

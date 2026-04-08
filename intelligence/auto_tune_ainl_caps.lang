@@ -100,11 +100,8 @@ program auto_tune_ainl_caps
     sizes = []
     try {
       db = sqlite_open(db_path)
-      rows = sqlite_query(db, """
-        SELECT payload_json FROM bridge_reports
-        WHERE created_at >= datetime('now', '-7 days')
-        ORDER BY created_at DESC
-      """)
+      # SQL on one line — AINL tokenizer does not support Python-style """ strings
+      rows = sqlite_query(db, 'SELECT payload_json FROM bridge_reports WHERE created_at >= datetime(\'now\', \'-7 days\') ORDER BY created_at DESC')
       for row in rows {
         payload = parse_json(row.payload_json)
         report_len = len(payload.report?.content ?? payload.report ?? "")

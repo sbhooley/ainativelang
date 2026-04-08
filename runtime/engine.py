@@ -6,7 +6,7 @@ import asyncio
 import os
 import time
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from compiler_v2 import (
     AICodeCompiler,
@@ -65,7 +65,76 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.4.1"
+RUNTIME_VERSION = "1.4.2"
+
+
+def _parse_host_csv_env(name: str) -> Optional[List[str]]:
+    raw = str(os.environ.get(name) or "").strip()
+    if not raw:
+        return None
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
+    """Infer adapters from label steps when avm metadata is missing or incomplete.
+
+    Matches compiler ``_compute_avm_policy_fragment`` / ``_iter_all_steps`` so
+    ``QueuePut``/``Cache*`` ops still enable ``queue``/``cache`` capabilities.
+    """
+    found: Set[str] = set()
+    labels = ir.get("labels") or {}
+    for _lid, body in labels.items():
+        if not isinstance(body, dict):
+            continue
+        legacy = (body.get("legacy") or {})
+        for step in (legacy.get("steps") or []):
+            if not isinstance(step, dict):
+                continue
+            op = str(step.get("op") or "").strip()
+            if op == "QueuePut":
+                found.add("queue")
+            elif op in ("CacheGet", "CacheSet"):
+                found.add("cache")
+            elif op == "R":
+                adapter = str(step.get("adapter") or "").strip()
+                if adapter:
+                    found.add(adapter.split(".", 1)[0].lower())
+    return sorted(found)
+
+
+def _allowed_adapter_names_from_ir(ir: Dict[str, Any]) -> List[str]:
+    """Adapter names allowed through [`AdapterRegistry`] for this IR.
+
+    Explicit ``capabilities.allow`` wins if present. Otherwise use the compiler's
+    ``execution_requirements.required_capabilities`` or ``avm_policy_fragment.allowed_adapters``
+    (derived from ``R`` steps). Without this, the default would be only ``["core"]``, which
+    blocks any ``R web ...``, ``R cache ...``, etc. even though the graph references them.
+    """
+    caps = ir.get("capabilities") or {}
+    cap_allow = caps.get("allow")
+    if isinstance(cap_allow, list) and cap_allow:
+        out = [str(x) for x in cap_allow if x is not None]
+        return out if out else ["core"]
+
+    exec_req = ir.get("execution_requirements") or {}
+    req = exec_req.get("required_capabilities")
+    base: List[str]
+    if isinstance(req, list) and req:
+        base = [str(x) for x in req if x is not None]
+        base = base if base else ["core"]
+    else:
+        avm = ir.get("avm_policy_fragment") or {}
+        aa = avm.get("allowed_adapters")
+        if isinstance(aa, list) and aa:
+            base = [str(x) for x in aa if x is not None]
+            base = base if base else ["core"]
+        else:
+            base = ["core"]
+
+    extra = _fallback_adapters_from_label_steps(ir)
+    if not extra:
+        return base
+    return sorted(set(base) | set(extra))
 
 # Stable, machine-readable runtime error codes for agents.
 ERROR_CODE_MAX_DEPTH = "RUNTIME_MAX_DEPTH"
@@ -104,6 +173,8 @@ class RuntimeEngine:
         runtime_async: bool = False,
         observability: bool = False,
         observability_jsonl_path: Optional[str] = None,
+        host_adapter_allowlist: Optional[List[str]] = None,
+        host_adapter_denylist: Optional[List[str]] = None,
     ):
         self.ir = ir
         self.labels = ir.get("labels", {})
@@ -132,14 +203,76 @@ class RuntimeEngine:
         self._run_started_at: float = 0.0
         self._steps_executed: int = 0
         self._adapter_calls: int = 0
-        cap_allow = (ir.get("capabilities") or {}).get("allow")
-        allowed = cap_allow if isinstance(cap_allow, list) and cap_allow else ["core"]
-        self.adapters = adapters or AdapterRegistry(allowed=allowed)
+        effective_host = host_adapter_allowlist
+        if effective_host is None:
+            # When set, ignore AINL_HOST_ADAPTER_ALLOWLIST from the environment so graphs may use
+            # any adapter referenced in the IR (OpenClaw / IDE hosts sometimes export a narrow list).
+            _relax_env_allowlist = str(os.environ.get("AINL_ALLOW_IR_DECLARED_ADAPTERS") or "").strip().lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }
+            if not _relax_env_allowlist:
+                raw = str(os.environ.get("AINL_HOST_ADAPTER_ALLOWLIST") or "").strip()
+                if raw:
+                    effective_host = [x.strip() for x in raw.split(",") if x.strip()]
+        allowed = _allowed_adapter_names_from_ir(ir)
+        if effective_host is not None:
+            host_set = set(effective_host)
+            allowed = [a for a in allowed if a in host_set]
+        effective_deny = host_adapter_denylist
+        if effective_deny is None:
+            effective_deny = _parse_host_csv_env("AINL_HOST_ADAPTER_DENYLIST")
+        if effective_deny:
+            deny_set = set(effective_deny)
+            allowed = [a for a in allowed if a not in deny_set]
+        if adapters is not None:
+            self.adapters = adapters
+            for name in allowed:
+                self.adapters.allow(name)
+        else:
+            self.adapters = AdapterRegistry(allowed=allowed)
         # Ensure core stdlib exists for MVP.
         self.adapters.register("core", CoreBuiltinAdapter())
+        self._ensure_optional_adapters_registered(allowed)
         self._source_lines = (ir.get("source") or {}).get("lines", []) or []
         self._cst_by_line = {ln.get("lineno"): ln for ln in ((ir.get("cst") or {}).get("lines") or []) if isinstance(ln, dict)}
         self._validate_ir_version()
+
+    def _ensure_optional_adapters_registered(self, allowed: List[str]) -> None:
+        """Register adapters referenced by the IR when missing (minimal `ainl serve` / no CLI registry)."""
+        need = set(allowed)
+        reg = self.adapters
+        try:
+            if "web" in need and "web" not in reg:
+                from adapters.openclaw_integration import WebAdapter
+
+                reg.register("web", WebAdapter())
+            if "tiktok" in need and "tiktok" not in reg:
+                from adapters.openclaw_integration import TiktokAdapter
+
+                reg.register("tiktok", TiktokAdapter())
+            if "queue" in need and "queue" not in reg:
+                from adapters.openclaw_integration import NotificationQueueAdapter
+
+                reg.register("queue", NotificationQueueAdapter())
+            if "cache" in need and "cache" not in reg:
+                from adapters.local_cache import LocalFileCacheAdapter
+
+                reg.register("cache", LocalFileCacheAdapter())
+            if "memory" in need and "memory" not in reg:
+                from pathlib import Path
+
+                from runtime.adapters.memory import MemoryAdapter
+
+                mem_db = (
+                    str(os.environ.get("AINL_MEMORY_DB") or "").strip()
+                    or str(Path.home() / ".openclaw" / "ainl_memory.sqlite3")
+                )
+                reg.register("memory", MemoryAdapter(db_path=mem_db))
+        except Exception:
+            pass
 
     @classmethod
     def from_code(
@@ -161,7 +294,26 @@ class RuntimeEngine:
         runtime_async: bool = False,
         observability: bool = False,
         observability_jsonl_path: Optional[str] = None,
+        host_adapter_allowlist: Optional[List[str]] = None,
+        host_adapter_denylist: Optional[List[str]] = None,
     ) -> "RuntimeEngine":
+        if source_path:
+            try:
+                from pathlib import Path as _Path
+
+                if "intelligence" in _Path(source_path).resolve().parts:
+                    # Intelligence graphs (e.g. intelligence_digest.lang) declare web/tiktok/queue in IR.
+                    # Scheduled hosts may set AINL_ALLOW_IR_DECLARED_ADAPTERS=0 from manifest while still
+                    # exporting a narrow AINL_HOST_ADAPTER_ALLOWLIST — that would strip `web` and fail at
+                    # runtime. Default: always honor IR-declared adapters for paths under .../intelligence/.
+                    # Operators can force strict host policy with AINL_INTELLIGENCE_FORCE_HOST_POLICY=1.
+                    _intel_strict = str(
+                        os.environ.get("AINL_INTELLIGENCE_FORCE_HOST_POLICY") or ""
+                    ).strip().lower() in {"1", "true", "yes", "on"}
+                    if not _intel_strict:
+                        os.environ["AINL_ALLOW_IR_DECLARED_ADAPTERS"] = "1"
+            except Exception:
+                pass
         c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
         ir = c.compile(code, emit_graph=True, source_path=source_path)
         if ir.get("errors"):
@@ -181,6 +333,8 @@ class RuntimeEngine:
             runtime_async=runtime_async,
             observability=observability,
             observability_jsonl_path=observability_jsonl_path,
+            host_adapter_allowlist=host_adapter_allowlist,
+            host_adapter_denylist=host_adapter_denylist,
         )
 
     @classmethod
@@ -202,6 +356,8 @@ class RuntimeEngine:
         runtime_async: bool = False,
         observability: bool = False,
         observability_jsonl_path: Optional[str] = None,
+        host_adapter_allowlist: Optional[List[str]] = None,
+        host_adapter_denylist: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         eng = cls.from_code(
             code,
@@ -217,6 +373,8 @@ class RuntimeEngine:
             runtime_async=runtime_async,
             observability=observability,
             observability_jsonl_path=observability_jsonl_path,
+            host_adapter_allowlist=host_adapter_allowlist,
+            host_adapter_denylist=host_adapter_denylist,
         )
         try:
             lid = label or eng.default_entry_label()
@@ -957,6 +1115,12 @@ class RuntimeEngine:
             "source": ctx.get("line") if ctx else None,
         }
         code = ERROR_CODE_ADAPTER_ERROR if isinstance(err, AdapterError) else ERROR_CODE_RUNTIME_OP_ERROR
+        if isinstance(err, AdapterError) and "capability gate" in str(err):
+            data["user_hint"] = (
+                "This step needs an adapter your host has not enabled. "
+                "See the error text for AINL_HOST_ADAPTER_ALLOWLIST, AINL_HOST_ADAPTER_DENYLIST, "
+                "AINL_STRICT_MODE, and AINL_SECURITY_PROFILE."
+            )
         raise AinlRuntimeError(msg, public_lid, idx, op, stack, code=code, data=data)
 
     def _next_linear_node_edge(

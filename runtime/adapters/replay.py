@@ -7,7 +7,7 @@ from runtime.adapters.base import AdapterError, AdapterRegistry
 
 class RecordingAdapterRegistry(AdapterRegistry):
     def __init__(self, allowed: Optional[List[str]] = None):
-        super().__init__(allowed=allowed or ["core"])
+        super().__init__(allowed=allowed)
         self.call_log: List[Dict[str, Any]] = []
 
     def call(self, adapter_name: str, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
@@ -25,7 +25,7 @@ class RecordingAdapterRegistry(AdapterRegistry):
 
 class ReplayAdapterRegistry(AdapterRegistry):
     def __init__(self, replay_log: List[Dict[str, Any]], allowed: Optional[List[str]] = None):
-        super().__init__(allowed=allowed or ["core"])
+        super().__init__(allowed=allowed)
         self._replay_log = list(replay_log)
         self._idx = 0
         self.call_log: List[Dict[str, Any]] = []

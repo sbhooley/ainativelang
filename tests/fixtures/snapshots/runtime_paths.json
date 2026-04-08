@@ -26,7 +26,7 @@
     {
       "name": "err_handler_path",
       "fixture": "tests/conformance_runtime/fixtures/err_handler_path.json",
-      "expected_result": "adapter blocked by capability gate: ext",
+      "expected_result_contains": "adapter not registered: ext",
       "expected_trace_ops": [
         null,
         "Set",
@@ -36,7 +36,7 @@
     {
       "name": "retry_at_node",
       "fixture": "tests/conformance_runtime/fixtures/retry_at_node.json",
-      "expected_result": "adapter blocked by capability gate: ext",
+      "expected_result_contains": "adapter not registered: ext",
       "expected_trace_ops": [
         "R",
         "R",

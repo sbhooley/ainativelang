@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+<!-- Next release changes go here -->
+
+## v1.4.2 (April 7, 2026) — Intelligence path policy, MCP/runner alignment, compiler strict-mode + tooling
+
+- **feat(runtime)**: **`AINL_ALLOW_IR_DECLARED_ADAPTERS`** — when set, **`AINL_HOST_ADAPTER_ALLOWLIST` from the environment** is ignored so graphs can use IR-declared adapters; denylist and security profiles still apply; **`ainl doctor`** / capability hints updated. For sources under an **`intelligence/`** path segment, **`RuntimeEngine.from_code`** and **`ainl run`** set **`AINL_ALLOW_IR_DECLARED_ADAPTERS=1`** when unset, unless **`AINL_INTELLIGENCE_FORCE_HOST_POLICY=1`**.
+- **feat(cli)**: **`ainl run`** registers **`web`**, **`tiktok`**, **`queue`** (OpenClaw integration) consistently on every invocation.
+- **feat(mcp)**: **`scripts/ainl_mcp_server.py`** — default **`ainl_run`** / fitness tool grants aligned with the HTTP runner (no core-only adapter cap at the policy layer; resource limits unchanged). LLM on MCP remains opt-in via **`AINL_CONFIG`** / **`AINL_MCP_LLM_ENABLED`**.
+- **feat(runner)**: **`scripts/runtime_runner_service.py`** documents the adapter-relax flag in **`host_security_env`** / capabilities response.
+- **test**: **`tests/test_host_adapter_allowlist_env.py`** — intelligence path relax, host allowlist env behavior, strict policy override coverage.
+- **docs**: **`AGENTS.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**, **`docs/LLM_ADAPTER_USAGE.md`**, **`env/openclaw-workspace-ainl.env.example`**, ArmaraOS **`scheduled-ainl`** / snippet cross-links.
+- **fix(compiler)**: `J L_label` (jump to a known label by name) no longer generates false **"undefined variable"** strict-mode errors. `_steps_to_graph` now emits `analysis_only: true` inter-label edges for every `J` node whose var resolves to a known label, enabling inter-label dataflow propagation without confusing the dataflow checker.
+- **fix(compiler)**: Edge port validation now skips `analysis_only: true` edges (compiler-internal, dataflow-only), eliminating the spurious `"edge … invalid for op 'J' (allowed: [])"` error that appeared when strict mode validated label-jumping graphs.
+- **fix(tooling)**: `strict_adapter_key_for_step` in `tooling/effect_analysis.py` now uses the IR `entity` field as the verb fallback when `req_op` is empty. This fixes `*.F` unknown-adapter-verb errors for `R adapter verb args` instructions whose IR stores the verb in `entity` (affects `core`, `web`, `tiktok`, `cache`, `svc`, `crm`, and similar adapters).
+- **feat(tooling)**: Expanded `ADAPTER_EFFECT` allowlist with:
+  - `web.*` — `SEARCH`, `FETCH`, `SCRAPE`, `GET`
+  - `tiktok.*` — `RECENT`, `SEARCH`, `PROFILE`, `STATS`, `TRENDING`
+  - `svc.*` — `STATUS`, `RESTART`, `CADDY`, `NGINX`, `HEALTH`
+  - `crm.*` — `QUERY`, `UPDATE`
+  - Additional `core.*` ops: `LEN`, `LT`, `GT`, `EQ`, `MAP`, `FILTER`, `CONCAT`, `SLICE`, `PARSE`, `FORMAT`, `NOW`, `ISO`, `JOIN`, `KEYS`, `CONTAINS`, `MERGE`, `TYPE`, `BOOL`, `UPPER`, `LOWER`, `ROUND`, `ABS`, `MOD`, `FLOOR`, `CEIL`, `RANGE`, `ZIP`, `REDUCE`, `SORT`, `UNIQUE`, `FLAT`, `HEAD`, `TAIL`, `CHUNK`, `SAMPLE`, `SHUFFLE`
+- **feat(tooling)**: Updated `tooling/adapter_manifest.json` to include the `web` adapter namespace and all new verbs for `tiktok`, `svc`, `crm`, and `core`, keeping adapter manifest coverage tests green.
+- **fix(intelligence)**: `intelligence/intelligence_digest.lang` — removed `include "modules/common/generic_memory.ainl" as genmem` (include was after the `S` header, violating strict prelude placement, and `generic_memory.ainl` does not conform to the `ENTRY`/`EXIT_*` module contract); inlined memory writes using direct `R memory put` adapter calls; replaced `QueuePut notify note` with `R queue Put "notify" note ->_`; added missing `J L_analyze` terminator to `L_default_prev`.
+- **fix(intelligence)**: `intelligence/infrastructure_watchdog.lang` — replaced non-standard `Ret null` with `J null`; replaced `QueuePut notify alert_msg` with `R queue Put "notify" alert_msg ->_`.
+- **feat(armaraos)**: `ainl-library` walker respects a `.ainl-library-skip` marker file — any directory tree containing this file is excluded from the App Store listing. Added `demo/.ainl-library-skip` so development-only demo files stay out of the user-facing App Store.
+- **fix(profiles)**: Promoted 11 files from `non-strict-only` to `strict-valid` in `tooling/artifact_profiles.json` following resolution of their structural issues: `examples/api_only.lang`, `examples/blog.lang`, `examples/ecom.lang`, `examples/internal_tool.lang`, `examples/ticketing.lang`, `examples/openclaw/daily_lead_summary.lang`, `examples/openclaw_full_unification.ainl`, `examples/test_if_var.ainl`, `examples/test_mul.ainl`, `examples/test_X_sub.ainl`; added new `examples/compact/openclaw_learning_handoff.ainl`.
+- **chore**: Synced `tooling/canonical_curriculum.json`, `tooling/canonical_training_pack.json` (rebuilt via `scripts/build_canonical_training_pack.py`), and `tests/fixtures/snapshots/compile_outputs.json` with promoted files and refreshed checksums.
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.2**.
+
 ## v1.4.1 (April 3, 2026) — Wishlist CI, offline LLM provider, core.GET
 
 - **feat(llm)**: register **`offline`** **`AbstractLLMAdapter`** (deterministic, no network) for **`config.yaml`** + **`register_llm_adapters`** demos and CI; **`LLMRuntimeAdapter`** normalizes verb casing so **`R llm.COMPLETION`** matches **`completion`**.

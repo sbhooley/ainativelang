@@ -6,13 +6,9 @@ D Post id:I title:S body:S created:D author:S
 D Comment id:I postId:I body:S author:S created:D
 
 E /posts G ->L1 ->posts
-L1: R db.F Post * ->posts J posts
 E /posts P ->L2 ->post
-L2: R db.P Post * ->post J post
 E /comments G ->L3 ->comments
-L3: R db.F Comment * ->comments J comments
 E /comments P ->L4 ->comment
-L4: R db.P Comment * ->comment J comment
 
 Rt / PostList
 Rt /posts PostList
@@ -31,3 +27,16 @@ Tbl PostList Post id title author created
 Tbl CommentList Comment id body author created
 
 C cache postList 3600
+
+L1:
+  R db.F Post * ->posts
+  J posts
+L2:
+  R db.P Post * ->post
+  J post
+L3:
+  R db.F Comment * ->comments
+  J comments
+L4:
+  R db.P Comment * ->comment
+  J comment

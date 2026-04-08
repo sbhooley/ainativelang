@@ -205,11 +205,12 @@ class TestScopingVsAuthorization:
     """Exposure scoping controls discovery; it does not relax security."""
 
     def test_scoped_run_still_enforces_policy(self):
-        """Even when ainl_run is exposed, policy still restricts execution."""
+        """Even when ainl_run is exposed, explicit caller policy still restricts execution."""
         from scripts.ainl_mcp_server import ainl_run
         result = ainl_run(
             "S app api /api\nL1:\nR http.Get \"https://example.com\" ->resp\nJ resp",
             strict=True,
+            policy={"forbidden_adapters": ["http"]},
         )
         assert result["ok"] is False
         assert result.get("error") == "policy_violation"

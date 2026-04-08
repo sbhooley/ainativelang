@@ -2120,6 +2120,15 @@ class AICodeCompiler:
             else:
                 if last_nid:
                     edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+                # J L_label: when the var resolves to a known label, add an analysis-only
+                # inter-label edge so the inter-label dataflow propagation can follow the jump.
+                if op == "J":
+                    j_var = s.get("var") or s.get("ref") or ""
+                    j_tgt = self._norm_lid(str(j_var)) if j_var else None
+                    if j_tgt and j_tgt in {self._norm_lid(str(k)) for k in self.labels if k is not None}:
+                        edges.append(
+                            {"from": nid, "to": j_tgt, "port": "next", "to_kind": "label", "analysis_only": True}
+                        )
                 last_nid = nid
         exits = [{"node": n["id"], "var": n["data"].get("var", "data")} for n in nodes if n["op"] == "J"]
         body["nodes"] = nodes
@@ -2234,6 +2243,8 @@ class AICodeCompiler:
             # Enforce port present and valid for source op.
             node_by_id = {n.get("id"): n for n in nodes if n.get("id")}
             for e in edges:
+                if e.get("analysis_only"):
+                    continue  # analysis-only edges (J-label, Call-label) bypass port validation
                 port = e.get("port")
                 if port is None or port == "":
                     self._errors.append(
@@ -2286,7 +2297,16 @@ class AICodeCompiler:
                 violations = dataflow_defined_before_use(
                     nodes, edges, entry, merged_entry if merged_entry else None
                 )
+                # Pre-compute normalised label ids so J L_foo jump references are not
+                # incorrectly flagged as undefined variable reads.
+                _known_norm = {
+                    self._norm_lid(str(k))
+                    for k in self.labels.keys()
+                    if k is not None
+                }
                 for nid, var in violations:
+                    if self._norm_lid(var) in _known_norm:
+                        continue  # J L_target is a label jump, not a variable read
                     msg = (
                         f"Label {lid!r}: node {nid!r} reads {var!r} which may be undefined on this path"
                         f" (if this is a string literal in strict mode, quote it explicitly)"
@@ -2435,10 +2455,17 @@ class AICodeCompiler:
     def _compute_avm_policy_fragment(self) -> Optional[Dict[str, Any]]:
         adapters: Set[str] = set()
         for step in self._iter_all_steps():
-            adapter = str((step or {}).get("adapter") or "").strip()
-            if not adapter:
-                continue
-            adapters.add(adapter.split(".", 1)[0].lower())
+            st = step or {}
+            op = str(st.get("op") or "").strip()
+            if op == "QueuePut":
+                adapters.add("queue")
+            elif op in ("CacheGet", "CacheSet"):
+                adapters.add("cache")
+            else:
+                adapter = str(st.get("adapter") or "").strip()
+                if not adapter:
+                    continue
+                adapters.add(adapter.split(".", 1)[0].lower())
         if not adapters:
             return None
         return {
@@ -4334,7 +4361,7 @@ class AICodeCompiler:
         stem = str(source_stem or "ainl_graph").replace("\\", "/").split("/")[-1]
 
         py = (
-            '"""DISCOVERABILITY / GETTING STARTED (AINL v1.4.1 – Solana strict graphs)\n'
+            '"""DISCOVERABILITY / GETTING STARTED (AINL v1.4.2 – Solana strict graphs)\n'
             "\n"
             "AINL provides native Solana support for deterministic prediction-market agents: PDA derivation, Pyth\n"
             "oracles (legacy PriceAccount + PriceUpdateV2), Hermes fallback, and low-cost settlement flows with\n"

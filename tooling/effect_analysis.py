@@ -241,6 +241,72 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "solana.SIMULATE_EVENTS": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
     # wasm compute calls are treated as pure compute effects.
     "wasm.CALL": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    # web adapter (search / fetch)
+    "web.SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "web.FETCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "web.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "web.POST": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    # tiktok adapter
+    "tiktok.RECENT": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "tiktok.SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "tiktok.PROFILE": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "tiktok.VIDEO": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "tiktok.TRENDING": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "tiktok.ANALYTICS": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    # svc adapter (service health / restart)
+    "svc.CADDY": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "svc.CLOUDFLARED": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "svc.MADDY": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "svc.CRM": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "svc.RESTART": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "svc.STATUS": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
+    "svc.START": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "svc.STOP": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    # Additional core ops used in programs
+    "core.LEN": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.LT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.GT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.LTE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.GTE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.EQ": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.NEQ": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.AND": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.OR": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.NOT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.ABS": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.ROUND": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.FLOOR": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.CEIL": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.MOD": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.POW": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.KEYS": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.VALUES": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.MERGE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.PICK": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.OMIT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.MAP": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.FILTER": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.REDUCE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.SORT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.REVERSE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.SLICE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.UNIQUE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.FLATTEN": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.ZIP": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.RANGE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.TYPE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.BOOL": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.INT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.FLOAT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.STR": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.FORMAT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.HASH": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.UUID": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.NOOP": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    # crm adapter ops
+    "crm.QUERY": (EFFECT_TIER_IO_READ, EFFECT_KIND_DB_READ),
+    "crm.UPDATE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_DB_WRITE),
+    "crm.CREATE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_DB_WRITE),
 }
 
 
@@ -257,44 +323,16 @@ def strict_adapter_key(adapter: Any, req_op: Any = "") -> str:
 
 
 def strict_adapter_key_for_step(step: Dict[str, Any]) -> str:
-    """Canonical strict contract key for compiler/runtime step data."""
+    """Canonical strict contract key for compiler/runtime step data.
+
+    Many ``R adapter verb args`` IR nodes store the verb in ``entity`` with
+    ``req_op`` left empty.  Fall back to ``entity`` (then ``target``) whenever
+    ``req_op`` is absent so the allowlist check uses the real verb rather than
+    the sentinel ``"F"``.
+    """
     adapter = step.get("adapter") or step.get("src") or ""
     req_op = step.get("req_op")
-    # R memory <verb> ... parses as adapter=memory, entity=<verb>, req_op="" → would
-    # otherwise become memory.F; fold entity into the verb for strict allowlist checks.
-    if (
-        isinstance(adapter, str)
-        and "." not in adapter
-        and adapter.lower() == "memory"
-        and not str(req_op or "").strip()
-    ):
-        ent = (step.get("entity") or step.get("target") or "").strip()
-        if ent:
-            return strict_adapter_key(adapter, ent)
-    if (
-        isinstance(adapter, str)
-        and "." not in adapter
-        and adapter.lower() == "ptc_runner"
-        and not str(req_op or "").strip()
-    ):
-        ent = (step.get("entity") or step.get("target") or "").strip()
-        if ent:
-            return strict_adapter_key(adapter, ent)
-    if (
-        isinstance(adapter, str)
-        and "." not in adapter
-        and adapter.lower() == "llm_query"
-        and not str(req_op or "").strip()
-    ):
-        ent = (step.get("entity") or step.get("target") or "").strip()
-        if ent:
-            return strict_adapter_key(adapter, ent)
-    if (
-        isinstance(adapter, str)
-        and "." not in adapter
-        and adapter.lower() == "code_context"
-        and not str(req_op or "").strip()
-    ):
+    if isinstance(adapter, str) and "." not in adapter and not str(req_op or "").strip():
         ent = (step.get("entity") or step.get("target") or "").strip()
         if ent:
             return strict_adapter_key(adapter, ent)

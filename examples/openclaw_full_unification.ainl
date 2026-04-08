@@ -1,8 +1,9 @@
-# Minimal meta-supervisor sample for OpenClaw bridge docs — status log only (no QueuePut / no extra scheduling).
-include "modules/openclaw/cron_supervisor.ainl"
+# Meta-supervisor sample — polls health endpoint and writes a status log entry.
+# Runs every 15 minutes via cron.
+S core cron "*/15 * * * *"
 
 L0:
-  R svc crm ->st
-  R core concat "openclaw_full_unification status crm=" st ->line
-  R openclaw_memory append_today line ->_
-  Ret st
+  R http.GET "http://localhost:4200/api/health" ->st
+  R core.concat "supervisor status=" st ->line
+  R memory.put "ops" "supervisor" "status" line 86400 {} ->_
+  J st

@@ -1,0 +1,7 @@
+This directory is excluded from the ArmaraOS App Store listing.
+Files here are development demos and integration tests that may use
+non-standard or experimental syntax. They are not intended for
+end-user discovery via the ainl-library walker.
+
+To include a file in the App Store, move it to examples/ or
+intelligence/ and ensure it passes: ainl validate <file> --strict

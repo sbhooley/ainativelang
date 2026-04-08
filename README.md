@@ -98,6 +98,12 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.4.2
+
+- **Host adapter policy**: **`AINL_ALLOW_IR_DECLARED_ADAPTERS`** relaxes env **`AINL_HOST_ADAPTER_ALLOWLIST`** when set; intelligence paths under **`intelligence/`** opt in by default unless **`AINL_INTELLIGENCE_FORCE_HOST_POLICY=1`**.
+- **CLI / MCP / runner**: **`ainl run`** registers **`web`**, **`tiktok`**, **`queue`**; MCP **`ainl_run`** grants match the HTTP runner; capabilities document host security env (see **`docs/LLM_ADAPTER_USAGE.md`**).
+- **Compiler + tooling**: strict-mode fixes for label-jump (**`J`**) graphs; **`effect_analysis`** / **`adapter_manifest`** coverage for **`web`**, **`tiktok`**, **`svc`**, **`crm`**, and expanded **`core`** verbs; intelligence examples use **`R queue Put`** and valid prelude layout; **`demo/.ainl-library-skip`** excludes dev demos from ArmaraOS App Store listings.
+
 ## New in v1.4.1
 
 - **Offline LLM provider (`offline`)**: deterministic **`AbstractLLMAdapter`** for **`config.yaml`** + **`register_llm_adapters`** demos and CI; use in **`llm.fallback_chain`** without live API keys (see **`fixtures/llm_offline.yaml`**).
@@ -809,7 +815,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.4.1**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.4.2**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
@@ -866,7 +872,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.4.1** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.4.2** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

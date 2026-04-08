@@ -1,5 +1,12 @@
 # Release notes
 
+## AINL v1.4.2 — Intelligence policy, MCP/runner alignment, compiler + tooling (2026-04-07)
+
+**PyPI / runtime:** **`ainativelang` 1.4.2** — **`RUNTIME_VERSION` `1.4.2`**.
+
+- **Runtime / ops:** **`AINL_ALLOW_IR_DECLARED_ADAPTERS`**; intelligence **`intelligence/`** paths opt in when unset; **`ainl run`** registers **`web`**, **`tiktok`**, **`queue`**; MCP and HTTP runner grant alignment; see **`docs/CHANGELOG.md`** § v1.4.2.
+- **Compiler / tooling:** strict-mode fixes for **`J`** label jumps; expanded adapter effect coverage and **`tooling/adapter_manifest.json`**; intelligence graphs + **`demo/.ainl-library-skip`** for App Store filtering.
+
 ## AINL v1.4.1 — Wishlist smoke + offline LLM provider (2026-04-03)
 
 **PyPI / runtime:** **`ainativelang` 1.4.1** — **`RUNTIME_VERSION` `1.4.1`**.

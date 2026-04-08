@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tooling.capability_grant import (
     empty_grant,
+    env_truthy,
     merge_grants,
     grant_to_policy,
     grant_to_limits,
@@ -102,7 +103,7 @@ def test_grant_to_limits_extracts_limits():
 
 def test_grant_to_allowed_adapters_with_fallback():
     g = empty_grant()
-    assert grant_to_allowed_adapters(g) == ["core"]
+    assert grant_to_allowed_adapters(g) is None
     assert grant_to_allowed_adapters(g, fallback=["core", "http"]) == ["core", "http"]
     g["allowed_adapters"] = ["sqlite"]
     assert grant_to_allowed_adapters(g) == ["sqlite"]
@@ -119,6 +120,22 @@ def test_load_profile_as_grant_operator_full():
     g = load_profile_as_grant("operator_full")
     assert g["allowed_adapters"] is None
     assert g["forbidden_privilege_tiers"] == []
+
+
+def test_env_truthy():
+    assert env_truthy("1") is True
+    assert env_truthy("true") is True
+    assert env_truthy("") is False
+    assert env_truthy(None) is False
+
+
+def test_load_profile_consumer_secure_default_includes_web():
+    g = load_profile_as_grant("consumer_secure_default")
+    aa = grant_to_allowed_adapters(g)
+    assert aa is not None
+    assert "web" in aa
+    assert "llm" in aa
+    assert "operator_sensitive" in g["forbidden_privilege_tiers"]
 
 
 def test_load_profile_unknown_raises():

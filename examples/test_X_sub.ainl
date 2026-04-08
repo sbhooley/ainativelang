@@ -1,2 +1,6 @@
-L0: X diff (core.sub 100 85) ->pen1 J L1
-L1: X pen2 (core.mul diff 2) ->out J out
+S app core noop
+
+L0:
+  X diff (core.sub 100 85)
+  X out (core.mul diff 2)
+  J out

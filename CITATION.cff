@@ -30,8 +30,8 @@ license: Apache-2.0
 
 url: "https://stevenhooley.com"
 
-version: "1.4.1"
-date-released: "2026-04-03"
+version: "1.4.2"
+date-released: "2026-04-07"
 
 # Optional if you publish a paper, Zenodo archive, or software DOI:
 # identifiers:

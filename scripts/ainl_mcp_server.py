@@ -7,9 +7,11 @@ MCP-compatible host (Gemini CLI, Claude Code, Codex Agents SDK, etc.) can
 discover and call AINL without custom integration code.
 
 Security posture:
-  - Safe-by-default: ``ainl-run`` is restricted to the ``core`` adapter with
-    conservative limits.  Callers can add *further* restrictions via a
-    ``policy`` parameter but can never widen beyond the server defaults.
+  - Default execution matches the runtime runner: adapter allowlist is unset at
+    the grant layer so IR-declared adapters (``http``, ``web``, ``llm``, …) work
+    out of the box; resource limits provide the safety floor.  Callers may add
+    further restrictions via ``policy`` / ``limits`` but cannot widen beyond
+    the merged server defaults.
   - Read-only tools (validate, compile, capabilities, security-report) have
     no side effects.
   - Ecosystem import tools (``ainl_import_*``, ``ainl_list_ecosystem``) perform
@@ -60,6 +62,7 @@ from tooling.policy_validator import validate_ir_against_policy
 from tooling.security_report import analyze_ir
 from tooling.capability_grant import (
     empty_grant,
+    env_truthy,
     merge_grants,
     grant_to_policy,
     grant_to_limits,
@@ -77,16 +80,15 @@ from intelligence.signature_enforcer import collect_signature_annotations, run_w
 from intelligence.trace_export_ptc_jsonl import export_file as export_ptc_trace_file
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
-_DEFAULT_ALLOWED_ADAPTERS: List[str] = ["core"]
-_DEFAULT_POLICY: Dict[str, Any] = {
-    "forbidden_privilege_tiers": ["local_state", "network", "operator_sensitive"],
+# Resource floor aligned with ``scripts/runtime_runner_service._SERVER_DEFAULT_LIMITS``.
+_MCP_DEFAULT_LIMITS: Dict[str, Any] = {
+    "max_steps": 2000,
+    "max_depth": 20,
+    "max_adapter_calls": 200,
+    "max_time_ms": 30000,
 }
-_DEFAULT_LIMITS: Dict[str, Any] = {
-    "max_steps": 500,
-    "max_depth": 10,
-    "max_adapter_calls": 50,
-    "max_time_ms": 5000,
-}
+# Back-compat for tests and introspection; same values as _MCP_DEFAULT_LIMITS.
+_DEFAULT_LIMITS: Dict[str, Any] = dict(_MCP_DEFAULT_LIMITS)
 
 
 # NOTE: These lists are part of the testing contract for exposure scoping.
@@ -171,24 +173,34 @@ def _resolve_exposure() -> tuple[Set[str], Set[str]]:
 _ALLOWED_TOOLS, _ALLOWED_RESOURCES = _resolve_exposure()
 
 
-def _load_mcp_server_grant() -> Dict[str, Any]:
-    """Build the MCP server-level capability grant."""
-    profile_name = os.environ.get("AINL_MCP_PROFILE")
-    if profile_name:
-        try:
-            return load_profile_as_grant(profile_name)
-        except ValueError:
-            pass
+def _mcp_bare_floor() -> Dict[str, Any]:
+    """Resource floor + permissive adapter cap (None), matching the default runner grant."""
     return {
-        "allowed_adapters": list(_DEFAULT_ALLOWED_ADAPTERS),
-
+        "allowed_adapters": None,
         "forbidden_adapters": [],
         "forbidden_effects": [],
         "forbidden_effect_tiers": [],
-        "forbidden_privilege_tiers": list(_DEFAULT_POLICY.get("forbidden_privilege_tiers") or []),
-        "limits": dict(_DEFAULT_LIMITS),
+        "forbidden_privilege_tiers": [],
+        "limits": dict(_MCP_DEFAULT_LIMITS),
         "adapter_constraints": {},
     }
+
+
+def _load_mcp_server_grant() -> Dict[str, Any]:
+    """Build the MCP server-level capability grant."""
+    profile_name = (os.environ.get("AINL_MCP_PROFILE") or "").strip()
+    if profile_name:
+        try:
+            return merge_grants(_mcp_bare_floor(), load_profile_as_grant(profile_name))
+        except ValueError:
+            pass
+    if env_truthy(os.environ.get("AINL_STRICT_MODE")):
+        sp = (os.environ.get("AINL_STRICT_PROFILE") or "consumer_secure_default").strip()
+        try:
+            return merge_grants(_mcp_bare_floor(), load_profile_as_grant(sp))
+        except ValueError:
+            pass
+    return _mcp_bare_floor()
 _MCP_SERVER_GRANT: Dict[str, Any] = _load_mcp_server_grant()
 
 
@@ -386,10 +398,10 @@ def ainl_run(
 ) -> dict:
     """Compile, validate policy, and execute an AINL workflow.
 
-    By default, only the ``core`` adapter is available and conservative
-    resource limits are applied.  The caller may supply additional policy
-    restrictions and tighter limits but cannot widen beyond the server
-    defaults.
+    By default, adapters referenced in the IR are allowed (same as the hosted
+    runner); resource limits enforce a safety floor.  The caller may supply
+    additional policy restrictions and tighter limits but cannot widen beyond
+    the merged server defaults.
 
     Returns structured execution output on success or a policy/runtime
     error on failure.
@@ -412,7 +424,8 @@ def ainl_run(
         }
 
     merged_limits = _merge_limits(limits)
-    reg = AdapterRegistry(allowed=list(_MCP_SERVER_GRANT.get("allowed_adapters", _DEFAULT_ALLOWED_ADAPTERS)))
+    mcp_allowed = grant_to_allowed_adapters(_MCP_SERVER_GRANT)
+    reg = AdapterRegistry(allowed=None)
     reg.register("core", CoreBuiltinAdapter())
     # Optional LLM adapter registration if AINL_CONFIG present
     config_path = os.environ.get("AINL_CONFIG")
@@ -436,6 +449,7 @@ def ainl_run(
             step_fallback=True,
             execution_mode="graph-preferred",
             limits=merged_limits,
+            host_adapter_allowlist=mcp_allowed,
         )
         entry = label or eng.default_entry_label()
         out = eng.run_label(entry, frame=frame or {})
@@ -553,8 +567,10 @@ def ainl_fitness_report(file: str, runs: int = 5, strict: bool = True) -> dict:
     successes = 0
     last_error: Optional[str] = None
     sample_runs: List[Dict[str, Any]] = []
+    fitness_allowed = grant_to_allowed_adapters(_MCP_SERVER_GRANT)
+    merged_fitness_limits = _merge_limits(None)
     for _ in range(runs):
-        reg = AdapterRegistry(allowed=list(_MCP_SERVER_GRANT.get("allowed_adapters", _DEFAULT_ALLOWED_ADAPTERS)))
+        reg = AdapterRegistry(allowed=None)
         reg.register("core", CoreBuiltinAdapter())
         start = time.perf_counter()
         run_summary: Dict[str, Any] = {"ok": False}
@@ -565,7 +581,8 @@ def ainl_fitness_report(file: str, runs: int = 5, strict: bool = True) -> dict:
                 trace=True,
                 step_fallback=True,
                 execution_mode="graph-preferred",
-                limits=dict(_DEFAULT_LIMITS),
+                limits=dict(merged_fitness_limits),
+                host_adapter_allowlist=fitness_allowed,
             )
             entry = eng.default_entry_label()
             eng.run_label(entry, frame={})

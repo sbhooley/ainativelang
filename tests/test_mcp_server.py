@@ -145,14 +145,10 @@ class TestRun:
         assert "out" in result
         assert "runtime_version" in result
 
-    def test_run_network_adapter_rejected_by_default_policy(self):
+    def test_run_network_workflow_not_blocked_by_default_policy(self):
+        """Default MCP grant matches runner: http is allowed at policy layer (may fail at runtime if adapter missing)."""
         result = ainl_run(NETWORK_CODE, strict=True)
-        assert result["ok"] is False
-        assert result.get("error") == "policy_violation"
-        errors = result.get("policy_errors", [])
-        assert any(
-            e["code"] == "POLICY_PRIVILEGE_TIER_FORBIDDEN" for e in errors
-        )
+        assert result.get("error") != "policy_violation"
 
     def test_run_invalid_code_returns_errors(self):
         result = ainl_run(INVALID_CODE)
@@ -167,8 +163,16 @@ class TestRun:
         assert result["ok"] is False
         assert result.get("error") == "policy_violation"
 
-    def test_run_caller_cannot_widen_defaults(self):
-        result = ainl_run(
+    def test_run_caller_cannot_widen_defaults(self, monkeypatch: pytest.MonkeyPatch):
+        import scripts.ainl_mcp_server as mcp_mod
+        from tooling.capability_grant import merge_grants
+
+        tight = merge_grants(
+            mcp_mod._MCP_SERVER_GRANT,
+            {"forbidden_privilege_tiers": ["network"]},
+        )
+        monkeypatch.setattr(mcp_mod, "_MCP_SERVER_GRANT", tight)
+        result = mcp_mod.ainl_run(
             NETWORK_CODE,
             policy={"forbidden_privilege_tiers": []},
         )
@@ -274,11 +278,11 @@ class TestMergeHelpers:
     def test_merge_policy_unions_restrictions(self):
         merged = _merge_policy({"forbidden_adapters": ["http"]})
         assert "http" in merged["forbidden_adapters"]
-        assert "local_state" in merged["forbidden_privilege_tiers"]
+        assert not merged.get("forbidden_privilege_tiers")
 
     def test_merge_policy_none_preserves_defaults(self):
         merged = _merge_policy(None)
-        assert "local_state" in merged["forbidden_privilege_tiers"]
+        assert not merged.get("forbidden_privilege_tiers")
 
     def test_merge_limits_takes_minimum(self):
         merged = _merge_limits({"max_steps": 100})
@@ -286,4 +290,4 @@ class TestMergeHelpers:
 
     def test_merge_limits_cannot_widen(self):
         merged = _merge_limits({"max_steps": 99999})
-        assert merged["max_steps"] == 500
+        assert merged["max_steps"] == 2000

@@ -71,6 +71,55 @@
         "treat AINL as a workflow engine, not a primary security boundary"
       ]
     },
+    "consumer_secure_default": {
+      "description": "Product-friendly strict preset: common data/HTTP/web/LLM adapters; blocks operator-only integrations. Used when AINL_STRICT_MODE=1 without AINL_SECURITY_PROFILE (merged with host resource floors).",
+      "intended_use": [
+        "consumer apps and hosted sandboxes",
+        "environments that want a named allowlist without hand-maintaining adapter lists"
+      ],
+      "adapter_allowlist": [
+        "core",
+        "sqlite",
+        "postgres",
+        "mysql",
+        "redis",
+        "dynamodb",
+        "airtable",
+        "supabase",
+        "fs",
+        "wasm",
+        "memory",
+        "cache",
+        "http",
+        "web",
+        "llm",
+        "llm_query",
+        "tools",
+        "queue"
+      ],
+      "forbidden_adapters": [
+        "agent",
+        "svc",
+        "extras",
+        "tiktok",
+        "email",
+        "calendar",
+        "social"
+      ],
+      "forbidden_effects": [],
+      "forbidden_effect_tiers": [],
+      "forbidden_privilege_tiers": ["operator_sensitive"],
+      "runtime_limits": {
+        "max_steps": 5000,
+        "max_depth": 50,
+        "max_adapter_calls": 500,
+        "max_time_ms": 30000
+      },
+      "orchestrator_expectations": [
+        "merge with deployment max_steps/max_time floors so consumer apps stay bounded",
+        "pair with HTTP host allowlists at the adapter or network layer"
+      ]
+    },
     "operator_full": {
       "description": "Operator-controlled environment with full adapter surface enabled by explicit choice.",
       "intended_use": [

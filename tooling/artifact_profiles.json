@@ -27,6 +27,7 @@
       "examples/compact/hello_compact.ainl",
       "examples/compact/classifier_compact.ainl",
       "examples/compact/cache_lookup_compact.ainl",
+      "examples/compact/openclaw_learning_handoff.ainl",
       "examples/rag_pipeline.ainl",
       "examples/rag/cache-warmer.ainl",
       "examples/crud_api.ainl",
@@ -61,19 +62,23 @@
       "examples/wishlist/05b_unified_llm_offline_config.ainl",
       "examples/wishlist/06_feedback_memory.ainl",
       "examples/wishlist/07_parallel_http.ainl",
-      "examples/wishlist/08_code_review_context.ainl"
-    ],
-    "non-strict-only": [
+      "examples/wishlist/08_code_review_context.ainl",
       "examples/api_only.lang",
       "examples/blog.lang",
       "examples/ecom.lang",
       "examples/internal_tool.lang",
       "examples/ticketing.lang",
+      "examples/openclaw/daily_lead_summary.lang",
+      "examples/openclaw_full_unification.ainl",
+      "examples/test_if_var.ainl",
+      "examples/test_mul.ainl",
+      "examples/test_X_sub.ainl"
+    ],
+    "non-strict-only": [
       "examples/integrations/executor_bridge_min.ainl",
       "examples/integrations/executor_bridge_adapter_min.ainl",
       "examples/openclaw/daily_digest.lang",
       "examples/openclaw/daily_digest.strict.lang",
-      "examples/openclaw/daily_lead_summary.lang",
       "examples/openclaw/backup_manager.lang",
       "examples/openclaw/infrastructure_watchdog.lang",
       "examples/openclaw/lead_enrichment.lang",
@@ -124,11 +129,7 @@
       "examples/ecosystem/clawflows/morning-briefing/converted.ainl",
       "examples/ecosystem/clawflows/morning-journal/converted.ainl",
       "examples/ecosystem/clawflows/plan-week/converted.ainl",
-      "examples/ecosystem/clawflows/prep-tomorrow/converted.ainl",
-      "examples/openclaw_full_unification.ainl",
-      "examples/test_if_var.ainl",
-      "examples/test_mul.ainl",
-      "examples/test_X_sub.ainl"
+      "examples/ecosystem/clawflows/prep-tomorrow/converted.ainl"
     ],
     "legacy-compat": [
       "examples/ptc_integration_example.ainl",

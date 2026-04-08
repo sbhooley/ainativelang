@@ -105,8 +105,12 @@ _REQUIRED_ADAPTERS = {
 }
 
 # Validate at import time (before main)
-_allowed = set(grant_to_allowed_adapters(_BRIDGE_GRANT))
-_missing = _REQUIRED_ADAPTERS - _allowed
+_eff_aa = grant_to_allowed_adapters(_BRIDGE_GRANT)
+if _eff_aa is None:
+    _missing = set()
+else:
+    _allowed = set(_eff_aa)
+    _missing = _REQUIRED_ADAPTERS - _allowed
 if _missing:
     logger.error("ArmaraOS bridge missing required adapters due to security profile: %s", ", ".join(sorted(_missing)))
     logger.error("Set ARMARAOS_SECURITY_PROFILE to a grant that includes these adapters or unset to disable restriction.")

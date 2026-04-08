@@ -1000,3 +1000,327 @@ wishlist_08_code_review_context:
   R core.concat ctx "\n---\n" packed ->bundle
   out bundle
 ```
+
+## 40. `examples/api_only.lang`
+- Primary: `api_only_rest`
+- Secondary: `rest_api_definitions`
+
+```ainl
+# API-only: no frontend, core service and types
+S core web /api
+
+D User id:I name:S email:S
+D Session id:I userId:I token:S expires:D
+
+E /users G ->L1 ->users
+E /users P ->L2 ->user
+E /sessions G ->L3 ->sessions
+
+L1:
+  R db.F User * ->users
+  J users
+L2:
+  R db.P User * ->user
+  J user
+L3:
+  R db.F Session * ->sessions
+  J sessions
+```
+
+## 41. `examples/blog.lang`
+- Primary: `blog_web_app`
+- Secondary: `content_management`
+
+```ainl
+# Blog: posts and comments, full stack
+S core web /api
+S fe web /
+
+D Post id:I title:S body:S created:D author:S
+D Comment id:I postId:I body:S author:S created:D
+
+E /posts G ->L1 ->posts
+E /posts P ->L2 ->post
+E /comments G ->L3 ->comments
+E /comments P ->L4 ->comment
+
+Rt / PostList
+Rt /posts PostList
+Rt /post PostDetail
+Rt /comments CommentList
+Lay Shell Sidebar Main
+
+U PostList posts
+T posts:A[Post]
+U PostDetail post
+T post:Post
+U CommentList comments
+T comments:A[Comment]
+Fm CommentForm Comment body author
+Tbl PostList Post id title author created
+Tbl CommentList Comment id body author created
+
+C cache postList 3600
+
+L1:
+  R db.F Post * ->posts
+  J posts
+L2:
+  R db.P Post * ->post
+  J post
+L3:
+  R db.F Comment * ->comments
+  J comments
+L4:
+  R db.P Comment * ->comment
+  J comment
+```
+
+## 42. `examples/ecom.lang`
+- Primary: `ecom_storefront`
+- Secondary: `ecommerce_workflow`
+
+```ainl
+# Ecom dashboard + Stripe pay (explicit E binding + routes, layout, forms, tables, events)
+S core web /api
+S fe web /
+
+D Product id:I name:S price:F sku:S
+D Order id:I uid:I total:F status:E[Pending,Paid,Shipped]
+
+E /products G ->L1 ->products
+E /orders G ->L2 ->orders
+E /checkout P ->L3
+
+Rt / Dashboard
+Rt /products ProductList
+Rt /orders OrderTable
+Lay Shell Sidebar Main
+
+U Dashboard
+T products:A[Product]
+T orders:A[Order]
+U ProductList products
+U OrderTable orders
+U CheckoutBtn
+
+Fm OrderForm Order id uid total status
+Tbl OrderTable Order id uid total status
+Tbl ProductList Product id name price sku
+
+Ev CheckoutBtn click /checkout
+
+P checkout 1999 usd "Order payment"
+
+C cart sessionId 3600
+
+L1:
+  R db.F Product * ->products
+  J products
+L2:
+  R db.F Order * ->orders
+  J orders
+L3:
+  R db.F Order * ->ord
+  J ord
+```
+
+## 43. `examples/internal_tool.lang`
+- Primary: `internal_tool`
+- Secondary: `admin_crud`
+
+```ainl
+# Internal tool: tasks and users (API + minimal frontend)
+S core web /api
+S fe web /
+
+D Task id:I title:S assignee:I status:E[Todo,InProgress,Done] due:D
+D User id:I name:S email:S role:E[Admin,User]
+
+E /tasks G ->L1 ->tasks
+E /tasks P ->L2 ->task
+E /users G ->L3 ->users
+
+Rt / TaskBoard
+Rt /tasks TaskList
+Rt /users UserList
+Lay Shell Sidebar Main
+
+U TaskBoard tasks
+T tasks:A[Task]
+U TaskList tasks
+T tasks:A[Task]
+U UserList users
+T users:A[User]
+Fm TaskForm Task title assignee status due
+Tbl TaskList Task id title assignee status due
+Tbl UserList User id name email role
+
+Cr L1 */15 * * * *
+
+L1:
+  R db.F Task * ->tasks
+  J tasks
+L2:
+  R db.P Task * ->task
+  J task
+L3:
+  R db.F User * ->users
+  J users
+```
+
+## 44. `examples/ticketing.lang`
+- Primary: `ticketing_system`
+- Secondary: `issue_tracking`
+
+```ainl
+# Ticketing: events and tickets
+S core web /api
+S fe web /
+A jwt Authorization
+
+D Event id:I name:S venue:S date:D capacity:I
+D Ticket id:I eventId:I uid:I status:E[Reserved,Paid,Cancelled]
+
+E /events G ->L1 ->events
+E /events P ->L2 ->event
+E /tickets G ->L3 ->tickets
+E /tickets P ->L4 ->ticket
+E /my-tickets G ->L5 ->tickets
+
+Rt / Dashboard
+Rt /events EventList
+Rt /event EventDetail
+Rt /my-tickets MyTickets
+Lay Shell Nav Main
+
+U Dashboard
+U EventList events
+T events:A[Event]
+U EventDetail event
+T event:Event
+U MyTickets tickets
+T tickets:A[Ticket]
+Tbl EventList Event id name venue date capacity
+Tbl MyTickets Ticket id eventId status
+Fm TicketForm Ticket eventId uid status
+
+P reserve 999 usd "Ticket reservation"
+
+L1:
+  R db.F Event * ->events
+  J events
+L2:
+  R db.P Event * ->event
+  J event
+L3:
+  R db.F Ticket * ->tickets
+  J tickets
+L4:
+  R db.P Ticket * ->ticket
+  J ticket
+L5:
+  R db.F Ticket * ->tickets
+  J tickets
+```
+
+## 45. `examples/openclaw/daily_lead_summary.lang`
+- Primary: `daily_lead_summary`
+- Secondary: `crm_digest`
+
+```ainl
+# Daily Lead Summary (simplified)
+# Reports number of leads created in the last day.
+S core cron "0 7 * * *"
+
+D Config lookback_days:N
+D State last_run:T
+
+L0:
+    R core now ->ts
+    R cache get "state" "last_run" ->last_run
+    R core sub ts 86400 ->cutoff
+    R db F ->rows
+    X total len rows
+    R core stringify total ->s_total
+    R core concat "Leads: " s_total ->summary
+    X notify_payload obj text summary
+    R queue Put notify notify_payload ->_
+    R cache set "state" "last_run" ts ->_
+```
+
+## 46. `examples/openclaw_full_unification.ainl`
+- Primary: `openclaw_full_unification`
+- Secondary: `workspace_unification`
+
+```ainl
+# Meta-supervisor sample — polls health endpoint and writes a status log entry.
+# Runs every 15 minutes via cron.
+S core cron "*/15 * * * *"
+
+L0:
+  R http.GET "http://localhost:4200/api/health" ->st
+  R core.concat "supervisor status=" st ->line
+  R memory.put "ops" "supervisor" "status" line 86400 {} ->_
+  J st
+```
+
+## 47. `examples/test_if_var.ainl`
+- Primary: `if_var_branch`
+- Secondary: `conditional_branch`
+
+```ainl
+S app core noop
+
+L0:
+  R core.sub 100 85 ->x
+  If x ->L2 ->L3
+
+L2:
+  J "true"
+
+L3:
+  J "false"
+```
+
+## 48. `examples/test_mul.ainl`
+- Primary: `multiply_ops`
+- Secondary: `arithmetic_mul`
+
+```ainl
+S app core noop
+
+L0:
+  R core.sub 100 85 ->x
+  R core.mul x 2 ->y
+  J y
+```
+
+## 49. `examples/test_X_sub.ainl`
+- Primary: `subtract_expr`
+- Secondary: `arithmetic_sub`
+
+```ainl
+S app core noop
+
+L0:
+  X diff (core.sub 100 85)
+  X out (core.mul diff 2)
+  J out
+```
+
+## 50. `examples/compact/openclaw_learning_handoff.ainl`
+- Primary: `openclaw_learning_handoff`
+- Secondary: `learning_digest`
+
+```ainl
+# OpenClaw ↔ AINL pipeline handoff (template).
+# ClawHub skills capture into ~/.openclaw/workspace/.learnings/; export script
+# promotes a digest into memory/. This graph is the slot where a host passes
+# promoted text or JSON into AINL as inputs — replace with real ops as needed.
+
+openclaw_handoff:
+  in: digest_summary
+  merged = core.CONCAT "openclaw_stage=ainl_ingest " digest_summary
+  out merged
+```

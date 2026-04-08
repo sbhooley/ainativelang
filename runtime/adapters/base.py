@@ -9,6 +9,16 @@ class AdapterError(RuntimeError):
     pass
 
 
+def _capability_gate_detail(adapter_name: str) -> str:
+    return (
+        f"If you control this environment: add {adapter_name!r} to AINL_HOST_ADAPTER_ALLOWLIST "
+        f"(comma-separated), remove it from AINL_HOST_ADAPTER_DENYLIST, set AINL_STRICT_MODE=0, "
+        f"set AINL_ALLOW_IR_DECLARED_ADAPTERS=1 to ignore a narrow host allowlist for IR-declared adapters, "
+        f"or use a wider AINL_SECURITY_PROFILE (see tooling/security_profiles.json). "
+        f"Otherwise ask an administrator to enable this capability."
+    )
+
+
 class RuntimeAdapter:
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
         raise NotImplementedError
@@ -42,10 +52,16 @@ class AdapterRegistry:
 
     def __init__(self, allowed: Optional[Iterable[str]] = None):
         self._adapters: Dict[str, RuntimeAdapter] = {}
-        self._allowed: Set[str] = set(allowed or ["core"])
+        if allowed is None:
+            self._allowed: Set[str] = {"core"}
+        else:
+            self._allowed = set(allowed)
 
     def register(self, name: str, adapter: RuntimeAdapter) -> None:
         self._adapters[name] = adapter
+
+    def __contains__(self, name: object) -> bool:
+        return isinstance(name, str) and name in self._adapters
 
     def allow(self, name: str) -> None:
         self._allowed.add(name)
@@ -55,7 +71,9 @@ class AdapterRegistry:
 
     def call(self, adapter_name: str, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
         if adapter_name not in self._allowed:
-            raise AdapterError(f"adapter blocked by capability gate: {adapter_name}")
+            raise AdapterError(
+                f"adapter blocked by capability gate: {adapter_name} — {_capability_gate_detail(adapter_name)}"
+            )
         adp = self._adapters.get(adapter_name)
         if adp is None:
             raise AdapterError(f"adapter not registered: {adapter_name}")
@@ -67,7 +85,9 @@ class AdapterRegistry:
 
     async def call_async(self, adapter_name: str, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
         if adapter_name not in self._allowed:
-            raise AdapterError(f"adapter blocked by capability gate: {adapter_name}")
+            raise AdapterError(
+                f"adapter blocked by capability gate: {adapter_name} — {_capability_gate_detail(adapter_name)}"
+            )
         adp = self._adapters.get(adapter_name)
         if adp is None:
             raise AdapterError(f"adapter not registered: {adapter_name}")
@@ -94,7 +114,7 @@ class AdapterRegistry:
 
     def _require(self, name: str) -> RuntimeAdapter:
         if name not in self._allowed:
-            raise AdapterError(f"adapter blocked by capability gate: {name}")
+            raise AdapterError(f"adapter blocked by capability gate: {name} — {_capability_gate_detail(name)}")
         adp = self._adapters.get(name)
         if adp is None:
             raise AdapterError(f"adapter not registered: {name}")

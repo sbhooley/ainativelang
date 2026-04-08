@@ -1,4 +1,11 @@
-L0: R core.sub 100 85 ->x J L1
-L1: If x ->L2 ->L3
-L2: J "true"
-L3: J "false"
+S app core noop
+
+L0:
+  R core.sub 100 85 ->x
+  If x ->L2 ->L3
+
+L2:
+  J "true"
+
+L3:
+  J "false"

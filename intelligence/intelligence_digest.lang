@@ -1,8 +1,7 @@
 # Intelligence Digest - runs 3x daily
 # Fetches web news, checks TikTok activity, compares to previous run,
-# stores a structured record in memory and notifies (QueuePut) on each run.
+# stores a structured record in memory and notifies on each run.
 S core cron "0 8,12,18 * * *"
-include "modules/common/generic_memory.ainl" as genmem
 
 L0:
   R core now ->ts
@@ -19,6 +18,7 @@ L0:
 L_default_prev:
   Set prev_mentions 0
   Set prev_tiktok 0
+  J L_analyze
 
 L_analyze:
   X spike_gt gt mention_count prev_mentions
@@ -33,33 +33,25 @@ L_analyze:
 L_spike:
   R core concat "digest-" ts ->rec_id
   R core concat "{\"mention_count\":" mention_count ",\"tiktok_recent\":" tiktok_recent ",\"spike\":true,\"ts\":" ts "}" ->payload_json
-  Set memory_namespace "ops"
-  Set memory_kind "intel.digest"
-  Set memory_record_id rec_id
-  Set memory_payload payload_json
-  Set memory_ttl 604800
-  Set memory_source "intelligence.intelligence_digest"
-  Set memory_tags ["intelligence","digest","ops"]
-  Set memory_valid_at ts
-  Call genmem/WRITE ->_
+  X memory_meta (obj "source" "intelligence.intelligence_digest")
+  X memory_meta (put memory_meta "confidence" 1.0)
+  X memory_meta (put memory_meta "tags" ["intelligence","digest","ops"])
+  X memory_meta (put memory_meta "valid_at" ts)
+  R memory put "ops" "intel.digest" rec_id payload_json 604800 memory_meta ->_
   R core concat "Intel digest SPIKE mentions=" mention_count " tiktok=" tiktok_recent ->note
-  QueuePut notify note
+  R queue Put "notify" note ->_
   R cache set "digest" "last_digest_ts" ts ->_
   J note
 
 L_normal:
   R core concat "digest-" ts ->rec_id
   R core concat "{\"mention_count\":" mention_count ",\"tiktok_recent\":" tiktok_recent ",\"spike\":false,\"ts\":" ts "}" ->payload_json
-  Set memory_namespace "ops"
-  Set memory_kind "intel.digest"
-  Set memory_record_id rec_id
-  Set memory_payload payload_json
-  Set memory_ttl 604800
-  Set memory_source "intelligence.intelligence_digest"
-  Set memory_tags ["intelligence","digest","ops"]
-  Set memory_valid_at ts
-  Call genmem/WRITE ->_
+  X memory_meta (obj "source" "intelligence.intelligence_digest")
+  X memory_meta (put memory_meta "confidence" 1.0)
+  X memory_meta (put memory_meta "tags" ["intelligence","digest","ops"])
+  X memory_meta (put memory_meta "valid_at" ts)
+  R memory put "ops" "intel.digest" rec_id payload_json 604800 memory_meta ->_
   R core concat "Intel digest OK mentions=" mention_count ->note2
-  QueuePut notify note2
+  R queue Put "notify" note2 ->_
   R cache set "digest" "last_digest_ts" ts ->_
   J note2

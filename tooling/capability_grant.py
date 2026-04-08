@@ -40,6 +40,12 @@ GRANT_LIMIT_KEYS = (
 )
 
 
+def env_truthy(val: Any) -> bool:
+    """True for common affirmative env var spellings (1, true, yes, on)."""
+    s = str(val or "").strip().lower()
+    return s in {"1", "true", "yes", "on"}
+
+
 def empty_grant() -> Dict[str, Any]:
     """Return a maximally permissive (empty) grant."""
     return {
@@ -143,12 +149,22 @@ def grant_to_limits(grant: Dict[str, Any]) -> Dict[str, Any]:
 
 def grant_to_allowed_adapters(
     grant: Dict[str, Any], fallback: Optional[List[str]] = None
-) -> List[str]:
-    """Return the effective adapter allowlist from a grant."""
+) -> Optional[List[str]]:
+    """Return the host adapter allowlist derived from a grant.
+
+    - If ``allowed_adapters`` is a list (including empty), return a copy: the
+      runtime intersects IR-required adapters with this list.
+    - If it is ``None`` and *fallback* is provided, return ``list(fallback)``.
+    - If it is ``None`` and *fallback* is omitted, return ``None``: no host
+      allowlist (IR-declared adapters apply; ``AINL_HOST_ADAPTER_ALLOWLIST``
+      may still restrict).
+    """
     aa = grant.get("allowed_adapters")
     if aa is not None:
         return list(aa)
-    return list(fallback or ["core"])
+    if fallback is not None:
+        return list(fallback)
+    return None
 
 
 def load_profile_as_grant(profile_name: str) -> Dict[str, Any]:
@@ -189,6 +205,7 @@ def load_profile_as_grant(profile_name: str) -> Dict[str, Any]:
 
 __all__ = [
     "empty_grant",
+    "env_truthy",
     "merge_grants",
     "grant_to_policy",
     "grant_to_limits",

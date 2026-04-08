@@ -151,13 +151,13 @@ L_alert:
 
 L_send:
   R core concat "🚨 Infrastructure Down\n\nCaddy: " caddy_status " (consec: " caddy_consec ")\nCloudflared: " cf_status " (consec: " cf_consec ")\nMaddy: " maddy_status " (consec: " maddy_consec ")\nCRM: " crm_status " (consec: " crm_consec ")" ->alert_msg
-  QueuePut notify alert_msg
+  R queue Put "notify" alert_msg ->_
   R cache set "monitor_heartbeat" "watchdog_cooldown" ts ->_
   R core concat "infra-down-" ts ->evt_id
   R cache set "monitor_heartbeat" "infrastructure_watchdog" ts ->_
-  Ret null
+  J null
 
 L_ok:
   R core concat "✅ Infrastructure OK — " svc_summary ->ok_msg
   R cache set "monitor_heartbeat" "infrastructure_watchdog" ts ->_
-  Ret null
+  J null

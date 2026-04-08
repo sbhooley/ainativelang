@@ -2,6 +2,6 @@
   "name": "retry_at_node",
   "code": "L1: R ext.echo x ->out Retry @n1 2 0 Err @n1 ->L9 J out\nL9: Set handled _error J handled\n",
   "input_frame": {},
-  "expected_result_contains": "adapter blocked by capability gate",
+  "expected_result_contains": "adapter not registered",
   "expected_trace_ops_contains": ["R", "Set", "J"]
 }

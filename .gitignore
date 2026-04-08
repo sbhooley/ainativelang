@@ -46,3 +46,6 @@ Thumbs.db
 
 # Local runtime logs
 runtime_runner.log
+
+# Local code_context adapter index (machine-specific paths)
+.ainl_code_context.json

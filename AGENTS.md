@@ -4,7 +4,7 @@
 
 ## What This Repo Is
 
-Python compiler + runtime for AINL (AI Native Language), version 1.4.1.
+Python compiler + runtime for AINL (AI Native Language), version 1.4.2.
 AINL compiles `.ainl` source files into an IR (intermediate representation)
 graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
@@ -61,9 +61,13 @@ POST /run        — Compile and execute (JSON: {source, strict?, frame?})
 ### Production defaults (runner + mass-market UX)
 
 - **Default runner grant** (`scripts/runtime_runner_service.py`): adapter cap is **unset** at the grant layer so IR-declared adapters (e.g. `web`, `http`) work out of the box; **resource limits** (`max_steps`, `max_time_ms`, …) remain the universal safety floor.
+- **MCP server** (`scripts/ainl_mcp_server.py`): **`ainl_run`** / fitness tool grants align with that runner model (no core-only adapter cap at the policy layer); **resource limits** still apply. LLM adapters on MCP remain opt-in via **`AINL_CONFIG`** or **`AINL_MCP_LLM_ENABLED=1`** (see `docs/LLM_ADAPTER_USAGE.md`).
 - **`AINL_STRICT_MODE=1`** (when **`AINL_SECURITY_PROFILE`** is unset): merges profile **`consumer_secure_default`** (or **`AINL_STRICT_PROFILE`**) with that floor — named allowlist + `operator_sensitive` tier blocked; good for “strict” product mode without hand-maintaining env lists.
 - **`AINL_SECURITY_PROFILE`**: if set, loads that profile **as the full grant** (same as before); use for org/enterprise lockdown.
 - **`AINL_HOST_ADAPTER_ALLOWLIST`** / **`AINL_HOST_ADAPTER_DENYLIST`**: comma-separated; applied in the runtime after IR resolution (denylist wins last). CLI: `--host-adapter-allowlist` / `--host-adapter-denylist`.
+- **`AINL_ALLOW_IR_DECLARED_ADAPTERS=1`**: when set, **`AINL_HOST_ADAPTER_ALLOWLIST` from the environment is ignored** so programs can use any adapter referenced in the IR (useful when a parent shell or IDE exports a narrow list). Does not override explicit CLI/kwargs; **`AINL_HOST_ADAPTER_DENYLIST`** and security profiles still apply.
+- **Intelligence programs** (`**/intelligence/**`): **`ainl run`** with a source path whose components include **`intelligence`** sets **`AINL_ALLOW_IR_DECLARED_ADAPTERS=1`** when that variable is unset (before compile/run). `RuntimeEngine.from_code(..., source_path=...)` does the same for those paths (unless **`AINL_INTELLIGENCE_FORCE_HOST_POLICY=1`**) so `web` / `tiktok` / `queue` in IR are not stripped by a narrow **`AINL_HOST_ADAPTER_ALLOWLIST`**. Operators who need strict host intersection for intelligence files set **`AINL_INTELLIGENCE_FORCE_HOST_POLICY=1`**. The CLI also registers **`web`**, **`tiktok`**, and **`queue`** (OpenClaw integration) on every `ainl run`.
+- **ArmaraOS desktop / scheduled `ainl run`**: the OpenFang kernel injects **`AINL_ALLOW_IR_DECLARED_ADAPTERS=1`** into each scheduled child by default; the desktop shell sets it for the process when still unset after **`~/.armaraos/.env`**. Per-agent opt-out: manifest **`ainl_allow_ir_declared_adapters`** → **`0`** / **`false`** / **`off`** / **`no`**. See **`armaraos/docs/scheduled-ainl.md`**. Operator narrative + manifest widen copy-paste: **`docs/INTELLIGENCE_PROGRAMS.md`** § ArmaraOS scheduled `ainl run`, snippet **`armaraos/docs/snippets/agent-metadata-intelligence-cron.toml`**.
 - **Capability blocks**: errors include a short **what to change** hint; runner **`GET /metrics`** exposes `adapter_capability_blocks_total` and `adapter_capability_blocks_by_adapter` for telemetry. **`GET /capabilities`** includes a `host_security_env` key describing these variables.
 - **`ainl doctor`**: reports current **runtime security env** (profiles / strict / allowlist presence).
 
@@ -166,7 +170,7 @@ L_ok:
 ## Available Adapters
 
 ```
-core       — Built-in ops (ADD, SUB, MUL, NOW, GET, etc)
+core       — Built-in ops (ADD, SUB, MUL, NOW, GET, LEN, MAP, FILTER, etc)
 solana     — Solana RPC (GET_BALANCE, TRANSFER, etc) — 1447 lines
 postgres   — PostgreSQL queries
 mysql      — MySQL queries
@@ -175,9 +179,13 @@ dynamodb   — AWS DynamoDB
 supabase   — Supabase client
 airtable   — Airtable API
 http       — HTTP requests
+web        — Web search/fetch (SEARCH, FETCH, SCRAPE, GET)
+tiktok     — TikTok data (RECENT, SEARCH, PROFILE, STATS, TRENDING)
 memory     — Key-value memory store
 cache      — Cache get/set
-queue      — Message queue put/get
+queue      — Message queue put/get (use R queue Put "name" val ->_)
+svc        — Service control (STATUS, RESTART, CADDY, NGINX, HEALTH)
+crm        — CRM ops (QUERY, UPDATE)
 llm/*      — LLM adapters (openrouter, ollama, anthropic, cohere)
 ```
 
@@ -186,7 +194,7 @@ llm/*      — LLM adapters (openrouter, ollama, anthropic, cohere)
 ```bash
 source .venv-ainl/bin/activate
 python -m pytest tests/ -x -q -k "not test_profiles_cover"
-# Expected: ~400 passed
+# Expected: ~1000 passed, 6 skipped (ArmaraOS CLI / langgraph / temporalio not installed)
 ```
 
 ## ⚠️ NOTE: Tutorial Syntax Variants
@@ -213,6 +221,22 @@ The files in `docs/learning/intermediate/` contain TWO syntax styles:
 
 **Use compact syntax for new code.** Always validate: `ainl validate <file> --strict`
 
+## Queue adapter syntax
+
+The queue adapter uses the standard `R adapter.op` form — **not** the legacy `QueuePut` shorthand:
+
+```ainl
+# Correct
+R queue Put "channel_name" payload ->_
+
+# Wrong — QueuePut is not a valid opcode
+QueuePut channel_name payload
+```
+
+## App Store filtering (`demo/`)
+
+Files under `demo/` are **development demos** — many use experimental syntax and do not pass `--strict`. They are excluded from the ArmaraOS App Store via a `demo/.ainl-library-skip` marker file. The ArmaraOS `ainl-library` walker skips any directory tree that contains this file. Do not remove it. To make a demo file discoverable in the App Store, move it to `examples/` and ensure `ainl validate <file> --strict` passes.
+
 ## Do NOT
 
 - Modify files outside this repository (especially ~/.openclaw/)
@@ -220,6 +244,8 @@ The files in `docs/learning/intermediate/` contain TWO syntax styles:
 - Use `graph { node ... }` block syntax (it does NOT compile)
 - Skip running `ainl validate --strict` before committing .ainl files
 - Use `X var value` for assignments — use `Set var value` instead (X has runtime quirks)
+- Use `QueuePut` — use `R queue Put "channel" payload ->_` instead
+- Place `include` directives after the `S` header line — includes must appear before `S` (prelude only)
 
 ## OpenClaw workspace handoff (ClawHub skills → AINL)
 

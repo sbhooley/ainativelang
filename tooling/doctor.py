@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from tooling.capability_grant import env_truthy
 from tooling.mcp_host_install import MCP_SERVER_KEY, PROFILES
 
 
@@ -133,6 +134,49 @@ def run_doctor(*, host: Optional[str] = None, json_output: bool = False, verbose
     )
     checks.append(_check_help_invocation("ainl", ainl_path))
     checks.append(_check_help_invocation("ainl-mcp", ainl_mcp_path))
+
+    sec_prof = (os.environ.get("AINL_SECURITY_PROFILE") or "").strip()
+    strict_prof = (os.environ.get("AINL_STRICT_PROFILE") or "consumer_secure_default").strip()
+    allow_h = (os.environ.get("AINL_HOST_ADAPTER_ALLOWLIST") or "").strip()
+    deny_h = (os.environ.get("AINL_HOST_ADAPTER_DENYLIST") or "").strip()
+    relax_ir = env_truthy(os.environ.get("AINL_ALLOW_IR_DECLARED_ADAPTERS"))
+    if sec_prof:
+        checks.append(
+            _ok(
+                "runtime_security_profile",
+                f"AINL_SECURITY_PROFILE={sec_prof!r} (full grant from tooling/security_profiles.json)",
+            )
+        )
+    elif env_truthy(os.environ.get("AINL_STRICT_MODE")):
+        checks.append(
+            _ok(
+                "runtime_security_profile",
+                f"AINL_STRICT_MODE on → merged preset {strict_prof!r} + runner resource floor",
+            )
+        )
+    else:
+        checks.append(
+            _ok(
+                "runtime_security_profile",
+                "no AINL_SECURITY_PROFILE; permissive adapter grant + default resource limits (set AINL_STRICT_MODE=1 for named allowlist)",
+            )
+        )
+    if relax_ir:
+        checks.append(
+            _ok(
+                "runtime_adapter_lists",
+                "AINL_ALLOW_IR_DECLARED_ADAPTERS on → AINL_HOST_ADAPTER_ALLOWLIST from env is ignored (IR-declared adapters still subject to denylist/profile)",
+            )
+        )
+    elif allow_h or deny_h:
+        checks.append(
+            _ok(
+                "runtime_adapter_lists",
+                f"AINL_HOST_ADAPTER_ALLOWLIST set={bool(allow_h)} AINL_HOST_ADAPTER_DENYLIST set={bool(deny_h)}",
+            )
+        )
+    else:
+        checks.append(_ok("runtime_adapter_lists", "no host adapter allowlist/denylist env (IR-declared adapters allowed unless profile forbids)"))
 
     user_base = Path(sys.prefix if hasattr(sys, "prefix") else Path.home())
     try:

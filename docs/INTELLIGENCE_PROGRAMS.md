@@ -4,7 +4,7 @@ AINL sources under `intelligence/` support **OpenClaw-style** automation: memory
 
 **Authoring note:** Before `Call genmem/WRITE`, `Call accmem/LACCESS_READ`, or `R memory put`, bind contract fields with **`Set`** (`Set memory_namespace "workflow"`, `Set memory_kind "…"`, …), not **`X`**. The `X` op requires a real function name (`get`, `core.substr`, …); see the callout under **`X`** in **`docs/AINL_SPEC.md`** §2.3.
 
-**Graph runtime:** Intelligence programs run on the compiler-emitted **graph** by default. Do not use **`X dst {…}`** JSON object literals (use **`core.parse`**, **`obj`/`put`**, or **`arr`** — see **`intelligence/token_aware_startup_context.lang`** and **`modules/common/generic_memory.ainl`**). Do not use **`J OtherLabel`** to chain labels (**`J`** returns a value; use **`Call`** or same-label fall-through). For **`memory.list`**, use **`null`** for an omitted **`record_id_prefix`**, not **`""`**. **`metadata.valid_at`** must be an RFC3339 string (e.g. **`R core iso`**) when using the memory contract. Run tests with **`./.venv-py310/bin/python -m pytest`** per **`docs/INSTALL.md`**.
+**Graph runtime:** Intelligence programs run on the compiler-emitted **graph** by default. Do not use **`X dst {…}`** JSON object literals (use **`core.parse`**, **`obj`/`put`**, or **`arr`** — see **`intelligence/token_aware_startup_context.lang`**). **`J L_label`** is valid for jumping to a known label (the compiler creates an `analysis_only` edge for dataflow propagation); use **`Call label`** when you need subgraph semantics with a return. For **`memory.list`**, use **`null`** for an omitted **`record_id_prefix`**, not **`""`**. **`metadata.valid_at`** must be an RFC3339 string (e.g. **`R core iso`**) when using the memory contract. Use **`R queue Put "channel" payload ->_`** for queue writes — the `QueuePut` shorthand is not a valid opcode. Run tests with **`./.venv-ainl/bin/python -m pytest`** per **`docs/INSTALL.md`**.
 
 ## Programs
 
@@ -68,6 +68,12 @@ For PTC-style reliability and hybrid overlays (all opt-in), use:
 Reference end-to-end flow:
 
 - `docs/adapters/PTC_RUNNER.md` → **Canonical End-to-End Example**
+
+## ArmaraOS scheduled `ainl run` (manifest)
+
+**Current ArmaraOS (desktop + daemon):** scheduled **`ainl run`** subprocesses get **`AINL_ALLOW_IR_DECLARED_ADAPTERS=1`** from the kernel by default, and the desktop app sets the same for the embedded process when the variable is still unset after **`~/.armaraos/.env`**. You should **not** need manifest edits for typical intelligence graphs (`web`, `tiktok`, `cache`, `queue`, `memory`).
+
+If you still see **`adapter blocked by capability gate: web`** (older install, headless daemon launched from a shell with a conflicting env, or explicit lockdown): widen the **target agent** manifest — add **`[metadata]`** with **`ainl_allow_ir_declared_adapters = "1"`** if something set **`0`**, or set **`ainl_host_adapter_allowlist`** to a CSV that includes **`web`**, **`tiktok`**, **`cache`**, **`queue`**, **`memory`**. Copy-paste template: **`armaraos/docs/snippets/agent-metadata-intelligence-cron.toml`**; full context: **`armaraos/docs/scheduled-ainl.md`**.
 
 ## Host responsibilities
 

@@ -1,5 +1,4 @@
-# test_simple.ainl
-S core now ->L0
+S app core noop
 
 L0:
-  Ret {"test": "hello"}
+  J {"test": "hello"}

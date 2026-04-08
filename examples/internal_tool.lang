@@ -6,11 +6,8 @@ D Task id:I title:S assignee:I status:E[Todo,InProgress,Done] due:D
 D User id:I name:S email:S role:E[Admin,User]
 
 E /tasks G ->L1 ->tasks
-L1: R db.F Task * ->tasks J tasks
 E /tasks P ->L2 ->task
-L2: R db.P Task * ->task J task
 E /users G ->L3 ->users
-L3: R db.F User * ->users J users
 
 Rt / TaskBoard
 Rt /tasks TaskList
@@ -28,3 +25,13 @@ Tbl TaskList Task id title assignee status due
 Tbl UserList User id name email role
 
 Cr L1 */15 * * * *
+
+L1:
+  R db.F Task * ->tasks
+  J tasks
+L2:
+  R db.P Task * ->task
+  J task
+L3:
+  R db.F User * ->users
+  J users

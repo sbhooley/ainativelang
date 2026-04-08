@@ -1,0 +1,9 @@
+# OpenClaw ↔ AINL pipeline handoff (template).
+# ClawHub skills capture into ~/.openclaw/workspace/.learnings/; export script
+# promotes a digest into memory/. This graph is the slot where a host passes
+# promoted text or JSON into AINL as inputs — replace with real ops as needed.
+
+openclaw_handoff:
+  in: digest_summary
+  merged = core.CONCAT "openclaw_stage=ainl_ingest " digest_summary
+  out merged
