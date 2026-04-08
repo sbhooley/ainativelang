@@ -13,6 +13,7 @@ from adapters.solana import (
     SolanaAdapter,
 )
 from compiler_v2 import AICodeCompiler
+from runtime.engine import RUNTIME_VERSION
 from runtime.adapters.base import AdapterError
 from tooling.effect_analysis import ADAPTER_EFFECT
 
@@ -73,7 +74,7 @@ def test_emit_solana_client_contains_registry_and_ir_blob():
     assert "GET_MARKET_STATE" in out
     assert "prediction_market_demo.ainl" in out
     assert "DISCOVERABILITY" in out
-    assert "v1.4.3" in out
+    assert f"v{RUNTIME_VERSION}" in out
     assert "single-quoted" in out
     assert "prediction-market" in out
     assert "solana_quickstart.md" in out
@@ -83,7 +84,7 @@ def test_solana_adapter_module_docstring_discoverability():
     import adapters.solana
     doc = adapters.solana.__doc__ or ""
     assert "DISCOVERABILITY" in doc
-    assert "v1.4.3" in doc
+    assert f"v{RUNTIME_VERSION}" in doc
     assert "single-quoted" in doc
     assert "prediction" in doc.lower()
     assert "solana_quickstart.md" in doc

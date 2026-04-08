@@ -1,0 +1,15 @@
+# Minimal strict-valid HTTP GET (opcode style).
+# Reference: AGENTS.md section "HTTP adapter (http.*)".
+#
+# Validate:  ainl validate examples/http_get_minimal.ainl --strict
+# Run:      ainl run examples/http_get_minimal.ainl
+#           (requires http adapter allowed; use --host-adapter-allowlist or grant)
+
+S app core noop
+
+L_main:
+  # GET: positional args only — URL, optional headers dict, optional timeout (seconds).
+  # Put query parameters in the URL string; do not use "params = {...}" on the R line.
+  R http.GET "https://example.com/" ->res
+  R core.GET ["status"] res ->st
+  J st

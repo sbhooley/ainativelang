@@ -85,11 +85,16 @@ from adapters.local_cache import LocalFileCacheAdapter
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
 # Resource floor aligned with ``scripts/runtime_runner_service._SERVER_DEFAULT_LIMITS``.
+# max_depth raised from 20 to 500: tail-recursive loops over real data sets (e.g.
+# 73 liens × 3 call frames each) require much more than 20. max_steps and
+# max_adapter_calls raised proportionally. max_time_ms raised to 900s (15min)
+# to support HTTP-enrichment workflows that make one outbound call per record
+# (73 records × ~10s/call = ~730s worst-case with no cache warm-up).
 _MCP_DEFAULT_LIMITS: Dict[str, Any] = {
-    "max_steps": 2000,
-    "max_depth": 20,
-    "max_adapter_calls": 200,
-    "max_time_ms": 30000,
+    "max_steps": 500000,
+    "max_depth": 500,
+    "max_adapter_calls": 50000,
+    "max_time_ms": 900000,
 }
 # Back-compat for tests and introspection; same values as _MCP_DEFAULT_LIMITS.
 _DEFAULT_LIMITS: Dict[str, Any] = dict(_MCP_DEFAULT_LIMITS)
@@ -248,6 +253,68 @@ def _compile(code: str, strict: bool = True) -> Dict[str, Any]:
     return compiler.compile(code)
 
 
+def _extract_frame_hints(code: str, ir: Dict[str, Any]) -> List[Dict[str, str]]:
+    """Extract variables that callers should supply via the ``frame`` parameter.
+
+    Two sources:
+    1. Explicit ``# frame: name: type`` comment lines in source (authoritative).
+    2. Variables referenced in IR ``X`` / ``R`` nodes that are not assigned
+       anywhere in the graph (heuristic — catches undeclared inputs).
+
+    Returns a list of ``{"name": ..., "type": ..., "source": "comment"|"inferred"}``
+    dicts, deduplicated by name (comment entries take precedence).
+    """
+    hints: Dict[str, Dict[str, str]] = {}
+
+    # Pass 1 — explicit comment declarations: "# frame: name: type" or "# frame: name"
+    for line in code.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("#"):
+            continue
+        body = stripped[1:].strip()
+        if not body.lower().startswith("frame:"):
+            continue
+        rest = body[6:].strip()
+        if not rest:
+            continue
+        parts = rest.split(":", 1)
+        name = parts[0].strip()
+        typ = parts[1].strip() if len(parts) > 1 else "any"
+        if name:
+            hints[name] = {"name": name, "type": typ, "source": "comment"}
+
+    # Pass 2 — heuristic: collect all variable names assigned in the IR graph,
+    # then find args in R/X nodes that reference names never assigned (inputs).
+    try:
+        nodes = ir.get("nodes") or []
+        assigned: set = set()
+        referenced: set = set()
+
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            op = node.get("op", "")
+            # Track assignment targets
+            out_var = node.get("out") or node.get("var")
+            if out_var and isinstance(out_var, str) and not out_var.startswith("_"):
+                assigned.add(out_var)
+            # Track args used in R calls
+            if op in ("R", "X", "Set"):
+                for arg in node.get("args") or []:
+                    if isinstance(arg, str) and re.match(r'^[a-z_][a-z0-9_]*$', arg):
+                        referenced.add(arg)
+
+        # Variables referenced but never assigned = probable frame inputs
+        _BUILTIN_NAMES = {"null", "true", "false", "none"}
+        for name in sorted(referenced - assigned - _BUILTIN_NAMES):
+            if name not in hints:
+                hints[name] = {"name": name, "type": "any", "source": "inferred"}
+    except Exception:
+        pass  # Heuristic is best-effort; never fail compile
+
+    return list(hints.values())
+
+
 def _with_llm_repair_hint(diags: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for d in diags or []:
@@ -357,13 +424,21 @@ def ainl_validate(code: str, strict: bool = True) -> dict:
 def ainl_compile(code: str, strict: bool = True) -> dict:
     """Compile AINL source code to canonical graph IR.
 
-    Returns the full IR JSON on success.  No execution, no side effects.
+    Returns the full IR JSON on success, plus a ``frame_hints`` list that
+    describes variables the caller should supply via the ``frame`` parameter
+    when calling ``ainl_run``.  Frame hints are derived from two sources:
+
+    1. Explicit ``# frame: name: type`` comment lines in source (authoritative).
+    2. Variables referenced in the IR that are never assigned (heuristic).
+
+    No execution, no side effects.
     """
     ir = _compile(code, strict=strict)
     errors = ir.get("errors") or []
     if errors:
         return {"ok": False, "errors": errors}
-    return {"ok": True, "ir": ir}
+    frame_hints = _extract_frame_hints(code, ir)
+    return {"ok": True, "ir": ir, "frame_hints": frame_hints}
 
 
 @_register_tool
@@ -403,24 +478,55 @@ def ainl_run(
 ) -> dict:
     """Compile, validate policy, and execute an AINL workflow.
 
-    By default, adapters referenced in the IR are allowed (same as the hosted
-    runner); resource limits enforce a safety floor.  The caller may supply
-    additional policy restrictions and tighter limits but cannot widen beyond
-    the merged server defaults.
+    By default only the ``core`` adapter is registered. Any workflow that uses
+    ``http``, ``fs``, ``cache``, or ``sqlite`` adapters MUST pass them via the
+    ``adapters`` parameter or the run will fail with "adapter not registered".
 
-    Optional ``adapters`` (v1.4.3+): register scoped I/O for this run only.
-    Shape::
+    IMPORTANT — adapter registration is opt-in per-run:
+      - ``http``  → requires ``allow_hosts`` (list of hostnames, e.g. ["example.com"])
+      - ``fs``    → requires ``root`` (absolute path to sandbox directory)
+      - ``cache`` → requires ``path`` (absolute path to cache JSON file)
+      - ``sqlite``→ requires ``db_path``
 
-        {
-          "enable": ["http", "fs", "cache", "sqlite"],
-          "http": {"allow_hosts": ["example.com"], "timeout_s": 15.0, "max_response_bytes": 1000000},
-          "fs": {"root": "/sandbox/path", "allow_extensions": [".json"], "allow_delete": false},
-          "cache": {"path": "/sandbox/path/cache.json"},
-          "sqlite": {"db_path": "/tmp/x.sqlite", "allow_write": false, "allow_tables": []}
+    IMPORTANT — dict literals in AINL source ``{"key": "val"}`` on ``R`` lines
+    are tokenized as raw strings, NOT evaluated as dicts at runtime. If your
+    workflow calls ``R http.POST url my_body ->resp``, the ``my_body`` variable
+    must be a pre-built dict — pass it via the ``frame`` parameter::
+
+        frame={"my_body": {"FirstName": "", "DocumentType": "LIEN", ...}}
+
+    IMPORTANT — variable shadowing in ``R`` arguments: string literals in ``R``
+    arg positions (e.g. ``"records"``) have their quotes stripped during compilation
+    and are resolved against the live frame before being used as literals.  If a
+    frame variable named ``records`` already exists, ``R core.GET data "records"``
+    will pass that variable's value rather than the string ``"records"``.
+
+    Prevention: use unique variable name prefixes in every label that iterates
+    or recurses over similar data.  Example: first loop uses ``lien_*`` names,
+    second loop uses ``out_*`` names — that way ``"records"`` never collides with
+    a live ``records`` variable.  The ``ainl_compile`` tool returns a
+    ``frame_hints`` list that documents variables expected via ``frame``.
+
+    Example — workflow that does HTTP + file I/O + caching::
+
+        adapters={
+          "enable": ["http", "fs", "cache"],
+          "http": {
+            "allow_hosts": ["ohwarren.fidlar.com", "auditor.warrencountyohio.gov"],
+            "timeout_s": 15.0
+          },
+          "fs": {
+            "root": "/Users/me/.armaraos/workspaces/MyProject",
+            "allow_extensions": [".json", ".csv"]
+          },
+          "cache": {
+            "path": "/Users/me/.armaraos/workspaces/MyProject/cache.json"
+          }
         }
 
-    ``http`` requires a non-empty ``allow_hosts`` (hostname strings). ``fs`` and
-    ``cache`` require ``root`` / ``path`` respectively when enabled.
+    Resource limits enforce a safety floor. The caller may supply additional
+    policy restrictions and tighter limits but cannot widen beyond the merged
+    server defaults.
 
     Returns structured execution output on success or a policy/runtime
     error on failure.
@@ -442,7 +548,28 @@ def ainl_run(
             "policy_errors": policy_result["errors"],
         }
 
-    merged_limits = _merge_limits(limits)
+    # Item 9: Per-workspace limits override.
+    # If the fs adapter root contains an ``ainl_mcp_limits.json`` file, merge it
+    # into the caller-supplied limits BEFORE applying server defaults.  This lets
+    # a workspace raise (or tighten) limits for known long-running scripts without
+    # editing the global server file.  Server defaults still cap the result via
+    # ``_merge_limits`` — workspace overrides only widen up to the server ceiling.
+    workspace_limits: Dict[str, Any] = {}
+    _fs_root_for_limits: Optional[str] = None
+    if isinstance(adapters, dict) and isinstance(adapters.get("fs"), dict):
+        _fs_root_for_limits = (adapters["fs"].get("root") or "").strip() or None
+    if _fs_root_for_limits:
+        _ws_limits_path = Path(_fs_root_for_limits) / "ainl_mcp_limits.json"
+        if _ws_limits_path.is_file():
+            try:
+                workspace_limits = json.loads(_ws_limits_path.read_text(encoding="utf-8"))
+            except Exception:
+                workspace_limits = {}
+    # Caller limits override workspace defaults; workspace defaults override nothing
+    # (server ceiling enforced in _merge_limits either way).
+    effective_caller_limits: Dict[str, Any] = {**workspace_limits, **(limits or {})}
+    merged_limits = _merge_limits(effective_caller_limits)
+
     mcp_allowed = grant_to_allowed_adapters(_MCP_SERVER_GRANT)
     reg = AdapterRegistry(allowed=None)
     reg.register("core", CoreBuiltinAdapter())
@@ -521,6 +648,24 @@ def ainl_run(
                     timeout_s=float(s.get("timeout_s", 5.0)),
                 ),
             )
+    # Item 10: Auto-register cache adapter when a cache.json exists in the workspace.
+    # If the fs adapter is enabled with a root directory, and the caller did NOT
+    # explicitly enable the cache adapter, check for a cache file at the
+    # conventional locations (output/cache.json, then cache.json at root).
+    # This makes caching zero-config for workspace scripts that already have a
+    # cache file on disk — callers still need to use ``R cache.GET/SET`` in code.
+    if isinstance(adapters, dict) and "cache" not in set(adapters.get("enable") or []):
+        _auto_cache_root = (adapters.get("fs") or {}).get("root")
+        if _auto_cache_root:
+            _candidates = [
+                Path(_auto_cache_root) / "output" / "cache.json",
+                Path(_auto_cache_root) / "cache.json",
+            ]
+            for _cp in _candidates:
+                if _cp.is_file():
+                    reg.register("cache", LocalFileCacheAdapter(path=str(_cp)))
+                    break
+
     # Optional LLM adapter registration if AINL_CONFIG present
     config_path = os.environ.get("AINL_CONFIG")
     if config_path:

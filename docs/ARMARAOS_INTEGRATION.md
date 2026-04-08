@@ -65,7 +65,9 @@ AINL prefers `ARMARAOS_*` for ArmaraOS integration, with `AINL_*` and legacy `OP
 
 ## PostHog (ArmaraOS desktop only)
 
-The **ainativelang** compiler repo does **not** include a PostHog API key. The ArmaraOS **desktop** app optionally sends anonymous install analytics via PostHog; release builds embed the key from GitHub Actions on **armaraos** (`ARMARAOS_POSTHOG_KEY` or org secret **`AINL_POSTHOG_KEY`**). That value should be the **same** PostHog project key as **`NEXT_PUBLIC_POSTHOG_KEY`** on **ainativelangweb** (ainativelang.com). See **armaraos** `docs/release-desktop.md` and `README.md`.
+The **ainativelang** compiler repo does **not** include a PostHog API key (do not commit `phc_…` values). The ArmaraOS **desktop** app optionally sends **at most one** anonymous install event per machine via PostHog; **tagged release** CI on **sbhooley/armaraos** bakes in the key from **`ARMARAOS_POSTHOG_KEY`** or **`AINL_POSTHOG_KEY`** (if the first is unset). Use the **same** PostHog project key as **`NEXT_PUBLIC_POSTHOG_KEY`** on **ainativelangweb** (production env / Vercel) so web and desktop share one project.
+
+**See also:** **armaraos** [`docs/release-desktop.md`](https://github.com/sbhooley/armaraos/blob/main/docs/release-desktop.md), [`docs/production-checklist.md`](https://github.com/sbhooley/armaraos/blob/main/docs/production-checklist.md) (optional secrets), [`docs/desktop.md`](https://github.com/sbhooley/armaraos/blob/main/docs/desktop.md) (product analytics section), root `README.md`.
 
 ## Troubleshooting
 

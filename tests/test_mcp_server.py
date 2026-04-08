@@ -289,5 +289,10 @@ class TestMergeHelpers:
         assert merged["max_steps"] == 100
 
     def test_merge_limits_cannot_widen(self):
-        merged = _merge_limits({"max_steps": 99999})
-        assert merged["max_steps"] == 2000
+        # Caller tries to pass a value larger than the server default (500000);
+        # _merge_limits takes the minimum, so the server ceiling wins.
+        from scripts.ainl_mcp_server import _MCP_DEFAULT_LIMITS
+        server_default = _MCP_DEFAULT_LIMITS["max_steps"]
+        over_ceiling = server_default + 1_000_000
+        merged = _merge_limits({"max_steps": over_ceiling})
+        assert merged["max_steps"] == server_default

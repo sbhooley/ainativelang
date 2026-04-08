@@ -33,7 +33,29 @@ L1:
   J sum
 ```
 
-## 2. `examples/crud_api.ainl`
+## 2. `examples/http_get_minimal.ainl`
+- Primary: `http_get_positional`
+- Secondary: `adapter_http`
+
+```ainl
+# Minimal strict-valid HTTP GET (opcode style).
+# Reference: AGENTS.md section "HTTP adapter (http.*)".
+#
+# Validate:  ainl validate examples/http_get_minimal.ainl --strict
+# Run:      ainl run examples/http_get_minimal.ainl
+#           (requires http adapter allowed; use --host-adapter-allowlist or grant)
+
+S app core noop
+
+L_main:
+  # GET: positional args only — URL, optional headers dict, optional timeout (seconds).
+  # Put query parameters in the URL string; do not use "params = {...}" on the R line.
+  R http.GET "https://example.com/" ->res
+  R core.GET ["status"] res ->st
+  J st
+```
+
+## 3. `examples/crud_api.ainl`
 - Primary: `if_branching`
 - Secondary: `set_literals`
 
@@ -43,7 +65,7 @@ L2: Set out "ok" J out
 L3: Set out "bad" J out
 ```
 
-## 3. `examples/rag_pipeline.ainl`
+## 4. `examples/rag_pipeline.ainl`
 - Primary: `call_return`
 - Secondary: `label_modularity`
 
@@ -52,26 +74,4 @@ L1: Call L9 ->out J out
 L9:
   R core.ADD 40 2 ->v
   J v
-```
-
-## 4. `examples/if_call_workflow.ainl`
-- Primary: `if_call_workflow`
-- Secondary: `bound_call_result`
-
-```ainl
-L1:
-  Call L8 ->has_payload
-  If has_payload ->L2 ->L3
-L8:
-  Set v true
-  J v
-L2:
-  Call L9 ->out
-  J out
-L3:
-  Set out "missing_payload"
-  J out
-L9:
-  R core.CONCAT "task_" "ready" ->res
-  J res
 ```

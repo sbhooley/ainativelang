@@ -134,10 +134,10 @@ The runner service accepts configuration in the POST body:
   "strict": true,
   "label": "L1",
   "limits": {
-    "max_steps": 5000,
-    "max_depth": 50,
-    "max_adapter_calls": 500,
-    "max_time_ms": 30000
+    "max_steps": 50000,
+    "max_depth": 200,
+    "max_adapter_calls": 5000,
+    "max_time_ms": 300000
   },
   "allowed_adapters": ["core"],
   "adapters": {

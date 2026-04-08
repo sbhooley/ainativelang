@@ -216,10 +216,10 @@ Limits can be passed in the `/run` request body as a `limits` object:
 {
   "code": "...",
   "limits": {
-    "max_steps": 5000,
-    "max_depth": 50,
-    "max_adapter_calls": 500,
-    "max_time_ms": 30000,
+    "max_steps": 50000,
+    "max_depth": 200,
+    "max_adapter_calls": 5000,
+    "max_time_ms": 300000,
     "max_frame_bytes": 1048576,
     "max_loop_iters": 1000
   }

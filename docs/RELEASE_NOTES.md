@@ -1,5 +1,12 @@
 # Release notes
 
+## AINL v1.4.4 — Packaging + Solana emitter alignment (2026-04-09)
+
+**PyPI / runtime:** **`ainativelang` 1.4.4** — **`RUNTIME_VERSION` `1.4.4`**.
+
+- **Packaging:** version surfaces aligned (PyPI, `RUNTIME_VERSION`, citation metadata, bot bootstrap JSON).
+- **Emit:** `emit_solana_client` header uses live **`RUNTIME_VERSION`** so emitted Solana clients stay in sync with the runtime.
+
 ## AINL v1.4.3 — MCP per-run adapter configuration (2026-04-08)
 
 **PyPI / runtime:** **`ainativelang` 1.4.3** — **`RUNTIME_VERSION` `1.4.3`**.

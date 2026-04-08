@@ -1,6 +1,6 @@
 # Canonical Resilience Pack
 
-## 5. `examples/retry_error_resilience.ainl`
+## 6. `examples/retry_error_resilience.ainl`
 - Primary: `retry_error`
 - Secondary: `failure_fallback`
 
@@ -15,7 +15,7 @@ L_fail:
   J out
 ```
 
-## 7. `examples/webhook_automation.ainl`
+## 8. `examples/webhook_automation.ainl`
 - Primary: `webhook_automation`
 - Secondary: `validate_act_return`
 
@@ -32,7 +32,7 @@ L3:
   J out
 ```
 
-## 9. `examples/monitor_escalation.ainl`
+## 10. `examples/monitor_escalation.ainl`
 - Primary: `monitoring_escalation`
 - Secondary: `scheduled_branch`
 

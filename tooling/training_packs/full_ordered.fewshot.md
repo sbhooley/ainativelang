@@ -33,7 +33,29 @@ L1:
   J sum
 ```
 
-## 2. `examples/crud_api.ainl`
+## 2. `examples/http_get_minimal.ainl`
+- Primary: `http_get_positional`
+- Secondary: `adapter_http`
+
+```ainl
+# Minimal strict-valid HTTP GET (opcode style).
+# Reference: AGENTS.md section "HTTP adapter (http.*)".
+#
+# Validate:  ainl validate examples/http_get_minimal.ainl --strict
+# Run:      ainl run examples/http_get_minimal.ainl
+#           (requires http adapter allowed; use --host-adapter-allowlist or grant)
+
+S app core noop
+
+L_main:
+  # GET: positional args only — URL, optional headers dict, optional timeout (seconds).
+  # Put query parameters in the URL string; do not use "params = {...}" on the R line.
+  R http.GET "https://example.com/" ->res
+  R core.GET ["status"] res ->st
+  J st
+```
+
+## 3. `examples/crud_api.ainl`
 - Primary: `if_branching`
 - Secondary: `set_literals`
 
@@ -43,7 +65,7 @@ L2: Set out "ok" J out
 L3: Set out "bad" J out
 ```
 
-## 3. `examples/rag_pipeline.ainl`
+## 4. `examples/rag_pipeline.ainl`
 - Primary: `call_return`
 - Secondary: `label_modularity`
 
@@ -54,7 +76,7 @@ L9:
   J v
 ```
 
-## 4. `examples/if_call_workflow.ainl`
+## 5. `examples/if_call_workflow.ainl`
 - Primary: `if_call_workflow`
 - Secondary: `bound_call_result`
 
@@ -76,7 +98,7 @@ L9:
   J res
 ```
 
-## 5. `examples/retry_error_resilience.ainl`
+## 6. `examples/retry_error_resilience.ainl`
 - Primary: `retry_error`
 - Secondary: `failure_fallback`
 
@@ -91,7 +113,7 @@ L_fail:
   J out
 ```
 
-## 6. `examples/web/basic_web_api.ainl`
+## 7. `examples/web/basic_web_api.ainl`
 - Primary: `web_endpoint`
 - Secondary: `db_read`
 
@@ -104,7 +126,7 @@ L_users:
   J users
 ```
 
-## 7. `examples/webhook_automation.ainl`
+## 8. `examples/webhook_automation.ainl`
 - Primary: `webhook_automation`
 - Secondary: `validate_act_return`
 
@@ -121,7 +143,7 @@ L3:
   J out
 ```
 
-## 8. `examples/scraper/basic_scraper.ainl`
+## 9. `examples/scraper/basic_scraper.ainl`
 - Primary: `scraper_cron`
 - Secondary: `http_to_storage`
 
@@ -136,7 +158,7 @@ L_scrape:
   J stored
 ```
 
-## 9. `examples/monitor_escalation.ainl`
+## 10. `examples/monitor_escalation.ainl`
 - Primary: `monitoring_escalation`
 - Secondary: `scheduled_branch`
 
@@ -155,7 +177,7 @@ L_noop:
   J out
 ```
 
-## 10. `examples/cron/monitor_and_alert.ainl`
+## 11. `examples/cron/monitor_and_alert.ainl`
 - Primary: `cron_db_metric_branch`
 - Secondary: `scheduled_branch`
 
@@ -175,7 +197,7 @@ L_ok:
   J metrics
 ```
 
-## 11. `examples/status_branching.ainl`
+## 12. `examples/status_branching.ainl`
 - Primary: `status_branching`
 - Secondary: `if_branching`
 
@@ -191,7 +213,7 @@ L3:
   J out
 ```
 
-## 12. `examples/timeout_demo.ainl`
+## 13. `examples/timeout_demo.ainl`
 - Primary: `include_timeout_call`
 - Secondary: `subgraph_entry`
 
@@ -206,7 +228,7 @@ L1:
   J out
 ```
 
-## 13. `examples/timeout_memory_prune_demo.ainl`
+## 14. `examples/timeout_memory_prune_demo.ainl`
 - Primary: `timeout_memory_workflow`
 - Secondary: `memory_put_list_prune`
 
@@ -229,7 +251,7 @@ L1:
   J out
 ```
 
-## 14. `examples/hybrid/langchain_tool_demo.ainl`
+## 15. `examples/hybrid/langchain_tool_demo.ainl`
 - Primary: `langchain_tool_adapter`
 - Secondary: `dotted_adapter_call`
 
@@ -256,7 +278,7 @@ L1:
   J result
 ```
 
-## 15. `examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl`
+## 16. `examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl`
 - Primary: `langgraph_ainl_core_slice`
 - Secondary: `metric_threshold_summary`
 
@@ -273,7 +295,7 @@ L1:
   J summary
 ```
 
-## 16. `examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl`
+## 17. `examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl`
 - Primary: `temporal_ainl_activity_slice`
 - Secondary: `metric_threshold_summary`
 
@@ -290,7 +312,7 @@ L1:
   J summary
 ```
 
-## 17. `examples/hyperspace_demo.ainl`
+## 18. `examples/hyperspace_demo.ainl`
 - Primary: `hyperspace_multi_adapter_modules`
 - Secondary: `includes_vector_tool_registry`
 
@@ -342,7 +364,7 @@ L1:
   J out
 ```
 
-## 18. `examples/test_adapters_full.ainl`
+## 19. `examples/test_adapters_full.ainl`
 - Primary: `vector_tool_registry_adapters`
 - Secondary: `stringify_concat_summary`
 
@@ -380,7 +402,7 @@ L1:
   J summary
 ```
 
-## 19. `examples/test_nested.ainl`
+## 20. `examples/test_nested.ainl`
 - Primary: `nested_expr_arithmetic`
 - Secondary: `core_mul_sub`
 
@@ -388,7 +410,7 @@ L1:
 L0: R core.mul (core.sub 100 85) 2 ->y J y
 ```
 
-## 20. `examples/test_phase2_common_modules.ainl`
+## 21. `examples/test_phase2_common_modules.ainl`
 - Primary: `common_modules_guard_budget_reflect`
 - Secondary: `sequential_module_calls`
 
@@ -446,7 +468,7 @@ L1:
   J done
 ```
 
-## 21. `examples/code_context_demo.ainl`
+## 22. `examples/code_context_demo.ainl`
 - Primary: `code_context_adapter`
 - Secondary: `none`
 
@@ -484,7 +506,7 @@ L1:
   J context
 ```
 
-## 22. `examples/solana_demo.ainl`
+## 23. `examples/solana_demo.ainl`
 - Primary: `solana_rpc_demo`
 - Secondary: `blockhash_pyth_stringify`
 
@@ -514,7 +536,7 @@ L1:
   J sbal
 ```
 
-## 23. `examples/prediction_market_demo.ainl`
+## 24. `examples/prediction_market_demo.ainl`
 - Primary: `solana_prediction_market`
 - Secondary: `pda_pyth_invoke_payout`
 
@@ -559,7 +581,7 @@ L1:
   J out
 ```
 
-## 24. `examples/compact/hello_compact.ainl`
+## 25. `examples/compact/hello_compact.ainl`
 - Primary: `compute_return_compact`
 - Secondary: `compact_syntax`
 
@@ -573,7 +595,7 @@ adder:
   out result
 ```
 
-## 25. `examples/compact/classifier_compact.ainl`
+## 26. `examples/compact/classifier_compact.ainl`
 - Primary: `if_branching_compact`
 - Secondary: `compact_syntax`
 
@@ -594,7 +616,7 @@ classifier:
   out "INFO: logged"
 ```
 
-## 26. `examples/compact/cache_lookup_compact.ainl`
+## 27. `examples/compact/cache_lookup_compact.ainl`
 - Primary: `cache_lookup_compact`
 - Secondary: `compact_syntax`
 
@@ -614,7 +636,7 @@ cached_fetch:
   out fresh
 ```
 
-## 27. `examples/rag/cache-warmer.ainl`
+## 28. `examples/rag/cache-warmer.ainl`
 - Primary: `rag_cache_warmer`
 - Secondary: `memory_and_cache`
 
@@ -648,7 +670,7 @@ L_skip:
   J status
 ```
 
-## 28. `examples/crm/simple-lead-router.ainl`
+## 29. `examples/crm/simple-lead-router.ainl`
 - Primary: `crm_routing`
 - Secondary: `http_and_filters`
 
@@ -691,7 +713,7 @@ L_blocked:
   J decision
 ```
 
-## 29. `examples/enterprise/audit-log-demo.ainl`
+## 30. `examples/enterprise/audit-log-demo.ainl`
 - Primary: `audit_logging`
 - Secondary: `structured_envelopes`
 
@@ -749,7 +771,7 @@ L_ok:
   J out
 ```
 
-## 30. `examples/monitoring/solana-balance.ainl`
+## 31. `examples/monitoring/solana-balance.ainl`
 - Primary: `monitoring_solana_balance`
 - Secondary: `scheduled_branch`
 
@@ -783,7 +805,7 @@ L_ok:
   J status
 ```
 
-## 31. `examples/wishlist/01_cache_and_memory.ainl`
+## 32. `examples/wishlist/01_cache_and_memory.ainl`
 - Primary: `wishlist_cache_memory`
 - Secondary: `adapter_cache_memory`
 
@@ -811,7 +833,7 @@ wishlist_01_cache_and_memory:
   out note
 ```
 
-## 32. `examples/wishlist/02_vector_semantic_search.ainl`
+## 33. `examples/wishlist/02_vector_semantic_search.ainl`
 - Primary: `wishlist_vector_semantic_search`
 - Secondary: `vector_memory_search`
 
@@ -834,7 +856,7 @@ wishlist_02_vector_semantic_search:
   out hits
 ```
 
-## 33. `examples/wishlist/03_parallel_fanout.ainl`
+## 34. `examples/wishlist/03_parallel_fanout.ainl`
 - Primary: `wishlist_fanout_parallel`
 - Secondary: `fanout_adapter_plans`
 
@@ -854,7 +876,7 @@ wishlist_03_parallel_fanout:
   out results
 ```
 
-## 34. `examples/wishlist/04_validate_with_ext.ainl`
+## 35. `examples/wishlist/04_validate_with_ext.ainl`
 - Primary: `wishlist_ext_validate`
 - Secondary: `optional_ext_adapter`
 
@@ -875,7 +897,7 @@ wishlist_04_validate_with_ext:
   out ex
 ```
 
-## 35. `examples/wishlist/05_route_then_llm_mock.ainl`
+## 36. `examples/wishlist/05_route_then_llm_mock.ainl`
 - Primary: `wishlist_llm_query_routing`
 - Secondary: `llm_query_branch`
 
@@ -902,7 +924,7 @@ wishlist_05_route_then_llm_mock:
   out out
 ```
 
-## 36. `examples/wishlist/05b_unified_llm_offline_config.ainl`
+## 37. `examples/wishlist/05b_unified_llm_offline_config.ainl`
 - Primary: `wishlist_unified_llm_offline`
 - Secondary: `llm_completion_fallback`
 
@@ -931,7 +953,7 @@ wishlist_05b_unified_llm_offline_config:
   out out
 ```
 
-## 37. `examples/wishlist/06_feedback_memory.ainl`
+## 38. `examples/wishlist/06_feedback_memory.ainl`
 - Primary: `wishlist_feedback_memory`
 - Secondary: `memory_feedback_loop`
 
@@ -955,7 +977,7 @@ wishlist_06_feedback_memory:
   out prior
 ```
 
-## 38. `examples/wishlist/07_parallel_http.ainl`
+## 39. `examples/wishlist/07_parallel_http.ainl`
 - Primary: `wishlist_fanout_http`
 - Secondary: `fanout_http_get`
 
@@ -977,7 +999,7 @@ L1:
   J bundle
 ```
 
-## 39. `examples/wishlist/08_code_review_context.ainl`
+## 40. `examples/wishlist/08_code_review_context.ainl`
 - Primary: `wishlist_code_review_context`
 - Secondary: `code_context_pack`
 
@@ -1001,7 +1023,7 @@ wishlist_08_code_review_context:
   out bundle
 ```
 
-## 40. `examples/api_only.lang`
+## 41. `examples/api_only.lang`
 - Primary: `api_only_rest`
 - Secondary: `rest_api_definitions`
 
@@ -1027,7 +1049,7 @@ L3:
   J sessions
 ```
 
-## 41. `examples/blog.lang`
+## 42. `examples/blog.lang`
 - Primary: `blog_web_app`
 - Secondary: `content_management`
 
@@ -1076,7 +1098,7 @@ L4:
   J comment
 ```
 
-## 42. `examples/ecom.lang`
+## 43. `examples/ecom.lang`
 - Primary: `ecom_storefront`
 - Secondary: `ecommerce_workflow`
 
@@ -1125,7 +1147,7 @@ L3:
   J ord
 ```
 
-## 43. `examples/internal_tool.lang`
+## 44. `examples/internal_tool.lang`
 - Primary: `internal_tool`
 - Secondary: `admin_crud`
 
@@ -1169,7 +1191,7 @@ L3:
   J users
 ```
 
-## 44. `examples/ticketing.lang`
+## 45. `examples/ticketing.lang`
 - Primary: `ticketing_system`
 - Secondary: `issue_tracking`
 
@@ -1224,7 +1246,7 @@ L5:
   J tickets
 ```
 
-## 45. `examples/openclaw/daily_lead_summary.lang`
+## 46. `examples/openclaw/daily_lead_summary.lang`
 - Primary: `daily_lead_summary`
 - Secondary: `crm_digest`
 
@@ -1249,7 +1271,7 @@ L0:
     R cache set "state" "last_run" ts ->_
 ```
 
-## 46. `examples/openclaw_full_unification.ainl`
+## 47. `examples/openclaw_full_unification.ainl`
 - Primary: `openclaw_full_unification`
 - Secondary: `workspace_unification`
 
@@ -1265,7 +1287,7 @@ L0:
   J st
 ```
 
-## 47. `examples/test_if_var.ainl`
+## 48. `examples/test_if_var.ainl`
 - Primary: `if_var_branch`
 - Secondary: `conditional_branch`
 
@@ -1283,7 +1305,7 @@ L3:
   J "false"
 ```
 
-## 48. `examples/test_mul.ainl`
+## 49. `examples/test_mul.ainl`
 - Primary: `multiply_ops`
 - Secondary: `arithmetic_mul`
 
@@ -1296,7 +1318,7 @@ L0:
   J y
 ```
 
-## 49. `examples/test_X_sub.ainl`
+## 50. `examples/test_X_sub.ainl`
 - Primary: `subtract_expr`
 - Secondary: `arithmetic_sub`
 
@@ -1309,7 +1331,7 @@ L0:
   J out
 ```
 
-## 50. `examples/compact/openclaw_learning_handoff.ainl`
+## 51. `examples/compact/openclaw_learning_handoff.ainl`
 - Primary: `openclaw_learning_handoff`
 - Secondary: `learning_digest`
 

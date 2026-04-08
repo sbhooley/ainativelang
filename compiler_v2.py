@@ -4357,11 +4357,14 @@ class AICodeCompiler:
         import base64
         import json as _json
 
+        # Lazy import: runtime.engine imports compiler_v2 at module load.
+        from runtime.engine import RUNTIME_VERSION as _rv
+
         ir_blob = base64.standard_b64encode(_json.dumps(ir, ensure_ascii=False).encode("utf-8")).decode("ascii")
         stem = str(source_stem or "ainl_graph").replace("\\", "/").split("/")[-1]
 
         py = (
-            '"""DISCOVERABILITY / GETTING STARTED (AINL v1.4.2 – Solana strict graphs)\n'
+            f'"""DISCOVERABILITY / GETTING STARTED (AINL v{_rv} – Solana strict graphs)\n'
             "\n"
             "AINL provides native Solana support for deterministic prediction-market agents: PDA derivation, Pyth\n"
             "oracles (legacy PriceAccount + PriceUpdateV2), Hermes fallback, and low-cost settlement flows with\n"

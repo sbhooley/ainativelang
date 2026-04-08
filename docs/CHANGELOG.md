@@ -4,10 +4,24 @@
 
 <!-- Next release changes go here -->
 
-## v1.4.3 (April 8, 2026) — MCP per-run adapter configuration
+- **docs:** [docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md](operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md) — clarifies `ainl run --efficient-mode` / `AINL_EFFICIENT_MODE` (env signal only), `modules/efficient_styles.ainl` (output density), vs ArmaraOS Rust input compression (see ArmaraOS `docs/prompt-compression-efficient-mode.md`).
+
+## v1.4.4 (April 9, 2026) — PyPI packaging + discoverability alignment
+
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.4**.
+- **fix(emit)**: **`emit_solana_client`** discoverability header interpolates **`RUNTIME_VERSION`** (was hard-coded **v1.4.2**).
+- **test**: Solana discoverability assertions use **`f"v{RUNTIME_VERSION}"`** instead of a pinned version string.
+
+## v1.4.3 (April 8, 2026) — MCP per-run adapter configuration + core builtins expansion
 
 - **feat(mcp)**: `ainl_run` now accepts an optional `adapters` argument to enable scoped runtime adapters per call (sandboxed `fs`, host-allowlisted `http`, file-backed `cache`, optional `sqlite`) so agent workflows can do required I/O without asking end users to edit global config.
-- **docs**: capability grant model docs aligned with current runner/MCP defaults; ArmaraOS integration note update.
+- **feat(builtins)**: `CoreBuiltinAdapter` (`runtime/adapters/builtins.py`) now implements the full set of verbs that were already present in the validator contract but missing at runtime: **`EQ`**, **`NEQ`**, **`GT`**, **`LT`**, **`GTE`**, **`LTE`** (comparisons); **`TRIM`** (collapse whitespace + strip), **`STRIP`**, **`LSTRIP`**, **`RSTRIP`** (edge whitespace); **`STARTSWITH`**, **`ENDSWITH`** (string predicates); **`KEYS`**, **`VALUES`** (dict introspection); **`STR`**, **`INT`**, **`FLOAT`**, **`BOOL`** (type coercions). All purely additive — no existing verb changed. These eliminate the common workarounds (`CONCAT "" val` for int→str coercion, cascading `REPLACE` for whitespace normalization, `CONTAINS` for equality checks).
+- **feat(mcp)**: `ainl_compile` now returns `frame_hints[]` — a list of `{name, type, source}` entries describing variables the caller should supply via `frame` in `ainl_run`. Sources: explicit `# frame: name: type` comment lines (authoritative) and IR-inferred undeclared variables (heuristic).
+- **feat(mcp)**: Per-workspace `ainl_mcp_limits.json` override — if `<fs.root>/ainl_mcp_limits.json` exists, its values are merged into caller limits before server ceiling enforcement. Enables workspace-specific limit tuning without editing global defaults.
+- **feat(mcp)**: Auto-registered `cache` adapter — if `fs` is enabled and `cache` is not explicitly configured, the MCP server automatically registers `cache` when `output/cache.json` or `cache.json` exists in `fs.root`.
+- **fix(limits)**: `_SERVER_DEFAULT_LIMITS` in `scripts/runtime_runner_service.py` raised to match MCP defaults (`max_steps: 500000`, `max_depth: 500`, `max_adapter_calls: 50000`, `max_time_ms: 900000`) — the two surfaces were inconsistent since the previous session's MCP-only raise.
+- **fix(tooling)**: `tooling/effect_analysis.py` now includes `core.STARTSWITH`, `core.ENDSWITH`, `core.TRIM`, `core.STRIP`, `core.LSTRIP`, `core.RSTRIP` effect entries matching the new builtins.
+- **fix(docs)**: `ainl_run` docstring documents variable shadowing pitfall and `# frame:` convention. `CAPABILITY_GRANT_MODEL.md`, `RUNTIME_CONTAINER_GUIDE.md`, `SANDBOX_EXECUTION_PROFILE.md` updated with current default limits. `MCP_RESEARCH_CONTRACT.md` updated for `frame_hints`, workspace limits, and auto-cache. `AGENTS.md` runtime verb list updated.
 - **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.3**.
 
 ## v1.4.2 (April 7, 2026) — Intelligence path policy, MCP/runner alignment, compiler strict-mode + tooling

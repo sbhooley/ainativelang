@@ -1,6 +1,6 @@
 # Canonical Workflow Pack
 
-## 3. `examples/rag_pipeline.ainl`
+## 4. `examples/rag_pipeline.ainl`
 - Primary: `call_return`
 - Secondary: `label_modularity`
 
@@ -11,7 +11,7 @@ L9:
   J v
 ```
 
-## 4. `examples/if_call_workflow.ainl`
+## 5. `examples/if_call_workflow.ainl`
 - Primary: `if_call_workflow`
 - Secondary: `bound_call_result`
 
@@ -33,7 +33,7 @@ L9:
   J res
 ```
 
-## 6. `examples/web/basic_web_api.ainl`
+## 7. `examples/web/basic_web_api.ainl`
 - Primary: `web_endpoint`
 - Secondary: `db_read`
 
@@ -46,7 +46,7 @@ L_users:
   J users
 ```
 
-## 7. `examples/webhook_automation.ainl`
+## 8. `examples/webhook_automation.ainl`
 - Primary: `webhook_automation`
 - Secondary: `validate_act_return`
 
@@ -63,7 +63,7 @@ L3:
   J out
 ```
 
-## 8. `examples/scraper/basic_scraper.ainl`
+## 9. `examples/scraper/basic_scraper.ainl`
 - Primary: `scraper_cron`
 - Secondary: `http_to_storage`
 

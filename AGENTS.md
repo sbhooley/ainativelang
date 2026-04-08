@@ -4,7 +4,7 @@
 
 ## What This Repo Is
 
-Python compiler + runtime for AINL (AI Native Language), version 1.4.3.
+Python compiler + runtime for AINL (AI Native Language), version 1.4.4.
 AINL compiles `.ainl` source files into an IR (intermediate representation)
 graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
@@ -19,7 +19,7 @@ cli/main.py             — CLI entry point (2700 lines). All `ainl` commands.
 adapters/               — 54 adapter modules (solana, postgres, redis, LLM, etc).
 scripts/                — Standalone scripts (emit_langgraph, emit_temporal, etc).
 tooling/                — Graph analysis, normalization, effect analysis tools.
-examples/               — 154 .ainl example files. USE THESE as syntax reference.
+examples/               — 154+ .ainl example files. **Training contract:** only paths listed as `strict-valid` in `tooling/artifact_profiles.json` are CI-checked with `ainl validate --strict`. See `examples/README.md` and `docs/EXAMPLE_SUPPORT_MATRIX.md` before copying random files.
 tests/                  — ~1000 test files, 300K lines. Run with pytest.
 docs/                   — Documentation (some accurate, some aspirational — see below).
 ```
@@ -61,7 +61,16 @@ POST /run        — Compile and execute (JSON: {source, strict?, frame?})
 ### Production defaults (runner + mass-market UX)
 
 - **Default runner grant** (`scripts/runtime_runner_service.py`): adapter cap is **unset** at the grant layer so IR-declared adapters (e.g. `web`, `http`) work out of the box; **resource limits** (`max_steps`, `max_time_ms`, …) remain the universal safety floor.
-- **MCP server** (`scripts/ainl_mcp_server.py`): **`ainl_run`** / fitness tool grants align with that runner model (no core-only adapter cap at the policy layer); **resource limits** still apply. LLM adapters on MCP remain opt-in via **`AINL_CONFIG`** or **`AINL_MCP_LLM_ENABLED=1`** (see `docs/LLM_ADAPTER_USAGE.md`).
+- **MCP server** (`scripts/ainl_mcp_server.py`): **`ainl_run`** only registers `core` by default. Any workflow using `http`, `fs`, `cache`, or `sqlite` **MUST** pass them via the `adapters` parameter — otherwise the run fails with "adapter not registered". Example for a workflow that does HTTP + file I/O + caching:
+  ```json
+  {
+    "enable": ["http", "fs", "cache"],
+    "http": { "allow_hosts": ["example.com", "api.otherdomain.gov"], "timeout_s": 15 },
+    "fs":   { "root": "/absolute/path/to/workspace", "allow_extensions": [".json", ".csv"] },
+    "cache":{ "path": "/absolute/path/to/workspace/cache.json" }
+  }
+  ```
+  LLM adapters additionally require **`AINL_CONFIG`** or **`AINL_MCP_LLM_ENABLED=1`** (see `docs/LLM_ADAPTER_USAGE.md`).
 - **`AINL_STRICT_MODE=1`** (when **`AINL_SECURITY_PROFILE`** is unset): merges profile **`consumer_secure_default`** (or **`AINL_STRICT_PROFILE`**) with that floor — named allowlist + `operator_sensitive` tier blocked; good for “strict” product mode without hand-maintaining env lists.
 - **`AINL_SECURITY_PROFILE`**: if set, loads that profile **as the full grant** (same as before); use for org/enterprise lockdown.
 - **`AINL_HOST_ADAPTER_ALLOWLIST`** / **`AINL_HOST_ADAPTER_DENYLIST`**: comma-separated; applied in the runtime after IR resolution (denylist wins last). CLI: `--host-adapter-allowlist` / `--host-adapter-denylist`.
@@ -233,6 +242,71 @@ R queue Put "channel_name" payload ->_
 QueuePut channel_name payload
 ```
 
+## HTTP adapter (`http.*`) — read before writing `R http.*`
+
+Ground truth implementation: `runtime/adapters/http.py` (`SimpleHttpAdapter`).
+
+**GET positional arguments (no named `params=` / `timeout=` on the `R` line):**
+
+1. URL string (required). Put query parameters **in the URL** (e.g. `https://host/path?ParcelNumber=123&TaxYearId=uuid`).
+2. Optional **headers** dict — second positional argument.
+3. Optional **timeout** in seconds — third positional argument (a number).
+
+```ainl
+# URL only (default timeout from adapter config)
+R http.GET "https://example.com/api?x=1" ->res
+
+# URL + empty headers + 15s timeout
+R http.GET "https://example.com/api?x=1" {} 15 ->res
+```
+
+**Do not** write `R http.GET url params = {...} timeout = 15 ->res`. The runtime parses extra tokens after the URL and will mis-parse `=` (e.g. `could not convert string to float: '='`).
+
+**`core.GET` arg order is object-first:** `R core.GET obj "key" ->val` — NOT `R core.GET "key" obj`. The first positional arg to `core.GET` is always the container (dict or list), the second is the key/index string.
+
+**`core.*` runtime coverage — verified working verbs (builtins.py v1.4.3+; package **1.4.4**):**
+`ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MIN`, `MAX`, `CLAMP`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, `TRIM`, `STRIP`, `LSTRIP`, `RSTRIP`, `GET`, `PARSE`, `STRINGIFY`, `MERGE`, `LEN`, `NOW`, `ISO`, `ISO_TS`, `ECHO`, `ID`, `ENV`, `SUBSTR`, `SLEEP`, `FILTER_HIGH_SCORE`, `EQ`, `NEQ`, `GT`, `LT`, `GTE`, `LTE`, `KEYS`, `VALUES`, `STR`, `INT`, `FLOAT`, `BOOL`.
+
+**Still NOT implemented at runtime** (pass `--strict` validation but throw "unsupported core builtin target"): `type`, `unique`, `reduce`, `map`, `filter`, `format`, `range`, `sort`, `reverse`, `flatten`, `omit`, `pick`, `zip`, `abs`, `ceil`, `floor`, `round`, `pow`, `mod`, `and`, `or`, `not`, `noop`, `hash`, `uuid`.
+
+**Type coercion shortcuts (new):** Use `R core.STR val ->s` instead of `R core.CONCAT "" val ->s`. Use `R core.EQ a b ->ok` instead of `R core.CONTAINS str_a str_b ->ok` workarounds. Use `R core.TRIM html_text ->clean` instead of cascading `REPLACE` chains.
+
+**Recursive loops hit Python's recursion limit.** Each `Call L_label` in AINL creates a Python stack frame. 73 records × ~5 frames/record = 365 frames — hits Python's default limit (~300-500). AINL is not suited for iterating over datasets > ~20 records via tail recursion. For larger datasets, use `shell_exec` to run a Python script.
+
+**CRITICAL: Inline dict literals on `R` lines are never evaluated as dicts.** `R http.POST url {"key": "val"} ->resp` tokenizes `{"key": "val"}` as raw strings — the adapter receives `["{", "key", ":", "val", "}"]` and fails with `could not convert string to float: ':'`. Same for `R core.MERGE rec {"extra": val}` — the inline dict is silently skipped. The ONLY correct patterns are:
+- Pass dicts via `frame` in `ainl_run` (e.g. `frame: {"body": {...}}`) and reference by name: `R http.POST url body ->resp`
+- Build result JSON via `core.CONCAT` + `core.STRINGIFY` + `core.PARSE`
+- Use `core.MERGE` only with two variables that are already resolved dicts (not inline literals)
+
+**`web` vs `http`:** `http` is the plain HTTP client. `web` is OpenClaw-oriented search/fetch and is not a substitute for documented `http.Get` / `http.Post` when you need a normal request to a fixed host.
+
+**`ainl_compile` returns `frame_hints`:** The `ainl_compile` MCP tool now returns a `frame_hints` list alongside the IR. Each entry is `{"name": "...", "type": "...", "source": "comment"|"inferred"}` describing variables the caller should supply in the `frame` parameter of `ainl_run`. Authoritative hints come from `# frame: name: type` comment lines at the top of the `.ainl` file; additional inferred hints are derived from variables referenced but never assigned in the IR.
+
+**Variable shadowing in `R` args (critical):** String literals in `R` argument positions (e.g. `"records"`) have their quotes stripped at compile time and resolved against the live frame before being used as literals. If a frame variable named `records` exists, `R core.GET data "records"` will pass the list, not the string `"records"`. Prevention: **use unique variable name prefixes in every label** (e.g. `lien_*` in first loop, `out_*` in second loop).
+
+**Per-workspace `ainl_mcp_limits.json`:** Place a JSON file at `<fs.root>/ainl_mcp_limits.json` to raise or tighten limits for a specific workspace without editing global server defaults. Format: `{"max_steps": 500000, "max_time_ms": 900000, "max_adapter_calls": 50000}`. The server ceiling still wins — you can tighten below defaults but not widen above them via this file.
+
+**Auto-registered cache:** When the `fs` adapter is enabled in `ainl_run` and no `cache` adapter is explicitly configured, the MCP server will automatically register `cache` if `output/cache.json` or `cache.json` exists inside the `fs.root` directory. Zero config required for workspace-local caching.
+
+**MCP `ainl_run` adapter requirement:** `http`, `fs`, `cache`, and `sqlite` are **not** registered by default in MCP runs — you will get "adapter not registered" / "http adapter not found" errors unless you pass the `adapters` argument. Always include it when your workflow uses those adapters:
+```json
+{
+  "enable": ["http", "fs", "cache"],
+  "http":  { "allow_hosts": ["ohwarren.fidlar.com", "auditor.warrencountyohio.gov"], "timeout_s": 15 },
+  "fs":    { "root": "/Users/clawdbot/.armaraos/workspaces/Lien Scraper", "allow_extensions": [".json", ".csv"] },
+  "cache": { "path": "/Users/clawdbot/.armaraos/workspaces/Lien Scraper/cache.json" }
+}
+```
+ArmaraOS scheduled `ainl run` (CLI) auto-injects `AINL_ALLOW_IR_DECLARED_ADAPTERS=1` so adapters declared in the IR work without the `adapters` arg; this **only** applies to the CLI runner, **not** MCP `ainl_run`.
+
+**Strict mode:** Use adapter verbs that exist on the contract (see `ainl capabilities` / diagnostics). Prefer forms that pass `ainl validate <file> --strict`.
+
+**There is no `regex_find` adapter in this repository.** Do not emit `R regex_find ...` (it will not resolve to a real adapter). For pattern extraction use **`core`** string ops that exist in capabilities (e.g. `SUBSTR`, `CONTAINS`, `SPLIT`, `REPLACE`) or handle regex **outside** AINL (e.g. Python). If you see `regex_find` in a random snippet, treat it as invalid unless a project adds a custom adapter.
+
+**Opcode graphs:** Multi-line `{ ... }` blocks inside `L_` labels (e.g. inside `core.REDUCE` callbacks) are easy to get wrong; a stray `}` can end the label and produce **auto-closed label** errors. When in doubt, use **compact** syntax from `examples/compact/` or keep graphs small and run **`ainl validate <file> --strict`** until clean.
+
+**Canonical example file:** `examples/http_get_minimal.ainl`.
+
 ## App Store filtering (`demo/`)
 
 Files under `demo/` are **development demos** — many use experimental syntax and do not pass `--strict`. They are excluded from the ArmaraOS App Store via a `demo/.ainl-library-skip` marker file. The ArmaraOS `ainl-library` walker skips any directory tree that contains this file. Do not remove it. To make a demo file discoverable in the App Store, move it to `examples/` and ensure `ainl validate <file> --strict` passes.
@@ -246,6 +320,8 @@ Files under `demo/` are **development demos** — many use experimental syntax a
 - Use `X var value` for assignments — use `Set var value` instead (X has runtime quirks)
 - Use `QueuePut` — use `R queue Put "channel" payload ->_` instead
 - Place `include` directives after the `S` header line — includes must appear before `S` (prelude only)
+- Put `params =` / `timeout =` as fake named arguments on `R http.GET` / `R http.POST` lines — use positional args and URL query strings (see **HTTP adapter** above)
+- Claim or use a **`regex_find`** adapter — it is not part of this repo; use real `core` ops or external code
 
 ## OpenClaw workspace handoff (ClawHub skills → AINL)
 
@@ -255,5 +331,5 @@ Workspace-level contract (load order, `.learnings/`, export script): see `INTEGR
 ## Related Repositories
 
 - `sbhooley/ainativelangweb` — Marketing website (Next.js); **ArmaraOS** desktop installers on `/` and `/download` (manifest under `/downloads/armaraos/latest.json` when release CI syncs from **armaraos**)
-- `sbhooley/armaraos` — ArmaraOS / OpenFang agent OS (Rust); desktop app + embedded dashboard; docs for Home folder API and `[dashboard]` home-editing allowlists. **PostHog (desktop):** release CI bakes **`ARMARAOS_POSTHOG_KEY`** or org **`AINL_POSTHOG_KEY`** (same `phc_…` as **`NEXT_PUBLIC_POSTHOG_KEY`** on ainativelangweb). This repo does not ship that key.
+- `sbhooley/armaraos` — ArmaraOS / OpenFang agent OS (Rust); desktop app + embedded dashboard; docs for Home folder API and `[dashboard]` home-editing allowlists; **Ultra Cost-Efficient Mode** (input prompt compression): **`armaraos/docs/prompt-compression-efficient-mode.md`**. **PostHog (desktop):** release CI bakes **`ARMARAOS_POSTHOG_KEY`** or org **`AINL_POSTHOG_KEY`** (same `phc_…` as **`NEXT_PUBLIC_POSTHOG_KEY`** on ainativelangweb). This repo does not ship that key. **AINL bridge:** **`docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md`** (`--efficient-mode` / `modules/efficient_styles.ainl` vs Rust compression).
 - `sbhooley/ainativelangcloud` — Cloud platform plans (private)

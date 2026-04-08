@@ -4,6 +4,13 @@ This document classifies repository examples into support lanes so contributors
 and AI agents can tell which examples define the public recommended path and
 which ones are preserved mainly for compatibility.
 
+## For AI agents
+
+1. **Do not treat every `examples/**/*.ainl` file as canonical.** Only paths listed under **`strict-valid`** in `tooling/artifact_profiles.json` are enforced to pass **`ainl validate <file> --strict`** in CI (`tests/test_artifact_profiles.py`).
+2. **Language and adapter ground truth** is **`AGENTS.md`** (HTTP positional args, no invented adapters such as `regex_find`, queue/http forms).
+3. **Human-oriented index:** `examples/README.md` (recommended learning order, strict vs non-strict explanation).
+4. **`demo/`** is outside this contract unless explicitly added to profiles — see **`AGENTS.md`** (App Store / demos).
+
 Primary machine-readable sources:
 - `tooling/support_matrix.json`
 - `tooling/artifact_profiles.json`
@@ -36,6 +43,7 @@ strict-valid.
 | Example | Profile | Why it matters | Ops role (if applicable) |
 |---------|---------|----------------|---------------------------|
 | `examples/hello.ainl` | `strict-valid` | Smallest compute-and-return example | — |
+| `examples/http_get_minimal.ainl` | `strict-valid` | Minimal **`R http.GET`** (positional URL / headers / timeout); see **`AGENTS.md`** HTTP section | Outbound HTTP |
 | `examples/crud_api.ainl` | `strict-valid` | Clear `Set` + `If` branch behavior | Branching/control flow |
 | `examples/rag_pipeline.ainl` | `strict-valid` | Explicit `Call ... ->out` return binding | Workflow composition |
 | `examples/retry_error_resilience.ainl` | `strict-valid` | Canonical retry and failure routing | Resilience/remediation pattern |
@@ -57,14 +65,15 @@ These are **strict-valid** graphs that require an **opt-in** adapter at run time
 Recommended learning order:
 
 1. `examples/hello.ainl`
-2. `examples/crud_api.ainl`
-3. `examples/rag_pipeline.ainl`
-4. `examples/if_call_workflow.ainl`
-5. `examples/retry_error_resilience.ainl`
-6. `examples/web/basic_web_api.ainl`
-7. `examples/webhook_automation.ainl`
-8. `examples/scraper/basic_scraper.ainl`
-9. `examples/monitor_escalation.ainl`
+2. `examples/http_get_minimal.ainl`
+3. `examples/crud_api.ainl`
+4. `examples/rag_pipeline.ainl`
+5. `examples/if_call_workflow.ainl`
+6. `examples/retry_error_resilience.ainl`
+7. `examples/web/basic_web_api.ainl`
+8. `examples/webhook_automation.ainl`
+9. `examples/scraper/basic_scraper.ainl`
+10. `examples/monitor_escalation.ainl`
 
 ## Compatible Examples
 

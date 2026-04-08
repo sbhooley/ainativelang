@@ -154,7 +154,9 @@ class TestRunnerProfileEnvVar:
             assert "web" in aa
             assert "core" in aa
             assert "operator_sensitive" in (new_grant.get("forbidden_privilege_tiers") or [])
-            assert new_grant["limits"]["max_steps"] == 2000
+            # consumer_secure_default profile sets max_steps=5000; with server defaults
+            # raised to 500000, the profile's tighter value wins the min-merge.
+            assert new_grant["limits"]["max_steps"] == 5000
         finally:
             os.environ.pop("AINL_STRICT_MODE", None)
             os.environ.pop("AINL_STRICT_PROFILE", None)

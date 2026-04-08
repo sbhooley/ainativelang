@@ -58,10 +58,10 @@ _SANDBOX_CLIENT = SandboxClient.try_connect(logger=logger.info)
 
 # --- Server-level defaults (safety floor) --------------------------------
 _SERVER_DEFAULT_LIMITS: Dict[str, int] = {
-    "max_steps": 2000,
-    "max_depth": 20,
-    "max_adapter_calls": 200,
-    "max_time_ms": 30000,
+    "max_steps": 500000,
+    "max_depth": 500,
+    "max_adapter_calls": 50000,
+    "max_time_ms": 900000,
 }
 
 

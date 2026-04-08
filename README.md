@@ -98,6 +98,20 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.4.4
+
+- **PyPI `ainativelang` 1.4.4**: version surfaces aligned (`pyproject.toml`, `RUNTIME_VERSION`, `CITATION.cff`, `tooling/bot_bootstrap.json`).
+- **Solana client emit**: `emit_solana_client` header now uses live `RUNTIME_VERSION` so generated clients never drift from the installed runtime.
+
+## New in v1.4.3
+
+- **`core.*` builtins expanded**: `EQ`/`NEQ`/`GT`/`LT`/`GTE`/`LTE` comparisons, `TRIM`/`STRIP`/`LSTRIP`/`RSTRIP` whitespace, `STARTSWITH`/`ENDSWITH`, `KEYS`/`VALUES`, `STR`/`INT`/`FLOAT`/`BOOL` coercions — all now implemented in `runtime/adapters/builtins.py`. These verbs were already in the validator contract; now they work at runtime too.
+- **MCP `ainl_compile` returns `frame_hints[]`**: list of `{name, type, source}` entries so agents can auto-construct the `frame` parameter before calling `ainl_run`. Add `# frame: name: type` comment lines to source for authoritative hints.
+- **MCP per-workspace limits**: place `ainl_mcp_limits.json` in the `fs.root` directory to tune `max_steps`/`max_time_ms`/`max_adapter_calls` per workspace without editing global server config.
+- **MCP auto-cache**: `cache` adapter is automatically registered when `output/cache.json` or `cache.json` exists in `fs.root`, making workspace caching zero-config.
+- **MCP per-run adapters** (from earlier in v1.4.3): `ainl_run` `adapters` parameter for scoped `http`, `fs`, `cache`, `sqlite` per call.
+- **Limit alignment**: `_SERVER_DEFAULT_LIMITS` in `runtime_runner_service.py` raised to match MCP defaults (`max_steps: 500000`, `max_adapter_calls: 50000`, `max_time_ms: 900000`).
+
 ## New in v1.4.2
 
 - **Host adapter policy**: **`AINL_ALLOW_IR_DECLARED_ADAPTERS`** relaxes env **`AINL_HOST_ADAPTER_ALLOWLIST`** when set; intelligence paths under **`intelligence/`** opt in by default unless **`AINL_INTELLIGENCE_FORCE_HOST_POLICY=1`**.
@@ -405,6 +419,39 @@ After you push a branch, **open a pull request** on GitHub and use the **templat
 You can also append `?quick_pull=1&template=workflow-submission.md` or `template=agent-submission.md` to your **compare** URL (`main`…`your-branch`).
 
 Templates: [`workflow-submission.md`](.github/PULL_REQUEST_TEMPLATE/workflow-submission.md) · [`agent-submission.md`](.github/PULL_REQUEST_TEMPLATE/agent-submission.md) · default [`pull_request_template.md`](.github/pull_request_template.md).
+
+---
+
+## Ultra Cost-Efficient Mode — `modules/efficient_styles.ainl`
+
+AINL ships a reusable output style module that routes user-facing responses through a dense, professional prose style and tool/agentic steps through structured JSON — eliminating redundancy at the LLM output layer.
+
+```ainl
+include "modules/efficient_styles.ainl" as style
+
+my_workflow:
+  in: question
+  # ... do work ...
+  result = core.GET work_result
+  if is_user_facing:
+    out = style.human_dense_response result
+  out = style.terse_structured result
+```
+
+**`human_dense_response`** — natural English, full paragraphs, examples where helpful. Strips hedging (`I think`, `basically`), redundancy, pleasantries. Code, numbers, steps remain 100 % exact and detailed.
+
+**`terse_structured`** — JSON-only output for tool steps and internal state. Never use for end-user responses.
+
+When combined with the ArmaraOS **Ultra Cost-Efficient Mode** input compressor (heuristic **input** reduction in Rust, **under 30 ms** target; typical **~40–56 %** input savings in Balanced mode on conversational text), using this module on **output** as well stacks savings on both sides of the LLM. Total bill impact depends on your input/output token mix and model pricing (e.g. Claude Sonnet 4.6 list **$3/M input · $15/M output**).
+
+**Cross-repo reference:** [docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md](docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md) — how CLI env, `efficient_styles.ainl`, and ArmaraOS `docs/prompt-compression-efficient-mode.md` relate.
+
+**CLI hint for ArmaraOS-hosted graphs** (sets `AINL_EFFICIENT_MODE` env var — Rust compression is on the host):
+```bash
+ainl run my_workflow.ainl --efficient-mode balanced
+```
+
+Note: the `--efficient-mode` flag only signals the ArmaraOS kernel via environment. **No compression runs in Python** — implementation is in **`openfang-runtime`** (`prompt_compressor`).
 
 ---
 
@@ -872,7 +919,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.4.3** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.4.4** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

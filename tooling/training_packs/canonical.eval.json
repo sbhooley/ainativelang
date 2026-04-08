@@ -15,8 +15,21 @@
       }
     },
     {
-      "id": "examples__crud_api_ainl",
+      "id": "examples__http_get_minimal_ainl",
       "order": 2,
+      "path": "examples/http_get_minimal.ainl",
+      "primary_pattern": "http_get_positional",
+      "secondary_pattern": "adapter_http",
+      "strict_valid_expected": true,
+      "canonical_source": "# Minimal strict-valid HTTP GET (opcode style).\n# Reference: AGENTS.md section \"HTTP adapter (http.*)\".\n#\n# Validate:  ainl validate examples/http_get_minimal.ainl --strict\n# Run:      ainl run examples/http_get_minimal.ainl\n#           (requires http adapter allowed; use --host-adapter-allowlist or grant)\n\nS app core noop\n\nL_main:\n  # GET: positional args only \u2014 URL, optional headers dict, optional timeout (seconds).\n  # Put query parameters in the URL string; do not use \"params = {...}\" on the R line.\n  R http.GET \"https://example.com/\" ->res\n  R core.GET [\"status\"] res ->st\n  J st\n",
+      "checks": {
+        "no_compat_return_binding": true,
+        "uppercase_adapter_verbs_preferred": true
+      }
+    },
+    {
+      "id": "examples__crud_api_ainl",
+      "order": 3,
       "path": "examples/crud_api.ainl",
       "primary_pattern": "if_branching",
       "secondary_pattern": "set_literals",
@@ -29,7 +42,7 @@
     },
     {
       "id": "examples__rag_pipeline_ainl",
-      "order": 3,
+      "order": 4,
       "path": "examples/rag_pipeline.ainl",
       "primary_pattern": "call_return",
       "secondary_pattern": "label_modularity",
@@ -42,7 +55,7 @@
     },
     {
       "id": "examples__if_call_workflow_ainl",
-      "order": 4,
+      "order": 5,
       "path": "examples/if_call_workflow.ainl",
       "primary_pattern": "if_call_workflow",
       "secondary_pattern": "bound_call_result",
@@ -55,7 +68,7 @@
     },
     {
       "id": "examples__retry_error_resilience_ainl",
-      "order": 5,
+      "order": 6,
       "path": "examples/retry_error_resilience.ainl",
       "primary_pattern": "retry_error",
       "secondary_pattern": "failure_fallback",
@@ -68,7 +81,7 @@
     },
     {
       "id": "examples__web__basic_web_api_ainl",
-      "order": 6,
+      "order": 7,
       "path": "examples/web/basic_web_api.ainl",
       "primary_pattern": "web_endpoint",
       "secondary_pattern": "db_read",
@@ -81,7 +94,7 @@
     },
     {
       "id": "examples__webhook_automation_ainl",
-      "order": 7,
+      "order": 8,
       "path": "examples/webhook_automation.ainl",
       "primary_pattern": "webhook_automation",
       "secondary_pattern": "validate_act_return",
@@ -94,7 +107,7 @@
     },
     {
       "id": "examples__scraper__basic_scraper_ainl",
-      "order": 8,
+      "order": 9,
       "path": "examples/scraper/basic_scraper.ainl",
       "primary_pattern": "scraper_cron",
       "secondary_pattern": "http_to_storage",
@@ -107,7 +120,7 @@
     },
     {
       "id": "examples__monitor_escalation_ainl",
-      "order": 9,
+      "order": 10,
       "path": "examples/monitor_escalation.ainl",
       "primary_pattern": "monitoring_escalation",
       "secondary_pattern": "scheduled_branch",
@@ -120,7 +133,7 @@
     },
     {
       "id": "examples__cron__monitor_and_alert_ainl",
-      "order": 10,
+      "order": 11,
       "path": "examples/cron/monitor_and_alert.ainl",
       "primary_pattern": "cron_db_metric_branch",
       "secondary_pattern": "scheduled_branch",
@@ -133,7 +146,7 @@
     },
     {
       "id": "examples__status_branching_ainl",
-      "order": 11,
+      "order": 12,
       "path": "examples/status_branching.ainl",
       "primary_pattern": "status_branching",
       "secondary_pattern": "if_branching",
@@ -146,7 +159,7 @@
     },
     {
       "id": "examples__timeout_demo_ainl",
-      "order": 12,
+      "order": 13,
       "path": "examples/timeout_demo.ainl",
       "primary_pattern": "include_timeout_call",
       "secondary_pattern": "subgraph_entry",
@@ -159,7 +172,7 @@
     },
     {
       "id": "examples__timeout_memory_prune_demo_ainl",
-      "order": 13,
+      "order": 14,
       "path": "examples/timeout_memory_prune_demo.ainl",
       "primary_pattern": "timeout_memory_workflow",
       "secondary_pattern": "memory_put_list_prune",
@@ -172,7 +185,7 @@
     },
     {
       "id": "examples__hybrid__langchain_tool_demo_ainl",
-      "order": 14,
+      "order": 15,
       "path": "examples/hybrid/langchain_tool_demo.ainl",
       "primary_pattern": "langchain_tool_adapter",
       "secondary_pattern": "dotted_adapter_call",
@@ -185,7 +198,7 @@
     },
     {
       "id": "examples__hybrid__langgraph_outer_ainl_core__monitoring_escalation_ainl",
-      "order": 15,
+      "order": 16,
       "path": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
       "primary_pattern": "langgraph_ainl_core_slice",
       "secondary_pattern": "metric_threshold_summary",
@@ -198,7 +211,7 @@
     },
     {
       "id": "examples__hybrid__temporal_durable_ainl__monitoring_durable_ainl",
-      "order": 16,
+      "order": 17,
       "path": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
       "primary_pattern": "temporal_ainl_activity_slice",
       "secondary_pattern": "metric_threshold_summary",
@@ -211,7 +224,7 @@
     },
     {
       "id": "examples__hyperspace_demo_ainl",
-      "order": 17,
+      "order": 18,
       "path": "examples/hyperspace_demo.ainl",
       "primary_pattern": "hyperspace_multi_adapter_modules",
       "secondary_pattern": "includes_vector_tool_registry",
@@ -224,7 +237,7 @@
     },
     {
       "id": "examples__test_adapters_full_ainl",
-      "order": 18,
+      "order": 19,
       "path": "examples/test_adapters_full.ainl",
       "primary_pattern": "vector_tool_registry_adapters",
       "secondary_pattern": "stringify_concat_summary",
@@ -237,7 +250,7 @@
     },
     {
       "id": "examples__test_nested_ainl",
-      "order": 19,
+      "order": 20,
       "path": "examples/test_nested.ainl",
       "primary_pattern": "nested_expr_arithmetic",
       "secondary_pattern": "core_mul_sub",
@@ -250,7 +263,7 @@
     },
     {
       "id": "examples__test_phase2_common_modules_ainl",
-      "order": 20,
+      "order": 21,
       "path": "examples/test_phase2_common_modules.ainl",
       "primary_pattern": "common_modules_guard_budget_reflect",
       "secondary_pattern": "sequential_module_calls",
@@ -263,7 +276,7 @@
     },
     {
       "id": "examples__code_context_demo_ainl",
-      "order": 21,
+      "order": 22,
       "path": "examples/code_context_demo.ainl",
       "primary_pattern": "code_context_adapter",
       "secondary_pattern": "none",
@@ -276,7 +289,7 @@
     },
     {
       "id": "examples__solana_demo_ainl",
-      "order": 22,
+      "order": 23,
       "path": "examples/solana_demo.ainl",
       "primary_pattern": "solana_rpc_demo",
       "secondary_pattern": "blockhash_pyth_stringify",
@@ -289,7 +302,7 @@
     },
     {
       "id": "examples__prediction_market_demo_ainl",
-      "order": 23,
+      "order": 24,
       "path": "examples/prediction_market_demo.ainl",
       "primary_pattern": "solana_prediction_market",
       "secondary_pattern": "pda_pyth_invoke_payout",
@@ -302,7 +315,7 @@
     },
     {
       "id": "examples__compact__hello_compact_ainl",
-      "order": 24,
+      "order": 25,
       "path": "examples/compact/hello_compact.ainl",
       "primary_pattern": "compute_return_compact",
       "secondary_pattern": "compact_syntax",
@@ -315,7 +328,7 @@
     },
     {
       "id": "examples__compact__classifier_compact_ainl",
-      "order": 25,
+      "order": 26,
       "path": "examples/compact/classifier_compact.ainl",
       "primary_pattern": "if_branching_compact",
       "secondary_pattern": "compact_syntax",
@@ -328,7 +341,7 @@
     },
     {
       "id": "examples__compact__cache_lookup_compact_ainl",
-      "order": 26,
+      "order": 27,
       "path": "examples/compact/cache_lookup_compact.ainl",
       "primary_pattern": "cache_lookup_compact",
       "secondary_pattern": "compact_syntax",
@@ -341,7 +354,7 @@
     },
     {
       "id": "examples__rag__cache-warmer_ainl",
-      "order": 27,
+      "order": 28,
       "path": "examples/rag/cache-warmer.ainl",
       "primary_pattern": "rag_cache_warmer",
       "secondary_pattern": "memory_and_cache",
@@ -354,7 +367,7 @@
     },
     {
       "id": "examples__crm__simple-lead-router_ainl",
-      "order": 28,
+      "order": 29,
       "path": "examples/crm/simple-lead-router.ainl",
       "primary_pattern": "crm_routing",
       "secondary_pattern": "http_and_filters",
@@ -367,7 +380,7 @@
     },
     {
       "id": "examples__enterprise__audit-log-demo_ainl",
-      "order": 29,
+      "order": 30,
       "path": "examples/enterprise/audit-log-demo.ainl",
       "primary_pattern": "audit_logging",
       "secondary_pattern": "structured_envelopes",
@@ -380,7 +393,7 @@
     },
     {
       "id": "examples__monitoring__solana-balance_ainl",
-      "order": 30,
+      "order": 31,
       "path": "examples/monitoring/solana-balance.ainl",
       "primary_pattern": "monitoring_solana_balance",
       "secondary_pattern": "scheduled_branch",
@@ -393,7 +406,7 @@
     },
     {
       "id": "examples__wishlist__01_cache_and_memory_ainl",
-      "order": 31,
+      "order": 32,
       "path": "examples/wishlist/01_cache_and_memory.ainl",
       "primary_pattern": "wishlist_cache_memory",
       "secondary_pattern": "adapter_cache_memory",
@@ -406,7 +419,7 @@
     },
     {
       "id": "examples__wishlist__02_vector_semantic_search_ainl",
-      "order": 32,
+      "order": 33,
       "path": "examples/wishlist/02_vector_semantic_search.ainl",
       "primary_pattern": "wishlist_vector_semantic_search",
       "secondary_pattern": "vector_memory_search",
@@ -419,7 +432,7 @@
     },
     {
       "id": "examples__wishlist__03_parallel_fanout_ainl",
-      "order": 33,
+      "order": 34,
       "path": "examples/wishlist/03_parallel_fanout.ainl",
       "primary_pattern": "wishlist_fanout_parallel",
       "secondary_pattern": "fanout_adapter_plans",
@@ -432,7 +445,7 @@
     },
     {
       "id": "examples__wishlist__04_validate_with_ext_ainl",
-      "order": 34,
+      "order": 35,
       "path": "examples/wishlist/04_validate_with_ext.ainl",
       "primary_pattern": "wishlist_ext_validate",
       "secondary_pattern": "optional_ext_adapter",
@@ -445,7 +458,7 @@
     },
     {
       "id": "examples__wishlist__05_route_then_llm_mock_ainl",
-      "order": 35,
+      "order": 36,
       "path": "examples/wishlist/05_route_then_llm_mock.ainl",
       "primary_pattern": "wishlist_llm_query_routing",
       "secondary_pattern": "llm_query_branch",
@@ -458,7 +471,7 @@
     },
     {
       "id": "examples__wishlist__05b_unified_llm_offline_config_ainl",
-      "order": 36,
+      "order": 37,
       "path": "examples/wishlist/05b_unified_llm_offline_config.ainl",
       "primary_pattern": "wishlist_unified_llm_offline",
       "secondary_pattern": "llm_completion_fallback",
@@ -471,7 +484,7 @@
     },
     {
       "id": "examples__wishlist__06_feedback_memory_ainl",
-      "order": 37,
+      "order": 38,
       "path": "examples/wishlist/06_feedback_memory.ainl",
       "primary_pattern": "wishlist_feedback_memory",
       "secondary_pattern": "memory_feedback_loop",
@@ -484,7 +497,7 @@
     },
     {
       "id": "examples__wishlist__07_parallel_http_ainl",
-      "order": 38,
+      "order": 39,
       "path": "examples/wishlist/07_parallel_http.ainl",
       "primary_pattern": "wishlist_fanout_http",
       "secondary_pattern": "fanout_http_get",
@@ -497,7 +510,7 @@
     },
     {
       "id": "examples__wishlist__08_code_review_context_ainl",
-      "order": 39,
+      "order": 40,
       "path": "examples/wishlist/08_code_review_context.ainl",
       "primary_pattern": "wishlist_code_review_context",
       "secondary_pattern": "code_context_pack",
@@ -510,7 +523,7 @@
     },
     {
       "id": "examples__api_only_lang",
-      "order": 40,
+      "order": 41,
       "path": "examples/api_only.lang",
       "primary_pattern": "api_only_rest",
       "secondary_pattern": "rest_api_definitions",
@@ -523,7 +536,7 @@
     },
     {
       "id": "examples__blog_lang",
-      "order": 41,
+      "order": 42,
       "path": "examples/blog.lang",
       "primary_pattern": "blog_web_app",
       "secondary_pattern": "content_management",
@@ -536,7 +549,7 @@
     },
     {
       "id": "examples__ecom_lang",
-      "order": 42,
+      "order": 43,
       "path": "examples/ecom.lang",
       "primary_pattern": "ecom_storefront",
       "secondary_pattern": "ecommerce_workflow",
@@ -549,7 +562,7 @@
     },
     {
       "id": "examples__internal_tool_lang",
-      "order": 43,
+      "order": 44,
       "path": "examples/internal_tool.lang",
       "primary_pattern": "internal_tool",
       "secondary_pattern": "admin_crud",
@@ -562,7 +575,7 @@
     },
     {
       "id": "examples__ticketing_lang",
-      "order": 44,
+      "order": 45,
       "path": "examples/ticketing.lang",
       "primary_pattern": "ticketing_system",
       "secondary_pattern": "issue_tracking",
@@ -575,7 +588,7 @@
     },
     {
       "id": "examples__openclaw__daily_lead_summary_lang",
-      "order": 45,
+      "order": 46,
       "path": "examples/openclaw/daily_lead_summary.lang",
       "primary_pattern": "daily_lead_summary",
       "secondary_pattern": "crm_digest",
@@ -588,7 +601,7 @@
     },
     {
       "id": "examples__openclaw_full_unification_ainl",
-      "order": 46,
+      "order": 47,
       "path": "examples/openclaw_full_unification.ainl",
       "primary_pattern": "openclaw_full_unification",
       "secondary_pattern": "workspace_unification",
@@ -601,7 +614,7 @@
     },
     {
       "id": "examples__test_if_var_ainl",
-      "order": 47,
+      "order": 48,
       "path": "examples/test_if_var.ainl",
       "primary_pattern": "if_var_branch",
       "secondary_pattern": "conditional_branch",
@@ -614,7 +627,7 @@
     },
     {
       "id": "examples__test_mul_ainl",
-      "order": 48,
+      "order": 49,
       "path": "examples/test_mul.ainl",
       "primary_pattern": "multiply_ops",
       "secondary_pattern": "arithmetic_mul",
@@ -627,7 +640,7 @@
     },
     {
       "id": "examples__test_X_sub_ainl",
-      "order": 49,
+      "order": 50,
       "path": "examples/test_X_sub.ainl",
       "primary_pattern": "subtract_expr",
       "secondary_pattern": "arithmetic_sub",
@@ -640,7 +653,7 @@
     },
     {
       "id": "examples__compact__openclaw_learning_handoff_ainl",
-      "order": 50,
+      "order": 51,
       "path": "examples/compact/openclaw_learning_handoff.ainl",
       "primary_pattern": "openclaw_learning_handoff",
       "secondary_pattern": "learning_digest",

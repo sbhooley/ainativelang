@@ -1,0 +1,22 @@
+// modules/efficient_styles.ainl — reusable sweet-spot dense output
+// Include with: include "modules/efficient_styles.ainl" as style
+//
+// Usage in a calling graph:
+//   include "modules/efficient_styles.ainl" as style
+//   ...
+//   result = style.human_dense_response raw_thinking
+//
+// Note: `llm_query` is the ArmaraOS-injected LLM bridge adapter (see docs/LLM_ADAPTER_USAGE.md).
+// In standalone ainl run, replace with `llm.COMPLETION` or `llm/openrouter.COMPLETION`.
+
+human_dense_response:
+  in: raw_thinking   // structured result from previous node
+  R llm_query "
+    Respond as a clear, professional technical communicator. Use natural, human-sounding English with full paragraphs and helpful examples where they improve understanding. Be complete yet maximally concise: eliminate all redundancy, hedging words like 'I think' or 'basically', pleasantries, repetition, and unnecessary phrases. Merge related ideas for tighter flow. One clear sentence per key point works best when it aids readability. Keep every piece of code, numbers, steps, entities, and explanations fully exact and detailed. Prioritize scannability through logical paragraph breaks and direct language. For simple points use brevity; for explanations or summaries provide thorough yet focused coverage."
+  raw_thinking -> dense_output
+  out dense_output
+
+terse_structured:   // for internal/agentic/tool steps only
+  in: task
+  R llm_query "Output ONLY valid JSON. No explanations. Tools and results first." task -> json_result
+  out json_result

@@ -544,6 +544,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     # narrow AINL_HOST_ADAPTER_ALLOWLIST — allow IR-declared adapters unless explicitly opted out.
     if "intelligence" in Path(src_path).parts and "AINL_ALLOW_IR_DECLARED_ADAPTERS" not in os.environ:
         os.environ["AINL_ALLOW_IR_DECLARED_ADAPTERS"] = "1"
+    # Pass efficient-mode hint to ArmaraOS host via env var.
+    # The actual prompt compression is Rust-only (openfang-runtime/prompt_compressor.rs);
+    # this just signals the desired mode when the graph runs under an ArmaraOS kernel.
+    efficient_mode_flag = str(getattr(args, "efficient_mode", None) or "").strip()
+    if efficient_mode_flag and "AINL_EFFICIENT_MODE" not in os.environ:
+        os.environ["AINL_EFFICIENT_MODE"] = efficient_mode_flag
     with open(src_path, "r", encoding="utf-8") as f:
         code = f.read()
     reg = _adapter_registry_from_args(args)
@@ -2414,6 +2420,21 @@ def main() -> None:
         ),
     )
     runp.add_argument("--self-test-graph", action="store_true")
+    runp.add_argument(
+        "--efficient-mode",
+        choices=["off", "balanced", "aggressive"],
+        default=None,
+        metavar="MODE",
+        help=(
+            "Ultra Cost-Efficient Mode hint for the host runtime (ArmaraOS / OpenFang). "
+            "Sets AINL_EFFICIENT_MODE in the process environment so ArmaraOS kernel picks it "
+            "up when scheduling this graph as a managed agent. "
+            "The compression itself runs in Rust inside openfang-runtime — "
+            "no Python-side compression is performed by this flag. "
+            "'balanced' = 50–60 %% input reduction (default host behavior), "
+            "'aggressive' = ~60 %%, 'off' = passthrough."
+        ),
+    )
     runp.set_defaults(func=cmd_run)
 
     hybrid_p = sub.add_parser(

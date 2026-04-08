@@ -62,7 +62,7 @@ what the server allows.
 Each execution surface loads a server-level grant at startup:
 
 - **Runner service**: defaults to a permissive adapter cap (`allowed_adapters: null`)
-  with conservative limits (`max_steps: 2000`, `max_depth: 20`, etc.).
+  with generous default limits (`max_steps: 500000`, `max_depth: 500`, `max_adapter_calls: 50000`, `max_time_ms: 900000`) suitable for long-running agent and data-processing workflows.
   An operator can set `AINL_SECURITY_PROFILE` to load a named profile
   as the server grant.
 - **MCP server**: defaults to a permissive adapter cap (`allowed_adapters: null`)
@@ -104,7 +104,7 @@ from tooling.capability_grant import merge_grants
 server = {
     "allowed_adapters": ["core", "http", "sqlite"],
     "forbidden_privilege_tiers": ["operator_sensitive"],
-    "limits": {"max_steps": 2000},
+    "limits": {"max_steps": 500000},
     # ...
 }
 
