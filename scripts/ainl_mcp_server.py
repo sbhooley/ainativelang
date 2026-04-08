@@ -56,6 +56,9 @@ except ImportError:
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
 from runtime.adapters.builtins import CoreBuiltinAdapter
+from runtime.adapters.fs import SandboxedFileSystemAdapter
+from runtime.adapters.http import SimpleHttpAdapter
+from runtime.adapters.sqlite import SimpleSqliteAdapter
 from runtime.sandbox_shim import SandboxClient
 from runtime.engine import AinlRuntimeError, RuntimeEngine, RUNTIME_VERSION
 from tooling.policy_validator import validate_ir_against_policy
@@ -78,6 +81,7 @@ from tooling.mcp_ecosystem_import import (
 from tooling.graph_diff import graph_diff
 from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
 from intelligence.trace_export_ptc_jsonl import export_file as export_ptc_trace_file
+from adapters.local_cache import LocalFileCacheAdapter
 _TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
 
 # Resource floor aligned with ``scripts/runtime_runner_service._SERVER_DEFAULT_LIMITS``.
@@ -395,6 +399,7 @@ def ainl_run(
     limits: Optional[dict] = None,
     frame: Optional[dict] = None,
     label: Optional[str] = None,
+    adapters: Optional[dict] = None,
 ) -> dict:
     """Compile, validate policy, and execute an AINL workflow.
 
@@ -427,6 +432,81 @@ def ainl_run(
     mcp_allowed = grant_to_allowed_adapters(_MCP_SERVER_GRANT)
     reg = AdapterRegistry(allowed=None)
     reg.register("core", CoreBuiltinAdapter())
+    # Optional runtime adapters can be enabled per-run. This avoids requiring
+    # end users to edit global config while still allowing strict, scoped IO.
+    #
+    # Schema mirrors the runner service:
+    # adapters: { enable: ["http","fs","cache","sqlite"], http: {...}, fs: {...}, cache: {...}, sqlite: {...} }
+    if isinstance(adapters, dict):
+        enabled = set(adapters.get("enable") or [])
+        if "http" in enabled:
+            h = adapters.get("http") or {}
+            allow_hosts = h.get("allow_hosts") or []
+            if not isinstance(allow_hosts, list) or not allow_hosts:
+                return {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": "adapter_config_error",
+                    "details": "http adapter enabled but adapters.http.allow_hosts must be a non-empty list",
+                }
+            reg.register(
+                "http",
+                SimpleHttpAdapter(
+                    default_timeout_s=float(h.get("timeout_s", 5.0)),
+                    max_response_bytes=int(h.get("max_response_bytes", 1_000_000)),
+                    allow_hosts=[str(x) for x in allow_hosts],
+                ),
+            )
+        if "fs" in enabled:
+            f = adapters.get("fs") or {}
+            root = f.get("root")
+            if not root:
+                return {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": "adapter_config_error",
+                    "details": "fs adapter enabled but adapters.fs.root is missing",
+                }
+            reg.register(
+                "fs",
+                SandboxedFileSystemAdapter(
+                    sandbox_root=str(root),
+                    max_read_bytes=int(f.get("max_read_bytes", 1_000_000)),
+                    max_write_bytes=int(f.get("max_write_bytes", 1_000_000)),
+                    allow_extensions=f.get("allow_extensions") or [],
+                    allow_delete=bool(f.get("allow_delete")),
+                ),
+            )
+        if "cache" in enabled:
+            c = adapters.get("cache") or {}
+            cache_path = c.get("path")
+            if not cache_path:
+                return {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": "adapter_config_error",
+                    "details": "cache adapter enabled but adapters.cache.path is missing",
+                }
+            reg.register("cache", LocalFileCacheAdapter(path=str(cache_path)))
+        if "sqlite" in enabled:
+            s = adapters.get("sqlite") or {}
+            db_path = s.get("db_path")
+            if not db_path:
+                return {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": "adapter_config_error",
+                    "details": "sqlite adapter enabled but adapters.sqlite.db_path is missing",
+                }
+            reg.register(
+                "sqlite",
+                SimpleSqliteAdapter(
+                    db_path=str(db_path),
+                    allow_write=bool(s.get("allow_write")),
+                    allow_tables=s.get("allow_tables") or [],
+                    timeout_s=float(s.get("timeout_s", 5.0)),
+                ),
+            )
     # Optional LLM adapter registration if AINL_CONFIG present
     config_path = os.environ.get("AINL_CONFIG")
     if config_path:

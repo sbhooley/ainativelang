@@ -63,6 +63,10 @@ AINL prefers `ARMARAOS_*` for ArmaraOS integration, with `AINL_*` and legacy `OP
 | Monitor cache JSON | `MONITOR_CACHE_JSON` | (none) |
 | FS sandbox root | `AINL_FS_ROOT` | (none) |
 
+## PostHog (ArmaraOS desktop only)
+
+The **ainativelang** compiler repo does **not** include a PostHog API key. The ArmaraOS **desktop** app optionally sends anonymous install analytics via PostHog; release builds embed the key from GitHub Actions on **armaraos** (`ARMARAOS_POSTHOG_KEY` or org secret **`AINL_POSTHOG_KEY`**). That value should be the **same** PostHog project key as **`NEXT_PUBLIC_POSTHOG_KEY`** on **ainativelangweb** (ainativelang.com). See **armaraos** `docs/release-desktop.md` and `README.md`.
+
 ## Troubleshooting
 
 - **`ainl status --host armaraos` reports schema errors**: the command bootstraps required tables automatically. If the DB path is unexpected, set `ARMARAOS_MEMORY_DB` (or `AINL_MEMORY_DB`) explicitly and re-run status.

@@ -65,7 +65,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.4.2"
+RUNTIME_VERSION = "1.4.3"
 
 
 def _parse_host_csv_env(name: str) -> Optional[List[str]]:

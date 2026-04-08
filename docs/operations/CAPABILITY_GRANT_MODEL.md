@@ -61,13 +61,15 @@ what the server allows.
 
 Each execution surface loads a server-level grant at startup:
 
-- **Runner service**: defaults to `allowed_adapters: ["core"]` with
-  conservative limits (`max_steps: 2000`, `max_depth: 20`, etc.).
+- **Runner service**: defaults to a permissive adapter cap (`allowed_adapters: null`)
+  with conservative limits (`max_steps: 2000`, `max_depth: 20`, etc.).
   An operator can set `AINL_SECURITY_PROFILE` to load a named profile
   as the server grant.
-- **MCP server**: defaults to `local_minimal`-style restrictions
-  (`core` only, forbidden privilege tiers for `local_state`/`network`/
-  `operator_sensitive`, tight limits). An operator can set `AINL_MCP_PROFILE`.
+- **MCP server**: defaults to a permissive adapter cap (`allowed_adapters: null`)
+  with conservative limits (same floor as the runner). An operator can set
+  `AINL_MCP_PROFILE` to load a named profile as the server grant, or enable
+  `AINL_STRICT_MODE=1` to merge `consumer_secure_default` (or `AINL_STRICT_PROFILE`)
+  with the resource floor.
 
 ## Composition flow
 

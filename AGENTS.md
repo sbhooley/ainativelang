@@ -4,7 +4,7 @@
 
 ## What This Repo Is
 
-Python compiler + runtime for AINL (AI Native Language), version 1.4.2.
+Python compiler + runtime for AINL (AI Native Language), version 1.4.3.
 AINL compiles `.ainl` source files into an IR (intermediate representation)
 graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
@@ -255,5 +255,5 @@ Workspace-level contract (load order, `.learnings/`, export script): see `INTEGR
 ## Related Repositories
 
 - `sbhooley/ainativelangweb` — Marketing website (Next.js); **ArmaraOS** desktop installers on `/` and `/download` (manifest under `/downloads/armaraos/latest.json` when release CI syncs from **armaraos**)
-- `sbhooley/armaraos` — ArmaraOS / OpenFang agent OS (Rust); desktop app + embedded dashboard; docs for Home folder API and `[dashboard]` home-editing allowlists
+- `sbhooley/armaraos` — ArmaraOS / OpenFang agent OS (Rust); desktop app + embedded dashboard; docs for Home folder API and `[dashboard]` home-editing allowlists. **PostHog (desktop):** release CI bakes **`ARMARAOS_POSTHOG_KEY`** or org **`AINL_POSTHOG_KEY`** (same `phc_…` as **`NEXT_PUBLIC_POSTHOG_KEY`** on ainativelangweb). This repo does not ship that key.
 - `sbhooley/ainativelangcloud` — Cloud platform plans (private)

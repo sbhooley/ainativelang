@@ -1,5 +1,12 @@
 # Release notes
 
+## AINL v1.4.3 — MCP per-run adapter configuration (2026-04-08)
+
+**PyPI / runtime:** **`ainativelang` 1.4.3** — **`RUNTIME_VERSION` `1.4.3`**.
+
+- **MCP:** `ainl_run` now accepts an optional `adapters` argument to enable **scoped** runtime adapters per call (e.g. `http` with host allowlist, sandboxed `fs`, file-backed `cache`, optional `sqlite`). This allows agent workflows to do necessary I/O without requiring end users to edit global config.
+- **Docs:** capability grant model docs aligned with current runner/MCP defaults.
+
 ## AINL v1.4.2 — Intelligence policy, MCP/runner alignment, compiler + tooling (2026-04-07)
 
 **PyPI / runtime:** **`ainativelang` 1.4.2** — **`RUNTIME_VERSION` `1.4.2`**.

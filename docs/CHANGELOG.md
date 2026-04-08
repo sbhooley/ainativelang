@@ -4,6 +4,12 @@
 
 <!-- Next release changes go here -->
 
+## v1.4.3 (April 8, 2026) — MCP per-run adapter configuration
+
+- **feat(mcp)**: `ainl_run` now accepts an optional `adapters` argument to enable scoped runtime adapters per call (sandboxed `fs`, host-allowlisted `http`, file-backed `cache`, optional `sqlite`) so agent workflows can do required I/O without asking end users to edit global config.
+- **docs**: capability grant model docs aligned with current runner/MCP defaults; ArmaraOS integration note update.
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.3**.
+
 ## v1.4.2 (April 7, 2026) — Intelligence path policy, MCP/runner alignment, compiler strict-mode + tooling
 
 - **feat(runtime)**: **`AINL_ALLOW_IR_DECLARED_ADAPTERS`** — when set, **`AINL_HOST_ADAPTER_ALLOWLIST` from the environment** is ignored so graphs can use IR-declared adapters; denylist and security profiles still apply; **`ainl doctor`** / capability hints updated. For sources under an **`intelligence/`** path segment, **`RuntimeEngine.from_code`** and **`ainl run`** set **`AINL_ALLOW_IR_DECLARED_ADAPTERS=1`** when unset, unless **`AINL_INTELLIGENCE_FORCE_HOST_POLICY=1`**.
