@@ -408,6 +408,20 @@ def ainl_run(
     additional policy restrictions and tighter limits but cannot widen beyond
     the merged server defaults.
 
+    Optional ``adapters`` (v1.4.3+): register scoped I/O for this run only.
+    Shape::
+
+        {
+          "enable": ["http", "fs", "cache", "sqlite"],
+          "http": {"allow_hosts": ["example.com"], "timeout_s": 15.0, "max_response_bytes": 1000000},
+          "fs": {"root": "/sandbox/path", "allow_extensions": [".json"], "allow_delete": false},
+          "cache": {"path": "/sandbox/path/cache.json"},
+          "sqlite": {"db_path": "/tmp/x.sqlite", "allow_write": false, "allow_tables": []}
+        }
+
+    ``http`` requires a non-empty ``allow_hosts`` (hostname strings). ``fs`` and
+    ``cache`` require ``root`` / ``path`` respectively when enabled.
+
     Returns structured execution output on success or a policy/runtime
     error on failure.
     """
