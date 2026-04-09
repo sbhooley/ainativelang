@@ -38,8 +38,11 @@ Run:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
+import threading
 import time
 import uuid
 import yaml
@@ -53,6 +56,7 @@ try:
 except ImportError:
     _HAS_MCP = False
 
+from compiler_diagnostics import CompilationDiagnosticError, CompilerContext
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
 from runtime.adapters.builtins import CoreBuiltinAdapter
@@ -121,7 +125,26 @@ ALL_TOOL_NAMES: List[str] = [
 ALL_RESOURCE_URIS: List[str] = [
     "ainl://adapter-manifest",
     "ainl://security-profiles",
+    "ainl://authoring-cheatsheet",
 ]
+
+# Short MCP-facing authoring guide (mirrors AGENTS.md highlights for agent loops).
+_AUTHORING_CHEATSHEET_MARKDOWN: str = """# AINL authoring — MCP cheatsheet
+
+**Golden path:** `ainl_validate` (`strict=true`) after every edit → fix using `primary_diagnostic`, `source_context`, `agent_repair_steps` → `ainl_compile` for IR + `frame_hints` → `ainl_run` with `adapters` when the graph uses http/fs/cache/sqlite.
+
+## Avoid
+- Using repo-wide `file_search` / greps on random `.ainl` files as your primary syntax reference — trust validate output and `ainl_capabilities`.
+- `params=` / `timeout=` as fake named arguments on `R http.GET` / `R http.POST` — use positional URL, optional headers dict, optional timeout (seconds), query string in the URL.
+- Inline `{...}` dict literals on `R` lines where you need a real dict — they are tokenized as raw strings; pass dicts via `frame` or build with `core` ops and variables.
+
+## Prefer
+- `ainl_capabilities` before inventing `R adapter.VERB` lines for strict graphs.
+- `ainl_run`: pass `adapters` to register http, fs, cache, sqlite when the IR references them (not registered by default in MCP).
+- `core.GET`: first positional arg is the container (dict/list), second is the key/index string.
+
+Ground truth in-repo: **AGENTS.md** (HTTP adapter, queue, strict-valid examples).
+"""
 
 
 def _csv_set(val: Optional[str]) -> Set[str]:
@@ -181,6 +204,152 @@ def _resolve_exposure() -> tuple[Set[str], Set[str]]:
 
 _ALLOWED_TOOLS, _ALLOWED_RESOURCES = _resolve_exposure()
 
+# --- Process-local MCP telemetry (stdio server lifetime; for operator / agent metrics) ---
+_TELEM_LOCK = threading.Lock()
+_MCP_TELEM: Dict[str, int] = {}
+_pending_validate_ok_sha256: Optional[str] = None
+_last_validate_was_fail = False
+
+
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _telemetry_snapshot() -> Dict[str, int]:
+    with _TELEM_LOCK:
+        return dict(_MCP_TELEM)
+
+
+def _on_validate_finished(ok: bool, code: str) -> None:
+    global _pending_validate_ok_sha256, _last_validate_was_fail
+    h = _sha256_text(code)
+    with _TELEM_LOCK:
+        _MCP_TELEM["validate_calls"] = _MCP_TELEM.get("validate_calls", 0) + 1
+        if ok:
+            _MCP_TELEM["validate_ok"] = _MCP_TELEM.get("validate_ok", 0) + 1
+            _pending_validate_ok_sha256 = h
+            if _last_validate_was_fail:
+                _MCP_TELEM["validate_recovery_after_fail"] = (
+                    _MCP_TELEM.get("validate_recovery_after_fail", 0) + 1
+                )
+            _last_validate_was_fail = False
+        else:
+            _MCP_TELEM["validate_fail"] = _MCP_TELEM.get("validate_fail", 0) + 1
+            _pending_validate_ok_sha256 = None
+            _last_validate_was_fail = True
+
+
+def _on_compile_finished(ok: bool, code: str) -> None:
+    global _pending_validate_ok_sha256
+    h = _sha256_text(code)
+    with _TELEM_LOCK:
+        _MCP_TELEM["compile_calls"] = _MCP_TELEM.get("compile_calls", 0) + 1
+        if ok:
+            _MCP_TELEM["compile_ok"] = _MCP_TELEM.get("compile_ok", 0) + 1
+            if _pending_validate_ok_sha256 == h:
+                _pending_validate_ok_sha256 = None
+        else:
+            _MCP_TELEM["compile_fail"] = _MCP_TELEM.get("compile_fail", 0) + 1
+
+
+def _on_run_started(code: str) -> None:
+    global _pending_validate_ok_sha256
+    h = _sha256_text(code)
+    with _TELEM_LOCK:
+        _MCP_TELEM["run_calls"] = _MCP_TELEM.get("run_calls", 0) + 1
+        if _pending_validate_ok_sha256 == h:
+            _MCP_TELEM["run_after_validate_without_compile"] = (
+                _MCP_TELEM.get("run_after_validate_without_compile", 0) + 1
+            )
+        _pending_validate_ok_sha256 = None
+
+
+def _failure_tags_from_diagnostics(
+    diagnostics: List[Dict[str, Any]],
+    primary: Optional[Dict[str, Any]],
+) -> Set[str]:
+    """Coarse tags for branching ``recommended_next_tools`` / resources."""
+    tags: Set[str] = set()
+    pool: List[Dict[str, Any]] = []
+    if primary and isinstance(primary, dict):
+        pool.append(primary)
+    for d in diagnostics or []:
+        if isinstance(d, dict) and d is not primary:
+            pool.append(d)
+    for d in pool[:12]:
+        kind = str(d.get("kind", "")).lower()
+        msg = str(d.get("message", "")).lower()
+        comb = f"{kind} {msg}"
+        if kind in (
+            "unknown_adapter_verb",
+            "strict_validation_failure",
+            "contract_violation",
+        ):
+            tags.add("adapter_or_verb")
+        if any(
+            x in comb
+            for x in (
+                "unknown adapter",
+                "unknown verb",
+                "does not exist on adapter",
+                "strict adapter",
+            )
+        ):
+            tags.add("adapter_or_verb")
+        if "http" in msg and any(
+            x in msg for x in ("params", "timeout =", "named argument", "inline", "dict literal")
+        ):
+            tags.add("http_or_rline")
+        if "could not convert string to float" in msg and "http" in comb:
+            tags.add("http_or_rline")
+        if "tokenize" in comb and "http" in comb:
+            tags.add("http_or_rline")
+    return tags
+
+
+def _add_recommended_next_steps(
+    out: Dict[str, Any],
+    kind: str,
+    *,
+    failure_tags: Optional[Set[str]] = None,
+) -> None:
+    """Attach ``recommended_next_tools`` and optional ``recommended_resources`` (MCP URIs).
+
+    Names are filtered to the current exposure (``_ALLOWED_*``) so agents are not
+    pointed at tools/resources they cannot call.
+
+    kind: validate_ok | validate_fail | compile_ok | compile_fail
+    """
+    tools: List[str] = []
+    resources: List[str] = []
+    if kind == "validate_ok":
+        tools = ["ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run"]
+    elif kind in ("validate_fail", "compile_fail"):
+        tags = failure_tags or set()
+        adapter = "adapter_or_verb" in tags
+        http = "http_or_rline" in tags
+        if adapter and not http:
+            tools = ["ainl_capabilities", "ainl_validate", "ainl_compile"]
+            resources = []
+        elif http and not adapter:
+            tools = ["ainl_validate"]
+            resources = ["ainl://authoring-cheatsheet"]
+        elif adapter and http:
+            tools = ["ainl_capabilities", "ainl_validate"]
+            resources = ["ainl://authoring-cheatsheet"]
+        else:
+            tools = ["ainl_validate", "ainl_capabilities"]
+            resources = ["ainl://authoring-cheatsheet"]
+    elif kind == "compile_ok":
+        tools = ["ainl_run", "ainl_security_report", "ainl_validate"]
+    else:
+        return
+    tools_f = [t for t in tools if t in _ALLOWED_TOOLS]
+    res_f = [r for r in resources if r in _ALLOWED_RESOURCES]
+    out["recommended_next_tools"] = tools_f
+    if res_f:
+        out["recommended_resources"] = res_f
+
 
 def _mcp_bare_floor() -> Dict[str, Any]:
     """Resource floor + permissive adapter cap (None), matching the default runner grant."""
@@ -223,9 +392,15 @@ if _HAS_MCP:
             "Use ainl_validate to check syntax, ainl_compile to produce IR, "
             "ainl_capabilities to discover adapters, ainl_security_report to "
             "audit privilege tiers, and ainl_run to execute workflows. "
+            "On compile errors, responses include primary_diagnostic, "
+            "per-diagnostic source_context (snippet+caret), llm_repair_hint, "
+            "and agent_repair_steps — fix those before searching the repo for examples. "
             "Use ainl_list_ecosystem for curated Clawflows/Agency-Agents presets; "
             "ainl_import_clawflow, ainl_import_agency_agent, and ainl_import_markdown "
-            "fetch Markdown and return deterministic .ainl source (network)."
+            "fetch Markdown and return deterministic .ainl source (network). "
+            "MCP resource ainl://authoring-cheatsheet summarizes HTTP R-lines and adapters; "
+            "validate/compile responses include recommended_next_tools. "
+            "ainl_capabilities returns mcp_telemetry (call counters for this server process)."
         ),
     )
 
@@ -248,9 +423,34 @@ def _load_config_from_path(config_path: str) -> dict:
         return v
 
     return _expand(raw)
+
+
+def _ir_from_compilation_diagnostic_error(exc: CompilationDiagnosticError) -> Dict[str, Any]:
+    """Minimal IR-shaped dict when strict compile raises with structured diagnostics."""
+    text = exc.source
+    lines = text.split("\n")
+    structs = [d.to_dict() for d in exc.diagnostics]
+    errors: List[str] = []
+    for d in exc.diagnostics:
+        ln = d.lineno if getattr(d, "lineno", 0) and d.lineno > 0 else 1
+        errors.append(f"Line {ln}: {d.message}")
+    return {
+        "source": {"text": text, "lines": lines},
+        "errors": errors,
+        "warnings": [],
+        "structured_diagnostics": structs,
+        "diagnostics": list(structs),
+    }
+
+
 def _compile(code: str, strict: bool = True) -> Dict[str, Any]:
+    """Compile with :class:`CompilerContext` so IR includes rich structured diagnostics."""
     compiler = AICodeCompiler(strict_mode=strict)
-    return compiler.compile(code)
+    ctx = CompilerContext()
+    try:
+        return compiler.compile(code, context=ctx)
+    except CompilationDiagnosticError as e:
+        return _ir_from_compilation_diagnostic_error(e)
 
 
 def _extract_frame_hints(code: str, ir: Dict[str, Any]) -> List[Dict[str, str]]:
@@ -327,6 +527,161 @@ def _with_llm_repair_hint(diags: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
+def _ir_source_lines(ir: Dict[str, Any]) -> List[str]:
+    """Line list from IR ``source`` (same text the compiler used)."""
+    src = ir.get("source") if isinstance(ir.get("source"), dict) else {}
+    lines = src.get("lines")
+    if isinstance(lines, list) and lines:
+        return [str(x) for x in lines]
+    text = src.get("text")
+    if isinstance(text, str) and text:
+        return text.splitlines()
+    return []
+
+
+def _diag_lineno_col(d: Dict[str, Any]) -> tuple[int, int]:
+    """Best-effort 1-based line and 0-based column from heterogeneous diagnostic dicts."""
+    ln = d.get("lineno")
+    line_no = int(ln) if isinstance(ln, int) else 0
+    if line_no <= 0:
+        sp = d.get("span")
+        if isinstance(sp, dict):
+            sl = sp.get("line")
+            if isinstance(sl, int) and sl > 0:
+                line_no = sl
+    col = 0
+    co = d.get("col_offset")
+    if isinstance(co, int):
+        col = co
+    else:
+        sp = d.get("span")
+        if isinstance(sp, dict):
+            cs = sp.get("col_start")
+            if isinstance(cs, int):
+                col = cs
+    return line_no, col
+
+
+def _diag_dup_key(d: Dict[str, Any]) -> tuple[Any, ...]:
+    ln, _ = _diag_lineno_col(d)
+    msg = str(d.get("message", ""))[:160]
+    sev = str(d.get("severity", d.get("kind", "")))
+    return (ln, msg, sev)
+
+
+def _merge_ir_diagnostics(ir: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Merge ``structured_diagnostics`` (rich) with legacy ``diagnostics`` without duplicates."""
+    merged: List[Dict[str, Any]] = []
+    seen: Set[tuple[Any, ...]] = set()
+    for key in ("structured_diagnostics", "diagnostics"):
+        block = ir.get(key)
+        if not isinstance(block, list):
+            continue
+        for item in block:
+            if not isinstance(item, dict):
+                continue
+            k = _diag_dup_key(item)
+            if k in seen:
+                continue
+            seen.add(k)
+            merged.append(item)
+    return merged
+
+
+def _source_context_for_diagnostic(
+    lines: List[str],
+    lineno: int,
+    col: int,
+    *,
+    radius: int = 2,
+) -> Optional[Dict[str, Any]]:
+    if lineno < 1 or not lines:
+        return None
+    if lineno > len(lines):
+        return None
+    idx = lineno - 1
+    start = max(0, idx - radius)
+    end = min(len(lines), idx + radius + 1)
+    width = max(4, len(str(end)))
+    numbered: List[str] = []
+    for i in range(start, end):
+        numbered.append(f"{i + 1:{width}d} | {lines[i]}")
+    caret_pad = width + 3 + max(0, col)
+    caret = " " * caret_pad + "^"
+    return {
+        "line_start": start + 1,
+        "line_end": end,
+        "focus_line": lineno,
+        "numbered_lines": numbered,
+        "caret": caret,
+    }
+
+
+def _attach_source_contexts(lines: List[str], diags: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for d in diags:
+        row = dict(d)
+        ln, col = _diag_lineno_col(row)
+        ctx = _source_context_for_diagnostic(lines, ln, col) if ln > 0 else None
+        if ctx is not None:
+            row["source_context"] = ctx
+        out.append(row)
+    return out
+
+
+def _pick_primary_diagnostic(diags: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not diags:
+        return None
+    errors = []
+    for d in diags:
+        sev = str(d.get("severity", "")).lower()
+        kind = str(d.get("kind", "")).lower()
+        code = str(d.get("code", "")).upper()
+        if sev == "error" or "error" in kind or code.endswith("_ERROR"):
+            errors.append(d)
+    pool = errors if errors else list(diags)
+
+    def sort_key(d: Dict[str, Any]) -> tuple[int, int, str]:
+        ln, col = _diag_lineno_col(d)
+        return (ln if ln > 0 else 9999, col, str(d.get("message", "")))
+
+    pool_sorted = sorted(pool, key=sort_key)
+    return dict(pool_sorted[0]) if pool_sorted else None
+
+
+# Short, stable guidance so small models rely on tool output instead of repo-wide search.
+_AGENT_REPAIR_STEPS: List[str] = [
+    "Fix primary_diagnostic first, then re-call ainl_validate (one change at a time).",
+    "Follow llm_repair_hint on each diagnostic — it is grounded in this compile, not in other files.",
+    "For adapter and verb names, call ainl_capabilities; avoid copying random .ainl files as templates.",
+]
+
+
+def _enriched_compile_feedback(ir: Dict[str, Any]) -> Dict[str, Any]:
+    """Shared shape for validate / compile / run when compilation produced errors or warnings."""
+    lines = _ir_source_lines(ir)
+    merged = _merge_ir_diagnostics(ir)
+    hinted = _with_llm_repair_hint(merged)
+    diagnostics = _attach_source_contexts(lines, hinted)
+    primary = _pick_primary_diagnostic(diagnostics)
+    if primary is not None and lines:
+        ln, col = _diag_lineno_col(primary)
+        ctx = _source_context_for_diagnostic(lines, ln, col)
+        if ctx is not None:
+            primary = dict(primary)
+            primary["source_context"] = ctx
+    errors_list = list(ir.get("errors") or [])
+    out: Dict[str, Any] = {
+        "errors": errors_list,
+        "warnings": list(ir.get("warnings") or []),
+        "diagnostics": diagnostics,
+        "primary_diagnostic": primary,
+    }
+    if errors_list:
+        out["agent_repair_steps"] = list(_AGENT_REPAIR_STEPS)
+    return out
+
+
 def _file_to_ir(path: str, strict: bool = True) -> Dict[str, Any]:
     p = Path(path).expanduser()
     code = p.read_text(encoding="utf-8")
@@ -360,6 +715,7 @@ def _load_capabilities() -> Dict[str, Any]:
         "runtime_version": RUNTIME_VERSION,
         "policy_support": True,
         "adapters": adapters,
+        "mcp_telemetry": _telemetry_snapshot(),
     }
 
 
@@ -412,12 +768,37 @@ def ainl_validate(code: str, strict: bool = True) -> dict:
 
     Returns whether the code compiles successfully, along with any errors
     or warnings.  No side effects.
+
+    On failure, ``primary_diagnostic`` and per-row ``source_context`` (snippet +
+    caret) point at the first error to fix; ``agent_repair_steps`` suggests a
+    tight validate loop instead of copying unrelated files as templates.
+
+    Always includes ``recommended_next_tools`` (and on failure,
+    ``recommended_resources`` may list ``ainl://authoring-cheatsheet``) filtered
+    by MCP exposure.
     """
     ir = _compile(code, strict=strict)
-    errors = ir.get("errors") or []
-    warnings = ir.get("warnings") or []
-    diagnostics = _with_llm_repair_hint(list(ir.get("diagnostics") or []))
-    return {"ok": len(errors) == 0, "errors": errors, "warnings": warnings, "diagnostics": diagnostics}
+    fb = _enriched_compile_feedback(ir)
+    ok = len(fb["errors"]) == 0
+    _on_validate_finished(ok, code)
+    out: Dict[str, Any] = {
+        "ok": ok,
+        "errors": fb["errors"],
+        "warnings": fb["warnings"],
+        "diagnostics": fb["diagnostics"],
+        "primary_diagnostic": fb["primary_diagnostic"],
+    }
+    if "agent_repair_steps" in fb:
+        out["agent_repair_steps"] = fb["agent_repair_steps"]
+    if ok:
+        _add_recommended_next_steps(out, "validate_ok")
+    else:
+        tags = _failure_tags_from_diagnostics(
+            fb["diagnostics"],
+            fb.get("primary_diagnostic"),
+        )
+        _add_recommended_next_steps(out, "validate_fail", failure_tags=tags)
+    return out
 
 
 @_register_tool
@@ -432,13 +813,34 @@ def ainl_compile(code: str, strict: bool = True) -> dict:
     2. Variables referenced in the IR that are never assigned (heuristic).
 
     No execution, no side effects.
+
+    On compile failure, returns the same diagnostic bundle as ``ainl_validate``
+    (merged structured diagnostics, snippets, ``primary_diagnostic``).
+
+    Success and failure responses include ``recommended_next_tools`` (and
+    failure may add ``recommended_resources``) like ``ainl_validate``.
     """
     ir = _compile(code, strict=strict)
     errors = ir.get("errors") or []
     if errors:
-        return {"ok": False, "errors": errors}
+        fb = _enriched_compile_feedback(ir)
+        _on_compile_finished(False, code)
+        out: Dict[str, Any] = {"ok": False, "errors": fb["errors"], "warnings": fb["warnings"]}
+        out["diagnostics"] = fb["diagnostics"]
+        out["primary_diagnostic"] = fb["primary_diagnostic"]
+        if "agent_repair_steps" in fb:
+            out["agent_repair_steps"] = fb["agent_repair_steps"]
+        tags = _failure_tags_from_diagnostics(
+            fb["diagnostics"],
+            fb.get("primary_diagnostic"),
+        )
+        _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
+        return out
+    _on_compile_finished(True, code)
     frame_hints = _extract_frame_hints(code, ir)
-    return {"ok": True, "ir": ir, "frame_hints": frame_hints}
+    out_ok: Dict[str, Any] = {"ok": True, "ir": ir, "frame_hints": frame_hints}
+    _add_recommended_next_steps(out_ok, "compile_ok")
+    return out_ok
 
 
 @_register_tool
@@ -446,7 +848,9 @@ def ainl_capabilities() -> dict:
     """Discover runtime adapter capabilities, privilege tiers, and metadata.
 
     Returns available adapters with their verbs, support tiers, effect
-    defaults, recommended lanes, and privilege tiers.  No side effects.
+    defaults, recommended lanes, and privilege tiers.  Also includes
+    ``mcp_telemetry`` (per-process counters for validate/compile/run).  No side
+    effects beyond bump-free read of those counters.
     """
     return _load_capabilities()
 
@@ -532,11 +936,23 @@ def ainl_run(
     error on failure.
     """
     trace_id = str(uuid.uuid4())
+    _on_run_started(code)
 
     ir = _compile(code, strict=strict)
     errors = ir.get("errors") or []
     if errors:
-        return {"ok": False, "trace_id": trace_id, "errors": errors}
+        fb = _enriched_compile_feedback(ir)
+        out: Dict[str, Any] = {
+            "ok": False,
+            "trace_id": trace_id,
+            "errors": fb["errors"],
+            "warnings": fb["warnings"],
+            "diagnostics": fb["diagnostics"],
+            "primary_diagnostic": fb["primary_diagnostic"],
+        }
+        if "agent_repair_steps" in fb:
+            out["agent_repair_steps"] = fb["agent_repair_steps"]
+        return out
 
     merged_policy = _merge_policy(policy)
     policy_result = validate_ir_against_policy(ir, merged_policy)
@@ -1033,6 +1449,12 @@ def adapter_manifest_resource() -> str:
 def security_profiles_resource() -> str:
     """Named security profiles for common deployment scenarios."""
     return json.dumps(_load_json("security_profiles.json"), indent=2)
+
+
+@_register_resource("ainl://authoring-cheatsheet")
+def authoring_cheatsheet_resource() -> str:
+    """Concise AINL authoring rules: validate-first, HTTP R-lines, adapters, frame dicts."""
+    return _AUTHORING_CHEATSHEET_MARKDOWN
 
 
 # ---------------------------------------------------------------------------

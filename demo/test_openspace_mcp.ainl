@@ -1,11 +1,7 @@
 # test_openspace_mcp.ainl
 # Quick test that OpenSpace MCP tools are callable
 
-S core now ->L0
-
-L0:
-  J L_test
-  ->L_done
+S core now ->L_test
 
 L_test:
   R mcp.openspace.execute_task

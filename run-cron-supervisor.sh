@@ -4,7 +4,7 @@
 
 set -e
 
-WORKSPACE="/data/.openclaw/workspace/ainativelang"
+WORKSPACE="/Users/clawdbot/.openclaw/workspace/AI_Native_Lang"
 VENV="${WORKSPACE}/.venv-ainl"
 LOGDIR="${WORKSPACE}/logs"
 
@@ -25,7 +25,7 @@ import sys
 import os
 from datetime import datetime
 
-sys.path.insert(0, '/data/.openclaw/workspace/ainativelang')
+sys.path.insert(0, '/Users/clawdbot/.openclaw/workspace/AI_Native_Lang')
 
 try:
     from compiler_v2 import AICodeCompiler

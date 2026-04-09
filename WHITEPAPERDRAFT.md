@@ -2,7 +2,7 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.4.4
+**Version:** 1.4.5
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `cli/main.py` (including **`ainl serve`** REST: validate / compile / run / health), optional FastAPI runner (`scripts/runtime_runner_service.py` for richer operator endpoints)
 **Reference ecosystem:** OpenClaw / NemoClaw / Hermes Agent / ArmaraOS host integrations, canonical strict validation, multi-target emitters (including Solana clients and Hermes skill bundles), sandboxed operator deployments

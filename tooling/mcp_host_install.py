@@ -10,7 +10,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 PIP_SPEC = "ainativelang[mcp]"
 MCP_SERVER_KEY = "ainl"
@@ -74,7 +74,11 @@ PROFILES: dict[str, McpHostProfile] = {
         config_kind="toml_mcp_servers_array",
         path_line='export PATH="$HOME/.armaraos/bin:$PATH"',
         path_marker=".armaraos/bin",
-        success_tip='Now run: ainl status --host armaraos (then: ainl emit --target armaraos ...)',
+        success_tip=(
+            "Now run: ainl status --host armaraos (then: ainl emit --target armaraos ...). "
+            "Typical agents: set AINL_MCP_EXPOSURE_PROFILE=inspect_only in ~/.armaraos/.env "
+            "(read-first tools + ainl://authoring-cheatsheet resource). Omit it for full MCP tool surface."
+        ),
     ),
 }
 
@@ -134,12 +138,24 @@ def ensure_mcp_registration(
     desired = {"command": ainl_mcp, "args": []}
 
     if profile.config_kind == "toml_mcp_servers_array":
+        armaraos_mcp_env = (
+            [
+                "AINL_MCP_EXPOSURE_PROFILE",
+                "AINL_MCP_TOOLS",
+                "AINL_MCP_TOOLS_EXCLUDE",
+                "AINL_MCP_RESOURCES",
+                "AINL_MCP_RESOURCES_EXCLUDE",
+            ]
+            if profile.id == "armaraos"
+            else None
+        )
         _ensure_mcp_registration_toml_mcp_servers_array(
             cfg_path,
             server_key=MCP_SERVER_KEY,
             desired=desired,
             dry_run=dry_run,
             verbose=verbose,
+            env_pass_through=armaraos_mcp_env,
         )
         # Transitional support: the upstream ArmaraOS/OpenFang fork currently uses ~/.openfang/config.toml.
         # We write/merge both locations so users can install AINL today and still be compatible after rebrand.
@@ -151,6 +167,7 @@ def ensure_mcp_registration(
                 desired=desired,
                 dry_run=dry_run,
                 verbose=verbose,
+                env_pass_through=armaraos_mcp_env,
             )
         if not dry_run:
             print(f"Wrote MCP config: {cfg_path}")
@@ -285,6 +302,100 @@ def _ensure_mcp_registration_yaml_mcp_servers(
     cfg_path.write_text(new_text, encoding="utf-8")
 
 
+def _parse_toml_env_array_value(rhs: str) -> Optional[List[str]]:
+    """Parse ``env = [ ... ]`` RHS as a list of strings (JSON-compatible)."""
+    rhs = rhs.strip().rstrip(",")
+    if not rhs.startswith("["):
+        return None
+    try:
+        v = json.loads(rhs)
+    except json.JSONDecodeError:
+        try:
+            v = json.loads(rhs.replace("'", '"'))
+        except json.JSONDecodeError:
+            return None
+    if isinstance(v, list) and all(isinstance(x, str) for x in v):
+        return v
+    return None
+
+
+def _merge_env_into_mcp_segment(
+    segment_body: List[str],
+    required: List[str],
+) -> tuple[List[str], bool]:
+    """Merge ``required`` env var names into the ``env =`` line of one ``[[mcp_servers]]`` body."""
+    req = set(required)
+    env_idx: Optional[int] = None
+    for i, line in enumerate(segment_body):
+        if line.strip().startswith("env = "):
+            env_idx = i
+            break
+    if env_idx is not None:
+        rhs = segment_body[env_idx].split("=", 1)[1].strip()
+        cur = _parse_toml_env_array_value(rhs) or []
+        union = sorted(set(cur) | req)
+        if union == sorted(cur):
+            return segment_body, False
+        old = segment_body[env_idx]
+        body = f"env = {json.dumps(union)}"
+        if old.endswith("\r\n"):
+            new_line = body + "\r\n"
+        elif old.endswith("\n"):
+            new_line = body + "\n"
+        else:
+            new_line = body
+        out = segment_body[:env_idx] + [new_line] + segment_body[env_idx + 1 :]
+        return out, True
+
+    insert_at = 0
+    for i, line in enumerate(segment_body):
+        if line.strip().startswith("timeout_secs"):
+            insert_at = i + 1
+        if line.strip().startswith("name = "):
+            insert_at = i + 1
+    union = sorted(req)
+    new_line = f"env = {json.dumps(union)}\n"
+    return segment_body[:insert_at] + [new_line] + segment_body[insert_at:], True
+
+
+def _merge_mcp_env_pass_through_into_toml_text(
+    text: str,
+    server_key: str,
+    required: List[str],
+) -> tuple[str, bool]:
+    """Scan TOML text for ``[[mcp_servers]]`` / ``name = server_key`` and merge ``env``."""
+    if not required:
+        return text, False
+    lines = text.splitlines(keepends=True)
+    out: List[str] = []
+    idx = 0
+    changed = False
+    while idx < len(lines):
+        if lines[idx].strip() != "[[mcp_servers]]":
+            out.append(lines[idx])
+            idx += 1
+            continue
+        header = lines[idx]
+        idx += 1
+        segment_body: List[str] = []
+        while idx < len(lines) and lines[idx].strip() != "[[mcp_servers]]":
+            segment_body.append(lines[idx])
+            idx += 1
+        name_ok = any(
+            f'name = "{server_key}"' in ln or f"name = '{server_key}'" in ln
+            for ln in segment_body
+        )
+        if name_ok:
+            new_body, seg_ch = _merge_env_into_mcp_segment(segment_body, required)
+            changed = changed or seg_ch
+            out.append(header)
+            out.extend(new_body)
+        else:
+            out.append(header)
+            out.extend(segment_body)
+    return "".join(out), changed
+
+
 def _ensure_mcp_registration_toml_mcp_servers_array(
     cfg_path: Path,
     *,
@@ -292,6 +403,7 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
     desired: dict,
     dry_run: bool,
     verbose: bool,
+    env_pass_through: Optional[List[str]] = None,
 ) -> None:
     """
     ArmaraOS config format: ~/.armaraos/config.toml with a top-level array:
@@ -303,16 +415,20 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
 
     We perform a minimal, idempotent text merge without a TOML parser:
     - if the file is missing, create it with the block
-    - if any `name = "<server_key>"` exists, do nothing
+    - if any `name = "<server_key>"` exists and ``env_pass_through`` is set, merge
+      those env var names into the existing ``env = [...]`` line (union, sorted)
+    - if the server exists and no merge was needed, do nothing
     - otherwise append a new [[mcp_servers]] block at EOF
     """
     # OpenFang/ArmaraOS config schema expects a transport table under each entry.
     # See armaraos repo docs/configuration.md: [[mcp_servers]] + [mcp_servers.transport] type="stdio".
+    env_list = env_pass_through if env_pass_through else []
+    env_toml = json.dumps(env_list)
     desired_block = (
         "[[mcp_servers]]\n"
         f"name = \"{server_key}\"\n"
         "timeout_secs = 30\n"
-        "env = []\n"
+        f"env = {env_toml}\n"
         "\n"
         "[mcp_servers.transport]\n"
         "type = \"stdio\"\n"
@@ -333,7 +449,27 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
     # Idempotency: accept either name-only legacy blocks or the transport-style blocks.
     needle = f"name = \"{server_key}\""
     if needle in text:
-        _log(verbose, f"MCP: {server_key!r} already registered in {cfg_path} (toml [[mcp_servers]])")
+        if env_pass_through:
+            new_text, did = _merge_mcp_env_pass_through_into_toml_text(
+                text, server_key, env_pass_through
+            )
+            if did:
+                if dry_run:
+                    print(
+                        f"[dry-run] would merge MCP env pass-through for {server_key!r} in {cfg_path}"
+                    )
+                    _log(verbose, new_text)
+                    return
+                cfg_path.write_text(new_text, encoding="utf-8")
+                _log(
+                    verbose,
+                    f"MCP: merged env pass-through for {server_key!r} in {cfg_path}",
+                )
+                return
+        _log(
+            verbose,
+            f"MCP: {server_key!r} already registered in {cfg_path} (toml [[mcp_servers]])",
+        )
         return
 
     new_text = text

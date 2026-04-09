@@ -98,6 +98,12 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.4.5
+
+- **`ainl install-mcp --host armaraos`**: merges `env` pass-through (`AINL_MCP_EXPOSURE_PROFILE`, tools/resources allow/deny lists) into **existing** `[[mcp_servers]]` `name = "ainl"` blocks so upgrades do not require hand-editing `~/.armaraos/config.toml`.
+- **MCP server (`ainl-mcp`)**: `ainl://authoring-cheatsheet` resource, process-local validate telemetry, and tighter validate/compile integration for agent-facing diagnostics.
+- **Compiler (strict)**: richer graph validation diagnostics, optional `contract_violation_reason` on include-related diagnostics, and targeted exemptions for labels whose last step is inner **`Loop`** / **`While`** (fewer false strict failures on assembly-style pipelines).
+
 ## New in v1.4.4
 
 - **PyPI `ainativelang` 1.4.4**: version surfaces aligned (`pyproject.toml`, `RUNTIME_VERSION`, `CITATION.cff`, `tooling/bot_bootstrap.json`).
@@ -919,7 +925,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.4.4** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.4.5** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

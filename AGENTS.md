@@ -4,7 +4,7 @@
 
 ## What This Repo Is
 
-Python compiler + runtime for AINL (AI Native Language), version 1.4.4.
+Python compiler + runtime for AINL (AI Native Language), version 1.4.5.
 AINL compiles `.ainl` source files into an IR (intermediate representation)
 graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
@@ -71,6 +71,7 @@ POST /run        — Compile and execute (JSON: {source, strict?, frame?})
   }
   ```
   LLM adapters additionally require **`AINL_CONFIG`** or **`AINL_MCP_LLM_ENABLED=1`** (see `docs/LLM_ADAPTER_USAGE.md`).
+- **MCP authoring loop:** `ainl_validate` / `ainl_compile` use **`CompilerContext`** so diagnostics include native **`kind`**, **`suggested_fix`**, and related fields. Responses include **`recommended_next_tools`** (and sometimes **`recommended_resources`**); fetch MCP resource **`ainl://authoring-cheatsheet`** for HTTP `R`-line and adapter rules. **`ainl_capabilities`** also returns **`mcp_telemetry`** (per-process call counters: validate/compile/run and “run after validate without compile”).
 - **`AINL_STRICT_MODE=1`** (when **`AINL_SECURITY_PROFILE`** is unset): merges profile **`consumer_secure_default`** (or **`AINL_STRICT_PROFILE`**) with that floor — named allowlist + `operator_sensitive` tier blocked; good for “strict” product mode without hand-maintaining env lists.
 - **`AINL_SECURITY_PROFILE`**: if set, loads that profile **as the full grant** (same as before); use for org/enterprise lockdown.
 - **`AINL_HOST_ADAPTER_ALLOWLIST`** / **`AINL_HOST_ADAPTER_DENYLIST`**: comma-separated; applied in the runtime after IR resolution (denylist wins last). CLI: `--host-adapter-allowlist` / `--host-adapter-denylist`.
@@ -264,7 +265,7 @@ R http.GET "https://example.com/api?x=1" {} 15 ->res
 
 **`core.GET` arg order is object-first:** `R core.GET obj "key" ->val` — NOT `R core.GET "key" obj`. The first positional arg to `core.GET` is always the container (dict or list), the second is the key/index string.
 
-**`core.*` runtime coverage — verified working verbs (builtins.py v1.4.3+; package **1.4.4**):**
+**`core.*` runtime coverage — verified working verbs (builtins.py v1.4.3+; package **1.4.5**):**
 `ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MIN`, `MAX`, `CLAMP`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, `TRIM`, `STRIP`, `LSTRIP`, `RSTRIP`, `GET`, `PARSE`, `STRINGIFY`, `MERGE`, `LEN`, `NOW`, `ISO`, `ISO_TS`, `ECHO`, `ID`, `ENV`, `SUBSTR`, `SLEEP`, `FILTER_HIGH_SCORE`, `EQ`, `NEQ`, `GT`, `LT`, `GTE`, `LTE`, `KEYS`, `VALUES`, `STR`, `INT`, `FLOAT`, `BOOL`.
 
 **Still NOT implemented at runtime** (pass `--strict` validation but throw "unsupported core builtin target"): `type`, `unique`, `reduce`, `map`, `filter`, `format`, `range`, `sort`, `reverse`, `flatten`, `omit`, `pick`, `zip`, `abs`, `ceil`, `floor`, `round`, `pow`, `mod`, `and`, `or`, `not`, `noop`, `hash`, `uuid`.

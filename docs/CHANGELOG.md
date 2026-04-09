@@ -4,6 +4,14 @@
 
 <!-- Next release changes go here -->
 
+## v1.4.5 (April 10, 2026) — ArmaraOS MCP env merge, MCP authoring surface, compiler diagnostics
+
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.5**.
+- **fix(tooling)**: **`ainl install-mcp --host armaraos`** — when **`name = "ainl"`** already exists in **`[[mcp_servers]]`**, merge **`env`** pass-through (`AINL_MCP_EXPOSURE_PROFILE`, `AINL_MCP_TOOLS`, `AINL_MCP_TOOLS_EXCLUDE`, `AINL_MCP_RESOURCES`, `AINL_MCP_RESOURCES_EXCLUDE`) into the existing **`env = [...]`** line (sorted union) instead of only applying to newly appended blocks. **`~/.openfang/config.toml`** receives the same merge. Tests in **`tests/test_install_mcp.py`**.
+- **feat(mcp)**: **`scripts/ainl_mcp_server.py`** — register **`ainl://authoring-cheatsheet`** resource (short golden-path authoring guide aligned with **`AGENTS.md`**); process-local validate telemetry counters; validate/compile path improvements for MCP agent loops.
+- **feat(compiler / diagnostics)**: **`Diagnostic`** supports optional **`contract_violation_reason`** for include failures; include diagnostics populate stable reasons; graph validation emits better line attribution (**`_graph_error_lineno`**, **`_emit_graph_validation_diagnostic`**).
+- **fix(compiler strict)**: Targeted labels whose **last** step is **`Loop`** or **`While`** are skipped for the “exactly one **`J`** / must end in **`J`**” check (same exemption pattern as **`If`**-final labels). Fixes false strict failures for assembly-style pipelines.
+- **test**: **`tests/test_compiler_agent_suggested_fixes.py`** — coverage for suggested-fix kinds on common agent mistakes; **`tests/test_mcp_server.py`** extended for MCP surface changes.
 - **docs:** [docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md](operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md) — clarifies `ainl run --efficient-mode` / `AINL_EFFICIENT_MODE` (env signal only), `modules/efficient_styles.ainl` (output density), vs ArmaraOS Rust input compression (see ArmaraOS `docs/prompt-compression-efficient-mode.md`).
 
 ## v1.4.4 (April 9, 2026) — PyPI packaging + discoverability alignment

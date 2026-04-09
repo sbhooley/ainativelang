@@ -1,5 +1,14 @@
 # Release notes
 
+## AINL v1.4.5 — ArmaraOS MCP env merge + MCP authoring + compiler diagnostics (2026-04-10)
+
+**PyPI / runtime:** **`ainativelang` 1.4.5** — **`RUNTIME_VERSION` `1.4.5`**.
+
+- **ArmaraOS / install-mcp:** re-running **`ainl install-mcp --host armaraos`** merges **`env`** forward lists into **existing** `ainl` MCP server blocks (idempotent union); no manual **`config.toml`** edits for new env knobs.
+- **MCP server:** **`ainl://authoring-cheatsheet`** resource; validate telemetry; incremental hardening for agent-facing validate/compile flows.
+- **Compiler:** structured **`contract_violation_reason`** on include diagnostics; stricter graph validation reporting; strict-mode exemption when a label’s last step is an inner **`Loop`** / **`While`**.
+- See **`docs/CHANGELOG.md`** § v1.4.5 for the full conventional-commit list.
+
 ## AINL v1.4.4 — Packaging + Solana emitter alignment (2026-04-09)
 
 **PyPI / runtime:** **`ainativelang` 1.4.4** — **`RUNTIME_VERSION` `1.4.4`**.

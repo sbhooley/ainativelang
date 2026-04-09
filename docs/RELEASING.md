@@ -2,7 +2,7 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.4.4** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.4.5** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
 ## Public API surface (for downstream apps)
 
@@ -44,7 +44,7 @@ uvx twine check dist/*
 UV_PUBLISH_TOKEN=pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx uv publish
 ```
 
-`uv publish` reads **`UV_PUBLISH_TOKEN`** (or **`--token`**). Do not commit tokens.
+`uv publish` reads **`UV_PUBLISH_TOKEN`** (or **`--token`**). Do not commit tokens. A local **`.env`** may define **`PYPI_API_KEY`** — export it as **`UV_PUBLISH_TOKEN`** for the same value.
 
 **CI:** See **`.github/workflows/publish-pypi.yml`**.
 

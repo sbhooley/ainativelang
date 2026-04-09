@@ -38,6 +38,7 @@ from scripts.ainl_mcp_server import (
 VALID_CODE = "S app api /api\nL1:\nR core.ADD 2 3 ->sum\nJ sum"
 INVALID_CODE = "S app api /api\nL1:\nR !!!invalid!!!"
 NETWORK_CODE = "S app api /api\nL1:\nR http.Get \"https://example.com\" ->resp\nJ resp"
+UNKNOWN_ADAPTER_VERB = "S app core noop\ncore.NotARealTopLevelVerb 1\n"
 
 
 # ---------------------------------------------------------------------------
@@ -49,17 +50,54 @@ class TestValidate:
         result = ainl_validate(VALID_CODE, strict=True)
         assert result["ok"] is True
         assert result["errors"] == []
+        assert "recommended_next_tools" in result
+        assert "ainl_compile" in result["recommended_next_tools"]
 
     def test_invalid_code_returns_errors(self):
         result = ainl_validate(INVALID_CODE, strict=True)
         assert result["ok"] is False
         assert len(result["errors"]) > 0
+        assert "recommended_next_tools" in result
+        assert "ainl_validate" in result["recommended_next_tools"]
+        # Parser/strict failures that look like adapter/verb issues skip cheatsheet.
+        if "recommended_resources" in result:
+            assert "ainl://authoring-cheatsheet" in result["recommended_resources"]
+        else:
+            assert result["recommended_next_tools"][0] == "ainl_capabilities"
 
     def test_validate_returns_llm_native_diagnostics(self):
         result = ainl_validate(INVALID_CODE, strict=True)
         assert "diagnostics" in result
         for d in result["diagnostics"]:
             assert "llm_repair_hint" in d
+
+    def test_validate_failure_includes_primary_and_repair_steps(self):
+        result = ainl_validate(INVALID_CODE, strict=True)
+        assert result["ok"] is False
+        assert "primary_diagnostic" in result
+        assert result["primary_diagnostic"] is not None
+        assert "agent_repair_steps" in result
+        assert len(result["agent_repair_steps"]) >= 1
+        # Snippet around the error line (when lineno is known)
+        pd = result["primary_diagnostic"]
+        assert "llm_repair_hint" in pd
+        if "source_context" in pd:
+            assert "numbered_lines" in pd["source_context"]
+            assert "caret" in pd["source_context"]
+
+    def test_validate_unknown_verb_includes_suggested_fix(self):
+        result = ainl_validate(UNKNOWN_ADAPTER_VERB, strict=True)
+        assert result["ok"] is False
+        pd = result["primary_diagnostic"]
+        assert pd is not None
+        assert pd.get("suggested_fix") or pd.get("llm_repair_hint")
+
+    def test_validate_unknown_verb_recommended_prioritizes_capabilities(self):
+        result = ainl_validate(UNKNOWN_ADAPTER_VERB, strict=True)
+        assert result["ok"] is False
+        tools = result["recommended_next_tools"]
+        assert tools[0] == "ainl_capabilities"
+        assert "recommended_resources" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -73,11 +111,26 @@ class TestCompile:
         assert "ir" in result
         ir = result["ir"]
         assert "labels" in ir
+        assert "recommended_next_tools" in result
+        assert "ainl_run" in result["recommended_next_tools"]
 
     def test_compile_invalid_returns_errors(self):
         result = ainl_compile(INVALID_CODE, strict=True)
         assert result["ok"] is False
         assert "errors" in result
+        assert "recommended_next_tools" in result
+        if "recommended_resources" in result:
+            assert "ainl://authoring-cheatsheet" in result["recommended_resources"]
+        else:
+            assert result["recommended_next_tools"][0] == "ainl_capabilities"
+
+    def test_compile_invalid_matches_validate_diagnostics(self):
+        result = ainl_compile(INVALID_CODE, strict=True)
+        assert result["ok"] is False
+        assert "diagnostics" in result
+        assert "primary_diagnostic" in result
+        assert result["primary_diagnostic"] is not None
+        assert "agent_repair_steps" in result
 
     def test_compile_nonstrict(self):
         result = ainl_compile(VALID_CODE, strict=False)
@@ -98,6 +151,8 @@ class TestCapabilities:
         adapters = caps["adapters"]
         assert isinstance(adapters, dict)
         assert "core" in adapters
+        assert "mcp_telemetry" in caps
+        assert isinstance(caps["mcp_telemetry"], dict)
 
     def test_capabilities_adapter_has_privilege_tier(self):
         caps = ainl_capabilities()
@@ -138,6 +193,23 @@ class TestSecurityReport:
 # ---------------------------------------------------------------------------
 
 class TestRun:
+    def test_authoring_workflow_validate_compile_run_smoke(self):
+        r_bad = ainl_validate(INVALID_CODE, strict=True)
+        assert r_bad["ok"] is False
+        r_ok = ainl_validate(VALID_CODE, strict=True)
+        assert r_ok["ok"] is True
+        r_comp = ainl_compile(VALID_CODE, strict=True)
+        assert r_comp["ok"] is True
+        r_run = ainl_run(VALID_CODE, strict=True)
+        assert r_run["ok"] is True
+        assert "trace_id" in r_run
+
+        before = ainl_capabilities()["mcp_telemetry"].get("run_after_validate_without_compile", 0)
+        ainl_validate(VALID_CODE, strict=True)
+        ainl_run(VALID_CODE, strict=True)
+        after = ainl_capabilities()["mcp_telemetry"].get("run_after_validate_without_compile", 0)
+        assert after >= before + 1
+
     def test_run_core_only_succeeds(self):
         result = ainl_run(VALID_CODE, strict=True)
         assert result["ok"] is True
@@ -154,6 +226,14 @@ class TestRun:
         result = ainl_run(INVALID_CODE)
         assert result["ok"] is False
         assert "errors" in result
+
+    def test_run_invalid_includes_compile_feedback(self):
+        result = ainl_run(INVALID_CODE)
+        assert result["ok"] is False
+        assert "diagnostics" in result
+        assert "primary_diagnostic" in result
+        assert "agent_repair_steps" in result
+        assert "trace_id" in result
 
     def test_run_caller_can_add_restrictions(self):
         result = ainl_run(

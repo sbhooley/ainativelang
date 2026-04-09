@@ -1112,6 +1112,7 @@ class AICodeCompiler:
         message: str,
         suggested_fix: str,
         source_lines: Sequence[str],
+        contract_violation_reason: Optional[str] = None,
     ) -> Diagnostic:
         span_u, col_u = self._strict_nth_slot_content_char_span(
             line_node, 0, lineno, source_lines
@@ -1122,6 +1123,7 @@ class AICodeCompiler:
             kind=kind,
             message=message,
             span=span_u,
+            contract_violation_reason=contract_violation_reason,
             suggested_fix=suggested_fix,
         )
 
@@ -1134,11 +1136,12 @@ class AICodeCompiler:
         suggested_fix: str,
         source_lines: Sequence[str],
         context: Optional[CompilerContext],
+        contract_violation_reason: Optional[str] = None,
     ) -> None:
         """Structured include issue: strict → kind include_failure + legacy error; else include_warning."""
         kind = "include_failure" if self.strict_mode else "include_warning"
         d = self._include_path_diagnostic(
-            kind, lineno, line_node, message, suggested_fix, source_lines
+            kind, lineno, line_node, message, suggested_fix, source_lines, contract_violation_reason
         )
         if context is not None:
             context.add(d)
@@ -1202,6 +1205,7 @@ class AICodeCompiler:
                     suggested_fix='Use: include \"modules/common/retry.ainl\" as retry',
                     source_lines=source_lines,
                     context=context,
+                    contract_violation_reason="include must start with `include`, a path token, and optional `as <alias>`.",
                 )
                 continue
             raw_path, alias = parsed
@@ -1214,6 +1218,7 @@ class AICodeCompiler:
                     suggested_fix="Check the path exists next to the source file or under ./modules/.",
                     source_lines=source_lines,
                     context=context,
+                    contract_violation_reason="Include path could not be resolved relative to the current file.",
                 )
                 continue
             inc_key = self._resolved_include_key(resolved_path)
@@ -1225,6 +1230,7 @@ class AICodeCompiler:
                     suggested_fix="Remove the circular include chain or merge shared code into one file.",
                     source_lines=source_lines,
                     context=context,
+                    contract_violation_reason="The same file is included again while still being expanded.",
                 )
                 continue
             try:
@@ -1237,6 +1243,7 @@ class AICodeCompiler:
                     suggested_fix="Fix file permissions or path.",
                     source_lines=source_lines,
                     context=context,
+                    contract_violation_reason="The resolved path could not be opened for reading.",
                 )
                 continue
 
@@ -1295,6 +1302,7 @@ class AICodeCompiler:
                     "or fix ENTRY/EXIT_* labels in the included file.",
                     source_lines=source_lines,
                     context=context,
+                    contract_violation_reason="Included subgraph must satisfy the include contract (no E/S, ENTRY/EXIT, no label collisions).",
                 )
                 continue
 
@@ -1311,6 +1319,7 @@ class AICodeCompiler:
                     suggested_fix="Fix diagnostics in the included file or relax strict checks there.",
                     source_lines=source_lines,
                     context=context,
+                    contract_violation_reason="The included unit did not compile cleanly under the same strict mode.",
                 )
                 continue
 
@@ -1323,6 +1332,7 @@ class AICodeCompiler:
                     "or fix ENTRY/EXIT_* labels in the included file.",
                     source_lines=source_lines,
                     context=context,
+                    contract_violation_reason="Non-strict include warning: subgraph contract issues.",
                 )
 
             for lk, body in prefixed.items():
@@ -1999,7 +2009,56 @@ class AICodeCompiler:
             return {"scope": "top", "min_slots": 0}
         return OP_REGISTRY.get(op, {"scope": "top", "min_slots": 0})
 
-    def _steps_to_graph(self, lid: str) -> None:
+    def _graph_error_lineno(self, lid: str, node_id: Optional[str] = None) -> int:
+        """Best-effort source line for graph validation diagnostics."""
+        body = self.labels.get(lid) or {}
+        nodes = body.get("nodes") or []
+        if node_id:
+            for n in nodes:
+                if n.get("id") == node_id:
+                    ln = n.get("lineno")
+                    if isinstance(ln, int) and ln > 0:
+                        return ln
+        if nodes:
+            ln0 = nodes[0].get("lineno")
+            if isinstance(ln0, int) and ln0 > 0:
+                return ln0
+        short = str(lid).split("/")[-1]
+        ld = self._label_decl_lines.get(short) or self._label_decl_lines.get(str(lid))
+        if isinstance(ld, int) and ld > 0:
+            return ld
+        return 1
+
+    def _emit_graph_validation_diagnostic(
+        self,
+        context: Optional[CompilerContext],
+        lid: str,
+        kind: str,
+        message: str,
+        suggested_fix: str,
+        *,
+        node_id: Optional[str] = None,
+        contract_violation_reason: Optional[str] = None,
+    ) -> None:
+        if context is None:
+            return
+        lineno = self._graph_error_lineno(lid, node_id)
+        context.diagnostics.append(
+            Diagnostic(
+                lineno=lineno,
+                col_offset=1,
+                kind=kind,
+                message=message,
+                span=None,
+                label_id=str(lid),
+                node_id=node_id,
+                contract_violation_reason=contract_violation_reason,
+                suggested_fix=suggested_fix,
+                related_span=None,
+            )
+        )
+
+    def _steps_to_graph(self, lid: str, context: Optional[CompilerContext] = None) -> None:
         """Deterministic lowering: legacy.steps -> nodes, edges (canonical n1,n2,...). If/Err/Retry get proper ports."""
         body = self.labels.get(lid)
         if not body:
@@ -2083,9 +2142,32 @@ class AICodeCompiler:
                 if source_for_err:
                     norm = self._parse_at_node_id(source_for_err) or source_for_err
                     if norm not in node_ids_so_far:
-                        self._errors.append(
-                            f"Label {lid!r}: Err at_node_id={source_for_err!r} must reference a prior node in this label (available: {sorted(node_ids_so_far)!r})"
+                        msg_gerr = (
+                            f"Label {lid!r}: Err at_node_id={source_for_err!r} must reference a prior node "
+                            f"in this label (available: {sorted(node_ids_so_far)!r})"
                         )
+                        self._errors.append(msg_gerr)
+                        if context is not None:
+                            eln = int(s.get("lineno") or 1)
+                            context.diagnostics.append(
+                                Diagnostic(
+                                    lineno=eln,
+                                    col_offset=1,
+                                    kind="graph_err_at_node_unknown",
+                                    message=msg_gerr,
+                                    span=None,
+                                    label_id=str(lid),
+                                    node_id=nid,
+                                    contract_violation_reason=(
+                                        "Err @node_id must point at an existing node id in this label (n1, n2, …)."
+                                    ),
+                                    suggested_fix=(
+                                        "Use `@n1` / `n1` matching a step that appears above this Err; "
+                                        "node ids are assigned in order (first step → n1)."
+                                    ),
+                                    related_span=None,
+                                )
+                            )
                         source_for_err = last_nid
                     else:
                         source_for_err = norm
@@ -2106,9 +2188,31 @@ class AICodeCompiler:
                 if source_for_retry:
                     norm = self._parse_at_node_id(source_for_retry) or source_for_retry
                     if norm not in node_ids_so_far:
-                        self._errors.append(
-                            f"Label {lid!r}: Retry at_node_id={source_for_retry!r} must reference a prior node in this label (available: {sorted(node_ids_so_far)!r})"
+                        msg_grt = (
+                            f"Label {lid!r}: Retry at_node_id={source_for_retry!r} must reference a prior node "
+                            f"in this label (available: {sorted(node_ids_so_far)!r})"
                         )
+                        self._errors.append(msg_grt)
+                        if context is not None:
+                            eln = int(s.get("lineno") or 1)
+                            context.diagnostics.append(
+                                Diagnostic(
+                                    lineno=eln,
+                                    col_offset=1,
+                                    kind="graph_retry_at_node_unknown",
+                                    message=msg_grt,
+                                    span=None,
+                                    label_id=str(lid),
+                                    node_id=nid,
+                                    contract_violation_reason=(
+                                        "Retry @node_id must point at an existing node id in this label."
+                                    ),
+                                    suggested_fix=(
+                                        "Reference a node id from an earlier step in the same label (n1, n2, …)."
+                                    ),
+                                    related_span=None,
+                                )
+                            )
                         source_for_retry = last_nid
                     else:
                         source_for_retry = norm
@@ -2136,12 +2240,12 @@ class AICodeCompiler:
         body["entry"] = nodes[0]["id"] if nodes else None
         body["exits"] = exits
 
-    def _steps_to_graph_all(self) -> None:
+    def _steps_to_graph_all(self, context: Optional[CompilerContext] = None) -> None:
         """Populate nodes/edges/entry/exits for every label from legacy.steps."""
         for lid in list(self.labels.keys()):
-            self._steps_to_graph(lid)
+            self._steps_to_graph(lid, context=context)
 
-    def _validate_graphs(self) -> None:
+    def _validate_graphs(self, context: Optional[CompilerContext] = None) -> None:
         """Strict-mode graph validation: canonical node ids, entry/exits, and reachability.
 
         These checks assume graphs were produced by _steps_to_graph_all() and are intended
@@ -2170,44 +2274,107 @@ class AICodeCompiler:
 
             # Basic node field invariants: effect/reads/writes shape.
             for n in nodes:
+                nid_n = n.get("id")
                 effect = n.get("effect")
                 if effect not in ("io", "pure", "meta"):
-                    self._errors.append(
-                        f"Label {lid!r}: node {n.get('id')!r} has invalid effect {effect!r} (must be 'io', 'pure', or 'meta')"
+                    msg_fx = (
+                        f"Label {lid!r}: node {nid_n!r} has invalid effect {effect!r} "
+                        f"(must be 'io', 'pure', or 'meta')"
+                    )
+                    self._errors.append(msg_fx)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_invalid_effect",
+                        msg_fx,
+                        "Internal graph lowering should classify ops as io/pure/meta; report this as a compiler bug if it persists.",
+                        node_id=nid_n if isinstance(nid_n, str) else None,
+                        contract_violation_reason="Each node must carry an effect tier for analysis.",
                     )
                 reads = n.get("reads")
                 writes = n.get("writes")
                 if not isinstance(reads, list) or not isinstance(writes, list):
-                    self._errors.append(
-                        f"Label {lid!r}: node {n.get('id')!r} must have list reads/writes fields"
+                    msg_rw = f"Label {lid!r}: node {nid_n!r} must have list reads/writes fields"
+                    self._errors.append(msg_rw)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_invalid_rw",
+                        msg_rw,
+                        "Ensure each step produces a well-formed IR node (recompile; if this persists, file a bug).",
+                        node_id=nid_n if isinstance(nid_n, str) else None,
+                        contract_violation_reason="Graph nodes must expose list-shaped reads and writes.",
                     )
                 # Strict: R nodes must use a known adapter.verb (adapter contract).
                 if self.strict_mode and n.get("op") == "R":
                     data = n.get("data") or {}
                     key = strict_adapter_key_for_step(data)
                     if key and not strict_adapter_is_allowed(key):
-                        self._errors.append(
-                            f"Label {lid!r}: node {n.get('id')!r} uses unknown adapter.verb {key!r} (strict adapter contract)"
+                        msg_ad = (
+                            f"Label {lid!r}: node {nid_n!r} uses unknown adapter.verb {key!r} (strict adapter contract)"
+                        )
+                        self._errors.append(msg_ad)
+                        self._emit_graph_validation_diagnostic(
+                            context,
+                            str(lid),
+                            "graph_unknown_adapter",
+                            msg_ad,
+                            "Use ainl_capabilities / adapter docs to pick a valid adapter.VERB; fix spelling and casing.",
+                            node_id=nid_n if isinstance(nid_n, str) else None,
+                            contract_violation_reason="Strict mode validates R steps against the adapter contract.",
                         )
 
             # Canonical ids must be n1..nK with no gaps or duplicates.
             if any(not isinstance(nid, str) or not nid.startswith("n") for nid in node_ids):
-                self._errors.append(f"Label {lid!r}: graph nodes must use canonical ids n1..nK")
+                msg_cn = f"Label {lid!r}: graph nodes must use canonical ids n1..nK"
+                self._errors.append(msg_cn)
+                self._emit_graph_validation_diagnostic(
+                    context,
+                    str(lid),
+                    "graph_noncanonical_node_ids",
+                    msg_cn,
+                    "Nodes must be named n1, n2, … in order; avoid hand-editing lowered graph IR.",
+                )
             else:
                 expected_ids = {f"n{i}" for i in range(1, len(node_ids) + 1)}
                 if node_id_set != expected_ids:
-                    self._errors.append(
+                    msg_cg = (
                         f"Label {lid!r}: graph node ids must be contiguous n1..n{len(node_ids)}, "
                         f"got {sorted(node_id_set)!r}"
+                    )
+                    self._errors.append(msg_cg)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_noncanonical_node_ids",
+                        msg_cg,
+                        "Ids must be contiguous from n1 with no gaps or duplicates.",
                     )
 
             # Entry must exist and point at a known node when graph is non-empty.
             entry = body.get("entry")
             if entry is None:
-                self._errors.append(f"Label {lid!r}: non-empty graph must have an entry node")
+                msg_en = f"Label {lid!r}: non-empty graph must have an entry node"
+                self._errors.append(msg_en)
+                self._emit_graph_validation_diagnostic(
+                    context,
+                    str(lid),
+                    "graph_missing_entry",
+                    msg_en,
+                    "The first step in the label becomes the graph entry; ensure the label has at least one valid step.",
+                )
             elif entry not in node_id_set:
-                self._errors.append(
+                msg_eb = (
                     f"Label {lid!r}: entry {entry!r} not found in graph node ids {sorted(node_id_set)!r}"
+                )
+                self._errors.append(msg_eb)
+                self._emit_graph_validation_diagnostic(
+                    context,
+                    str(lid),
+                    "graph_bad_entry",
+                    msg_eb,
+                    "Entry must match the first node id (usually n1).",
+                    node_id=str(entry) if entry else None,
                 )
 
             # Exits must align with J nodes (one exit per J, matching var).
@@ -2220,23 +2387,50 @@ class AICodeCompiler:
             }
 
             for ex in exits:
-                nid = ex.get("node")
+                nid_ex = ex.get("node")
                 var = ex.get("var")
-                if nid not in id_to_jvar:
-                    self._errors.append(
-                        f"Label {lid!r}: exit references non-J node {nid!r} (exits must point at J nodes)"
+                if nid_ex not in id_to_jvar:
+                    msg_xj = (
+                        f"Label {lid!r}: exit references non-J node {nid_ex!r} (exits must point at J nodes)"
+                    )
+                    self._errors.append(msg_xj)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_exit_not_j",
+                        msg_xj,
+                        "Each exit record must reference a J node id.",
+                        node_id=str(nid_ex) if nid_ex else None,
                     )
                     continue
-                j_var = id_to_jvar[nid]
+                j_var = id_to_jvar[nid_ex]
                 if var is not None and var != j_var:
-                    self._errors.append(
-                        f"Label {lid!r}: exit var {var!r} for node {nid!r} does not match J var {j_var!r}"
+                    msg_xv = (
+                        f"Label {lid!r}: exit var {var!r} for node {nid_ex!r} does not match J var {j_var!r}"
+                    )
+                    self._errors.append(msg_xv)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_exit_var_mismatch",
+                        msg_xv,
+                        "Align exits[].var with the J step's return variable name.",
+                        node_id=str(nid_ex) if nid_ex else None,
                     )
 
-            for nid, j_var in id_to_jvar.items():
-                if not any(ex.get("node") == nid for ex in exits):
-                    self._errors.append(
-                        f"Label {lid!r}: J node {nid!r} (var={j_var!r}) missing from exits list"
+            for nid_j, j_var in id_to_jvar.items():
+                if not any(ex.get("node") == nid_j for ex in exits):
+                    msg_xm = (
+                        f"Label {lid!r}: J node {nid_j!r} (var={j_var!r}) missing from exits list"
+                    )
+                    self._errors.append(msg_xm)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_exit_missing",
+                        msg_xm,
+                        "Every J node must have a matching exits[] entry after lowering.",
+                        node_id=str(nid_j) if nid_j else None,
                     )
 
             # Node-to-node edges must reference valid ids; also build adjacency for reachability.
@@ -2247,17 +2441,35 @@ class AICodeCompiler:
                     continue  # analysis-only edges (J-label, Call-label) bypass port validation
                 port = e.get("port")
                 if port is None or port == "":
-                    self._errors.append(
+                    msg_ep = (
                         f"Label {lid!r}: edge from={e.get('from')!r} to={e.get('to')!r} missing port"
+                    )
+                    self._errors.append(msg_ep)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_edge_missing_port",
+                        msg_ep,
+                        "Every lowered edge must declare a port (next, then, err, …) matching the source op.",
+                        node_id=str(e.get("from")) if e.get("from") else None,
                     )
                 else:
                     from_node = node_by_id.get(e.get("from"))
                     allowed = GRAPH_VALID_PORTS.get(from_node.get("op") if from_node else None, DEFAULT_PORTS)
                     if port not in allowed:
                         op_name = from_node.get("op") if from_node else "?"
-                        self._errors.append(
+                        msg_pv = (
                             f"Label {lid!r}: edge from={e.get('from')!r} port={port!r} invalid for op "
                             f"{op_name!r} (allowed: {sorted(allowed)!r})"
+                        )
+                        self._errors.append(msg_pv)
+                        self._emit_graph_validation_diagnostic(
+                            context,
+                            str(lid),
+                            "graph_edge_invalid_port",
+                            msg_pv,
+                            "Use only ports valid for that op (see GRAPH_VALID_PORTS / spec).",
+                            node_id=str(e.get("from")) if e.get("from") else None,
                         )
 
             adj: Dict[str, set] = {nid: set() for nid in node_id_set}
@@ -2267,8 +2479,17 @@ class AICodeCompiler:
                 src = e.get("from")
                 dst = e.get("to")
                 if src not in node_id_set or dst not in node_id_set:
-                    self._errors.append(
+                    msg_er = (
                         f"Label {lid!r}: edge with invalid node reference from={src!r} to={dst!r}"
+                    )
+                    self._errors.append(msg_er)
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_edge_bad_ref",
+                        msg_er,
+                        "Both ends of a node edge must reference existing n* ids in this label.",
+                        node_id=str(src) if src in node_id_set else str(dst),
                     )
                     continue
                 adj.setdefault(src, set()).add(dst)
@@ -2287,8 +2508,17 @@ class AICodeCompiler:
                             stack.append(nxt)
                 for nid in sorted(node_id_set):
                     if nid not in reachable:
-                        self._errors.append(
+                        msg_ru = (
                             f"Label {lid!r}: graph node {nid!r} is unreachable from entry {entry!r}"
+                        )
+                        self._errors.append(msg_ru)
+                        self._emit_graph_validation_diagnostic(
+                            context,
+                            str(lid),
+                            "graph_unreachable",
+                            msg_ru,
+                            "Connect dead steps into the linear flow (or remove unreachable steps).",
+                            node_id=str(nid) if nid else None,
                         )
 
             # Optional strict: defined-before-use along success paths (intra- + inter-label).
@@ -2319,6 +2549,23 @@ class AICodeCompiler:
                             f"check jumps and variables in that module, or quote string literals.)"
                         )
                     self._errors.append(msg)
+                    fix_df = (
+                        "Assign the value in an earlier R/X/Set step, or quote string literals so they are not "
+                        "treated as variable reads."
+                    )
+                    if "/" in str(lid):
+                        fix_df += " For includes, check label prefixes and merged variable names."
+                    self._emit_graph_validation_diagnostic(
+                        context,
+                        str(lid),
+                        "graph_dataflow_undefined",
+                        msg,
+                        fix_df,
+                        node_id=str(nid) if nid else None,
+                        contract_violation_reason=(
+                            f"Variable {var!r} may be read before definition on some success paths."
+                        ),
+                    )
 
             # Call / control-flow effect inclusion: callee label effects must be subset of caller.
             # Loop/While jump to body/after labels; those callees' effects are not in the caller's
@@ -2351,8 +2598,19 @@ class AICodeCompiler:
                             eff_caller |= set((tl_body.get("effect_summary") or {}).get("effects") or [])
                     if callee_effects and not (callee_effects <= eff_caller):
                         extra = callee_effects - eff_caller
-                        self._errors.append(
-                            f"Label {lid!r}: Call to label {callee_lid!r} has effects {sorted(extra)!r} not allowed in caller"
+                        msg_ce = (
+                            f"Label {lid!r}: Call to label {callee_lid!r} has effects {sorted(extra)!r} "
+                            f"not allowed in caller"
+                        )
+                        self._errors.append(msg_ce)
+                        self._emit_graph_validation_diagnostic(
+                            context,
+                            str(lid),
+                            "graph_callee_effects",
+                            msg_ce,
+                            "Narrow callee side effects, hoist IO to the caller, or split the workflow so effect tiers match.",
+                            node_id=str(from_id) if from_id else None,
+                            contract_violation_reason="Callee label effect tier must be subset of caller's allowed effects.",
                         )
 
     def _parse_req_slots(self, slots: List[str]) -> Optional[Dict[str, Any]]:
@@ -2640,15 +2898,61 @@ class AICodeCompiler:
             # This prevents declarations after a label from being trapped as inside_label_block.
             if self.current_label is not None and op not in self.STEP_OPS and not (op.startswith("L") and op.endswith(":")):
                 if self.strict_mode:
-                    self._errors.append(
+                    msg_ac = (
                         f"Line {lineno}: auto-closed label L{self.current_label} on top-level op {op!r} inside label block"
                     )
+                    self._errors.append(msg_ac)
+                    if context is not None:
+                        span_ac, col_ac = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=lineno,
+                                col_offset=col_ac,
+                                kind="label_autoclose",
+                                message=msg_ac,
+                                span=span_ac,
+                                label_id=str(self.current_label),
+                                node_id=None,
+                                contract_violation_reason=(
+                                    "A non-step op at this indentation was parsed as top-level, "
+                                    "so the previous label block was closed."
+                                ),
+                                suggested_fix=(
+                                    "Keep all steps for a label contiguous and indented; do not place "
+                                    "declarations (S, D, bare module lines, etc.) between label steps. "
+                                    "Finish the label with J / If / … before starting another top-level line."
+                                ),
+                                related_span=None,
+                            )
+                        )
                 self.current_label = None
             # Scope validation from canonical op registry (data-driven).
             if self.current_label is None and spec.get("scope") == "label":
                 self.meta.append(self._meta_record(lineno, line_node, reason="scope"))
                 if self.strict_mode:
-                    self._errors.append(f"Line {lineno}: label-only op {op!r} used at top-level")
+                    msg_scope = f"Line {lineno}: label-only op {op!r} used at top-level"
+                    self._errors.append(msg_scope)
+                    if context is not None:
+                        span_sc, col_sc = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=lineno,
+                                col_offset=col_sc,
+                                kind="label_scope_top_level",
+                                message=msg_scope,
+                                span=span_sc,
+                                label_id=None,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    f"Operation {op!r} is only valid inside a label body (after Ln:)."
+                                ),
+                                suggested_fix=(
+                                    "Add a label header first, e.g. `L1:` on its own line, then indent "
+                                    "this line under it. Example: `L1:` then `R core.ADD 1 2 ->x` then `J x`."
+                                ),
+                                related_span=None,
+                            )
+                        )
                 continue
 
             if op == "S":
@@ -2665,9 +2969,26 @@ class AICodeCompiler:
                                 hy["emit"].append(tok)
                                 seen.add(tok)
                         elif getattr(self, "strict_mode", False):
-                            self._errors.append(
+                            msg_hy = (
                                 f"Line {lineno}: S hybrid unknown target {tok!r}; allowed: langgraph, temporal"
                             )
+                            self._errors.append(msg_hy)
+                            if context is not None:
+                                span_hy, col_hy = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=lineno,
+                                        col_offset=col_hy,
+                                        kind="s_hybrid_unknown_target",
+                                        message=msg_hy,
+                                        span=span_hy,
+                                        label_id=None,
+                                        node_id=None,
+                                        contract_violation_reason="S hybrid only accepts emit targets langgraph or temporal.",
+                                        suggested_fix='Use `S hybrid langgraph`, `S hybrid temporal`, or both (order-free).',
+                                        related_span=None,
+                                    )
+                                )
                     continue
                 if len(slots) >= 2:
                     name, mode = slots[0], slots[1]
@@ -2704,7 +3025,29 @@ class AICodeCompiler:
                     lbl = slots[2]
                     if not lbl.startswith("->L"):
                         if getattr(self, "strict_mode", False):
-                            self._errors.append(f"E: slot 3 must be ->L<number>, got {lbl!r}")
+                            msg_e = f"E: slot 3 must be ->L<number>, got {lbl!r}"
+                            self._errors.append(msg_e)
+                            if context is not None:
+                                span_e, col_e = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=lineno,
+                                        col_offset=col_e,
+                                        kind="endpoint_label_target",
+                                        message=msg_e,
+                                        span=span_e,
+                                        label_id=None,
+                                        node_id=None,
+                                        contract_violation_reason=(
+                                            "Endpoint lines must route to a label: third slot is the handler target."
+                                        ),
+                                        suggested_fix=(
+                                            "Write `E /api/path GET ->L9` (third token must start with `->L` and match "
+                                            "an `L9:` label in this file)."
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
                         label_id = lbl.lstrip("L").split(":")[-1] if lbl else "anon"
                     else:
                         label_id = lbl[3:].lstrip()  # after ->L
@@ -2820,7 +3163,32 @@ class AICodeCompiler:
                             else None
                         )
                         if self.strict_mode and then_l is None:
-                            self._errors.append(f"Line {lineno}: If then target must be ->L<n> or L<n>, got {slots[i + 2]!r}")
+                            msg_if = (
+                                f"Line {lineno}: If then target must be ->L<n> or L<n>, got {slots[i + 2]!r}"
+                            )
+                            self._errors.append(msg_if)
+                            if context is not None:
+                                span_if, col_if = self._strict_op_token_char_span(
+                                    line_node, lineno, source_lines
+                                )
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=lineno,
+                                        col_offset=col_if,
+                                        kind="if_branch_target",
+                                        message=msg_if,
+                                        span=span_if,
+                                        label_id=str(self.current_label) if self.current_label else None,
+                                        node_id=None,
+                                        contract_violation_reason=(
+                                            "If requires a resolvable then-branch label ( ->L2 or L2 )."
+                                        ),
+                                        suggested_fix=(
+                                            "Use `If cond ->L2 ->L3` or `If cond L2 L3` with valid label ids that exist in the program."
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
                         leg["steps"].append({"op": "If", "lineno": lineno, "cond": cond, "then": then_l, "else": else_l})
                         i += 4 if len(slots) > i + 3 else 3
                     elif slots[i] == "Set" and i + 3 <= len(slots):
@@ -2853,7 +3221,33 @@ class AICodeCompiler:
                         if at_node is not None:
                             if i + 2 >= len(slots):
                                 if self.strict_mode:
-                                    self._errors.append(f"Line {lineno}: Err @node_id requires handler (e.g. ->L9)")
+                                    msg_er = (
+                                        f"Line {lineno}: Err @node_id requires handler (e.g. ->L9)"
+                                    )
+                                    self._errors.append(msg_er)
+                                    if context is not None:
+                                        span_er, col_er = self._strict_op_token_char_span(
+                                            line_node, lineno, source_lines
+                                        )
+                                        context.diagnostics.append(
+                                            Diagnostic(
+                                                lineno=lineno,
+                                                col_offset=col_er,
+                                                kind="err_missing_handler",
+                                                message=msg_er,
+                                                span=span_er,
+                                                label_id=str(self.current_label),
+                                                node_id=None,
+                                                contract_violation_reason=(
+                                                    "Err with @node_id needs a handler label as the next token."
+                                                ),
+                                                suggested_fix=(
+                                                    "Add `->L9` (or `L9`) after the @node id: "
+                                                    "`Err @n1 ->Lhandler`."
+                                                ),
+                                                related_span=None,
+                                            )
+                                        )
                                 i += 2
                             else:
                                 h_id = self._parse_arrow_lbl(slots[i + 2])
@@ -2893,9 +3287,32 @@ class AICodeCompiler:
                             out_var = slots[i + 2][2:]
                             i += 3
                         elif i + 2 < len(slots) and slots[i + 2] not in step_ops and self.strict_mode:
-                            self._errors.append(
+                            msg_cil = (
                                 f"Line {lineno}: Call optional return binding must be -><var>, got {slots[i + 2]!r}"
                             )
+                            self._errors.append(msg_cil)
+                            if context is not None:
+                                span_cil, col_cil = self._strict_op_token_char_span(
+                                    line_node, lineno, source_lines
+                                )
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=lineno,
+                                        col_offset=col_cil,
+                                        kind="call_return_binding",
+                                        message=msg_cil,
+                                        span=span_cil,
+                                        label_id=str(self.current_label) if self.current_label else None,
+                                        node_id=None,
+                                        contract_violation_reason=(
+                                            "Inline Call's third token must be `->var` when present."
+                                        ),
+                                        suggested_fix=(
+                                            "Use `Call L2 ->myVar` (third token starts with `->` and is not `->L...`)."
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
                             i += 3
                         else:
                             i += 2
@@ -3173,7 +3590,32 @@ class AICodeCompiler:
                         handler_slot = slots[1] if len(slots) > 1 else None
                         if not handler_slot:
                             if self.strict_mode:
-                                self._errors.append(f"Line {lineno}: Err @node_id requires handler (e.g. ->L9)")
+                                msg_ers = (
+                                    f"Line {lineno}: Err @node_id requires handler (e.g. ->L9)"
+                                )
+                                self._errors.append(msg_ers)
+                                if context is not None:
+                                    span_ers, col_ers = self._strict_op_token_char_span(
+                                        line_node, lineno, source_lines
+                                    )
+                                    context.diagnostics.append(
+                                        Diagnostic(
+                                            lineno=lineno,
+                                            col_offset=col_ers,
+                                            kind="err_missing_handler",
+                                            message=msg_ers,
+                                            span=span_ers,
+                                            label_id=str(self.current_label),
+                                            node_id=None,
+                                            contract_violation_reason=(
+                                                "Err with @node_id requires a handler label token."
+                                            ),
+                                            suggested_fix=(
+                                                "`Err @n1 ->L9` — add the handler target on the same line."
+                                            ),
+                                            related_span=None,
+                                        )
+                                    )
                         else:
                             handler = handler_slot[2:] if handler_slot.startswith("->") else handler_slot
                             if handler.startswith("L"):
@@ -3220,9 +3662,31 @@ class AICodeCompiler:
                         lid = lid.split(":")[-1]
                     out_var = slots[1][2:] if len(slots) > 1 and slots[1].startswith("->") and not slots[1].startswith("->L") else None
                     if len(slots) > 1 and out_var is None and self.strict_mode:
-                        self._errors.append(
+                        msg_call = (
                             f"Line {lineno}: Call optional return binding must be -><var>, got {slots[1]!r}"
                         )
+                        self._errors.append(msg_call)
+                        if context is not None:
+                            span_ca, col_ca = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                            context.diagnostics.append(
+                                Diagnostic(
+                                    lineno=lineno,
+                                    col_offset=col_ca,
+                                    kind="call_return_binding",
+                                    message=msg_call,
+                                    span=span_ca,
+                                    label_id=str(self.current_label) if self.current_label else None,
+                                    node_id=None,
+                                    contract_violation_reason=(
+                                        "Call's second token must be a return binding like ->result, not a bare name."
+                                    ),
+                                    suggested_fix=(
+                                        "Use `Call L2 ->myVar` (second slot starts with `->` and is not `->L...`). "
+                                        "Example: `Call L_other ->out` then reference `out` in later steps."
+                                    ),
+                                    related_span=None,
+                                )
+                            )
                     self._ensure_label(self.current_label)
                     step = {"op": "Call", "lineno": lineno, "label": lid}
                     if out_var:
@@ -3536,13 +4000,34 @@ class AICodeCompiler:
             else:
                 # Lossless: preserve unknown ops in meta (spec §5). Module validation already done above.
                 if self.strict_mode and mod and mop and mod in KNOWN_MODULES:
-                    self._errors.append(
-                        f"Line {lineno}: unknown module.op {op!r} in strict mode"
-                    )
+                    msg_uk = f"Line {lineno}: unknown module.op {op!r} in strict mode"
+                    self._errors.append(msg_uk)
+                    if context is not None:
+                        span_uk, col_uk = self._strict_op_token_char_span(line_node, lineno, source_lines)
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=lineno,
+                                col_offset=col_uk,
+                                kind="unknown_adapter_verb",
+                                message=msg_uk,
+                                span=span_uk,
+                                label_id=None,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    f"No compiler rule matches {op!r} for module {mod!r} in strict mode."
+                                ),
+                                suggested_fix=(
+                                    "Use a valid module.verb for that adapter (see ainl_capabilities / adapter docs). "
+                                    "Fix spelling and casing (e.g. http.GET). Workflow calls belong in a label as "
+                                    "`R adapter.VERB ... ->var`, not as a bare top-level declaration unless the spec allows it."
+                                ),
+                                related_span=None,
+                            )
+                        )
                 self.meta.append(self._meta_record(lineno, line_node))
 
         if emit_graph:
-            self._steps_to_graph_all()
+            self._steps_to_graph_all(context=context)
             normalize_labels(self.labels)
             annotate_labels_effect_analysis(self.labels)
 
@@ -3603,12 +4088,74 @@ class AICodeCompiler:
                     steps = leg.get("steps", [])
                     j_count = sum(1 for s in steps if s.get("op") == "J")
                     if j_count != 1:
-                        self._errors.append(f"Endpoint {path} {method} label {label_id}: must have exactly one J (has {j_count})")
+                        msg_jc = (
+                            f"Endpoint {path} {method} label {label_id}: must have exactly one J (has {j_count})"
+                        )
+                        self._errors.append(msg_jc)
+                        if context is not None:
+                            ep_row = self._strict_endpoint_line_node(path, method, cst_lines)
+                            e_lineno = int(ep_row.get("lineno") or 1) if ep_row else 1
+                            if ep_row:
+                                span_jc, col_jc = self._strict_nth_slot_content_char_span(
+                                    ep_row, 2, e_lineno, source_lines
+                                )
+                            else:
+                                span_jc, col_jc = None, 1
+                            context.diagnostics.append(
+                                Diagnostic(
+                                    lineno=e_lineno,
+                                    col_offset=col_jc,
+                                    kind="endpoint_j_count",
+                                    message=msg_jc,
+                                    span=span_jc,
+                                    label_id=label_id,
+                                    node_id=None,
+                                    contract_violation_reason=(
+                                        "API endpoint handlers must return via exactly one J step."
+                                    ),
+                                    suggested_fix=(
+                                        "Ensure the target label has a single `J <var>` and that it is the return path "
+                                        "for that endpoint (no extra/missing J)."
+                                    ),
+                                    related_span=None,
+                                )
+                            )
                     return_var = ep.get("return_var")
                     if return_var and j_count == 1:
                         j_var = next((s.get("var") for s in steps if s.get("op") == "J"), None)
                         if j_var and j_var != return_var:
-                            self._errors.append(f"Endpoint {path} {method}: E return_var {return_var!r} does not match J var {j_var!r}")
+                            msg_rv = (
+                                f"Endpoint {path} {method}: E return_var {return_var!r} does not match J var {j_var!r}"
+                            )
+                            self._errors.append(msg_rv)
+                            if context is not None:
+                                ep_row = self._strict_endpoint_line_node(path, method, cst_lines)
+                                e_lineno = int(ep_row.get("lineno") or 1) if ep_row else 1
+                                if ep_row:
+                                    span_rv, col_rv = self._strict_nth_slot_content_char_span(
+                                        ep_row, 2, e_lineno, source_lines
+                                    )
+                                else:
+                                    span_rv, col_rv = None, 1
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=e_lineno,
+                                        col_offset=col_rv,
+                                        kind="endpoint_return_mismatch",
+                                        message=msg_rv,
+                                        span=span_rv,
+                                        label_id=label_id,
+                                        node_id=None,
+                                        contract_violation_reason=(
+                                            "E line optional `->returnVar` must match the J variable name."
+                                        ),
+                                        suggested_fix=(
+                                            f"Change the J step to `J {return_var}` or adjust the E return binding "
+                                            f"to match `J {j_var!r}`."
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
 
             # Collect all label targets referenced by control-flow ops.
             for lid, body in self.labels.items():
@@ -3682,26 +4229,120 @@ class AICodeCompiler:
                     continue
                 steps = body.get("legacy", {}).get("steps", [])
                 if not steps:
-                    self._errors.append(f"Targeted label {tl!r} has no legacy.steps")
+                    msg_ns = f"Targeted label {tl!r} has no legacy.steps"
+                    self._errors.append(msg_ns)
+                    if context is not None:
+                        u_lineno = int(self._label_decl_lines.get(tl) or 1)
+                        related = self._strict_label_decl_line_char_span(tl, cst_lines, source_lines)
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=u_lineno,
+                                col_offset=1,
+                                kind="label_missing_steps",
+                                message=msg_ns,
+                                span=None,
+                                label_id=tl,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    "A label referenced by control flow must contain executable steps."
+                                ),
+                                suggested_fix=(
+                                    "Add steps under `L"
+                                    f"{tl}:`, e.g. `R ... ->v` then `J v` (or a single terminal If/Loop/While if applicable)."
+                                ),
+                                related_span=related,
+                            )
+                        )
                     continue
                 j_steps = [s for s in steps if s.get("op") == "J"]
-                # If as last step: then/else targets must each end with exactly one J (checked separately).
-                if steps and steps[-1].get("op") == "If":
+                # If / Loop / While as last step: control transfers to branch/iteration targets;
+                # the label may not end with J (same idea as If).
+                if steps and steps[-1].get("op") in ("If", "Loop", "While"):
                     continue
                 if len(j_steps) != 1:
-                    self._errors.append(f"Targeted label {tl!r} must contain exactly one J (has {len(j_steps)})")
+                    msg_jn = (
+                        f"Targeted label {tl!r} must contain exactly one J (has {len(j_steps)})"
+                    )
+                    self._errors.append(msg_jn)
+                    if context is not None:
+                        slineno = int(
+                            steps[0].get("lineno") or self._label_decl_lines.get(tl) or 1
+                        )
+                        related = self._strict_label_decl_line_char_span(tl, cst_lines, source_lines)
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=slineno,
+                                col_offset=1,
+                                kind="label_j_count",
+                                message=msg_jn,
+                                span=None,
+                                label_id=tl,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    "Strict mode requires exactly one return (J) per linear label body."
+                                ),
+                                suggested_fix=(
+                                    "Ensure exactly one `J <var>` in this label (merge or split labels if needed)."
+                                ),
+                                related_span=related,
+                            )
+                        )
                     continue
                 if steps[-1].get("op") != "J":
-                    self._errors.append(f"Targeted label {tl!r} must end in J")
+                    msg_end = f"Targeted label {tl!r} must end in J"
+                    self._errors.append(msg_end)
+                    if context is not None:
+                        slineno = int(steps[-1].get("lineno") or self._label_decl_lines.get(tl) or 1)
+                        related = self._strict_label_decl_line_char_span(tl, cst_lines, source_lines)
+                        context.diagnostics.append(
+                            Diagnostic(
+                                lineno=slineno,
+                                col_offset=1,
+                                kind="label_must_end_j",
+                                message=msg_end,
+                                span=None,
+                                label_id=tl,
+                                node_id=None,
+                                contract_violation_reason=(
+                                    "The last step of this label must be J (unless the last step is If/Loop/While)."
+                                ),
+                                suggested_fix=(
+                                    "Move `J <var>` to the end of the label or restructure branches so the label exits with J."
+                                ),
+                                related_span=related,
+                            )
+                        )
 
             # Core-only label enforcement: every step op must be in STEP_OPS (spec §3.5).
             for lid, body in self.labels.items():
                 for idx, s in enumerate(body.get("legacy", {}).get("steps", [])):
                     opn = s.get("op")
                     if opn and opn not in self.STEP_OPS:
-                        self._errors.append(
+                        msg_step = (
                             f"Label {lid!r}: step at index {idx} has op {opn!r} not in core ops (strict core-only)"
                         )
+                        self._errors.append(msg_step)
+                        if context is not None:
+                            slineno = int(s.get("lineno") or 1)
+                            context.diagnostics.append(
+                                Diagnostic(
+                                    lineno=slineno,
+                                    col_offset=1,
+                                    kind="unknown_step_op",
+                                    message=msg_step,
+                                    span=None,
+                                    label_id=lid,
+                                    node_id=str(idx),
+                                    contract_violation_reason=(
+                                        "Strict mode only allows registered step opcodes in label bodies."
+                                    ),
+                                    suggested_fix=(
+                                        "Use a supported step op (R, J, If, Set, Call, X, Loop, While, …). "
+                                        "Rename typos; invented op names are rejected in strict core-only validation."
+                                    ),
+                                    related_span=None,
+                                )
+                            )
 
             # Capability reference validation in label steps.
             cache_defs = set((self.services.get("cache", {}).get("defs", {}) or {}).keys())
@@ -3714,19 +4355,98 @@ class AICodeCompiler:
                     if opn in ("CacheGet", "CacheSet"):
                         name = s.get("name", "")
                         if name and name not in cache_defs:
-                            self._errors.append(f"Label {lid!r}: {opn} references undefined cache {name!r}")
+                            msg_ca = f"Label {lid!r}: {opn} references undefined cache {name!r}"
+                            self._errors.append(msg_ca)
+                            if context is not None:
+                                slineno = int(s.get("lineno") or 1)
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=slineno,
+                                        col_offset=1,
+                                        kind="undefined_cache",
+                                        message=msg_ca,
+                                        span=None,
+                                        label_id=lid,
+                                        node_id=None,
+                                        contract_violation_reason="Cache name must be declared with a C line.",
+                                        suggested_fix=(
+                                            "Add `C <name> ...` for this cache before CacheGet/CacheSet, or fix the name typo."
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
                     elif opn == "QueuePut":
                         qn = s.get("queue", "")
                         if qn and qn not in queue_defs:
-                            self._errors.append(f"Label {lid!r}: QueuePut references undefined queue {qn!r}")
+                            msg_qp = f"Label {lid!r}: QueuePut references undefined queue {qn!r}"
+                            self._errors.append(msg_qp)
+                            if context is not None:
+                                slineno = int(s.get("lineno") or 1)
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=slineno,
+                                        col_offset=1,
+                                        kind="undefined_queue_legacy",
+                                        message=msg_qp,
+                                        span=None,
+                                        label_id=lid,
+                                        node_id=None,
+                                        contract_violation_reason=(
+                                            "QueuePut references a queue name that has no matching Q declaration."
+                                        ),
+                                        suggested_fix=(
+                                            "Declare the queue with `Q <name> ...` before use, or migrate to "
+                                            '`R queue Put "channel_name" payload ->_` (see queue adapter docs).'
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
                     elif opn == "Tx":
                         tn = s.get("name", "")
                         if tn and tn not in txn_defs:
-                            self._errors.append(f"Label {lid!r}: Tx references undefined transaction {tn!r}")
+                            msg_tx = f"Label {lid!r}: Tx references undefined transaction {tn!r}"
+                            self._errors.append(msg_tx)
+                            if context is not None:
+                                slineno = int(s.get("lineno") or 1)
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=slineno,
+                                        col_offset=1,
+                                        kind="undefined_transaction",
+                                        message=msg_tx,
+                                        span=None,
+                                        label_id=lid,
+                                        node_id=None,
+                                        contract_violation_reason="Transaction name must be declared before use.",
+                                        suggested_fix=(
+                                            "Declare the transaction in services/txn defs or fix the Tx name to match."
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
                     elif opn == "Enf":
                         pn = s.get("policy", "")
                         if pn and pn not in policy_defs:
-                            self._errors.append(f"Label {lid!r}: Enf references undefined policy {pn!r}")
+                            msg_po = f"Label {lid!r}: Enf references undefined policy {pn!r}"
+                            self._errors.append(msg_po)
+                            if context is not None:
+                                slineno = int(s.get("lineno") or 1)
+                                context.diagnostics.append(
+                                    Diagnostic(
+                                        lineno=slineno,
+                                        col_offset=1,
+                                        kind="undefined_policy",
+                                        message=msg_po,
+                                        span=None,
+                                        label_id=lid,
+                                        node_id=None,
+                                        contract_violation_reason="Policy name must be declared before Enf.",
+                                        suggested_fix=(
+                                            "Declare the policy block this Enf references, or correct the policy id."
+                                        ),
+                                        related_span=None,
+                                    )
+                                )
 
             # Optional strict reachability over label references from endpoint roots.
             if self.strict_reachability and endpoint_labels:
@@ -3773,10 +4493,33 @@ class AICodeCompiler:
                     if lid == "_anon":
                         continue
                     if lid not in reachable:
-                        self._errors.append(f"Label {lid!r} is unreachable from endpoint roots")
+                        msg_ur = f"Label {lid!r} is unreachable from endpoint roots"
+                        self._errors.append(msg_ur)
+                        if context is not None:
+                            u_ln = int(self._label_decl_lines.get(lid) or 1)
+                            related = self._strict_label_decl_line_char_span(lid, cst_lines, source_lines)
+                            context.diagnostics.append(
+                                Diagnostic(
+                                    lineno=u_ln,
+                                    col_offset=1,
+                                    kind="label_unreachable",
+                                    message=msg_ur,
+                                    span=None,
+                                    label_id=lid,
+                                    node_id=None,
+                                    contract_violation_reason=(
+                                        "With strict_reachability, every label must be on a path from an E root."
+                                    ),
+                                    suggested_fix=(
+                                        "Wire this label from an endpoint handler or from a label reachable from one "
+                                        "(If/Call/Err targets)."
+                                    ),
+                                    related_span=related,
+                                )
+                            )
 
             # Graph-level invariants on nodes/edges/entry/exits (canonical graph IR).
-            self._validate_graphs()
+            self._validate_graphs(context=context)
 
         if self.meta:
             self._warnings.append(f"meta contains {len(self.meta)} preserved unknown/invalid lines")
