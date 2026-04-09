@@ -2,9 +2,9 @@
 
 This document defines additive MCP tool contracts intended for self-improving research loops.
 
-## Stability note (v1.4.5 release line)
+## Stability note (v1.4.6 release line)
 
-The following fields are considered stable in the v1.2.7+ research pack surface (current **`RUNTIME_VERSION`** **1.4.5**):
+The following fields are considered stable in the v1.2.7+ research pack surface (current **`RUNTIME_VERSION`** **1.4.6**):
 
 - `ainl_validate(...).diagnostics[].llm_repair_hint`
 - `ainl_ir_diff(...).diff.changed_nodes[]` as a list of `{label_id, node_id, changes}`
@@ -47,7 +47,7 @@ Future versions may add fields but should not remove or rename these without a v
 - Consumers should not hard-code weight constants without checking the payload.
 - Rank by `fitness_score`; use component breakdown for tie-breaks and debugging.
 
-## `ainl_run` execution contract (v1.4.3+; current package **1.4.5**)
+## `ainl_run` execution contract (v1.4.3+; current package **1.4.6**)
 
 ### Variable shadowing in `R` arguments
 

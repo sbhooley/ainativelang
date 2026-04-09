@@ -1,0 +1,19 @@
+# test_openspace_http.ainl
+# Test OpenSpace MCP via HTTP
+
+S core now ->mcp_call
+
+mcp_call:
+  R http.POST "http://localhost:8080/mcp/tools/execute_task"
+    body={
+      "params": {
+        "task": "Say hello and confirm you are working from OpenSpace MCP.",
+        "search_scope": "local",
+        "max_iterations": 5
+      }
+    }
+  ->resp
+  Ret resp
+
+L_done:
+  Ret {"skipped": true}

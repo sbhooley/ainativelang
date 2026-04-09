@@ -98,6 +98,10 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.4.6
+
+- **Repo completeness**: `apollo-x-bot/api-cost-monitor.ainl` (promoter / API-cost workflow sample), `demo/test_openspace_http.ainl` (experimental OpenSpace HTTP probe), and `run_openspace_test.py` (portable dev harness for `demo/test_openspace_mcp.ainl` — no hard-coded workspace paths).
+
 ## New in v1.4.5
 
 - **`ainl install-mcp --host armaraos`**: merges `env` pass-through (`AINL_MCP_EXPOSURE_PROFILE`, tools/resources allow/deny lists) into **existing** `[[mcp_servers]]` `name = "ainl"` blocks so upgrades do not require hand-editing `~/.armaraos/config.toml`.
@@ -925,7 +929,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.4.5** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.4.6** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

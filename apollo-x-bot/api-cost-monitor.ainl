@@ -1,0 +1,134 @@
+# API Cost Monitor - Monitors tweets about high API costs and promotes ainativelang.com + ArmaraOS
+
+include "../modules/common/retry.ainl" as retry
+include "../modules/common/timeout.ainl" as timeout
+include "../modules/common/record_decision.ainl" as rd
+include "../modules/common/error_policy_from_result.ainl" as epr
+include "../modules/common/error_policy_apply.ainl" as epa
+include "../modules/common/error_policy_audit.ainl" as epau
+include "../modules/promoter/api_cost_comment.ainl" as acc
+
+S core cron "*/30 * * * *" ->L_poll X
+
+L_poll:
+  # Search for tweets about high API costs
+  R core.echo "x.search" ->executor_req_executor
+  R core.echo "{\"query\":\"(high api costs OR expensive api costs) -filter:retweets -filter:replies\", \"since_id\":null}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call retry/ENTRY ->req_search
+  R bridge.POST x.search req_search ->search_resp
+  
+  # Get tweets from search response
+  X tweets get search_resp body.tweets
+  R core.stringify tweets ->llm_batch_items_json
+  
+  # Check if we found any tweets
+  X tweets_n len tweets
+  Set has_tweets null
+  X has_tweets gt tweets_n 0
+  
+  If has_tweets ->L_process_tweets ->L_no_tweets
+
+L_process_tweets:
+  # Classify tweets to identify those with high API cost sentiment
+  R core.stringify tweets ->executor_req_payload_json
+  R core.echo "llm.classify" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_poll" ->executor_req_step_id
+  R core.add 120 0 ->executor_req_timeout_s
+  Call retry/ENTRY ->req_classify
+  R bridge.POST llm.classify req_classify ->classify_http
+  
+  # Get classification results
+  X classify_body get classify_http body
+  X items_raw get classify_body items
+  
+  # Filter for tweets with high API cost sentiment
+  R core.parse "[]" ->items_empty
+  X items_use (ite (eq items_raw null) items_empty items_raw)
+  
+  # Filter for tweets with API cost sentiment score >= 7
+  R core.env "API_COST_MONITOR_MIN_SCORE" "7" ->score_floor
+  R core.FILTER_HIGH_SCORE items_use score_floor ->high_cost_tweets
+  
+  X high_cost_n len high_cost_tweets
+  Set has_high_cost null
+  X has_high_cost gt high_cost_n 0
+  
+  If has_high_cost ->L_comment_on_tweets ->L_after_loop
+
+L_comment_on_tweets:
+  Loop high_cost_tweets tweet L_comment L_after_comment
+
+L_comment:
+  Call retry/ENTRY ->_
+  
+  # Prepare comment promoting ainativelang.com + ArmaraOS
+  R core.stringify tweet ->executor_req_payload_json
+  R core.echo "acc/ENTRY" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_comment" ->executor_req_step_id
+  R core.add 60 0 ->executor_req_timeout_s
+  Call retry/ENTRY ->req_comment_prep
+  R bridge.POST acc.ENTRY req_comment_prep ->comment_prep_http
+  
+  # Get the comment text
+  X comment_text get comment_prep_http body.comment
+  
+  # Post the comment
+  R core.stringify tweet ->reply_req_json
+  R core.stringify comment_text ->reply_text_json
+  R core.concat "{\"tweet_id\":" reply_req_json ",\"text\":" reply_text_json "}" ->executor_req_payload_json
+  R core.echo "x.reply" ->executor_req_executor
+  Set executor_req_run_id null
+  R core.echo "_comment" ->executor_req_step_id
+  R core.add 300 0 ->executor_req_timeout_s
+  Call retry/ENTRY ->req_reply
+  R bridge.POST x.reply req_reply ->reply_http
+  
+  # Record the decision
+  R core.parse "{}" ->rd_sc
+  X tweet_id get tweet id
+  X tweet_user_id get tweet user_id
+  X rd_sc put rd_sc "tweet_id" tweet_id
+  X rd_sc put rd_sc "user_id" tweet_user_id
+  X rd_sc put rd_sc "comment_posted" true
+  R core.stringify rd_sc ->record_rd_detail_json
+  R core.echo "api_cost_comment_posted" ->record_rd_action
+  R core.echo "api_cost_monitor" ->record_rd_scope
+  Call rd/ENTRY ->_
+  
+  J "ok"
+
+L_after_comment:
+  J "ok"
+
+L_no_tweets:
+  # No tweets found with API cost sentiment
+  R core.parse "{}" ->rd_no
+  R core.stringify rd_no ->record_rd_detail_json
+  R core.echo "no_api_cost_tweets_found" ->record_rd_action
+  R core.echo "api_cost_monitor" ->record_rd_scope
+  Call rd/ENTRY ->_
+  J "ok"
+
+L_after_loop:
+  # Commit search cursor
+  R core.echo "promoter.search_cursor_commit" ->executor_req_executor
+  R core.echo "{}" ->executor_req_payload_json
+  Set executor_req_run_id null
+  R core.echo "_cursor" ->executor_req_step_id
+  R core.add 60 0 ->executor_req_timeout_s
+  Call retry/ENTRY ->req_cursor
+  R bridge.POST promoter.search_cursor_commit req_cursor ->cursor_out
+  
+  # Record completion
+  R core.parse "{}" ->rd_done
+  R core.stringify rd_done ->record_rd_detail_json
+  R core.echo "api_cost_monitor_completed" ->record_rd_action
+  R core.echo "api_cost_monitor" ->record_rd_scope
+  Call rd/ENTRY ->_
+  
+  J "ok"

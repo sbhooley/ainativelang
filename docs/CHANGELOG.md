@@ -4,6 +4,13 @@
 
 <!-- Next release changes go here -->
 
+## v1.4.6 (April 11, 2026) — Workspace samples + OpenSpace dev harness
+
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.6**.
+- **chore(demo)**: add **`demo/test_openspace_http.ainl`** — experimental HTTP probe for OpenSpace MCP (demo tree; not strict-valid).
+- **chore**: add **`apollo-x-bot/api-cost-monitor.ainl`** — sample promoter workflow for API-cost monitoring (uses shared **`modules/common`** includes).
+- **chore**: add **`run_openspace_test.py`** — portable dev harness for **`demo/test_openspace_mcp.ainl`** (repo-root-relative paths; OpenClaw adapter registry smoke).
+
 ## v1.4.5 (April 10, 2026) — ArmaraOS MCP env merge, MCP authoring surface, compiler diagnostics
 
 - **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.5**.

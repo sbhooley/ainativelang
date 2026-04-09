@@ -1,5 +1,12 @@
 # Release notes
 
+## AINL v1.4.6 — Samples + OpenSpace harness (2026-04-11)
+
+**PyPI / runtime:** **`ainativelang` 1.4.6** — **`RUNTIME_VERSION` `1.4.6`**.
+
+- **Samples:** **`apollo-x-bot/api-cost-monitor.ainl`**, **`demo/test_openspace_http.ainl`**, and root **`run_openspace_test.py`** (portable paths) for OpenSpace / promoter experiments.
+- See **`docs/CHANGELOG.md`** § v1.4.6.
+
 ## AINL v1.4.5 — ArmaraOS MCP env merge + MCP authoring + compiler diagnostics (2026-04-10)
 
 **PyPI / runtime:** **`ainativelang` 1.4.5** — **`RUNTIME_VERSION` `1.4.5`**.
