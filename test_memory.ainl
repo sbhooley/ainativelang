@@ -1,0 +1,5 @@
+S core cron "@every 1s"
+
+L0:
+  R openclaw_memory append_today "test note" ->_
+  Ret ok

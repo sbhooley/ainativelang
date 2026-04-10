@@ -1,0 +1,39 @@
+# Embedding Memory Example
+# Demonstrates semantic search with vector embeddings
+#
+# Prerequisites:
+# - Set AINL_EMBEDDING_MODE=stub (for testing) or openai (for production)
+# - If using openai mode: export OPENAI_API_KEY=your_key
+# - Add 'embedding_memory' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/embedding_memory_example.ainl --strict
+# Run:      ainl run examples/embedding_memory_example.ainl
+
+S app core noop
+
+L_main:
+  # Insert reference documents into semantic memory
+  S doc1 "Python is a high-level programming language known for simplicity and readability."
+  S doc2 "JavaScript is used for web development and runs in browsers."
+  S doc3 "Rust is a systems programming language focused on safety and performance."
+
+  # Upsert documents with namespace/kind/id
+  R embedding_memory.UPSERT_REF "docs" "language" "python" doc1 ->upsert1
+  R embedding_memory.UPSERT_REF "docs" "language" "javascript" doc2 ->upsert2
+  R embedding_memory.UPSERT_REF "docs" "language" "rust" doc3 ->upsert3
+
+  # Search for semantically similar content
+  S query "What language is good for system-level programming?"
+  R embedding_memory.SEARCH query 2 ->results
+
+  # Extract top result
+  R core.GET [0] results ->top_result
+  R core.GET ["record_id"] top_result ->best_match_id
+  R core.GET ["score"] top_result ->similarity_score
+
+  # Clean up (remove references)
+  R embedding_memory.REMOVE_REF "docs" "language" "python" ->cleanup1
+  R embedding_memory.REMOVE_REF "docs" "language" "javascript" ->cleanup2
+  R embedding_memory.REMOVE_REF "docs" "language" "rust" ->cleanup3
+
+  J {"query": query, "best_match": best_match_id, "score": similarity_score, "all_results": results}

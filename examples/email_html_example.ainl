@@ -1,0 +1,30 @@
+# HTML email example
+# Sends an email with HTML content and plain text fallback
+#
+# Prerequisites:
+# - Set EMAIL_USERNAME and EMAIL_PASSWORD environment variables
+# - Add 'email' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/email_html_example.ainl --strict
+# Run:      ainl run examples/email_html_example.ainl
+
+S app core noop
+
+L_main:
+  # Create HTML and plain text versions of the email
+  S plain_text "Hello!\n\nThis is a formatted email with:\n- Bold text\n- Links\n- Colors\n\nBest regards"
+
+  S html_content "<html><body><h1>Hello!</h1><p>This is a <strong>formatted email</strong> with:</p><ul><li>Bold text</li><li><a href='https://example.com'>Links</a></li><li><span style='color: blue;'>Colors</span></li></ul><p>Best regards</p></body></html>"
+
+  # Create body dict with both HTML and plain text
+  # Email clients will display HTML if supported, otherwise fall back to plain text
+  R core.SET_MULTI ["text", "html"] [plain_text, html_content] {} ->body_dict
+
+  # Send email with HTML content
+  # Args: to, subject, body_dict (dict with html and text keys)
+  R email.send "recipient@example.com" "Formatted Email Example" body_dict ->result
+
+  R core.GET ["status"] result ->status
+  R core.GET ["message_id"] result ->msg_id
+
+  J {"status": status, "message_id": msg_id, "format": "html"}

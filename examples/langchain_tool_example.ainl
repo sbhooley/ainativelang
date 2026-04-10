@@ -1,0 +1,58 @@
+# LangChain Tool Example
+# Demonstrates integration with LangChain tools
+#
+# Prerequisites:
+# - Install langchain: pip install langchain langchain-community
+# - Set LANGCHAIN_TOOL_PATH to a Python module with @tool decorated functions
+# - Add 'langchain_tool' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Example tool module (save as my_tools.py):
+# """
+# from langchain.tools import tool
+#
+# @tool
+# def calculate_area(width: float, height: float) -> float:
+#     '''Calculate the area of a rectangle.'''
+#     return width * height
+#
+# @tool
+# def reverse_string(text: str) -> str:
+#     '''Reverse the characters in a string.'''
+#     return text[::-1]
+# """
+#
+# Then: export LANGCHAIN_TOOL_PATH=my_tools
+#
+# Validate: ainl validate examples/langchain_tool_example.ainl --strict
+# Run:      ainl run examples/langchain_tool_example.ainl
+
+S app core noop
+
+L_main:
+  # Call a LangChain tool by name with arguments
+  S tool_name "calculate_area"
+  R core.SET_MULTI ["width", "height"] [10.5, 20.0] {} ->area_args
+  R langchain_tool.CALL tool_name area_args ->area_result
+
+  R core.GET ["result"] area_result ->area_value
+  R core.GET ["tool_name"] area_result ->tool_used
+
+  # Call another tool
+  S reverse_tool "reverse_string"
+  R core.SET_MULTI ["text"] ["Hello AINL!"] {} ->reverse_args
+  R langchain_tool.CALL reverse_tool reverse_args ->reverse_result
+
+  R core.GET ["result"] reverse_result ->reversed_text
+
+  J {
+    "area_calculation": {
+      "tool": tool_used,
+      "width": 10.5,
+      "height": 20.0,
+      "result": area_value
+    },
+    "string_reverse": {
+      "input": "Hello AINL!",
+      "output": reversed_text
+    }
+  }

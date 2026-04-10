@@ -1,0 +1,27 @@
+# Email draft example
+# Creates an email draft without sending it
+#
+# Prerequisites:
+# - Set EMAIL_USERNAME and EMAIL_PASSWORD environment variables
+# - Ensure your email provider has a "Drafts" folder (Gmail, Outlook, etc.)
+# - Add 'email' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/email_draft_example.ainl --strict
+# Run:      ainl run examples/email_draft_example.ainl
+
+S app core noop
+
+L_main:
+  # Create a draft email
+  # Args: to, subject, body
+  S draft_to "recipient@example.com"
+  S draft_subject "Project Update - DRAFT"
+  S draft_body "Hi,\n\nHere's the latest update on the project:\n\n[TODO: Add project details]\n\nBest regards"
+
+  R email.draft draft_to draft_subject draft_body ->draft_result
+
+  R core.GET ["status"] draft_result ->status
+  R core.GET ["draft_id"] draft_result ->draft_id
+  R core.GET ["folder"] draft_result ->folder
+
+  J {"status": status, "draft_id": draft_id, "folder": folder, "subject": draft_subject}

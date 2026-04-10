@@ -1,0 +1,63 @@
+# GitHub Adapter Example
+# Demonstrates GitHub API integration for repository and issue management
+#
+# Prerequisites:
+# - Set GITHUB_TOKEN=your_personal_access_token
+# - Token needs repo scope for private repos, public_repo for public
+# - Add 'github' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/github_example.ainl --strict
+# Run:      ainl run examples/github_example.ainl
+
+S app core noop
+
+L_main:
+  # Get repository information
+  S owner "sbhooley"
+  S repo "armaraos"
+  R github.get_repo owner repo ->repo_info
+
+  R core.GET ["name"] repo_info ->repo_name
+  R core.GET ["description"] repo_info ->repo_desc
+  R core.GET ["stars"] repo_info ->star_count
+  R core.GET ["open_issues"] repo_info ->issue_count
+
+  # List open issues
+  R github.list_issues owner repo "open" 5 ->issues
+  R core.LEN issues ->open_count
+
+  # Get first issue details
+  R core.GET [0] issues ->first_issue
+  R core.GET ["number"] first_issue ->issue_number
+  R core.GET ["title"] first_issue ->issue_title
+  R core.GET ["state"] first_issue ->issue_state
+
+  # Create a new issue (commented out - uncomment to actually create)
+  # S new_title "Test issue from AINL"
+  # S new_body "This issue was created by the AINL GitHub adapter as a test."
+  # R github.create_issue owner repo new_title new_body ->created
+  # R core.GET ["number"] created ->new_issue_number
+
+  # Get pull request information
+  R github.get_pr owner repo 1 ->pr_info
+  R core.GET ["title"] pr_info ->pr_title
+  R core.GET ["state"] pr_info ->pr_state
+
+  J {
+    "repository": {
+      "name": repo_name,
+      "description": repo_desc,
+      "stars": star_count,
+      "open_issues": issue_count
+    },
+    "first_issue": {
+      "number": issue_number,
+      "title": issue_title,
+      "state": issue_state
+    },
+    "pull_request_1": {
+      "title": pr_title,
+      "state": pr_state
+    },
+    "total_open_issues": open_count
+  }

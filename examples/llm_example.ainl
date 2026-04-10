@@ -1,0 +1,54 @@
+# LLM Adapter Example
+# Demonstrates calling LLM providers (OpenAI, Anthropic, etc.)
+#
+# Prerequisites:
+# - Set AINL_LLM_PROVIDER=openai or anthropic
+# - Set API key: OPENAI_API_KEY or ANTHROPIC_API_KEY
+# - Set model: AINL_LLM_MODEL (default: gpt-4 or claude-3-5-sonnet-20241022)
+# - Add 'llm' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/llm_example.ainl --strict
+# Run:      ainl run examples/llm_example.ainl
+
+S app core noop
+
+L_main:
+  # Simple text generation
+  S prompt "Explain what AINL (AI Native Language) is in one sentence."
+  R llm.GENERATE prompt 100 0.7 ->generation
+
+  R core.GET ["text"] generation ->generated_text
+  R core.GET ["model"] generation ->model_used
+  R core.GET ["tokens"] generation ->token_count
+
+  # Chat with message history
+  R core.SET_MULTI ["role", "content"] ["user", "What is the capital of France?"] {} ->msg1
+  R core.SET_MULTI ["role", "content"] ["assistant", "The capital of France is Paris."] {} ->msg2
+  R core.SET_MULTI ["role", "content"] ["user", "What is its population?"] {} ->msg3
+
+  R core.LIST msg1 msg2 msg3 ->messages
+  R llm.CHAT messages 150 0.5 ->chat_response
+
+  R core.GET ["message", "content"] chat_response ->chat_reply
+  R core.GET ["finish_reason"] chat_response ->finish_reason
+
+  # Structured output example (JSON mode)
+  S json_prompt "List 3 programming languages and their primary use cases. Return as JSON with keys: name, use_case"
+  R llm.GENERATE json_prompt 200 0.3 ->json_response
+
+  R core.GET ["text"] json_response ->json_text
+
+  J {
+    "simple_generation": {
+      "prompt": prompt,
+      "response": generated_text,
+      "model": model_used,
+      "tokens": token_count
+    },
+    "chat_conversation": {
+      "question": "What is its population?",
+      "response": chat_reply,
+      "finish_reason": finish_reason
+    },
+    "json_output": json_text
+  }

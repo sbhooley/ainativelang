@@ -1,0 +1,22 @@
+# Email read example - reads unread emails from inbox
+#
+# Prerequisites:
+# - Set EMAIL_USERNAME and EMAIL_PASSWORD environment variables
+# - Set EMAIL_IMAP_HOST and EMAIL_IMAP_PORT if not using Gmail defaults
+# - Add 'email' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/email_read_example.ainl --strict
+# Run:      ainl run examples/email_read_example.ainl
+
+S app core noop
+
+L_main:
+  # Read unread emails from inbox
+  # Args: folder (optional), limit (optional), unread_only (optional)
+  R email.read "INBOX" 5 true ->emails
+
+  # Get the count of emails
+  R core.LEN emails ->count
+
+  # Output summary
+  J {"email_count": count, "emails": emails}

@@ -1,0 +1,70 @@
+# API Adapter Example
+# Demonstrates generic REST API calls with the api adapter
+#
+# Prerequisites:
+# - Add 'api' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+# - For authenticated APIs, set AINL_API_TOKEN environment variable
+#
+# Validate: ainl validate examples/api_example.ainl --strict
+# Run:      ainl run examples/api_example.ainl
+
+S app core noop
+
+L_main:
+  # Simple GET request to a public API
+  S api_url "https://api.github.com/repos/sbhooley/armaraos"
+  R core.SET_MULTI ["Accept"] ["application/vnd.github.v3+json"] {} ->headers
+
+  R api.get api_url headers ->response
+  R core.GET ["status"] response ->status_code
+  R core.GET ["body"] response ->body
+  R core.GET ["name"] body ->repo_name
+  R core.GET ["stargazers_count"] body ->stars
+
+  # Generic call with custom method
+  S endpoint "https://httpbin.org/get"
+  R core.SET_MULTI ["User-Agent"] ["AINL-API-Adapter/1.0"] {} ->custom_headers
+  R api.call "GET" endpoint custom_headers "{}" ->httpbin_response
+
+  R core.GET ["body", "headers", "User-Agent"] httpbin_response ->user_agent_echo
+
+  # POST request example (to httpbin echo service)
+  S post_url "https://httpbin.org/post"
+  R core.SET_MULTI ["Content-Type"] ["application/json"] {} ->post_headers
+  R core.SET_MULTI ["name", "value"] ["test", 123] {} ->post_data
+
+  R api.post post_url post_headers post_data ->post_response
+  R core.GET ["status"] post_response ->post_status
+  R core.GET ["body", "json"] post_response ->echoed_data
+
+  # PUT request example
+  S put_url "https://httpbin.org/put"
+  R core.SET_MULTI ["updated"] [true] {} ->put_data
+  R api.put put_url post_headers put_data ->put_response
+  R core.GET ["status"] put_response ->put_status
+
+  # DELETE request example
+  S delete_url "https://httpbin.org/delete"
+  R api.delete delete_url headers ->delete_response
+  R core.GET ["status"] delete_response ->delete_status
+
+  J {
+    "github_api": {
+      "repo": repo_name,
+      "stars": stars,
+      "status": status_code
+    },
+    "generic_call": {
+      "user_agent": user_agent_echo
+    },
+    "post_request": {
+      "status": post_status,
+      "echoed": echoed_data
+    },
+    "put_request": {
+      "status": put_status
+    },
+    "delete_request": {
+      "status": delete_status
+    }
+  }

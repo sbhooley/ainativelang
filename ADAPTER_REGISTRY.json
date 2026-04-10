@@ -608,16 +608,105 @@
       ]
     },
     "email": {
-      "description": "OpenClaw email check integration (only G target)",
+      "description": "Email integration supporting IMAP/SMTP and MCP providers (Gmail, Outlook, etc.)",
       "targets": {
+        "send": {
+          "args": [
+            "to",
+            "subject",
+            "body",
+            "cc?",
+            "bcc?",
+            "provider?",
+            "attachments?"
+          ],
+          "returns": "{status, provider, method, message_id, attachments}",
+          "network": true,
+          "side_effect": "sends email via SMTP or MCP with optional attachments",
+          "notes": [
+            "body can be string (plain text) or dict {html, text} for HTML email",
+            "attachments can be list of file paths or list of {path, filename, content, content_type} dicts",
+            "HTML emails use multipart/alternative with plain text fallback"
+          ]
+        },
+        "read": {
+          "args": [
+            "folder?",
+            "limit?",
+            "unread_only?",
+            "from?",
+            "subject_contains?",
+            "include_attachments?"
+          ],
+          "returns": "[{id, from, to, subject, body, body_html?, timestamp, unread, message_id, in_reply_to?, references?, attachments?}]",
+          "network": true,
+          "side_effect": "reads emails via IMAP or MCP",
+          "notes": [
+            "Returns message_id, in_reply_to, references for threading",
+            "When include_attachments=true, attachments array contains {filename, content_type, size, content} (base64)",
+            "body_html included when email has HTML version"
+          ]
+        },
+        "search": {
+          "args": [
+            "query",
+            "limit?",
+            "folder?",
+            "provider?"
+          ],
+          "returns": "[{id, from, to, subject, snippet, timestamp, message_id}]",
+          "network": true,
+          "side_effect": "searches emails via provider-specific query syntax"
+        },
+        "reply": {
+          "args": [
+            "message_id",
+            "body",
+            "reply_all?",
+            "attachments?"
+          ],
+          "returns": "{status, to, subject, message_id, in_reply_to, reply_all}",
+          "network": true,
+          "side_effect": "replies to email with proper threading headers (In-Reply-To, References)",
+          "notes": [
+            "Fetches original message to extract headers and recipients",
+            "Sets In-Reply-To and References for proper email threading",
+            "reply_all includes all original recipients except sender",
+            "body can be string or {html, text} dict"
+          ]
+        },
+        "draft": {
+          "args": [
+            "to",
+            "subject",
+            "body",
+            "draft_id?",
+            "provider?"
+          ],
+          "returns": "{draft_id, status}",
+          "network": true,
+          "side_effect": "creates or updates email draft"
+        },
         "G": {
           "args": [],
           "returns": "[email]",
           "network": false,
-          "side_effect": "reads openclaw mailbox"
+          "side_effect": "reads openclaw mailbox (legacy)"
         }
       },
-      "returns": "List of unread email objects with fields: id, from, subject, body, ts"
+      "notes": [
+        "✅ FULLY IMPLEMENTED: Send, read, search, reply (with threading), and draft management",
+        "✅ HTML email support: Use dict {html, text} as body for multipart/alternative format",
+        "✅ Attachments: Send/receive any file type with automatic MIME type detection",
+        "✅ Email threading: Reply preserves In-Reply-To and References headers for conversation continuity",
+        "✅ Draft management: Save drafts to IMAP Drafts folder, update by draft_id",
+        "Supports IMAP/SMTP (any provider) and MCP integrations (Gmail, Outlook)",
+        "Provider parameter auto-detects best available backend",
+        "Search query syntax varies by provider (Gmail: 'from:user@example.com', IMAP: 'SUBJECT \"message\"')",
+        "Authentication: Use app-specific passwords for Gmail (not main account password)",
+        "Security: All connections use TLS/SSL encryption (STARTTLS for SMTP, SSL for IMAP)",
+        "Legacy G target maintained for OpenClaw backward compatibility"
+      ]
     },
     "calendar": {
       "description": "OpenClaw calendar integration (only G target)",
@@ -1145,6 +1234,398 @@
         "HERMES_FALLBACK feed_id_hex (64 hex chars): Hermes /v2/updates/price/latest; optional AINL_PYTH_HERMES_URL base override.",
         "DERIVE_PDA seeds_json (JSON array of UTF-8 strings) + program_id: Pubkey.find_program_address; dry-run returns mock address.",
         "INVOKE optional trailing priority_fee_microlamports: micro-lamports per compute unit (SetComputeUnitPrice), not whole-lamport tips."
+      ]
+    },
+    "embedding_memory": {
+      "description": "Semantic search with vector embeddings - sidecar index linking to memory adapter records",
+      "targets": {
+        "UPSERT_REF": {
+          "args": ["namespace", "kind", "record_id", "text"],
+          "returns": "{ok, embedded}",
+          "network": false,
+          "side_effect": "writes embedding to SQLite DB"
+        },
+        "SEARCH": {
+          "args": ["query", "limit?"],
+          "returns": "[{memory_namespace, memory_kind, memory_record_id, score}]",
+          "network": false,
+          "side_effect": "reads embeddings from DB"
+        },
+        "REMOVE_REF": {
+          "args": ["namespace", "kind", "record_id"],
+          "returns": "{ok, removed}",
+          "network": false,
+          "side_effect": "deletes embedding from DB"
+        },
+        "INDEX": {
+          "args": ["namespace", "kind", "record_id", "text"],
+          "returns": "{ok, embedded}",
+          "network": false,
+          "side_effect": "alias for UPSERT_REF"
+        },
+        "QUERY": {
+          "args": ["query", "limit?"],
+          "returns": "[{memory_namespace, memory_kind, memory_record_id, score}]",
+          "network": false,
+          "side_effect": "alias for SEARCH"
+        }
+      },
+      "config": {
+        "AINL_EMBEDDING_MEMORY_DB": "/tmp/ainl_embedding_memory.sqlite3 (default)",
+        "AINL_EMBEDDING_MODE": "stub (default) | local | openai",
+        "OPENAI_API_KEY": "Required for openai mode",
+        "AINL_EMBEDDING_MODEL": "text-embedding-3-small (default for openai mode)"
+      },
+      "notes": [
+        "Sidecar semantic index: embeddings link to memory adapter (namespace, kind, id) refs",
+        "Memory adapter remains source of truth for actual data",
+        "Modes: stub=hash vectors (no network), local=hash-based (better than stub), openai=real embeddings",
+        "Returns top-k results by cosine similarity score",
+        "Use with memory adapter for RAG: index with UPSERT_REF, search with SEARCH/QUERY"
+      ]
+    },
+    "code_context": {
+      "description": "Code indexing with tiered chunking for LLM context (inspired by ctxzip)",
+      "targets": {
+        "INDEX": {
+          "args": ["path"],
+          "returns": "{ok, chunks, bytes, tier0_tokens}",
+          "network": false,
+          "side_effect": "indexes codebase to .ainl_code_context.json"
+        },
+        "QUERY_CONTEXT": {
+          "args": ["query", "max_tier?", "token_budget?"],
+          "returns": "{tier0, tier1?, tier2?, tokens_used}",
+          "network": false,
+          "side_effect": "reads from code index"
+        },
+        "GET_FULL_SOURCE": {
+          "args": ["chunk_id"],
+          "returns": "{source_code, path, start_line, end_line}",
+          "network": false,
+          "side_effect": "reads full source for chunk"
+        },
+        "GET_DEPENDENCIES": {
+          "args": ["chunk_id"],
+          "returns": "[dependency_chunk_ids]",
+          "network": false,
+          "side_effect": "returns import graph dependencies"
+        },
+        "GET_IMPACT": {
+          "args": ["chunk_id"],
+          "returns": "[impacted_chunk_ids]",
+          "network": false,
+          "side_effect": "returns reverse dependencies (what imports this)"
+        },
+        "COMPRESS_CONTEXT": {
+          "args": ["query", "token_budget", "max_tier?"],
+          "returns": "{compressed_context, chunks_selected, tokens_used}",
+          "network": false,
+          "side_effect": "ranked compression with TF-IDF or embeddings"
+        },
+        "GET_SKELETON": {
+          "args": [],
+          "returns": "{tier0_signatures}",
+          "network": false,
+          "side_effect": "returns compact directory-style view"
+        },
+        "STATS": {
+          "args": [],
+          "returns": "{chunks, files, total_bytes, index_size}",
+          "network": false,
+          "side_effect": "returns index statistics"
+        }
+      },
+      "config": {
+        "AINL_CODE_CONTEXT_STORE": ".ainl_code_context.json (default)"
+      },
+      "notes": [
+        "Tiered chunking: Tier 0 (signatures), Tier 1 (signatures+summaries), Tier 2 (full source)",
+        "PageRank-style importance scoring for chunks",
+        "Token-budget packing with greedy selection",
+        "COMPRESS_CONTEXT uses embedding_memory adapter for semantic ranking if available, else TF-IDF",
+        "Import graph dependencies and reverse impact analysis",
+        "Inspired by BradyD2003/ctxzip and chrismicah/forgeindex"
+      ]
+    },
+    "langchain_tool": {
+      "description": "Invoke LangChain-compatible tools from AINL programs",
+      "targets": {
+        "CALL": {
+          "args": ["tool_name", "...tool_args"],
+          "returns": "tool_result",
+          "network": false,
+          "side_effect": "invokes registered LangChain tool"
+        }
+      },
+      "notes": [
+        "Dynamic tool registration via Python: register_langchain_tool(name, tool)",
+        "Tool name can also be used as verb: R langchain_tool.my_tool \"arg\" ->result",
+        "Requires langchain-core package (optional dependency)",
+        "Built-in demo stub: my_search_tool",
+        "Enable with --enable-adapter langchain_tool"
+      ]
+    },
+    "llm": {
+      "description": "LLM provider bridge - unified interface to OpenRouter, Anthropic, OpenAI, Ollama, Cohere",
+      "targets": {
+        "GENERATE": {
+          "args": ["prompt", "max_tokens?", "temperature?", "model?"],
+          "returns": "{text, usage{prompt_tokens, completion_tokens, total_cost_usd}}",
+          "network": true,
+          "side_effect": "calls LLM API, tracks cost"
+        },
+        "CHAT": {
+          "args": ["messages", "max_tokens?", "temperature?", "model?"],
+          "returns": "{text, usage{prompt_tokens, completion_tokens, total_cost_usd}}",
+          "network": true,
+          "side_effect": "calls LLM API, tracks cost"
+        }
+      },
+      "notes": [
+        "Unified LLM interface with fallback chains",
+        "Cost tracking via intelligence.monitor.cost_tracker",
+        "Providers: OpenRouter, Anthropic, OpenAI, Ollama (local), Cohere",
+        "Circuit breaker for failed providers",
+        "Configure via llm.fallback_chain in config"
+      ]
+    },
+    "ext": {
+      "description": "Extensions adapter - echo passthrough and optional subprocess execution",
+      "targets": {
+        "echo": {
+          "args": ["value"],
+          "returns": "value",
+          "network": false,
+          "pure": true
+        },
+        "EXEC": {
+          "args": ["command", "...args"],
+          "returns": "{stdout, stderr, returncode, duration_ms}",
+          "network": false,
+          "side_effect": "executes subprocess (requires AINL_EXT_ALLOW_EXEC=1)"
+        },
+        "RUN": {
+          "args": ["command", "...args"],
+          "returns": "{stdout, stderr, returncode, duration_ms}",
+          "network": false,
+          "side_effect": "alias for EXEC"
+        }
+      },
+      "config": {
+        "AINL_EXT_ALLOW_EXEC": "Must be truthy (1/true/yes) for EXEC/RUN",
+        "AINL_EXT_EXEC_TIMEOUT": "120 seconds (default)"
+      },
+      "notes": [
+        "Echo returns args[0] if present, else target (legacy test compatibility)",
+        "EXEC/RUN disabled by default for security - requires explicit opt-in",
+        "Subprocess timeout configurable via environment"
+      ]
+    },
+    "web": {
+      "description": "Web scraping and content fetching (OpenClaw integration)",
+      "targets": {
+        "G": {
+          "args": [],
+          "returns": "[{url, title, snippet}]",
+          "network": true,
+          "side_effect": "fetches web content from OpenClaw service"
+        }
+      },
+      "notes": [
+        "OpenClaw-specific web search integration",
+        "Returns web content for AI processing",
+        "Requires OpenClaw backend service"
+      ]
+    },
+    "tools": {
+      "description": "Tool invocation bridge for external tool systems",
+      "targets": {
+        "invoke": {
+          "args": ["tool_name", "tool_args"],
+          "returns": "tool_result",
+          "network": false,
+          "side_effect": "bridges to external tool registry"
+        }
+      },
+      "notes": [
+        "Bridge adapter for tool execution systems",
+        "Integrates with runtime tool registry",
+        "Used by executor bridge for tool calls"
+      ]
+    },
+    "bridge": {
+      "description": "Executor bridge for cross-runtime communication",
+      "targets": {
+        "call": {
+          "args": ["target", "args"],
+          "returns": "result",
+          "network": false,
+          "side_effect": "bridges to executor runtime"
+        }
+      },
+      "notes": [
+        "Low-level bridge for runtime interop",
+        "Used internally by executor systems",
+        "Not typically called directly from AINL programs"
+      ]
+    },
+    "api": {
+      "description": "Generic API adapter for external service calls",
+      "targets": {
+        "call": {
+          "args": ["endpoint", "method?", "payload?", "headers?"],
+          "returns": "{status, body, headers}",
+          "network": true,
+          "side_effect": "makes HTTP API call"
+        },
+        "get": {
+          "args": ["endpoint", "headers?"],
+          "returns": "{status, body}",
+          "network": true
+        },
+        "post": {
+          "args": ["endpoint", "payload", "headers?"],
+          "returns": "{status, body}",
+          "network": true
+        },
+        "put": {
+          "args": ["endpoint", "payload", "headers?"],
+          "returns": "{status, body}",
+          "network": true
+        },
+        "delete": {
+          "args": ["endpoint", "headers?"],
+          "returns": "{status, body}",
+          "network": true
+        }
+      },
+      "notes": [
+        "Generic HTTP API wrapper",
+        "Use http adapter for simple requests",
+        "api adapter for structured API calls with authentication"
+      ]
+    },
+    "auth": {
+      "description": "Authentication and session management adapter",
+      "targets": {
+        "login": {
+          "args": ["username", "password", "provider?"],
+          "returns": "{ok, token, expires_at}",
+          "network": true,
+          "side_effect": "authenticates user, stores session"
+        },
+        "logout": {
+          "args": ["token"],
+          "returns": "{ok}",
+          "network": true,
+          "side_effect": "invalidates session token"
+        },
+        "verify": {
+          "args": ["token"],
+          "returns": "{valid, user_id?, expires_at?}",
+          "network": true
+        }
+      },
+      "notes": [
+        "Generic authentication adapter",
+        "Provider-specific implementations available",
+        "Session token management",
+        "Use for multi-step authenticated workflows"
+      ]
+    },
+    "txn": {
+      "description": "Transaction management adapter for multi-step operations",
+      "targets": {
+        "begin": {
+          "args": ["context?"],
+          "returns": "{txn_id}",
+          "network": false,
+          "side_effect": "starts transaction context"
+        },
+        "commit": {
+          "args": ["txn_id"],
+          "returns": "{ok, committed_at}",
+          "network": false,
+          "side_effect": "commits transaction"
+        },
+        "rollback": {
+          "args": ["txn_id"],
+          "returns": "{ok, rolled_back_at}",
+          "network": false,
+          "side_effect": "rolls back transaction"
+        }
+      },
+      "notes": [
+        "Transaction coordination for multi-step operations",
+        "Use with database adapters for ACID guarantees",
+        "Tracks transaction state across adapter calls"
+      ]
+    },
+    "github": {
+      "description": "GitHub API integration for repository operations",
+      "targets": {
+        "get_repo": {
+          "args": ["owner", "repo"],
+          "returns": "{name, description, stars, forks, url}",
+          "network": true
+        },
+        "list_issues": {
+          "args": ["owner", "repo", "state?", "limit?"],
+          "returns": "[{number, title, state, created_at, user}]",
+          "network": true
+        },
+        "create_issue": {
+          "args": ["owner", "repo", "title", "body?", "labels?"],
+          "returns": "{number, url, created_at}",
+          "network": true,
+          "side_effect": "creates GitHub issue"
+        },
+        "get_pr": {
+          "args": ["owner", "repo", "number"],
+          "returns": "{title, state, merged, created_at, user}",
+          "network": true
+        }
+      },
+      "config": {
+        "GITHUB_TOKEN": "GitHub personal access token"
+      },
+      "notes": [
+        "GitHub REST API v3 integration",
+        "Requires GITHUB_TOKEN for authenticated requests",
+        "Rate limiting applies (5000 requests/hour authenticated)"
+      ]
+    },
+    "crm": {
+      "description": "CRM operations for customer relationship management",
+      "targets": {
+        "create_contact": {
+          "args": ["name", "email", "metadata?"],
+          "returns": "{contact_id, created_at}",
+          "network": false,
+          "side_effect": "creates CRM contact record"
+        },
+        "get_contact": {
+          "args": ["contact_id"],
+          "returns": "{name, email, metadata, created_at, updated_at}",
+          "network": false
+        },
+        "update_contact": {
+          "args": ["contact_id", "updates"],
+          "returns": "{ok, updated_at}",
+          "network": false,
+          "side_effect": "updates CRM contact"
+        },
+        "list_contacts": {
+          "args": ["filters?", "limit?"],
+          "returns": "[{contact_id, name, email}]",
+          "network": false
+        }
+      },
+      "notes": [
+        "Generic CRM adapter",
+        "Stores data in local database (crm_db.py)",
+        "Extensible for external CRM integrations (Salesforce, HubSpot, etc.)"
       ]
     }
   },

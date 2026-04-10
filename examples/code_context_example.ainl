@@ -1,0 +1,46 @@
+# Code Context Example
+# Demonstrates tiered code chunking for semantic code analysis
+#
+# Prerequisites:
+# - Add 'code_context' and 'fs' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+# - Ensure you're in a codebase directory with source files
+#
+# Validate: ainl validate examples/code_context_example.ainl --strict
+# Run:      ainl run examples/code_context_example.ainl
+
+S app core noop
+
+L_main:
+  # Index a source file (creates Tier 0/1/2 chunks)
+  S source_file "adapters/email.py"
+  R code_context.INDEX source_file ->index_result
+
+  R core.GET ["chunks_created"] index_result ->chunk_count
+  R core.GET ["tiers"] index_result ->tier_info
+
+  # Query context for a specific concept
+  S query "How does email attachment encoding work?"
+  R code_context.QUERY_CONTEXT query 5 ->context_chunks
+
+  # Get full source if needed
+  R code_context.GET_FULL_SOURCE source_file ->full_source
+  R core.GET ["lines"] full_source ->total_lines
+
+  # Compress context for LLM input (combine related chunks)
+  R code_context.COMPRESS_CONTEXT context_chunks 2000 ->compressed
+  R core.GET ["text"] compressed ->compressed_text
+  R core.GET ["token_count"] compressed ->tokens
+
+  # Get chunk by ID
+  R core.GET [0, "chunk_id"] context_chunks ->first_chunk_id
+  R code_context.GET_CHUNK first_chunk_id ->chunk_detail
+
+  J {
+    "indexed_file": source_file,
+    "total_chunks": chunk_count,
+    "tiers": tier_info,
+    "query": query,
+    "context_chunks": chunk_count,
+    "compressed_tokens": tokens,
+    "full_source_lines": total_lines
+  }

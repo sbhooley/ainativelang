@@ -1,0 +1,23 @@
+# Email send example - sends a notification email
+#
+# Prerequisites:
+# - Set EMAIL_USERNAME and EMAIL_PASSWORD environment variables
+# - For Gmail, use app-specific password: https://myaccount.google.com/apppasswords
+# - Add 'email' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/email_send_example.ainl --strict
+# Run:      ainl run examples/email_send_example.ainl
+
+S app core noop
+
+L_main:
+  # Send a simple email
+  # Args: to, subject, body
+  R email.send "recipient@example.com" "Test Email from AINL" "Hello! This is a test email sent from an AINL program." ->res
+
+  # Check status
+  R core.GET ["status"] res ->status
+  R core.GET ["provider"] res ->provider
+
+  # Output result
+  J {"status": status, "provider": provider, "message": "Email sent successfully"}

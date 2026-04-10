@@ -86,3 +86,68 @@ Canonical guidance for small-model reliability:
 
 - Prefer uppercase adapter verbs in strict-valid examples (e.g., `core.ADD`, `http.GET`).
 - Prefer explicit `Call ... ->out` return binding over compatibility fallback (`_call_result`) in canonical examples.
+
+## Adapter Examples
+
+Comprehensive examples for all 42 AINL adapters. See **`ADAPTER_CATALOG.md`** for the complete adapter reference.
+
+### Email Adapter (8 examples)
+
+Full-featured email integration with IMAP/SMTP, HTML, attachments, threading, and drafts:
+
+- `email_send_example.ainl` - Basic email sending
+- `email_read_example.ainl` - Read inbox with filters
+- `email_autoresponder.ainl` - Auto-responder pattern
+- `email_reply_example.ainl` - Reply with threading (In-Reply-To headers)
+- `email_draft_example.ainl` - Draft creation and management
+- `email_html_example.ainl` - HTML email with plain text fallback
+- `email_attachment_example.ainl` - Send files as attachments
+- `EMAIL_ADAPTER_README.md` - Complete email adapter documentation
+
+**Features:** ✅ HTML email, ✅ Attachments, ✅ Threading, ✅ Drafts, ✅ Search
+
+### AI & Semantic Adapters (4 examples)
+
+- `embedding_memory_example.ainl` - Vector embeddings for RAG (UPSERT_REF, SEARCH)
+- `code_context_example.ainl` - Tiered code chunking (INDEX, QUERY_CONTEXT)
+- `langchain_tool_example.ainl` - LangChain tool integration
+- `llm_example.ainl` - LLM generation and chat (OpenAI, Anthropic)
+
+### API & Integration (2 examples)
+
+- `github_example.ainl` - GitHub API (repos, issues, PRs)
+- `api_example.ainl` - Generic REST API wrapper (GET, POST, PUT, DELETE)
+
+### Configuration
+
+Most adapter examples require environment variables:
+
+```bash
+# Email
+export EMAIL_USERNAME=your.email@gmail.com
+export EMAIL_PASSWORD=app_specific_password
+
+# LLM
+export AINL_LLM_PROVIDER=openai
+export OPENAI_API_KEY=sk-...
+
+# GitHub
+export GITHUB_TOKEN=ghp_...
+
+# Adapter Security
+export AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+```
+
+See individual example headers for specific requirements.
+
+### Quick Start
+
+```bash
+# Validate an example
+ainl validate examples/email_send_example.ainl --strict
+
+# Run an example (may have side effects!)
+ainl run examples/email_send_example.ainl
+```
+
+For the complete list of all 42 adapters with targets, configuration, and usage patterns, see **`ADAPTER_CATALOG.md`**.

@@ -1,0 +1,36 @@
+# Email reply example with threading
+# Demonstrates replying to an email with proper threading headers
+#
+# Prerequisites:
+# - Set EMAIL_USERNAME and EMAIL_PASSWORD environment variables
+# - Add 'email' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/email_reply_example.ainl --strict
+# Run:      ainl run examples/email_reply_example.ainl
+
+S app core noop
+
+L_main:
+  # Read the most recent email
+  R email.read "INBOX" 1 true ->emails
+  R core.LEN emails ->count
+
+  if count > 0:
+    # Get the first email's message ID
+    R core.GET [0] emails ->first_email
+    R core.GET ["message_id"] first_email ->msg_id
+    R core.GET ["from"] first_email ->sender
+    R core.GET ["subject"] first_email ->subject
+
+    # Reply to the email
+    # Args: message_id, body, reply_all (false = reply to sender only)
+    S reply_body "Thank you for your email. I've received your message and will respond shortly."
+    R email.reply msg_id reply_body false ->reply_result
+
+    R core.GET ["status"] reply_result ->status
+    R core.GET ["in_reply_to"] reply_result ->replied_to
+
+    J {"status": status, "replied_to": replied_to, "from_original": sender}
+
+  if count == 0:
+    J {"status": "no_emails", "message": "No emails to reply to"}

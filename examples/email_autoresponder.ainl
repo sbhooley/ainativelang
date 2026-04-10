@@ -1,0 +1,41 @@
+# Email auto-responder example
+# Reads unread emails and sends an automatic acknowledgment
+#
+# Prerequisites:
+# - Set EMAIL_USERNAME, EMAIL_PASSWORD
+# - Set EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, EMAIL_IMAP_HOST, EMAIL_IMAP_PORT if needed
+# - Add 'email' to AINL_HOST_ADAPTER_ALLOWLIST or use AINL_ALLOW_IR_DECLARED_ADAPTERS=1
+#
+# Validate: ainl validate examples/email_autoresponder.ainl --strict
+# Run:      ainl run examples/email_autoresponder.ainl
+
+S app core noop
+
+L_main:
+  # Read unread emails
+  R email.read "INBOX" 10 true ->emails
+  R core.LEN emails ->count
+
+  # If we have unread emails, process them
+  R core.GT count 0 ->has_emails
+
+  if has_emails:
+    # Get the first email's details
+    R core.GET [0] emails ->first_email
+    R core.GET ["from"] first_email ->sender
+    R core.GET ["subject"] first_email ->original_subject
+
+    # Create auto-response subject
+    R core.concat "Re: " original_subject ->reply_subject
+
+    # Create auto-response body
+    S auto_body "Thank you for your email. This is an automated acknowledgment. We will respond within 24 hours."
+
+    # Send auto-response
+    R email.send sender reply_subject auto_body ->send_result
+    R core.GET ["status"] send_result ->send_status
+
+    J {"processed": count, "auto_response_sent": send_status, "to": sender}
+
+  if !has_emails:
+    J {"processed": 0, "message": "No unread emails to process"}
