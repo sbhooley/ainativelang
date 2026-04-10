@@ -1,5 +1,13 @@
 # Release notes
 
+## AINL v1.5.0 — Minor release + documentation alignment (2026-04-10)
+
+**PyPI / runtime:** **`ainativelang` 1.5.0** — **`RUNTIME_VERSION` `1.5.0`**.
+
+- **Release hygiene:** **`RUNTIME_VERSION`**, **`CITATION.cff`**, and **`tooling/bot_bootstrap.json`** aligned with **`pyproject.toml`** (package and runtime metadata now match).
+- **Docs:** hub pages, OpenClaw integration pointers, contributor guides, operations indexes, MCP research contract, and whitepaper draft updated so “current PyPI / current release” references match **v1.5.0**.
+- See **`docs/CHANGELOG.md`** § v1.5.0.
+
 ## AINL v1.4.6 — Samples + OpenSpace harness (2026-04-11)
 
 **PyPI / runtime:** **`ainativelang` 1.4.6** — **`RUNTIME_VERSION` `1.4.6`**.

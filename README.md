@@ -98,6 +98,11 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.5.0
+
+- **Minor release:** **`RUNTIME_VERSION`**, **`CITATION.cff`**, and **`tooling/bot_bootstrap.json`** aligned with PyPI **`ainativelang` 1.5.0** (see **`docs/CHANGELOG.md`** § v1.5.0).
+- **Docs:** hub pages, OpenClaw integration pointers, contributor guides, and whitepaper draft refreshed so “current release” references match **v1.5.0**.
+
 ## New in v1.4.6
 
 - **Repo completeness**: `apollo-x-bot/api-cost-monitor.ainl` (promoter / API-cost workflow sample), `demo/test_openspace_http.ainl` (experimental OpenSpace HTTP probe), and `run_openspace_test.py` (portable dev harness for `demo/test_openspace_mcp.ainl` — no hard-coded workspace paths).
@@ -872,7 +877,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.4.2**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.5.0**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
@@ -929,7 +934,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.4.6** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.5.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

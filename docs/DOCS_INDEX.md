@@ -29,7 +29,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
 - **OpenClaw quickstart (5 min: ainl install openclaw, ainl status, ainl doctor --ainl):** `docs/QUICKSTART_OPENCLAW.md` — `tooling/bot_bootstrap.json` → **`openclaw_quickstart`**
 - **OpenClaw + AINL gold standard (install / upgrade, agent checklist):** `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md` — also `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`**
-- **OpenClaw host briefing — AINL v1.2.8–v1.4.0 (what ships vs host obligations; current PyPI v1.4.0):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
+- **OpenClaw host briefing — AINL v1.2.8–v1.5.0 (what ships vs host obligations; current PyPI v1.5.0):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
 - **Token / usage observability (gateway, markdown, rolling budget, caps, embedding pilot):** `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
 - **Token caps (staging order, intelligence hydrate env):** `docs/operations/TOKEN_CAPS_STAGING.md`
 - **Embedding retrieval pilot:** `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`

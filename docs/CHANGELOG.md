@@ -4,6 +4,11 @@
 
 <!-- Next release changes go here -->
 
+## v1.5.0 (April 10, 2026) — Minor release + documentation alignment
+
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.5.0** (minor after **1.4.6**).
+- **docs**: repository-wide refresh — docs hub (**`docs/README.md`**), **`docs/DOCS_INDEX.md`**, **`docs/overview/README.md`**, **`docs/OPENCLAW_INTEGRATION.md`**, **`docs/CONTRIBUTING.md`**, root **`CONTRIBUTING.md`**, **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** / **`docs/operations/README.md`** / **`docs/operations/HOST_PACK_OPENCLAW.md`** / **`docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`** / **`docs/operations/OPENCLAW_REQUESTS_2_6_MAPPING.md`**, **`docs/competitive/README.md`** / **`docs/competitive/OVERVIEW.md`**, **`docs/openclaw/TOKEN_AWARE_STARTUP_CONTEXT.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/upstream/OPENCLAW_ISSUE_DRAFT_bootstrap_flag.md`**, **`docs/operations/MCP_RESEARCH_CONTRACT.md`**, **`docs/RELEASING.md`**, **`docs/QUICKSTART_OPENCLAW.md`**, **`docs/getting_started/HOST_MCP_INTEGRATIONS.md`**, **`docs/ZEROCLAW_INTEGRATION.md`**, **`docs/HERMES_INTEGRATION.md`**, **`docs/integrations/hermes-agent.md`**, **`docs/solana_quickstart.md`**, **`README.md`**, **`AGENTS.md`**, **`WHITEPAPERDRAFT.md`** — “current release” / PyPI pointers (and JSON samples where applicable) aligned to **1.5.0**; **`skills/openclaw/README.md`** / **`SKILL.md`**, **`skills/ainl/README.md`** / **`SKILL.md`**, **`skills/hermes/README.md`** / **`SKILL.md`** — PyPI / host-briefing lines aligned to **v1.5.0**.
+
 ## v1.4.6 (April 11, 2026) — Workspace samples + OpenSpace dev harness
 
 - **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.4.6**.
