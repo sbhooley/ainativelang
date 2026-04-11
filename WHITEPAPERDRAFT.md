@@ -5,7 +5,7 @@ Graph-based agent orchestration, canonical IR, and compile-once / run-many execu
 **Version:** 1.5.0
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `cli/main.py` (including **`ainl serve`** REST: validate / compile / run / health), optional FastAPI runner (`scripts/runtime_runner_service.py` for richer operator endpoints)
-**Reference ecosystem:** OpenClaw / NemoClaw / Hermes Agent / ArmaraOS host integrations, canonical strict validation, multi-target emitters (including Solana clients and Hermes skill bundles), sandboxed operator deployments
+**Reference ecosystem:** OpenClaw / NemoClaw / Hermes Agent / ArmaraOS host integrations, canonical strict validation (**`tooling/artifact_profiles.json`** → **`strict-valid`** CI set), **MCP (`ainl-mcp`)** + **CLI** curated preset importers (Clawflows / Agency-Agents / Markdown → `.ainl`), optional **LSP** (`langserver.py`), multi-target emitters (including Solana clients and Hermes skill bundles), sandboxed operator deployments
 
 ---
 
@@ -15,7 +15,7 @@ AI Native Lang (AINL) is a graph-first programming system designed for AI-orient
 
 AINL addresses an emerging systems problem in modern AI engineering: as large language models (LLMs) gain larger context windows and stronger reasoning capabilities, many agent systems still rely on prompt loops for orchestration, state handling, and tool invocation. This creates rising token cost, hidden state, degraded predictability, and weak auditability. AINL proposes a different architecture: use the model to generate a compact graph workflow once, then rely on a deterministic runtime to execute it repeatedly. In this framing, AINL makes workflow orchestration an explicit **energy consumption pattern design** problem, shifting economics from recurring "pay-per-run thinking" toward compile-once, run-many execution with bounded model use.
 
-The surface language ships **two equivalent syntaxes**—compact (Python-like, recommended for new code; see `examples/compact/`) and opcode (low-level)—both compiling to the same IR. Through **v1.5.0**, the reference tree includes first-class **Solana** workflows (strict-valid demos, optional `ainativelang[solana]`), **Hermes Agent** skill emission (`--emit hermes-skill`), **ArmaraOS** hand packages (`--target armaraos`), an optional tiered **`code_context`** adapter for repository indexing, and a packaged **LLM adapter layer** under `adapters/llm/` (with an **`offline`** deterministic provider for tests and CI).
+The surface language ships **two equivalent syntaxes**—compact (Python-like, recommended for new code; see `examples/compact/`) and opcode (low-level)—both compiling to the same IR. Through **v1.5.0**, the reference tree includes first-class **Solana** workflows (strict-valid demos, optional `ainativelang[solana]`), **Hermes Agent** skill emission (`--emit hermes-skill`), **ArmaraOS** hand packages (`--target armaraos`), an optional tiered **`code_context`** adapter for repository indexing, and a packaged **LLM adapter layer** under `adapters/llm/` (with an **`offline`** deterministic provider for tests and CI). Release **1.5.0** is primarily **version + documentation alignment** across the repo and skills (see **`docs/CHANGELOG.md`**); operator-facing runtime behavior continues to accrete in **1.4.x** lines below.
 
 The language has been exercised in production-style OpenClaw workflows involving email, calendar, social monitoring, database access, infrastructure checks, queues, WebAssembly modules, cache, memory, and autonomous operational monitors. This whitepaper describes AINL's architecture, semantics, strict-mode guarantees, operational role, benchmark posture, and relevance to AI-native systems design.
 
@@ -230,13 +230,17 @@ AINL also supports compatibility-oriented or non-strict examples. These are usef
 
 This distinction is important for truthful documentation and benchmarking.
 
+**CI and headline strict claims** use a curated allowlist, not “every file under `examples/`”. Only paths designated **`strict-valid`** in **`tooling/artifact_profiles.json`** are treated as the canonical automation set for `ainl validate --strict` in CI and benchmark primaries. Other `examples/` trees may be instructional, experimental, or compatibility-oriented — before copying patterns, read **`examples/README.md`** and **`docs/EXAMPLE_SUPPORT_MATRIX.md`** (see also **`AGENTS.md`**).
+
 ### 5.4 Compile-time composition (includes)
 
-AINL programs can **`include`** other `.ainl` sources before compilation completes. The compiler **merges** included labels under an **alias prefix** (`alias/LABEL`, e.g. `retry/ENTRY`, `retry/EXIT_OK`). Shared modules declare **`LENTRY:`** and **`LEXIT_*:`** labels; parents invoke them with **`Call alias/ENTRY ->out`**. This is **compile-time** composition only—no runtime plugin loader—so agents and humans can reuse **verified** subgraphs, shrink duplicated control flow, and reason over **qualified** names in the canonical IR. **`include` directives must appear before the first top-level `S` / `E`** in the host file so the prelude merges into IR. At runtime, **`RuntimeEngine`** may **qualify bare child label names** (e.g. on **If** / **Loop** edges) using the current **`alias/`** stack frame so graph execution reaches merged keys—see §6.4. Starter modules ship under `modules/common/` with strict-safe patterns (including **guard**, **session_budget**, and **reflect** helpers for operational ceilings and gates), and a minimal include demo is provided in `examples/timeout_demo.ainl`. Semantics and tests: `tests/test_includes.py`; introspection: `docs/architecture/GRAPH_INTROSPECTION.md`; reader-facing summary: **`docs/WHAT_IS_AINL.md`** (canonical primer; root **`WHAT_IS_AINL.md`** is a stub).
+AINL programs can **`include`** other `.ainl` sources before compilation completes. The compiler **merges** included labels under an **alias prefix** (`alias/LABEL`, e.g. `retry/ENTRY`, `retry/EXIT_OK`). Shared modules declare **`LENTRY:`** and **`LEXIT_*:`** labels; parents invoke them with **`Call alias/ENTRY ->out`**. This is **compile-time** composition only—no runtime plugin loader—so agents and humans can reuse **verified** subgraphs, shrink duplicated control flow, and reason over **qualified** names in the canonical IR. **`include` directives must form the leading prelude** (consecutive initial **`include`** lines and comments; the first other non-empty line ends the prelude — **do not** place **`include` after the graph `S` header**; see **`AGENTS.md`**). At runtime, **`RuntimeEngine`** may **qualify bare child label names** (e.g. on **If** / **Loop** edges) using the current **`alias/`** stack frame so graph execution reaches merged keys—see §6.4. Starter modules ship under `modules/common/` with strict-safe patterns (including **guard**, **session_budget**, and **reflect** helpers for operational ceilings and gates), and a minimal include demo is provided in `examples/timeout_demo.ainl`. Semantics and tests: `tests/test_includes.py`; introspection: `docs/architecture/GRAPH_INTROSPECTION.md`; reader-facing summary: **`docs/WHAT_IS_AINL.md`** (canonical primer; root **`WHAT_IS_AINL.md`** is a stub).
 
 ### 5.5 Graph visualization CLI and diagnostic surfacing
 
 The reference implementation ships **CLI** tools that compile in **strict** mode and surface **native structured diagnostics** (`Diagnostic` rows with lineno, optional character spans, kinds, and suggested fixes) alongside legacy string errors. Validators and the **Mermaid graph visualizer** (`ainl visualize` / `ainl-visualize`, `scripts/visualize_ainl.py`) reuse this path; output can be **rich**-styled (optional dependency), plain text, or **JSON** for automation. The visualizer renders **`ir["labels"]`** as **Mermaid** flowcharts with **subgraph clusters** per include alias and explicit **synthetic edges** for **`Call`** into callee entry labels where helpful for human understanding. As of `v1.2.1`, the same CLI supports direct image export (`--png`, `--svg`, with `--width`/`--height` and extension auto-detect for `.png`/`.jpg`/`.jpeg`/`.svg`) via Playwright-backed rendering.
+
+The same **`compiler_diagnostics`** pipeline powers the optional **Language Server** (`langserver.py`, LSP): diagnostics and ranges in the editor stay aligned with CLI and MCP validate/compile output, so humans and agents see one coherent error model across surfaces.
 
 ---
 
@@ -279,13 +283,17 @@ Merged IR stores most label keys as **`alias/LABEL`**. Branch and loop steps som
 
 ### 6.5 Optional CLI trajectory and Hyperspace agent emission
 
-The reference **CLI** can append **one JSON object per executed step** to **`<source-stem>.trajectory.jsonl`** beside the `.ainl` source when enabled (`ainl run --log-trajectory` or **`AINL_LOG_TRAJECTORY`**). This **per-step trace** is separate from the HTTP runner service’s structured audit JSON stream (`docs/operations/AUDIT_LOGGING.md`). The validate CLI can emit a **standalone Python module** with **`--emit hyperspace`**, embedding compiled IR for hosts that want a single-file agent; the emitted scaffold wires **`vector_memory`** and **`tool_registry`** (local JSON-backed adapters; **`docs/reference/ADAPTER_REGISTRY.md`** §9). See **`docs/trajectory.md`**, **`docs/emitters/README.md`**, and **`examples/hyperspace_demo.ainl`**.
+The reference **CLI** can append **one JSON object per executed step** to **`<source-stem>.trajectory.jsonl`** beside the `.ainl` source when enabled (`ainl run --log-trajectory` or **`AINL_LOG_TRAJECTORY`**). This **per-step trace** is separate from the HTTP runner service’s structured audit JSON stream (`docs/operations/AUDIT_LOGGING.md`). **`ainl-validate`** / **`scripts/validate_ainl.py`** can emit a **standalone Python module** with **`--emit hyperspace`** (this path is **not** on `ainl compile --emit`, which only covers `ir`, Hermes, and Solana/blockchain clients); the emitted scaffold embeds compiled IR and wires **`vector_memory`** and **`tool_registry`** (local JSON-backed adapters; **`docs/reference/ADAPTER_REGISTRY.md`** §9). See **`docs/trajectory.md`**, **`docs/emitters/README.md`**, and **`examples/hyperspace_demo.ainl`**.
 
 Optional sandbox-aware trajectory extensions are additive: when a sandbox runtime shim is connected, step rows may also include `avm_event_hash`, `sandbox_session_id`, `sandbox_provider`, and `isolation_hash`; when absent, behavior and output remain unchanged.
 
 ### 6.6 Graph execution pitfalls (intelligence and merged IR)
 
-Graph-preferred mode is the default for production intelligence. Authors must avoid constructs that the linear/step fallback accepts but the graph runtime does not implement the same way: **raw object literals** in **`X`** (`unknown X fn: {`); using **`J`** as a “goto” between labels; **`Set`** with list literals where only a single **ref** token is consumed; **`memory.list`** with `""` for **`record_id_prefix`** instead of **`null`**. Resolution patterns: **`core.parse`** for static JSON, **`X obj` / `X put` / `X arr`** for structured values, **`Call`** for subgraph entry, **ISO `valid_at`** via **`R core iso`**. Full contract: **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**, **`docs/adapters/MEMORY_CONTRACT.md`** § list filters.
+Graph-preferred mode is the default for production intelligence. Authors must avoid constructs that the linear/step fallback accepts but the graph runtime does not implement the same way: **raw object literals** in **`X`** (`unknown X fn: {`); using **`J`** as a “goto” between labels; **`Set`** with list literals where only a single **ref** token is consumed; **`memory.list`** with `""` for **`record_id_prefix`** instead of **`null`**. Resolution patterns: **`core.parse`** for static JSON, **`X obj` / `X put` / `X arr`** for structured values, **`Call`** for subgraph entry, **ISO `valid_at`** via opcode **`R core.ISO`** / **`R core.ISO_TS`** (compact surface: **`core.iso`**). Full contract: **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**, **`docs/adapters/MEMORY_CONTRACT.md`** § list filters.
+
+### 6.7 Adapter recording and replay (verification)
+
+For **tests and golden runs**, `runtime/adapters/replay.py` supplies **`RecordingAdapterRegistry`** (logs adapter name, verb, args, and results) and **`ReplayAdapterRegistry`** (replays a prior log with signature matching). This keeps integration tests **deterministic** without stubbing every adapter by hand and complements trajectory JSONL (§6.5), which targets human/ops forensics rather than exact replay.
 
 ---
 
@@ -357,7 +365,7 @@ Adapters provide the implementation layer for effects while keeping the language
 
 Examples include:
 
-- `core` (including **`core.GET`** for structured field reads as of v1.4.1)
+- `core` (including **`core.GET`** for structured field reads as of v1.4.1; v1.4.3+ fills in comparison, coercion, and string-hygiene builtins such as **`EQ`/`NEQ`/`GT`/…**, **`STR`/`INT`/…**, **`TRIM`/`STRIP`/…** on `CoreBuiltinAdapter` — see **`docs/CHANGELOG.md`**)
 - `http`
 - `sqlite`
 - `postgres`
@@ -370,6 +378,8 @@ Examples include:
 - `email`
 - `calendar`
 - `social`
+- `web` (OpenClaw-oriented search/fetch/scrape — distinct from raw **`http`**; v1.4.2+)
+- `tiktok` (OpenClaw-oriented TikTok data verbs; v1.4.2+)
 - `svc`
 - `cache`
 - `queue`
@@ -378,7 +388,12 @@ Examples include:
 - `solana` (on-chain RPC and prediction-market oriented verbs; optional **`pip install "ainativelang[solana]"`** for live signing)
 - `llm` (unified LLM surface with provider implementations under **`adapters/llm/`**, including an **`offline`** deterministic adapter for tests and CI — v1.4.1)
 - `code_context` (optional tiered repository index/query/compress for agent tooling — v1.3.0)
-- OpenClaw-specific operational extensions
+- `bridge` (optional host-mapped HTTP executor keys — see **`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`**)
+- `embedding_memory` (embedding-backed workflow memory where enabled)
+- `github` (GitHub API helpers where enabled)
+- `fanout` (parallel / fan-out orchestration helpers)
+- `langchain_tool` (LangChain tool interop surface for hybrid graphs)
+- OpenClaw-specific operational extensions (token trackers, defaults, integration shims under **`adapters/`**)
 
 Relational adapters (`sqlite`, `postgres`, `mysql`) and service adapters (`redis`, `dynamodb`, `airtable`, `supabase`) share a common contract surface exposed through `ADAPTER_REGISTRY.json` and `tooling/adapter_manifest.json` (verbs, privilege tiers, destructive/network-facing flags, async capability). Several of them also expose **reactive/event feeds**—DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, and Airtable webhooks—normalized into bounded, checkpointable event batches suitable for async graphs (see `docs/reactive/REACTIVE_EVENTS.md` and the `examples/reactive/` gallery). For production deployments, AINL now ships explicit durability and rollout guidance with `docs/reactive/ADVANCED_DURABILITY.md`, reusable helpers in `templates/durability/`, and combined worker starters in `templates/production/`, all using existing adapters with no additional runtime code.
 
@@ -433,7 +448,7 @@ Supported target classes include:
 - Scraper outputs
 - Cron / queue related projections
 
-The CLI **`ainl emit --target <name>`** enumerates the current set (see **`docs/emitters/README.md`** and **`docs/RELEASING.md`**).
+The CLI **`ainl emit --target <name>`** covers **`ir`**, **`hermes-skill`** / **`hermes`**, **`solana-client`** / **`blockchain-client`**, **`langgraph`**, **`temporal`**, **`armaraos`**, and the compiler-backed deployment stubs (**`server`**, **`python-api`**, **`react`**, **`openapi`**, **`prisma`**, **`sql`**, **`docker`**, **`k8s`**, **`cron`**). Additional emit surfaces (e.g. **MT5** / **scraper** stubs, emission-planner metadata) live on **`compiler_v2`** / **`tooling/emit_targets.py`** and **`ainl-validate`** — see **`docs/emitters/README.md`** and **`docs/RELEASING.md`** for the authoritative split.
 
 ### 9.1 Single Spec, Many Targets
 
@@ -524,6 +539,10 @@ and `docs/operations/UNIFIED_MONITORING_GUIDE.md`.
 - **`tooling/openclaw_workspace_env.example.sh`** — template for pinning **`OPENCLAW_WORKSPACE`** and AINL paths in cron/systemd.
 - **`scripts/auto_tune_ainl_caps.py`** — reads **`monitor_state.json`**, SQLite bridge history, and host **`openclaw.json`** caps; writes **`tuning_recommendations.json`** / **`tuning_log.json`**; optional live patch when **`OPENCLAW_AINL_AUTO_APPLY=true`**.
 - **Embedding path** — **`embedding_memory`** adapter plus OpenClaw **`bridge`** verbs for workflow indexing/search; session summaries store embeddable text in **`payload.summary`** for **`workflow.session_summary`** records (see **`docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`**).
+
+### 10.6 Operator CLI surfaces (OpenClaw, ArmaraOS, migration)
+
+Beyond **`ainl install`**, **`ainl status`**, and **`ainl doctor`** (see **`docs/QUICKSTART_OPENCLAW.md`**), the reference **`ainl`** CLI includes **`ainl migrate`** (OpenClaw → ArmaraOS), **`ainl cron`** / **`ainl dashboard`** (OpenClaw-oriented scheduling and UI helpers), **`ainl generate-sandbox-config`** and **`ainl generate-avm-policy`** (sandbox / AVM policy fragments from compiled graphs), and **importers** for Markdown, curated **Clawflows**, and **Agency-Agent** presets — the same catalog **`ainl_list_ecosystem`** exposes over MCP (§15.10). Details live in **`AGENTS.md`**, host guides, and `cli/main.py`.
 
 ---
 
@@ -617,7 +636,7 @@ Modes:
 
 The strongest current truthful claim is:
 
-> AINL provides reproducible, profile-segmented compactness advantages in many canonical multi-target examples, and can materially reduce repeated generation effort by expressing workflow intent once and reusing it across execution and emission surfaces—while **runtime benchmarks** ground the **compile-once / run-many** cost story in measured post-compile behavior.
+> AINL provides reproducible, profile-segmented compactness advantages in many canonical multi-target examples (headline **`strict-valid`** paths in **`tooling/artifact_profiles.json`**), and can materially reduce repeated generation effort by expressing workflow intent once and reusing it across execution and emission surfaces—while **runtime benchmarks** ground the **compile-once / run-many** cost story in measured post-compile behavior.
 
 **Not supported:**
 
@@ -704,6 +723,10 @@ In short, AINL shifts economics from **pay-per-run orchestration thinking** to *
 
 Beyond compile-once / run-many, **OpenClaw-hosted** AINL workflows use **explicit caps** and **observability** so model-facing surfaces stay bounded: **bridge** report size limits, **promoter** ceilings, **`MONITOR_CACHE_JSON`** rolling budgets, **`ainl bridge-sizing-probe`** for staging caps, and intelligence-side **startup context** clamps (**`AINL_STARTUP_CONTEXT_TOKEN_MIN`**, **`AINL_STARTUP_CONTEXT_TOKEN_MAX`**) with optional **embedding-first** candidate selection (**`AINL_STARTUP_USE_EMBEDDINGS`**). Staging order and pilot notes: **`docs/operations/TOKEN_CAPS_STAGING.md`**, **`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`**. **WASM** (`wasm` adapter) remains the pattern for **compute-heavy** deterministic steps without expanding LLM context—orthogonal to embedding retrieval.
 
+### 13.6 ArmaraOS efficient-mode bridge (CLI host signal)
+
+**`ainl run --efficient-mode <off|balanced|aggressive>`** (and **`AINL_EFFICIENT_MODE`**) does **not** run token compression inside the Python runtime. The CLI sets an **environment signal** consumed by hosts such as **ArmaraOS / OpenFang**, where **input prompt compression** and dashboard “eco” behavior are implemented (Rust `prompt_compressor` and related policy). **`modules/efficient_styles.ainl`** is the **AINL-side** companion for **output density / style** in graphs when authors opt in. Cross-repo contract and mental model: **`docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md`** (vs ArmaraOS **`docs/prompt-compression-efficient-mode.md`**).
+
 ---
 
 ## 14. Why AINL Is Useful to AI Agents
@@ -728,7 +751,7 @@ The `Retry` operation supports both fixed and exponential backoff strategies wit
 
 ### 14.5 Policy Validation and Capability Discovery
 
-The runner service validates workflows against declarative policies before execution, returning structured violations on failure. External orchestrators can discover runtime capabilities via the `/capabilities` endpoint. See section 15.
+The runner service validates workflows against declarative policies before execution, returning structured violations on failure. External orchestrators can discover runtime capabilities via the `/capabilities` endpoint. See **§15** (operator boundary) and **§16** (security layering and threat model).
 
 ### 14.6 Oversight and Auditability
 
@@ -738,7 +761,9 @@ Pre/post-run reports and graph-level tracing provide operational visibility beyo
 
 ## 15. Runner Service and Operator Boundary
 
-AINL exposes the compiler and runtime over HTTP in two complementary ways: the **`ainl serve`** CLI (built from `cli/main.py`) provides a lean REST API (**`/health`**, **`/validate`**, **`/compile`**, **`/run`**) suitable for quick integration and CI; a fuller FastAPI runner service (`scripts/runtime_runner_service.py`) adds policy-gated execution, queues, metrics, and operator-oriented endpoints for external orchestrators, sandbox controllers, and agent platforms. Both report **`RUNTIME_VERSION`** (e.g. **1.4.1**) on versioned surfaces.
+AINL exposes the compiler and runtime over HTTP in two complementary ways: the **`ainl serve`** CLI (built from `cli/main.py`) provides a lean REST API (**`/health`**, **`/validate`**, **`/compile`**, **`/run`**) suitable for quick integration and CI; a fuller FastAPI runner service (`scripts/runtime_runner_service.py`) adds policy-gated execution, queues, metrics, and operator-oriented endpoints for external orchestrators, sandbox controllers, and agent platforms. Both report **`RUNTIME_VERSION`** from `runtime/engine.py` (currently **1.5.0**) on versioned surfaces.
+
+**`ainl doctor`** (including **`ainl doctor --ainl`** for OpenClaw-focused checks) prints the **effective runtime security environment** — named profiles, **`AINL_STRICT_MODE`**, host adapter allow/deny lists, and related hints — so operators can confirm grants and env before wiring cron, MCP, or the HTTP runner. See **`AGENTS.md`**.
 
 ### 15.1 Endpoints
 
@@ -746,13 +771,13 @@ The table below summarizes the **full FastAPI runner** (`scripts/runtime_runner_
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/capabilities` | GET | Returns runtime version, available adapters (with verbs, support tiers, effect defaults), and whether policy validation is supported |
+| `/capabilities` | GET | Returns runtime version, available adapters (with verbs, support tiers, effect defaults), whether policy validation is supported, a **`host_security_env`** object (effective env knobs: profiles, strict mode, host adapter allow/deny lists, intelligence relax flags), and related operator hints |
 | `/run` | POST | Accepts AINL source or pre-compiled IR, compiles, validates policy (if provided), executes, and returns structured output |
 | `/enqueue` | POST | Asynchronous execution queue |
 | `/result/{id}` | GET | Retrieve async execution results |
 | `/health` | GET | Liveness check |
 | `/ready` | GET | Readiness check |
-| `/metrics` | GET | Runtime metrics |
+| `/metrics` | GET | Runtime metrics (runs, failures, durations, per-adapter counts/durations, **`adapter_capability_blocks_total`** / **`adapter_capability_blocks_by_adapter`** for capability-gate telemetry) |
 
 ### 15.2 Policy-Gated Execution
 
@@ -762,11 +787,11 @@ Supported policy fields include `forbidden_adapters`, `forbidden_effects`, `forb
 
 ### 15.3 Capability Discovery
 
-The `GET /capabilities` endpoint returns a machine-readable JSON response sourced from existing adapter metadata (`tooling/adapter_manifest.json`). Each adapter entry includes its verbs, support tier, effect default, recommended lane, and privilege tier. External orchestrators use this to discover what a given AINL runtime instance supports before submitting workflows, enabling dynamic adapter allowlist configuration and policy construction.
+The `GET /capabilities` endpoint returns a machine-readable JSON response sourced from existing adapter metadata (`tooling/adapter_manifest.json`). Each adapter entry includes its verbs, support tier, effect default, recommended lane, and privilege tier. The payload also surfaces **`host_security_env`** so orchestrators can see how **`AINL_SECURITY_PROFILE`**, **`AINL_STRICT_MODE`** / **`AINL_STRICT_PROFILE`**, **`AINL_HOST_ADAPTER_ALLOWLIST`** / **`AINL_HOST_ADAPTER_DENYLIST`**, **`AINL_ALLOW_IR_DECLARED_ADAPTERS`**, and related variables affect the running instance. External orchestrators use this to discover what a given AINL runtime instance supports before submitting workflows, enabling dynamic adapter allowlist configuration and policy construction.
 
 ### 15.4 Sandbox and Operator Deployment
 
-AINL is designed to run inside sandboxed, containerized, or operator-controlled environments. The runtime's adapter allowlist, resource limits, and policy validation provide the configuration surface that external orchestrators need. AINL is the **workflow layer**, not the sandbox or security layer; containment, network policy, and process isolation are the responsibility of the hosting environment.
+AINL is designed to run inside sandboxed, containerized, or operator-controlled environments. The runtime's **effective** adapter set (host allowlist/denylist intersection with the grant, optional IR-declared relax for intelligence paths), resource limits, and policy validation provide the configuration surface that external orchestrators need. AINL is the **workflow layer**, not the sandbox or security layer; containment, network policy, and process isolation are the responsibility of the hosting environment.
 
 Prescriptive sandbox profiles are documented for:
 
@@ -784,6 +809,8 @@ See `docs/operations/SANDBOX_EXECUTION_PROFILE.md`, `docs/operations/RUNTIME_CON
 ### 15.5 Capability Grant Model
 
 Each execution surface (runner service, MCP server) applies a **capability grant** — a restrictive-only envelope that constrains which adapters, privilege tiers, and resource limits are permitted for a given run.
+
+**FastAPI runner defaults:** when **`AINL_SECURITY_PROFILE`** is unset, the server grant uses a **permissive adapter cap** (`allowed_adapters: null` — no named adapter ceiling at the grant layer) merged with high **resource floors** (`max_steps`, `max_depth`, `max_adapter_calls`, `max_time_ms`, …). Setting **`AINL_STRICT_MODE`** (with profile unset) merges the named **`consumer_secure_default`** preset (or **`AINL_STRICT_PROFILE`**) on top of those floors for a stricter consumer-style allowlist. Setting **`AINL_SECURITY_PROFILE`** loads that profile **as the full grant** (enterprise lockdown). See **`AGENTS.md`** and **`docs/operations/CAPABILITY_GRANT_MODEL.md`**.
 
 The grant is loaded at startup from a named security profile via an environment variable (`AINL_SECURITY_PROFILE` for the runner, `AINL_MCP_PROFILE` for the MCP server). When a caller submits a request, the caller's restrictions are merged with the server grant using restrictive-only rules:
 
@@ -848,18 +875,37 @@ The MCP server:
 - is implemented in `scripts/ainl_mcp_server.py` (CLI entrypoint `ainl-mcp`)
 - reuses the existing compiler, policy validator, security-report tooling, and
   runtime engine rather than introducing new semantics
-- exposes tools: `ainl_validate`, `ainl_compile`, `ainl_capabilities`,
+- exposes **core workflow tools:** `ainl_validate`, `ainl_compile`, `ainl_capabilities`,
   `ainl_security_report`, `ainl_run`
-- exposes resources: `ainl://adapter-manifest`, `ainl://security-profiles`
+- exposes **ecosystem import tools** (curated **Clawflows** / **Agency-Agent** presets and Markdown → deterministic `.ainl`; fetch paths may perform **network I/O** when importing by URL): **`ainl_list_ecosystem`** (offline catalog), **`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, **`ainl_import_markdown`** — shared logic in **`tooling/mcp_ecosystem_import.py`**. The **`ainl`** CLI exposes the same workflows via **`ainl import`** subcommands (`cli/main.py`).
+- exposes resources: `ainl://adapter-manifest`, `ainl://security-profiles`,
+  **`ainl://authoring-cheatsheet`** (golden-path HTTP `R`-line and adapter rules)
 - supports startup-configurable **MCP exposure profiles** and env-var-based
   tool/resource scoping so operators can present a narrow toolbox (for example
   `validate_only` or `inspect_only`) behind a gateway or MCP manager
-- runs with safe-default restrictions:
-  - core-only adapter allowlist
-  - conservative runtime limits
-  - `local_minimal`-style policy (forbidden `local_state`, `network`,
-    `operator_sensitive` privilege tiers), with caller policies only allowed
-    to add further restrictions
+- **Authoring loop:** validate/compile responses include structured diagnostics
+  plus **`recommended_next_tools`** (and optional **`recommended_resources`**);
+  **`ainl_compile`** returns **`frame_hints`** (`name`, `type`, `source`) for
+  variables callers should supply in **`ainl_run`**’s **`frame`**; **`ainl_capabilities`**
+  includes **`mcp_telemetry`** (per-process tool counters). Per-workspace limit
+  overrides use **`ainl_mcp_limits.json`** under the configured **`fs.root`**;
+  when **`fs`** is enabled and **`cache`** is not explicitly configured, a
+  **`cache.json`** / **`output/cache.json`** under **`fs.root`** can **auto-register**
+  the file-backed **`cache`** adapter.
+- **`ainl_run` registration vs grant:** the MCP server’s **capability grant** aligns
+  with the HTTP runner (no core-only **named adapter ceiling** at the grant layer
+  when unset — see §15.5). **However**, each **`ainl_run`** invocation builds a fresh
+  **`AdapterRegistry`** that **only registers `core` by default**; workflows that
+  call **`http`**, **`fs`**, **`cache`**, **`sqlite`**, or LLM adapters must pass the
+  per-run **`adapters`** JSON (and LLM still requires **`AINL_CONFIG`** or
+  **`AINL_MCP_LLM_ENABLED`**) or execution fails with **adapter not registered**.
+- **Safe defaults:** conservative **resource limits** (ceilings callers may only
+  tighten). **`AINL_STRICT_MODE`** (with **`AINL_MCP_PROFILE`** unset) merges the
+  named consumer preset into the MCP **grant** the same way as the HTTP runner.
+  **`AINL_MCP_EXPOSURE_PROFILE`** selects a narrower advertised tool/resource set
+  from **`tooling/mcp_exposure_profiles.json`** (operators often start with
+  **`validate_only`** / **`inspect_only`**). Optional per-call **`policy`** payloads
+  merge **restrictively** on top of the effective grant.
 
 This MCP surface is **workflow-level and vendor-neutral**. It does not turn
 AINL into an agent host, orchestration platform, sandbox, or MCP gateway; it
@@ -882,7 +928,8 @@ with a small **JSON request/response contract**, or enable the optional
 **`bridge`** adapter so programs use `R bridge.Post <executor_key> …` while
 URLs stay in host configuration (CLI `--bridge-endpoint` or runner
 `adapters.bridge.endpoints`). Both paths are **off unless explicitly granted**;
-default surfaces remain **core-only** where applicable.
+on **`ainl-mcp`**, only adapters **registered** for that run (default **`core`** unless
+the **`adapters`** payload adds more) can execute, even when the grant is permissive.
 
 Full contract, security notes, multi-backend routing guidance, capacity
 considerations, and phased rollout (examples, tests, optional `bridge` adapter)
@@ -890,31 +937,111 @@ are documented in **`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md`**.
 
 ---
 
-## 16. Limitations
+## 16. Security, Trust Boundaries, and Threat Model
+
+AINL separates **what a workflow graph can express** from **what a host allows at runtime**. This section states the trust model in one place; normative operator detail remains in **`docs/operations/CAPABILITY_GRANT_MODEL.md`**, **`docs/operations/SANDBOX_EXECUTION_PROFILE.md`**, **`docs/advanced/SAFE_USE_AND_THREAT_MODEL.md`**, and **§15**.
+
+### 16.1 Three responsibility layers
+
+| Layer | Responsibility |
+|-------|------------------|
+| **AINL (workflow)** | Deterministic IR execution, adapter **registration** at runtime, **policy validation** against compiled IR, **privilege-tier** and effect metadata, **structured audit events** (hashes, not raw secrets), optional **`execution_requirements`** / **`avm_policy_fragment`** hints for downstream sandboxes (**advisory** — they do not widen grants). |
+| **Runtime / host** (`ainl serve`, **`scripts/runtime_runner_service.py`**, **`ainl-mcp`**) | **Capability grants** (restrictive-only merge), named **`AINL_SECURITY_PROFILE`** / **`AINL_MCP_PROFILE`**, **`AINL_STRICT_MODE`**, **adapter allowlists** after merge, **resource ceilings**, **`GET /capabilities`** + **`host_security_env`**, MCP **exposure profiles**. |
+| **OS / container / orchestrator** | Process isolation, filesystem mounts, **network policy**, identity, **multi-tenant** separation, secret stores. AINL does **not** substitute for these. |
+
+### 16.2 Grants, policies, and registration (MCP vs runner)
+
+The **grant** answers “which adapters and privilege tiers may this run use?” Policy validation can **reject IR before execution** (HTTP 403 with structured violations). Separately, **`ainl_run`** on MCP **registers** only **`core`** until the caller supplies an **`adapters`** object for **`http`**, **`fs`**, **`cache`**, **`sqlite`**, LLM, etc. — a **second gate** that prevents “grant says yes but registry is empty” surprises. **`AINL_ALLOW_IR_DECLARED_ADAPTERS`**, **`AINL_HOST_ADAPTER_ALLOWLIST`** / **`DENYLIST`**, and the **`intelligence/`** path relaxations (unless **`AINL_INTELLIGENCE_FORCE_HOST_POLICY`**) further shape **effective** host intersection; see **`AGENTS.md`** and **`docs/INTELLIGENCE_PROGRAMS.md`**.
+
+### 16.3 Threat assumptions (what operators must still enforce)
+
+- **Trusted operator** for the machine or container running the compiler, runtime, and file roots used by adapters.
+- **Filesystem and network** are only as strong as the host: adapter path roots and HTTP allow-host lists are **best-effort guardrails**, not cryptographic multi-tenant isolation.
+- **Extension / OpenClaw coordination** (e.g. file-backed **`agent`** patterns, advisory envelopes) are **conventions** — fields like `approval_required` or `budget_limit` in envelopes are **advisory** unless an **external orchestrator** enforces them. Do not treat JSONL mailboxes as a hardened security bus. Full narrative: **`docs/advanced/SAFE_USE_AND_THREAT_MODEL.md`**.
+
+### 16.4 Observability without secret leakage
+
+Structured audit streams (§15.7) record **adapter**, **verb**, **duration**, and **hashes** of results — not raw payloads or credentials. Operators pair this with host SIEM and retention policy.
+
+---
+
+## 17. Quality, CI Contract, and Assurance
+
+This section ties together **why** public strict and benchmark claims are defensible: they are backed by **machine-checked profiles**, **conformance**, **regression JSON**, and **large automated test coverage** — not hand-waved “we have examples.”
+
+### 17.1 `strict-valid` artifact profile
+
+CI and headline **`ainl validate --strict`** automation use the **`strict-valid`** path list in **`tooling/artifact_profiles.json`**, not every file under **`examples/`**. That set is the **contract** for “canonical strict” in docs, benchmarks, and promotion. **`examples/README.md`** and **`docs/EXAMPLE_SUPPORT_MATRIX.md`** explain tiers and copy safety (see also **§5.3**).
+
+### 17.2 Conformance matrix
+
+**`make conformance`** runs a parallelized snapshot suite (tokenizer round-trip, IR canonicalization, strict validation, runtime parity, emitter stability) with CI on push/PR and generated **`summary.md`** / badge artifacts. It catches drift that unit tests alone might miss when wiring changes skip a route.
+
+### 17.3 Benchmarks and regression JSON
+
+Size and runtime benchmarks (**§12**) emit **`tooling/benchmark_size.json`**, **`tooling/benchmark_runtime_results.json`**, and CI slice **`*_ci.json`** files; **`scripts/compare_benchmark_json.py`** gates **`benchmark-regression`** on a tolerance. Claims in **`BENCHMARK.md`** stay tied to **profile**, **mode**, and **viable subset** definitions.
+
+### 17.4 Pytest scale and deterministic replay
+
+The repository carries **~1000** pytest modules exercising compiler, runtime, emitters, MCP, and policy paths. **`RecordingAdapterRegistry`** / **`ReplayAdapterRegistry`** (**§6.7**) support fixture-backed adapter replay for integration tests without live network.
+
+### 17.5 Honest marketing discipline
+
+Together, **artifact profiles + conformance + benchmarks + tests** define what “production-ready strict” means in this tree: operators and paper authors should cite **those mechanisms** when claiming validation depth, not generic “we have lots of examples.”
+
+---
+
+## 18. Authoring Contract for Humans and LLM-Generated AINL
+
+AINL is optimized for **machine generation**; humans and LLMs share the same **contract** if they want strict-clean graphs and low surprise at runtime.
+
+### 18.1 Validate early, strict by default for promotion
+
+Use **`ainl validate <file> --strict`** (or **`ainl check`**) before treating a graph as canonical. Prefer **`examples/compact/`** for new compact syntax; opcode remains fully supported. Only **`strict-valid`**-listed files are safe templates for “copy-paste into production” (**§17.1**).
+
+### 18.2 HTTP and `R`-line hygiene
+
+The **`http`** adapter uses **positional** URL / headers / timeout on **`R http.GET`** / **`R http.POST`** — **no** fake `params=` / `timeout=` tokens on the **`R`** line (the tokenizer will mis-parse). **Inline `{...}` dict literals on `R` lines are not evaluated as dicts**; build bodies via **`frame`**, **`core.MERGE`** of variables, or other patterns in **`AGENTS.md`**. MCP hosts should fetch **`ainl://authoring-cheatsheet`** and follow **`recommended_next_tools`** after **`ainl_validate`**.
+
+### 18.3 Includes, graph mode, and intelligence
+
+**`include`** must form the **leading prelude** before the graph **`S`** line (**§5.4**). In **graph-preferred** execution, **`J`** returns a value — it is **not** a cross-label jump (**§6.6**). **`queue`** uses **`R queue Put "channel" payload ->_`**, not legacy **`QueuePut`**. Intelligence cron and ArmaraOS scheduled runs interact with **host adapter policy** — see **`docs/INTELLIGENCE_PROGRAMS.md`**.
+
+### 18.4 MCP compile → run loop
+
+**`ainl_compile`** returns **`frame_hints`**; supply matching keys in **`ainl_run`**’s **`frame`**. Pass **`adapters`** when the IR references **`http`**, **`fs`**, **`cache`**, **`sqlite`**, etc. Use **`# frame: name: type`** comment lines for authoritative hints.
+
+### 18.5 Variable shadowing and naming
+
+String tokens on **`R`** lines are resolved against the live **frame** after quote stripping — a frame variable named like a literal string can hijack the call. Use **per-label prefixes** on loop indices and scratch names (**`AGENTS.md`** pitfall).
+
+---
+
+## 19. Limitations
 
 AINL is strong, but not magical.
 
-### 16.1 Learning Curve
+### 19.1 Learning Curve
 
 AINL introduces a new syntax and mental model.
 
-### 16.2 Static Graph Bias
+### 19.2 Static Graph Bias
 
 AINL's strengths come from explicit structure. Dynamic self-rewriting graph behavior is not the primary current model.
 
-### 16.3 Benchmark Interpretation Must Stay Careful
+### 19.3 Benchmark Interpretation Must Stay Careful
 
 Lexical compactness is useful, but it is not a universal proxy for economic value or runtime quality.
 
-### 16.4 Some Integrations Are Environment-Specific
+### 19.4 Some Integrations Are Environment-Specific
 
 OpenClaw-specific adapters reflect a real deployment context and may require reimplementation elsewhere.
 
 ---
 
-## 17. Future Directions
+## 20. Future Directions
 
-### 17.1 Recently Shipped
+### 20.1 Recently Shipped
 
 The following capabilities were listed as future work in earlier drafts and have since been implemented:
 
@@ -922,6 +1049,10 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Solana + emit clients (v1.3.0–v1.3.1)** — strict-valid **`examples/solana_demo.ainl`**, **`examples/prediction_market_demo.ainl`**; **`--emit solana-client`** / **`blockchain-client`**; **`docs/solana_quickstart.md`**
 - **ArmaraOS host pack (v1.4.0)** — **`ainl emit --target armaraos`**, **`ainl install-mcp --host armaraos`**, **`ainl status --host armaraos`**, **`docs/ARMARAOS_INTEGRATION.md`**
 - **Core + LLM CI polish (v1.4.1)** — **`R core.GET`**; **`offline`** LLM adapter for deterministic **`R llm.COMPLETION`**; packaging/tests per **`docs/CHANGELOG.md`**
+- **Core builtins expansion + MCP authoring (v1.4.3)** — comparison/coercion/string builtins on **`CoreBuiltinAdapter`**; **`ainl_compile` → `frame_hints`**, per-workspace **`ainl_mcp_limits.json`**, optional auto-**`cache`** when **`fs`** + `cache.json`; runner default limits raised to match MCP ceilings (**`docs/CHANGELOG.md`**)
+- **Intelligence + host adapter policy (v1.4.2)** — **`AINL_ALLOW_IR_DECLARED_ADAPTERS`** (optional ignore of narrow **`AINL_HOST_ADAPTER_ALLOWLIST`** from the environment); auto-relax for sources under **`intelligence/`** unless **`AINL_INTELLIGENCE_FORCE_HOST_POLICY`**; **`ainl run`** registers **`web`**, **`tiktok`**, **`queue`**; MCP/runner grant alignment; **`host_security_env`** on **`/capabilities`**; graph strict fixes for label-jump **`J`** edges (**`docs/CHANGELOG.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**)
+- **MCP authoring cheatsheet + diagnostics (v1.4.5–v1.4.6)** — **`ainl://authoring-cheatsheet`** resource; richer include/graph diagnostics; ArmaraOS **`ainl install-mcp --host armaraos`** env merge when the **`ainl`** server block already exists
+- **Release 1.5.0** — **`RUNTIME_VERSION`** / PyPI **1.5.0** with repository-wide doc pointer refresh (skills, operations guides, **`AGENTS.md`**) — **`docs/CHANGELOG.md`**
 - **Lean HTTP API** — **`ainl serve`** (`/health`, `/validate`, `/compile`, `/run`) alongside the fuller runner service
 - **Policy tooling** — declarative policy validation at the runner boundary (`/run` with optional `policy` parameter, HTTP 403 on violation), including `forbidden_privilege_tiers` for privilege-class enforcement
 - **Runtime observability** — structured JSON logging, label-level tracing, adapter call recording and replay
@@ -938,9 +1069,15 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Stronger adapter metadata** — `tooling/adapter_manifest.json` schema 1.1 adds `destructive`, `network_facing`, `sandbox_safe` boolean fields; policy validator supports `forbidden_destructive`
 - **MCP integration surface (v1)** — a thin, stdio-only MCP server (`ainl-mcp`)
   that exposes workflow-level tools and resources (validation, compilation,
-  capabilities, security reports, safe-default `ainl_run`) to MCP-compatible
-  hosts. It is workflow-focused, safe-default restricted, and reuses existing
+  capabilities, security reports, **`ainl_run`**) plus **`ainl://authoring-cheatsheet`**,
+  **`frame_hints`**, **`recommended_next_tools`**, and **`mcp_telemetry`** to MCP-compatible
+  hosts. Defaults: **resource ceilings** + exposure profiles; **`ainl_run`** still
+  **registers only `core`** until the caller passes **`adapters`**. Reuses existing
   compiler/runtime semantics rather than widening the language.
+- **MCP + CLI ecosystem importers** — **`ainl_list_ecosystem`**, **`ainl_import_clawflow`**, **`ainl_import_agency_agent`**, **`ainl_import_markdown`** on **`ainl-mcp`** (with matching **`ainl import`** commands on the CLI); shared preset logic in **`tooling/mcp_ecosystem_import.py`**.
+- **Language Server (LSP)** — **`langserver.py`** reuses **`compiler_diagnostics`** for editor ranges aligned with CLI/MCP.
+- **Adapter replay fixtures** — **`RecordingAdapterRegistry`** / **`ReplayAdapterRegistry`** in **`runtime/adapters/replay.py`** for deterministic integration tests.
+- **ArmaraOS efficient-mode CLI signal** — **`ainl run --efficient-mode`** / **`AINL_EFFICIENT_MODE`** plus **`modules/efficient_styles.ainl`** and **`docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md`** (host-side compression is not implemented in Python).
 - **Conformance matrix runner** — `make conformance` executes the full parallelized snapshot suite (tokenizer round-trip, IR canonicalization, strict validation, runtime parity, emitter stability) with CI execution on push/PR and generated status artifacts (`summary.md`, SVG badge).
 - **Visualizer image export** — `ainl visualize` supports direct PNG/SVG rendering for shareable architecture snapshots (`--png`, `--svg`, width/height controls, and extension auto-detect from `-o`).
 - **Starter include demo artifact** — `examples/timeout_demo.ainl` provides a strict-safe timeout include example for docs and social/demo usage.
@@ -949,7 +1086,7 @@ The following capabilities were listed as future work in earlier drafts and have
 - **Reproducible benchmark suite** — `tiktoken` **cl100k_base** default sizing with **`BENCHMARK.md`** transparency (viable subset, legacy-inclusive tables, **minimal_emit fallback stub**, Mar 2026 **prisma/react_ts** compaction notes), **Compile ms (mean×3)** in size tables, runtime benchmark (latency/RSS, optional reliability and scalability probe), shared **economics** helpers (`tooling/bench_metrics.py`), handwritten **baseline** comparison, **CI regression** gating (`scripts/compare_benchmark_json.py`, `make benchmark` / `make benchmark-ci`, workflow `benchmark-regression` — **preferring committed `*_ci.json` baselines on the baseline git SHA when present**), hub **`docs/benchmarks.md`**, and **`ainl-ollama-benchmark --cloud-model`** for an optional **Anthropic Claude** baseline (`temperature=0`, graceful skip without key/SDK).
 - **OpenClaw intelligence + ops (v1.2.8–v1.5.0)** — **`scripts/run_intelligence.py`** with rolling **budget hydrate**; graph-safe intelligence and **`modules/common/generic_memory.ainl`**; **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** and **`OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context, **`payload.summary`** for summarizer indexing, **startup token** env clamps; **`scripts/auto_tune_ainl_caps.py`** / **`run_intelligence.py auto_tune_ainl_caps`**; **v1.3.0+** one-command **`ainl install openclaw`**, unified **`ainl status`**, and **`ainl doctor --ainl`**.
 
-### 17.2 Remaining Future Work
+### 20.2 Remaining Future Work
 
 Promising future work includes:
 
@@ -965,7 +1102,7 @@ Promising future work includes:
 
 ---
 
-## 18. Competitive Landscape
+## 21. Competitive Landscape
 
 AINL sits at the intersection of several emerging directions in AI systems:
 
@@ -976,7 +1113,7 @@ AINL sits at the intersection of several emerging directions in AI systems:
 
 No single existing system fully combines these concerns. Instead, the current ecosystem is fragmented across multiple layers.
 
-### 18.1 Agent Orchestration Frameworks
+### 21.1 Agent Orchestration Frameworks
 
 Frameworks such as LangChain, LangGraph, and CrewAI introduce various models for AI agent orchestration.
 
@@ -1002,7 +1139,7 @@ AINL differs by compiling workflows into a **canonical graph IR with strict vali
 
 ---
 
-### 18.2 Durable Workflow Systems
+### 21.2 Durable Workflow Systems
 
 Systems such as Temporal and Restate focus on **deterministic, durable execution** of workflows.
 
@@ -1024,7 +1161,7 @@ AINL extends this space by introducing a **language + compiler layer** designed 
 
 ---
 
-### 18.3 Multi-Agent and Prompt-Oriented Systems
+### 21.3 Multi-Agent and Prompt-Oriented Systems
 
 Frameworks such as AutoGen emphasize multi-agent interaction and coordination.
 
@@ -1042,7 +1179,7 @@ AINL replaces prompt loops with **explicit graph structure**, making execution p
 
 ---
 
-### 18.4 Emerging Graph-Based Agent Platforms
+### 21.4 Emerging Graph-Based Agent Platforms
 
 Recent systems, including typed agent workflow frameworks, are beginning to incorporate:
 
@@ -1058,7 +1195,7 @@ AINL aligns with this direction but differs in one key respect:
 
 ---
 
-### 18.5 AINL’s Position
+### 21.5 AINL’s Position
 
 AINL unifies multiple layers that are typically separate:
 
@@ -1080,7 +1217,7 @@ into a single coherent system.
 
 ---
 
-### 18.6 Key Insight
+### 21.6 Key Insight
 
 Most existing systems split responsibilities:
 
@@ -1095,7 +1232,7 @@ AINL combines all four into a **graph-native programming model**.
 
 ---
 
-### 18.7 Positioning Summary
+### 21.7 Positioning Summary
 
 AINL should not be viewed as:
 
@@ -1109,7 +1246,7 @@ It is best understood as:
 
 ---
 
-## 19. Conclusion
+## 22. Conclusion
 
 AINL represents a distinct position in AI systems design.
 
@@ -1132,10 +1269,14 @@ AINL is designed to fit inside agent platforms and orchestrators — OpenClaw, N
 Paths are relative to the repository root.
 
 ### Core system
-- `compiler_v2.py` — main compiler
-- `runtime/engine.py` — graph-first runtime engine
+- `compiler_v2.py` — main compiler (`compiler_diagnostics.py` for structured errors)
+- `runtime/engine.py` — graph-first runtime engine (`RUNTIME_VERSION`)
 - `cli/main.py` — CLI including **`ainl serve`** (REST: `/health`, `/validate`, `/compile`, `/run`)
-- `runtime/adapters/` — adapter implementations (memory, SQLite, filesystem, cache, HTTP, Solana, LLM, optional `code_context`, optional executor `bridge`, agent, etc.)
+- `scripts/validate_ainl.py` / **`ainl-validate`** — validate CLI with extra **`--emit`** targets (e.g. **`hyperspace`**)
+- `scripts/ainl_mcp_server.py` — stdio MCP server (**`ainl-mcp`**)
+- `langserver.py` — optional LSP entrypoint
+- `tooling/emit_targets.py` — emission target catalog helpers
+- `runtime/adapters/` — adapter implementations (memory, SQLite, filesystem, cache, HTTP, Solana, LLM, optional `code_context`, optional executor `bridge`, agent, **`replay`** registries for tests, etc.)
 - `adapters/llm/` — LLM provider implementations and **`offline`** test/CI adapter (v1.4.1)
 - `scripts/runtime_runner_service.py` — FastAPI runner service (`/run`, `/capabilities`, `/health`, queues, metrics, etc.)
 - `SEMANTICS.md` — runtime semantics
@@ -1150,6 +1291,8 @@ Paths are relative to the repository root.
 - `tooling/capabilities.json` — capability definitions
 - `tooling/security_profiles.json` — named security profiles for deployment scenarios
 - `tooling/security_report.py` — per-workflow privilege/security map generator
+- `docs/advanced/SAFE_USE_AND_THREAT_MODEL.md` — operator-oriented threat model and safe-use posture (whitepaper **§16**)
+- `AGENTS.md` — repository ground truth for operators and LLM authoring (**HTTP** / **`R`**, MCP **`ainl_run`** adapter registration, includes, **strict-valid** pointers; whitepaper **§17–§18**)
 
 ### Deployment and operations
 - `docs/operations/SANDBOX_EXECUTION_PROFILE.md` — sandbox adapter profiles
@@ -1165,7 +1308,7 @@ Paths are relative to the repository root.
 - `tests/emits/server/Dockerfile` — emitted server container
 
 ### Examples and validation
-- `examples/` — canonical `.ainl` examples (hello, CRUD, RAG, retry, webhook, monitors, golden series)
+- `examples/` — canonical `.ainl` examples (hello, CRUD, RAG, retry, webhook, monitors, golden series); **CI `strict-valid`** paths are listed in **`tooling/artifact_profiles.json`** — see **`examples/README.md`** and **`docs/EXAMPLE_SUPPORT_MATRIX.md`**
 - `examples/openclaw/` — OpenClaw example programs
 - `examples/autonomous_ops/` — autonomous ops examples
 - `demo/monitor_system.lang` — monitor system demo
@@ -1181,6 +1324,7 @@ Paths are relative to the repository root.
 - `docs/HERMES_INTEGRATION.md`, `docs/integrations/hermes-agent.md` — Hermes Agent host + skill emission
 - `docs/solana_quickstart.md`, `docs/emitters/README.md` — Solana / blockchain client emitters
 - `docs/ARMARAOS_INTEGRATION.md` — ArmaraOS hand packages and MCP bootstrap
+- `docs/operations/EFFICIENT_MODE_ARMARAOS_BRIDGE.md` — **`ainl run --efficient-mode`** / **`AINL_EFFICIENT_MODE`** vs **`modules/efficient_styles.ainl`** vs ArmaraOS host compression
 - `docs/adapters/CODE_CONTEXT.md`, `examples/code_context_demo.ainl` — optional `code_context` adapter
 - `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`, `docs/operations/TOKEN_CAPS_STAGING.md`, `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
 - `intelligence/*.lang` — scheduled programs (startup context, summarizer, consolidation, auto-tune lang companion)
@@ -1197,7 +1341,8 @@ Paths are relative to the repository root.
 - `tooling/bench_metrics.py` — shared `tiktoken` counting and pricing helpers
 - `scripts/compare_benchmark_json.py` — regression checker for CI
 - `scripts/benchmark_ollama.py` / `ainl-ollama-benchmark` — multi-model LLM bench; optional **`--cloud-model`** (Anthropic)
-- `tooling/artifact_profiles.json` — artifact/strict profiles
+- `tooling/artifact_profiles.json` — artifact/strict profiles (**`strict-valid`** CI allowlist)
+- `tooling/mcp_ecosystem_import.py` — Clawflow / Agency-Agent / Markdown import helpers (MCP + CLI)
 - `tooling/benchmark_manifest.json` — benchmark manifest
 - `tooling/support_matrix.json` — support levels
 
