@@ -75,7 +75,7 @@ The **`ainl_graph_memory`** adapter stores typed **nodes** and **edges** in a JS
 
 **Scheduled `ainl run` (kernel cron):** when the host runs **`ainl run`** for a job, it may set **`AINL_BUNDLE_PATH`** / **`AINL_AGENT_ID`** so **`boot()`** can merge **persona** rows from **`bundle.ainlbundle`** into the live JSON store before the graph executes, and a post-run step rebuilds that bundle from the bridge. See **armaraos** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md).
 
-**Dashboard chat (Rust `ainl-memory`):** the daemon’s agent loop uses per-agent SQLite **`~/.armaraos/agents/<id>/ainl_memory.db`** to append recent **persona** traits to the **system prompt** (separate from the JSON file above). See the same **armaraos** doc (*AINL bundle + graph memory*) and **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
+**Dashboard chat (Rust `ainl-memory`):** the daemon’s agent loop uses per-agent SQLite **`~/.armaraos/agents/<id>/ainl_memory.db`** to append recent **persona** traits (strength ≥ **0.1**, last **90** days) to the **system prompt** as **`[Persona traits active: …]`** (separate from the JSON file above). See **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md) and **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
 
 AINL’s **`RuntimeEngine`** also supports IR ops **`MemoryRecall`** and **`MemorySearch`**, which dispatch the same adapter (for graphs compiled with those steps or nodes). Full contract, `R` examples, optional **FastAPI + D3** graph browser, and tests: **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
 

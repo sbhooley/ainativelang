@@ -75,7 +75,7 @@ Reference end-to-end flow:
 
 If you still see **`adapter blocked by capability gate: web`** (older install, headless daemon launched from a shell with a conflicting env, or explicit lockdown): widen the **target agent** manifest — add **`[metadata]`** with **`ainl_allow_ir_declared_adapters = "1"`** if something set **`0`**, or set **`ainl_host_adapter_allowlist`** to a CSV that includes **`web`**, **`tiktok`**, **`cache`**, **`queue`**, **`memory`**. Copy-paste template: **`armaraos/docs/snippets/agent-metadata-intelligence-cron.toml`**; full context: **`armaraos/docs/scheduled-ainl.md`**.
 
-**Stateful graphs:** optional **`~/.armaraos/agents/<agent_id>/bundle.ainlbundle`** plus **`AINL_BUNDLE_PATH`** / post-run export (ArmaraOS kernel) let **`ainl_graph_memory`** persona snapshots persist across scheduled runs; see **`armaraos/docs/scheduled-ainl.md`** (*AINL bundle + graph memory*). That is separate from Rust **`ainl_memory.db`** persona lines injected into **dashboard chat** system prompts (**`armaraos/docs/graph-memory.md`**).
+**Stateful graphs:** optional **`~/.armaraos/agents/<agent_id>/bundle.ainlbundle`** plus **`AINL_BUNDLE_PATH`** / post-run export (ArmaraOS kernel) let **`ainl_graph_memory`** persona snapshots persist across scheduled runs; see **armaraos** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md) (*AINL bundle + graph memory*). That is separate from Rust **`ainl_memory.db`** persona lines injected into **dashboard chat** system prompts — **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md).
 
 ## Host responsibilities
 

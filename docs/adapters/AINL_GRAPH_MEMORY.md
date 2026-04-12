@@ -43,7 +43,7 @@ When **`AINLGraphMemoryBridge.boot(agent_id=…)`** runs, it sets the active age
 
 After a successful scheduled graph, the ArmaraOS kernel runs a **background** Python export that calls **`boot`** again and **`AINLBundleBuilder.build(..., bridge).save(...)`** so the next cron tick sees updated **persona** / memory snapshots in the bundle file. Details: **ArmaraOS** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md) (*AINL bundle + graph memory*), bundle schema: **`runtime/ainl_bundle.py`**.
 
-**Not the same store:** chat agents also use Rust **`ainl-memory`** SQLite at **`~/.armaraos/agents/<id>/ainl_memory.db`** for **persona** lines injected into the **LLM system prompt** (`GraphMemoryWriter` in **armaraos**). That path is separate from this JSON **`ainl_graph_memory`** file used inside **`ainl run`**.
+**Not the same store:** ArmaraOS dashboard chat uses Rust **`ainl-memory`** SQLite at **`~/.armaraos/agents/<id>/ainl_memory.db`** (**`GraphMemoryWriter`**) to query **Persona** nodes and append **`[Persona traits active: …]`** to the **system prompt** after orchestration context (strength ≥ **0.1**, rolling **90**-day window). That path never reads **`AINL_BUNDLE_PATH`**; it is separate from this JSON **`ainl_graph_memory`** file used inside **`ainl run`**. See **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md).
 
 ### Example `R` lines (when the adapter is allowed + registered)
 
