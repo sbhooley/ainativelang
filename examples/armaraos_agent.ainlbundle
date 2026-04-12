@@ -1,0 +1,569 @@
+{
+  "bundle_version": "1.0",
+  "agent_id": "armaraos",
+  "created_at": "2026-04-12T13:14:09.931125+00:00",
+  "source_file": "examples/persona_demo.ainl",
+  "workflow": {
+    "ir_version": "1.0.0",
+    "graph_schema_version": "1.0",
+    "source": {
+      "text": "S persona_demo core noop\n\nL1:\n  R persona.load * ->traits\n  J traits\n",
+      "lines": [
+        "S persona_demo core noop",
+        "",
+        "L1:",
+        "  R persona.load * ->traits",
+        "  J traits",
+        ""
+      ]
+    },
+    "cst": {
+      "lines": [
+        {
+          "lineno": 1,
+          "original_line": "S persona_demo core noop",
+          "op_value": "S",
+          "op_canonical": "S",
+          "slot_values": [
+            "persona_demo",
+            "core",
+            "noop"
+          ],
+          "slot_kinds": [
+            "bare",
+            "bare",
+            "bare"
+          ],
+          "tokens": [
+            {
+              "kind": "bare",
+              "raw": "S",
+              "value": "S",
+              "span": {
+                "line": 1,
+                "col_start": 0,
+                "col_end": 1
+              }
+            },
+            {
+              "kind": "ws",
+              "raw": " ",
+              "value": " ",
+              "span": {
+                "line": 1,
+                "col_start": 1,
+                "col_end": 2
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "persona_demo",
+              "value": "persona_demo",
+              "span": {
+                "line": 1,
+                "col_start": 2,
+                "col_end": 14
+              }
+            },
+            {
+              "kind": "ws",
+              "raw": " ",
+              "value": " ",
+              "span": {
+                "line": 1,
+                "col_start": 14,
+                "col_end": 15
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "core",
+              "value": "core",
+              "span": {
+                "line": 1,
+                "col_start": 15,
+                "col_end": 19
+              }
+            },
+            {
+              "kind": "ws",
+              "raw": " ",
+              "value": " ",
+              "span": {
+                "line": 1,
+                "col_start": 19,
+                "col_end": 20
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "noop",
+              "value": "noop",
+              "span": {
+                "line": 1,
+                "col_start": 20,
+                "col_end": 24
+              }
+            }
+          ]
+        },
+        {
+          "lineno": 2,
+          "original_line": "",
+          "op_value": "",
+          "op_canonical": "",
+          "slot_values": [],
+          "slot_kinds": [],
+          "tokens": []
+        },
+        {
+          "lineno": 3,
+          "original_line": "L1:",
+          "op_value": "L1:",
+          "op_canonical": "L1:",
+          "slot_values": [],
+          "slot_kinds": [],
+          "tokens": [
+            {
+              "kind": "bare",
+              "raw": "L1:",
+              "value": "L1:",
+              "span": {
+                "line": 3,
+                "col_start": 0,
+                "col_end": 3
+              }
+            }
+          ]
+        },
+        {
+          "lineno": 4,
+          "original_line": "  R persona.load * ->traits",
+          "op_value": "R",
+          "op_canonical": "R",
+          "slot_values": [
+            "persona.load",
+            "*",
+            "->traits"
+          ],
+          "slot_kinds": [
+            "bare",
+            "bare",
+            "bare"
+          ],
+          "tokens": [
+            {
+              "kind": "ws",
+              "raw": "  ",
+              "value": "  ",
+              "span": {
+                "line": 4,
+                "col_start": 0,
+                "col_end": 2
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "R",
+              "value": "R",
+              "span": {
+                "line": 4,
+                "col_start": 2,
+                "col_end": 3
+              }
+            },
+            {
+              "kind": "ws",
+              "raw": " ",
+              "value": " ",
+              "span": {
+                "line": 4,
+                "col_start": 3,
+                "col_end": 4
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "persona.load",
+              "value": "persona.load",
+              "span": {
+                "line": 4,
+                "col_start": 4,
+                "col_end": 16
+              }
+            },
+            {
+              "kind": "ws",
+              "raw": " ",
+              "value": " ",
+              "span": {
+                "line": 4,
+                "col_start": 16,
+                "col_end": 17
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "*",
+              "value": "*",
+              "span": {
+                "line": 4,
+                "col_start": 17,
+                "col_end": 18
+              }
+            },
+            {
+              "kind": "ws",
+              "raw": " ",
+              "value": " ",
+              "span": {
+                "line": 4,
+                "col_start": 18,
+                "col_end": 19
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "->traits",
+              "value": "->traits",
+              "span": {
+                "line": 4,
+                "col_start": 19,
+                "col_end": 27
+              }
+            }
+          ]
+        },
+        {
+          "lineno": 5,
+          "original_line": "  J traits",
+          "op_value": "J",
+          "op_canonical": "J",
+          "slot_values": [
+            "traits"
+          ],
+          "slot_kinds": [
+            "bare"
+          ],
+          "tokens": [
+            {
+              "kind": "ws",
+              "raw": "  ",
+              "value": "  ",
+              "span": {
+                "line": 5,
+                "col_start": 0,
+                "col_end": 2
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "J",
+              "value": "J",
+              "span": {
+                "line": 5,
+                "col_start": 2,
+                "col_end": 3
+              }
+            },
+            {
+              "kind": "ws",
+              "raw": " ",
+              "value": " ",
+              "span": {
+                "line": 5,
+                "col_start": 3,
+                "col_end": 4
+              }
+            },
+            {
+              "kind": "bare",
+              "raw": "traits",
+              "value": "traits",
+              "span": {
+                "line": 5,
+                "col_start": 4,
+                "col_end": 10
+              }
+            }
+          ]
+        },
+        {
+          "lineno": 6,
+          "original_line": "",
+          "op_value": "",
+          "op_canonical": "",
+          "slot_values": [],
+          "slot_kinds": [],
+          "tokens": []
+        }
+      ]
+    },
+    "services": {
+      "persona_demo": {
+        "mode": "core",
+        "path": "noop",
+        "eps": {},
+        "ui": {}
+      }
+    },
+    "types": {},
+    "labels": {
+      "1": {
+        "nodes": [
+          {
+            "id": "n1",
+            "op": "R",
+            "effect": "io",
+            "reads": [],
+            "writes": [
+              "traits"
+            ],
+            "lineno": 4,
+            "data": {
+              "op": "R",
+              "lineno": 4,
+              "adapter": "persona.load",
+              "target": "*",
+              "args": [],
+              "out": "traits",
+              "src": "persona",
+              "req_op": "LOAD",
+              "entity": "*",
+              "fields": "*",
+              "raw": [
+                "persona.load",
+                "*",
+                "->traits"
+              ]
+            },
+            "effect_tier": "io-read",
+            "effect_kinds": [
+              "memory_read"
+            ],
+            "hash": "sha256:5db09dcf05f99d037fbd91746751e014b0a222517b13aae4d4390df71578e2b8"
+          },
+          {
+            "id": "n2",
+            "op": "J",
+            "effect": "pure",
+            "reads": [
+              "traits"
+            ],
+            "writes": [],
+            "lineno": 5,
+            "data": {
+              "op": "J",
+              "lineno": 5,
+              "var": "traits"
+            },
+            "effect_tier": "pure",
+            "effect_kinds": [],
+            "hash": "sha256:1333aa239ac657cfb193e2ae888ba121933926db6defdb40620c15b1d3bf4d7e"
+          }
+        ],
+        "edges": [
+          {
+            "from": "n1",
+            "to": "n2",
+            "to_kind": "node",
+            "port": "next"
+          }
+        ],
+        "legacy": {
+          "steps": [
+            {
+              "op": "R",
+              "lineno": 4,
+              "adapter": "persona.load",
+              "target": "*",
+              "args": [],
+              "out": "traits",
+              "src": "persona",
+              "req_op": "LOAD",
+              "entity": "*",
+              "fields": "*",
+              "raw": [
+                "persona.load",
+                "*",
+                "->traits"
+              ]
+            },
+            {
+              "op": "J",
+              "lineno": 5,
+              "var": "traits"
+            }
+          ]
+        },
+        "slots": [],
+        "entry": "n1",
+        "exits": [
+          {
+            "node": "n2",
+            "var": "traits"
+          }
+        ],
+        "effect_summary": {
+          "reads": [
+            "traits"
+          ],
+          "writes": [
+            "traits"
+          ],
+          "effects": [
+            "memory_read"
+          ]
+        },
+        "id_hash": "sha256:0ed3facfa0fe02d907939b2e48786827f24c6c8f5c2ebc374a45814a2c1a7916"
+      }
+    },
+    "crons": [],
+    "config": {
+      "env": [],
+      "secrets": []
+    },
+    "observability": {
+      "metrics": [],
+      "trace": false
+    },
+    "deploy": {
+      "strategy": "rolling",
+      "env_target": "",
+      "flags": []
+    },
+    "limits": {
+      "per_path": {},
+      "per_tenant": 0
+    },
+    "roles": [],
+    "allow": [],
+    "audit": {},
+    "admin": {},
+    "desc": {
+      "endpoints": {},
+      "types": {}
+    },
+    "runbooks": {},
+    "ver": null,
+    "compat": null,
+    "tests": [],
+    "api": {
+      "style": "rest",
+      "version_prefix": "",
+      "deprecate": [],
+      "sla": {}
+    },
+    "rag": {
+      "sources": {},
+      "chunking": {},
+      "embeddings": {},
+      "stores": {},
+      "indexes": {},
+      "retrievers": {},
+      "augment": {},
+      "generate": {},
+      "pipelines": {}
+    },
+    "capabilities": {
+      "auth": {},
+      "policy": {},
+      "cache": {},
+      "queue": {},
+      "txn": {}
+    },
+    "emit_capabilities": {
+      "needs_react_ts": false,
+      "needs_python_api": true,
+      "needs_prisma": false,
+      "needs_mt5": false,
+      "needs_scraper": false,
+      "needs_cron": false,
+      "needs_langgraph": false,
+      "needs_temporal": false
+    },
+    "runtime_policy": {
+      "execution_mode": "graph-preferred",
+      "unknown_op_policy": "skip"
+    },
+    "meta": [],
+    "errors": [],
+    "warnings": [],
+    "diagnostics": [],
+    "stats": {
+      "lines": 4,
+      "ops": 4
+    },
+    "execution_requirements": {
+      "isolation_level": "none",
+      "required_capabilities": [
+        "persona"
+      ],
+      "resource_profile": "default",
+      "ephemeral": true,
+      "avm_policy_fragment": {
+        "allowed_adapters": [
+          "persona"
+        ],
+        "capability_policy_names": []
+      }
+    },
+    "avm_policy_fragment": {
+      "allowed_adapters": [
+        "persona"
+      ],
+      "capability_policy_names": []
+    },
+    "required_emit_targets": {
+      "full_multitarget": [
+        "react_ts",
+        "python_api",
+        "prisma",
+        "mt5",
+        "scraper",
+        "cron",
+        "langgraph",
+        "temporal"
+      ],
+      "minimal_emit": [
+        "python_api"
+      ]
+    },
+    "graph_semantic_checksum": "sha256:6c8b4984b5c4302bdc249a6993c37e7ce05a67dc7b67b8e397e15666ec84821e",
+    "ok": true
+  },
+  "memory": [
+    {
+      "id": "boot_fe5076176ff840c9b9b839109c791650",
+      "node_type": "episodic",
+      "agent_id": "armaraos",
+      "label": "bridge_boot",
+      "payload": {
+        "message": "ArmaraOS AINL graph memory bridge initialized"
+      },
+      "tags": [
+        "boot",
+        "armaraos"
+      ],
+      "created_at": 1775999649.9281988,
+      "ttl": null
+    }
+  ],
+  "persona": [
+    {
+      "trait_name": "prefers_brevity",
+      "strength": 0.9,
+      "learned_from": [],
+      "last_updated": 1775999649
+    },
+    {
+      "trait_name": "technical_depth",
+      "strength": 0.75,
+      "learned_from": [],
+      "last_updated": 1775999649
+    }
+  ],
+  "tools": [
+    "persona.load"
+  ]
+}
