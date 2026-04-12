@@ -15,6 +15,7 @@ from compiler_diagnostics import (
     CompilationDiagnosticError,
     CompilerContext,
     Diagnostic,
+    StrictModeError,
     make_diagnostic,
 )
 
@@ -1035,9 +1036,16 @@ def _iter_eps(eps: Dict[str, Any]) -> List[Tuple[str, str, Dict[str, Any]]]:
 
 
 class AICodeCompiler:
-    def __init__(self, strict_mode: bool = False, strict_reachability: bool = False) -> None:
+    def __init__(
+        self,
+        strict_mode: bool = False,
+        strict_reachability: bool = False,
+        *,
+        strict_literals: bool = False,
+    ) -> None:
         self.strict_mode = strict_mode
         self.strict_reachability = strict_reachability
+        self.strict_literals = bool(strict_literals)
         self._errors: List[str] = []
         self._label_decl_lines: Dict[str, int] = {}
         self.services: Dict[str, Dict] = {}
@@ -1629,7 +1637,11 @@ class AICodeCompiler:
             # Compile included unit without raising: parent must still run include-contract
             # checks (ENTRY/EXIT_*, no top-level E/S) even when the subgraph has unrelated
             # strict errors, so diagnostics stay actionable.
-            sub_compiler = AICodeCompiler(strict_mode=self.strict_mode)
+            sub_compiler = AICodeCompiler(
+                strict_mode=self.strict_mode,
+                strict_reachability=self.strict_reachability,
+                strict_literals=self.strict_literals,
+            )
             sub_ir = sub_compiler.compile(
                 sub_code,
                 emit_graph=emit_graph,
@@ -2700,6 +2712,31 @@ class AICodeCompiler:
         """Populate nodes/edges/entry/exits for every label from legacy.steps."""
         for lid in list(self.labels.keys()):
             self._steps_to_graph(lid, context=context)
+
+    def _strict_literals_memory_patch_guard(self) -> None:
+        """``strict_literals``: require ``memory.patch`` / ``MemoryPatch`` graph nodes to declare frame reads."""
+        for lid, body in (self.labels or {}).items():
+            if not isinstance(body, dict):
+                continue
+            for n in body.get("nodes") or []:
+                if not isinstance(n, dict):
+                    continue
+                step = (n.get("data") or {})
+                op = str(step.get("op") or n.get("op") or "").strip()
+                is_patch = op == "MemoryPatch"
+                if op == "R":
+                    cs = runtime_canonicalize_r_step(step)
+                    ad = str(cs.get("adapter") or "").strip()
+                    full = MODULE_ALIASES.get(ad, ad)
+                    is_patch = full == "memory.patch"
+                if not is_patch:
+                    continue
+                reads = list(n.get("reads") or [])
+                if not reads:
+                    raise StrictModeError(
+                        f"strict_literals: memory.patch in label {lid!r} must declare at least one frame read "
+                        f"(bind pattern or label via $variables, not string literals only)"
+                    )
 
     def _attach_emit_port_edges(self, ir: Dict[str, Any]) -> None:
         """Append IR-level emit routing edges (port=emit) next to data-flow emit_edges on each label."""
@@ -4649,6 +4686,8 @@ class AICodeCompiler:
             self._steps_to_graph_all(context=context)
             normalize_labels(self.labels)
             annotate_labels_effect_analysis(self.labels)
+            if self.strict_literals:
+                self._strict_literals_memory_patch_guard()
 
         # Spec: emit only nodes, edges, legacy.steps (no bare "steps"). Runtime reads legacy.steps.
 

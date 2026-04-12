@@ -77,6 +77,10 @@ class Diagnostic:
         )
 
 
+class StrictModeError(ValueError):
+    """Raised when ``strict_literals`` (or related) compile-time invariants are violated."""
+
+
 class CompilationDiagnosticError(Exception):
     """Raised when compile finished with one or more structured diagnostics (opt-in path)."""
 

@@ -26,6 +26,10 @@ from runtime.adapters.builtins import CoreBuiltinAdapter
 from runtime.observability import RuntimeObservability
 
 
+class OverwriteGuardError(RuntimeError):
+    """Raised when GraphPatch targets a label that already exists as compiled IR (non-patch)."""
+
+
 class AinlRuntimeError(RuntimeError):
     """Structured runtime error with stable schema for agent consumption."""
 
@@ -184,7 +188,7 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                             sub = "export_graph"
                         if sub in ("store",):
                             sub = "store_pattern"
-                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
+                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute", "patch"):
                             found.add("ainl_graph_memory")
     return sorted(found)
 
@@ -1034,7 +1038,7 @@ class RuntimeEngine:
                         sub = "export_graph"
                     if sub == "store":
                         sub = "store_pattern"
-                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
+                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute", "patch"):
                         emit_adp, emit_tgt = "ainl_graph_memory", sub
                         agent_id = str(call_ctx.get("agent_id") or frame.get("agent_id") or "")
                         if sub == "recall":
@@ -1087,6 +1091,17 @@ class RuntimeEngine:
                         elif sub == "execute":
                             out = self._memory_execute_dispatch(
                                 pattern_src=t0,
+                                frame=frame,
+                                lid=lid,
+                                idx=idx,
+                                stack=stack,
+                            )
+                        elif sub == "patch":
+                            emit_adp, emit_tgt = "ainl_graph_memory", "graph_patch"
+                            label_name = str(args[0]) if len(args) >= 1 else ""
+                            out = self._memory_patch_dispatch(
+                                memory_node_id=str(t0) if t0 is not None else "",
+                                label_name=label_name,
                                 frame=frame,
                                 lid=lid,
                                 idx=idx,
@@ -1171,7 +1186,7 @@ class RuntimeEngine:
                         sub = "export_graph"
                     if sub == "store":
                         sub = "store_pattern"
-                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
+                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute", "patch"):
                         emit_adp, emit_tgt = "ainl_graph_memory", sub
                         agent_id = str(call_ctx.get("agent_id") or frame.get("agent_id") or "")
                         if sub == "recall":
@@ -1226,6 +1241,17 @@ class RuntimeEngine:
                         elif sub == "execute":
                             out = self._memory_execute_dispatch(
                                 pattern_src=t0,
+                                frame=frame,
+                                lid=lid,
+                                idx=idx,
+                                stack=stack,
+                            )
+                        elif sub == "patch":
+                            emit_adp, emit_tgt = "ainl_graph_memory", "graph_patch"
+                            label_name = str(args[0]) if len(args) >= 1 else ""
+                            out = self._memory_patch_dispatch(
+                                memory_node_id=str(t0) if t0 is not None else "",
+                                label_name=label_name,
                                 frame=frame,
                                 lid=lid,
                                 idx=idx,
@@ -1400,47 +1426,18 @@ class RuntimeEngine:
         frame: Dict[str, Any],
     ) -> Optional[str]:
         """
-        Walks steps via _analyze_step_rw logic (inline here).
+        Walks steps using the compiler's ``_analyze_step_rw`` (same as graph lowering).
         Checks every read against current frame + prior writes in sequence.
         Returns error string or None.
         """
+        analyzer = AICodeCompiler()
         available = set(frame.keys())
         for i, s in enumerate(steps):
-            op = s.get("op", "")
-            reads: List[str] = []
-            writes: List[str] = []
-
-            # Minimal RW analysis (matches _steps_to_nodes_edges logic)
-            if op == "R":
-                out_var = s.get("out", "res")
-                if out_var:
-                    writes.append(str(out_var))
-            elif op == "J":
-                var = s.get("var", "data")
-                if var and isinstance(var, str) and var.startswith("$"):
-                    reads.append(var[1:])
-                elif var and isinstance(var, str) and var and (var[0].isalpha() or var[0] == "_"):
-                    reads.append(var)
-            elif op == "Set":
-                name = s.get("name")
-                ref = s.get("ref")
-                if name:
-                    writes.append(str(name))
-                if ref and isinstance(ref, str) and ref.startswith("$"):
-                    reads.append(ref[1:])
-                elif ref and isinstance(ref, str) and ref and (ref[0].isalpha() or ref[0] == "_"):
-                    reads.append(ref)
-            elif op == "Call":
-                out_var = s.get("out") or "_call_result"
-                if out_var:
-                    writes.append(str(out_var))
-
-            # Check reads
+            op = str(s.get("op", "") or "")
+            reads, writes = analyzer._analyze_step_rw(s)
             for r in reads:
                 if r not in available:
                     return f"Patch validation failed for label '{label_name}': step {i} (op={op}) reads undefined variable '{r}'"
-
-            # Add writes to available set
             for w in writes:
                 available.add(w)
 
@@ -1487,6 +1484,16 @@ class RuntimeEngine:
         3. Normalize to full IR label body
         4. Install into self.labels with __patched__ marker
         """
+        resolved_label = _norm_lid(label_name)
+        if not resolved_label:
+            return {"ok": False, "error": "empty patch label_name"}
+
+        existing_body = self.labels.get(resolved_label)
+        if existing_body is not None and not existing_body.get("__patched__"):
+            raise OverwriteGuardError(
+                f"GraphPatch cannot overwrite compiled label {resolved_label!r}"
+            )
+
         call_ctx = dict(frame)
         call_ctx["_runtime_async"] = self.runtime_async
         call_ctx["_observability"] = self.observability
@@ -1516,22 +1523,36 @@ class RuntimeEngine:
         # Normalize patch
         normalized = self._runtime_normalize_patch(steps, label_name)
 
-        # Resolve label name
-        resolved_label = _norm_lid(label_name)
+        patch_nid = str(bridge_result.get("node_id") or "")
+        patch_ver = int(bridge_result.get("patch_version") or 1)
+        declared_reads = list(normalized.get("__declared_reads__") or [])
+        merged: Dict[str, Any] = {
+            **normalized,
+            "__patch_node_id__": patch_nid,
+            "__patch_version__": patch_ver,
+            "__fitness__": 0.5,
+        }
 
         # Install patch
-        self.labels[resolved_label] = normalized
+        self.labels[resolved_label] = merged
+
+        try:
+            bridge = self.adapters._adapters.get("ainl_graph_memory")
+            if bridge is not None and patch_nid:
+                bridge._store.finalize_patch(patch_nid, declared_reads, persist=True)
+        except Exception:
+            pass
 
         _LOG.info(
             f"GraphPatch: installed label '{resolved_label}' from memory node '{memory_node_id}' "
-            f"with {len(steps)} steps, {len(normalized.get('__declared_reads__', []))} declared reads"
+            f"with {len(steps)} steps, {len(declared_reads)} declared reads"
         )
 
         return {
             "ok": True,
             "label": resolved_label,
             "steps": len(steps),
-            "declared_reads": normalized.get("__declared_reads__", []),
+            "declared_reads": declared_reads,
         }
 
     def _reinstall_patches(self) -> None:
@@ -2147,7 +2168,7 @@ class RuntimeEngine:
                 if shared is not None:
                     self._emit_trace(lid, op, i, t0, frame, shared.get("out"), trajectory_step=s)
                     if shared.get("action") == "return":
-                        return shared.get("out")
+                        return self._return_with_patch_fitness(lid, frame, shared.get("out"))
                     i += 1
                     continue
 
@@ -2161,7 +2182,7 @@ class RuntimeEngine:
                 if op == "Loop":
                     ref = self._resolve(s.get("ref"), frame)
                     item_var = s.get("item", "item")
-                    body = _norm_lid(s.get("body"))
+                    body_lid = _norm_lid(s.get("body"))
                     after = _norm_lid(s.get("after"))
                     arr = ref if isinstance(ref, list) else []
                     max_loop_iters = self._limit_int("max_loop_iters")
@@ -2171,7 +2192,7 @@ class RuntimeEngine:
                     prev_item = frame.get(item_var, sentinel)
                     for it in arr:
                         frame[item_var] = it
-                        out = self._run_label(body, frame, stack)
+                        out = self._run_label(body_lid, frame, stack)
                         if out is not None:
                             frame["_loop_last"] = out
                     if prev_item is sentinel:
@@ -2188,7 +2209,7 @@ class RuntimeEngine:
 
                 if op == "While":
                     cond_tok = s.get("cond")
-                    body = _norm_lid(s.get("body"))
+                    body_lid = _norm_lid(s.get("body"))
                     after = _norm_lid(s.get("after"))
                     limit = int(s.get("limit", 10000))
                     max_loop_iters = self._limit_int("max_loop_iters")
@@ -2196,7 +2217,7 @@ class RuntimeEngine:
                         limit = min(limit, max_loop_iters)
                     n = 0
                     while self._eval_cond(cond_tok, frame):
-                        out = self._run_label(body, frame, stack)
+                        out = self._run_label(body_lid, frame, stack)
                         n += 1
                         if n > limit:
                             raise AinlRuntimeError(
@@ -2229,7 +2250,7 @@ class RuntimeEngine:
                         try:
                             shared_retry = _retry_current_step()
                             if shared_retry and shared_retry.get("action") == "return":
-                                return shared_retry.get("out")
+                                return self._return_with_patch_fitness(lid, frame, shared_retry.get("out"))
                             last_err = None
                             break
                         except Exception as re:
@@ -2273,7 +2294,7 @@ class RuntimeEngine:
                         try:
                             shared_retry = _retry_current_step()
                             if shared_retry and shared_retry.get("action") == "return":
-                                return shared_retry.get("out")
+                                return self._return_with_patch_fitness(lid, frame, shared_retry.get("out"))
                             last_err = None
                             break
                         except Exception as re:
@@ -2318,7 +2339,7 @@ class RuntimeEngine:
                         try:
                             shared_retry = _retry_current_step()
                             if shared_retry and shared_retry.get("action") == "return":
-                                return shared_retry.get("out")
+                                return self._return_with_patch_fitness(lid, frame, shared_retry.get("out"))
                             last_err = None
                             break
                         except Exception as re:
@@ -2354,8 +2375,13 @@ class RuntimeEngine:
                     self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
                     return self._run_label(err_handler, frame, stack)
                 self._raise_runtime_error(e, lid, i, op, stack, frame, s)
-        self._update_patch_fitness_if_needed(lid, body, frame)
+        self._update_patch_fitness_if_needed(lid, self.labels.get(lid, {}), frame)
         return None
+
+    def _return_with_patch_fitness(self, lid: str, frame: Dict[str, Any], value: Any) -> Any:
+        """Apply GraphPatch fitness EMA for ``lid`` before returning a value from the step interpreter."""
+        self._update_patch_fitness_if_needed(lid, self.labels.get(lid, {}), frame)
+        return value
 
     def _update_patch_fitness_if_needed(
         self,
