@@ -4,6 +4,17 @@
 
 <!-- Next release changes go here -->
 
+- **docs**: **`AGENTS.md`**, **`README.md`**, **`docs/operations/MCP_RESEARCH_CONTRACT.md`**, **`docs/ARMARAOS_INTEGRATION.md`**, **`docs/operations/CAPABILITY_GRANT_MODEL.md`** — MCP `frame_hints` / `# frame:` edge cases, per-workspace **`ainl_mcp_limits.json`** parse warnings + **`max_adapter_calls: 0`** semantics, MCP auto-cache JSON validation + interaction with default **`RuntimeEngine`** cache registration, ArmaraOS emit pack (**`capability_declarations`**, **`ainl_ir_version`**, **`README.md`**).
+- **feat(mcp)**: malformed workspace **`ainl_mcp_limits.json`** → successful **`ainl_run`** may include **`warnings`**; invalid non-empty workspace **`cache.json`** during MCP auto-registration → **`adapter_config_error`** with **`details`**.
+- **feat(emit/armaraos)**: **`security.json`** includes **`capability_declarations.adapters`**; **`HAND.toml`** **`[hand]`** includes **`ainl_ir_version`**.
+- **fix(runtime)**: enforce **`max_adapter_calls`** including **`0`** (no longer folded to “unset”); aligns with MCP/workspace limits and tests.
+- **fix(profiles)**: **`local_minimal`** **`max_adapter_calls`** raised from **0** to **500** in **`tooling/security_profiles.json`** so the profile remains usable with the stricter adapter-call ceiling.
+- **test**: **`tests/test_mcp_frame_hints.py`**, **`tests/test_mcp_workspace_limits.py`**, **`tests/test_mcp_auto_cache_adapter.py`**, **`tests/test_emit_armaraos_handpack.py`** — MCP + emit contracts (real **`ainl_compile`** / **`ainl_run`** / **`ainl emit`**).
+- **test**: **`tests/test_compact_opcode_ir_parity.py`** — compact vs golden opcode from **`ainl_preprocess.preprocess`**, semantic IR parity via **`tooling.ir_canonical.graph_semantic_checksum`**, **`While`** opcode compile smoke.
+- **test**: **`tests/test_memory_search_op.py`** — **`MemorySearch`** with temp-file **`GraphStore`**, top-**`k`**, empty envelope, special characters in **`query`**, insertion-order results, missing-adapter **`AinlRuntimeError`** envelope.
+- **test**: **`tests/test_core_builtins_v143.py`** — v1.4.3 **`core.*`** runtime verbs (comparisons, whitespace + string predicates, coercions incl. **`BOOL`** string edge cases, dict **`KEYS`**/**`VALUES`**).
+- **test(conftest)**: **`offline_llm_provider_config`** pytest fixture (deterministic offline LLM provider block for suites that opt in via **`pytestmark`**).
+
 ## v1.5.1 (April 12, 2026) — Graph memory runtime + ArmaraOS bridge docs
 
 - **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.5.1** (mirrored **`tests/emits/server/runtime/engine.py`**).

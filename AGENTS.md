@@ -208,6 +208,8 @@ python -m pytest tests/ -x -q -k "not test_profiles_cover"
 # Expected: ~1000 passed, 6 skipped (ArmaraOS CLI / langgraph / temporalio not installed)
 ```
 
+Focused suites (optional): **`tests/test_compact_opcode_ir_parity.py`** (compact ↔ opcode IR), **`tests/test_memory_search_op.py`** (**`MemorySearch`** + **`GraphStore`**), **`tests/test_core_builtins_v143.py`** (v1.4.3 **`core.*`**). Shared fixture **`offline_llm_provider_config`** lives in **`tests/conftest.py`** (no network).
+
 ## ⚠️ NOTE: Tutorial Syntax Variants
 
 The files in `docs/learning/intermediate/` contain TWO syntax styles:
@@ -282,13 +284,15 @@ R http.GET "https://example.com/api?x=1" {} 15 ->res
 
 **`web` vs `http`:** `http` is the plain HTTP client. `web` is OpenClaw-oriented search/fetch and is not a substitute for documented `http.Get` / `http.Post` when you need a normal request to a fixed host.
 
-**`ainl_compile` returns `frame_hints`:** The `ainl_compile` MCP tool now returns a `frame_hints` list alongside the IR. Each entry is `{"name": "...", "type": "...", "source": "comment"|"inferred"}` describing variables the caller should supply in the `frame` parameter of `ainl_run`. Authoritative hints come from `# frame: name: type` comment lines at the top of the `.ainl` file; additional inferred hints are derived from variables referenced but never assigned in the IR.
+**`ainl_compile` returns `frame_hints`:** The `ainl_compile` MCP tool returns a `frame_hints` list alongside the IR on success (on compile failure the error bundle matches `ainl_validate` and does not include `frame_hints`). Each entry is `{"name": "...", "type": "...", "source": "comment"|"inferred"}` describing variables the caller should supply in the `frame` parameter of `ainl_run`. Authoritative hints come from `# frame: name: type` comment lines (anywhere in the source file); `# frame: name` without a second `:` is accepted and yields `type: "any"`. Inferred hints are derived from variables referenced in `R`/`X`/`Set` steps but never assigned in the IR (best-effort; may include false positives).
 
 **Variable shadowing in `R` args (critical):** String literals in `R` argument positions (e.g. `"records"`) have their quotes stripped at compile time and resolved against the live frame before being used as literals. If a frame variable named `records` exists, `R core.GET data "records"` will pass the list, not the string `"records"`. Prevention: **use unique variable name prefixes in every label** (e.g. `lien_*` in first loop, `out_*` in second loop).
 
-**Per-workspace `ainl_mcp_limits.json`:** Place a JSON file at `<fs.root>/ainl_mcp_limits.json` to raise or tighten limits for a specific workspace without editing global server defaults. Format: `{"max_steps": 500000, "max_time_ms": 900000, "max_adapter_calls": 50000}`. The server ceiling still wins — you can tighten below defaults but not widen above them via this file.
+**Per-workspace `ainl_mcp_limits.json`:** Place a JSON file at `<fs.root>/ainl_mcp_limits.json` to raise or tighten limits for a specific workspace without editing global server defaults. Format: `{"max_steps": 500000, "max_time_ms": 900000, "max_adapter_calls": 50000}`. Values merge with per-call `limits` and then with the MCP server ceiling (most restrictive wins). If the file exists but is not valid JSON, limits fall back to defaults and a successful `ainl_run` may include `warnings` describing the parse failure.
 
-**Auto-registered cache:** When the `fs` adapter is enabled in `ainl_run` and no `cache` adapter is explicitly configured, the MCP server will automatically register `cache` if `output/cache.json` or `cache.json` exists inside the `fs.root` directory. Zero config required for workspace-local caching.
+**`max_adapter_calls` semantics:** Integer ceilings include **zero**: `max_adapter_calls: 0` means no adapter calls are allowed (the first `R` / cache / queue / etc. dispatch fails with a structured `RUNTIME_MAX_ADAPTER_CALLS` error). This is independent of `max_steps` / `max_time_ms`, where non-positive values in grants are treated as unset for legacy reasons.
+
+**Auto-registered cache (MCP):** When the `fs` adapter is enabled in `ainl_run`, `cache` is not listed in `adapters.enable`, and `output/cache.json` or `cache.json` exists under `fs.root`, the MCP server registers `LocalFileCacheAdapter` with that path. The file must be valid JSON if it is non-empty; otherwise `ainl_run` returns `ok: false` with `error: "adapter_config_error"` and a `details` string (empty files are treated as `{}` once the adapter loads). **Note:** `RuntimeEngine` may still register a default file-backed `cache` adapter when the IR references `cache` and no adapter was supplied — that path uses `AINL_CACHE_JSON` / `MONITOR_CACHE_JSON` / `~/.openclaw/ainl_cache.json` unless the MCP server already registered `cache` for the workspace file.
 
 **MCP `ainl_run` adapter requirement:** `http`, `fs`, `cache`, and `sqlite` are **not** registered by default in MCP runs — you will get "adapter not registered" / "http adapter not found" errors unless you pass the `adapters` argument. Always include it when your workflow uses those adapters:
 ```json

@@ -100,7 +100,7 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 ## New in v1.5.1
 
-- **Graph memory in the runtime:** IR ops **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter (ArmaraOS JSON graph store); see **`docs/adapters/AINL_GRAPH_MEMORY.md`** and **`tests/test_memory_recall_op.py`**.
+- **Graph memory in the runtime:** IR ops **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter (ArmaraOS JSON graph store); see **`docs/adapters/AINL_GRAPH_MEMORY.md`**, **`tests/test_memory_recall_op.py`** (dispatch contract), and **`tests/test_memory_search_op.py`** (search + temp **`GraphStore`**).
 - **ArmaraOS bridge:** `armaraos/bridge/ainl_graph_memory.py`, runner registration + delegation hook, optional **`graph_viz`** server, **`demo/procedural_roundtrip_demo.py`**, **`demo/ainl_graph_memory_demo.py`** (graph-memory walkthrough + export), token-budget bridge shim (**`bridge_token_budget_adapter.py`**).
 - **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, and mirrored emit server engine aligned to **1.5.1**.
 - **Catalog parity:** **`ainl_graph_memory`** appears in **`tooling/adapter_manifest.json`**, **`ADAPTER_REGISTRY.json`**, and **`tooling/effect_analysis.py`** (**`ADAPTER_EFFECT`**) alongside the human registry in **`docs/reference/ADAPTER_REGISTRY.md`**.
@@ -128,9 +128,9 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 ## New in v1.4.3
 
 - **`core.*` builtins expanded**: `EQ`/`NEQ`/`GT`/`LT`/`GTE`/`LTE` comparisons, `TRIM`/`STRIP`/`LSTRIP`/`RSTRIP` whitespace, `STARTSWITH`/`ENDSWITH`, `KEYS`/`VALUES`, `STR`/`INT`/`FLOAT`/`BOOL` coercions — all now implemented in `runtime/adapters/builtins.py`. These verbs were already in the validator contract; now they work at runtime too.
-- **MCP `ainl_compile` returns `frame_hints[]`**: list of `{name, type, source}` entries so agents can auto-construct the `frame` parameter before calling `ainl_run`. Add `# frame: name: type` comment lines to source for authoritative hints.
-- **MCP per-workspace limits**: place `ainl_mcp_limits.json` in the `fs.root` directory to tune `max_steps`/`max_time_ms`/`max_adapter_calls` per workspace without editing global server config.
-- **MCP auto-cache**: `cache` adapter is automatically registered when `output/cache.json` or `cache.json` exists in `fs.root`, making workspace caching zero-config.
+- **MCP `ainl_compile` returns `frame_hints[]`**: list of `{name, type, source}` entries so agents can auto-construct the `frame` parameter before calling `ainl_run`. Add `# frame: name: type` comment lines to source for authoritative hints (`# frame: name` alone is allowed and yields `type: "any"`).
+- **MCP per-workspace limits**: place `ainl_mcp_limits.json` in the `fs.root` directory to tune `max_steps`/`max_time_ms`/`max_adapter_calls` per workspace without editing global server config. Invalid JSON in that file is ignored for limit purposes; successful `ainl_run` responses may include a `warnings` entry. **`max_adapter_calls: 0`** blocks all adapter dispatches (first `R` fails with a structured runtime error).
+- **MCP auto-cache**: when `fs` is enabled and `cache` is not explicitly listed in `adapters.enable`, the MCP server registers `cache` against `output/cache.json` or `cache.json` under `fs.root` if that file exists; non-empty files must be valid JSON. See **`docs/operations/MCP_RESEARCH_CONTRACT.md`** and tests **`tests/test_mcp_auto_cache_adapter.py`**, **`tests/test_mcp_workspace_limits.py`**, **`tests/test_mcp_frame_hints.py`**, **`tests/test_emit_armaraos_handpack.py`**.
 - **MCP per-run adapters** (from earlier in v1.4.3): `ainl_run` `adapters` parameter for scoped `http`, `fs`, `cache`, `sqlite` per call.
 - **Limit alignment**: `_SERVER_DEFAULT_LIMITS` in `runtime_runner_service.py` raised to match MCP defaults (`max_steps: 500000`, `max_adapter_calls: 50000`, `max_time_ms: 900000`).
 
@@ -1129,6 +1129,9 @@ Bind `developer_query` from a slot, prior step, or input. The JSON store persist
 | `scripts/validator_app.py` | Web validator (FastAPI): POST .lang → validate, GET / for paste UI |
 | `scripts/generate_synthetic_dataset.py` | Generate 10k+ valid .lang programs into `data/synthetic/` |
 | `tests/test_conformance.py` | Conformance tests (IR shape + emit outputs); run with `pytest tests/test_conformance.py` |
+| `tests/test_compact_opcode_ir_parity.py` | Compact vs golden opcode: preprocess contract + semantic IR checksum parity (`graph_semantic_checksum`); opcode **`While`** compile smoke |
+| `tests/test_memory_search_op.py` | **`MemorySearch`** runtime + **`GraphStore`** (matches, limits, empty envelope, special chars, missing adapter **`AinlRuntimeError`**) |
+| `tests/test_core_builtins_v143.py` | v1.4.3 **`core.*`** verbs: comparisons, **`TRIM`**/**`STRIP`**, **`STARTSWITH`**/**`ENDSWITH`**, coercions, **`KEYS`**/**`VALUES`** |
 | `tests/test_*.lang` | Example specs |
 | `examples/` | Example programs with explicit strict/non-strict classes (see `tooling/artifact_profiles.json`) |
 | `intelligence/` | OpenClaw-oriented monitors (digest, memory consolidation, token-aware bootstrap); see `docs/INTELLIGENCE_PROGRAMS.md` |

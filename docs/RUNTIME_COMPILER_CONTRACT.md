@@ -120,6 +120,9 @@ without requiring a global `python` on `PATH`.
 - Runtime behavior sanity and capability op execution: `tests/test_runtime_basic.py`
 - Graph/step parity and retry/error routing: `tests/test_runtime_parity.py`, `tests/test_runtime_graph_only.py`
 - Graph memory ops + adapter call contract: `tests/test_memory_recall_op.py`
+- Graph memory **`MemorySearch`** + JSON **`GraphStore`**: `tests/test_memory_search_op.py`
+- Compact syntax vs golden opcode IR parity (`graph_semantic_checksum`): `tests/test_compact_opcode_ir_parity.py`
+- v1.4.3 **`core.*`** builtins (comparisons, trim/strip, predicates, coercions, dict keys/values): `tests/test_core_builtins_v143.py`
 - Malformed `S`+`cron` schedule lines (IR `services.path` drift): `tests/test_s_cron_schedule_lines.py`
 
 ## CI gate behavior note (v1.3.3 release line)

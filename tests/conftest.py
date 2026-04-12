@@ -41,3 +41,12 @@ def cohere_success_response():
         "generations": [{"text": '{"result": "ok"}'}],
         "meta": {"billed_units": {"input_tokens": 10, "output_tokens": 5}},
     }
+
+
+@pytest.fixture
+def offline_llm_provider_config():
+    """Deterministic offline LLM provider block (no network)."""
+    return {
+        "fallback_chain": ["offline"],
+        "providers": {"offline": {"prefix": "TEST_OFFLINE"}},
+    }

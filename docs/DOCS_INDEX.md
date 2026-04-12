@@ -66,6 +66,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Capability grant model: `docs/operations/CAPABILITY_GRANT_MODEL.md`
+- MCP agent tool contracts (`ainl_compile` **`frame_hints`**, `ainl_run` workspace limits + auto-cache): `docs/operations/MCP_RESEARCH_CONTRACT.md` · tests `tests/test_mcp_frame_hints.py`, `tests/test_mcp_workspace_limits.py`, `tests/test_mcp_auto_cache_adapter.py`
 - Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
 - **CLI trajectory JSONL** (`ainl run --log-trajectory`, `AINL_LOG_TRAJECTORY`): `docs/trajectory.md` (per-step trace beside the `.ainl` source; not runner HTTP audit)
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
@@ -79,7 +80,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **ZeroClaw skill + bootstrap (`ainl install-mcp --host zeroclaw`, `~/.zeroclaw/mcp.json`, `examples/ecosystem/`):** `docs/ZEROCLAW_INTEGRATION.md`
 - **Hermes Agent + bootstrap (`ainl install-mcp --host hermes`, `~/.hermes/config.yaml`, `--emit hermes-skill`, `skills/hermes/`):** `docs/HERMES_INTEGRATION.md` · hub `docs/integrations/hermes-agent.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 - **ArmaraOS + bootstrap (`ainl install armaraos`, `~/.armaraos/config.toml`, `~/.armaraos/bin/ainl-run`):** `docs/ARMARAOS_INTEGRATION.md` (PostHog for the **desktop app** is configured on the **armaraos** repo / marketing site env — not in this compiler repo)
-- **ArmaraOS JSON graph memory (`ainl_graph_memory`, `MemoryRecall`/`MemorySearch`, viz server):** `docs/adapters/AINL_GRAPH_MEMORY.md` · demos `demo/procedural_roundtrip_demo.py`, `demo/ainl_graph_memory_demo.py`
+- **ArmaraOS JSON graph memory (`ainl_graph_memory`, `MemoryRecall`/`MemorySearch`, viz server):** `docs/adapters/AINL_GRAPH_MEMORY.md` · demos `demo/procedural_roundtrip_demo.py`, `demo/ainl_graph_memory_demo.py` · tests `tests/test_memory_recall_op.py`, `tests/test_memory_search_op.py`
 - Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage, long-context memory
 - OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
 - Workflow patterns: `docs/PATTERNS.md`

@@ -24,7 +24,7 @@ Registered under the canonical adapter name **`ainl_graph_memory`**. Dispatch is
 |-----------------|------|-------------------|
 | `memory_store_pattern` | `label`, `steps` (list of dicts), `agent_id`, `tags` (list) | `{"node_id", "step_count"}` — root procedural node’s `payload` includes **`steps`** for downstream recall |
 | `memory_recall` | `node_id` | Full node dict, or `{"error": "not found"}` |
-| `memory_search` | `query`, `node_type`, `agent_id`, `limit` | `{"results": [...], "count": N}` — substring match over label + JSON payload + tags; `node_type` / `agent_id` filter when non-empty |
+| `memory_search` | `query`, `node_type`, `agent_id`, `limit` | `{"results": [...], "count": N}` — substring match over label + JSON payload + tags; `node_type` / `agent_id` filter when non-empty. Among matches, order follows **insertion order** in the store (no relevance scoring). **`count`** is **`len(results)`** after applying **`limit`**. |
 | `export_graph` | (none) | `{"nodes": [...], "edges": [...]}` |
 
 **Python hooks** (used by the bridge runner and demos, not IR ops): `boot`, `on_delegation`, `on_tool_execution`, `on_prompt_compress`, `on_swarm_message`, `on_persona_update`.
@@ -49,9 +49,9 @@ Use frame variables for dynamic ids/queries; follow normal strict dataflow rules
 
 `call_ctx` is the frame plus `_runtime_async`, `_observability`, `_adapter_registry` (same enrichment as `R` adapter calls).
 
-**Capabilities:** IR that contains these ops (legacy `steps` or label **graph** `nodes`) contributes **`ainl_graph_memory`** to fallback adapter inference (`_fallback_adapters_from_label_steps`) when AVM metadata is missing. Programs still need **`capabilities.allow`** (or execution requirements) to include **`ainl_graph_memory`** and a **registered** adapter instance — otherwise dispatch raises `AdapterError` / blocked adapter behavior.
+**Capabilities:** IR that contains these ops (legacy `steps` or label **graph** `nodes`) contributes **`ainl_graph_memory`** to fallback adapter inference (`_fallback_adapters_from_label_steps`) when AVM metadata is missing. Programs still need **`capabilities.allow`** (or execution requirements) to include **`ainl_graph_memory`** and a **registered** adapter instance — otherwise the engine surfaces a structured **`AinlRuntimeError`** (message includes missing / blocked adapter details; same pattern as other adapter failures wrapped from **`AdapterError`**).
 
-**Tests:** `tests/test_memory_recall_op.py` — call shapes, step vs graph mode, missing adapter.
+**Tests:** `tests/test_memory_recall_op.py` — **`MemoryRecall`** / **`MemorySearch`** dispatch shapes, step vs graph mode, missing adapter (mock bridge). **`tests/test_memory_search_op.py`** — **`MemorySearch`** against a temp-backed **`GraphStore`** (matches, empty results, special characters in **`query`**, **`limit`** cap, insertion-order “ranking”, structured error when **`ainl_graph_memory`** is not registered).
 
 ## ArmaraOS bridge runner
 
