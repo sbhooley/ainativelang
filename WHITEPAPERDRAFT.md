@@ -2,7 +2,7 @@
 
 Graph-based agent orchestration, canonical IR, and compile-once / run-many execution for production AI systems.
 
-**Version:** 1.5.1
+**Version:** 1.5.2
 **Project status:** active human + AI co-development
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `cli/main.py` (including **`ainl serve`** REST: validate / compile / run / health), optional FastAPI runner (`scripts/runtime_runner_service.py` for richer operator endpoints)
 **Reference ecosystem:** OpenClaw / NemoClaw / Hermes Agent / ArmaraOS host integrations, canonical strict validation (**`tooling/artifact_profiles.json`** → **`strict-valid`** CI set), **MCP (`ainl-mcp`)** + **CLI** curated preset importers (Clawflows / Agency-Agents / Markdown → `.ainl`), optional **LSP** (`langserver.py`), multi-target emitters (including Solana clients and Hermes skill bundles), sandboxed operator deployments
@@ -17,7 +17,7 @@ AI Native Lang (AINL) is a graph-first programming system designed for AI-orient
 
 AINL addresses an emerging systems problem in modern AI engineering: as large language models (LLMs) gain larger context windows and stronger reasoning capabilities, many agent systems still rely on prompt loops for orchestration, state handling, and tool invocation. This creates rising token cost, hidden state, degraded predictability, and weak auditability. AINL proposes a different architecture: use the model to generate a compact graph workflow once, then rely on a deterministic runtime to execute it repeatedly. In this framing, AINL makes workflow orchestration an explicit **energy consumption pattern design** problem, shifting economics from recurring "pay-per-run thinking" toward compile-once, run-many execution with bounded model use.
 
-The surface language ships **two equivalent syntaxes**—compact (Python-like, recommended for new code; see `examples/compact/`) and opcode (low-level)—both compiling to the same IR. Through **v1.5.1**, the reference tree includes first-class **Solana** workflows (strict-valid demos, optional `ainativelang[solana]`), **Hermes Agent** skill emission (`--emit hermes-skill`), **ArmaraOS** hand packages (`--target armaraos`), optional **JSON graph memory** for bridge workflows (**`ainl_graph_memory`**, IR **`MemoryRecall`/`MemorySearch`** — **`docs/adapters/AINL_GRAPH_MEMORY.md`**), an optional tiered **`code_context`** adapter for repository indexing, and a packaged **LLM adapter layer** under `adapters/llm/` (with an **`offline`** deterministic provider for tests and CI). **Release 1.5.0** focused on **version + documentation alignment** (see **`docs/CHANGELOG.md`**); **release 1.5.1** adds the graph-memory runtime ops and ArmaraOS bridge surfaces above. Earlier operator-facing behavior accreted across **1.4.x** lines below.
+The surface language ships **two equivalent syntaxes**—compact (Python-like, recommended for new code; see `examples/compact/`) and opcode (low-level)—both compiling to the same IR. Through **v1.5.2**, the reference tree includes first-class **Solana** workflows (strict-valid demos, optional `ainativelang[solana]`), **Hermes Agent** skill emission (`--emit hermes-skill`), **ArmaraOS** hand packages (`--target armaraos`), **first-class graph memory substrate** (`ainl_graph_memory`) with all four intrinsic memory types — Episode, Semantic, Procedural, and Persona — as validated IR node annotations; unified single-artifact serialization (**AINLBundle**) encoding workflow + memory + persona + tools in one portable **`.ainlbundle`** file; and executable procedural memory via the **MemoryExecute** / **`memory.pattern_recall`** op (see **`docs/adapters/AINL_GRAPH_MEMORY.md`** and **`docs/architecture/GRAPH_INTROSPECTION.md`**), an optional tiered **`code_context`** adapter for repository indexing, and a packaged **LLM adapter layer** under `adapters/llm/` (with an **`offline`** deterministic provider for tests and CI). **Release 1.5.0** focused on **version + documentation alignment**; **release 1.5.1** added graph-memory runtime ops and ArmaraOS bridge surfaces; **release 1.5.2** closes five IR-level architectural gaps identified in the graph memory implementation audit — see §6.8 below. Earlier operator-facing behavior accreted across **1.4.x** lines below.
 
 The language has been exercised in production-style OpenClaw workflows involving email, calendar, social monitoring, database access, infrastructure checks, queues, WebAssembly modules, cache, memory, and autonomous operational monitors. This whitepaper describes AINL's architecture, semantics, strict-mode guarantees, operational role, benchmark posture, and relevance to AI-native systems design.
 
@@ -44,6 +44,7 @@ Optional **embedding-backed** startup context (`AINL_STARTUP_USE_EMBEDDINGS`, no
 - **v1.3.2–v1.3.3 — Packaging:** core dependencies **`httpx`**, **`requests`**, **`PyYAML`** so wheel installs and **`ainl-mcp`** load cleanly on minimal environments.
 - **v1.4.0 — ArmaraOS:** **`ainl emit --target armaraos`** hand package (`HAND.toml`, IR JSON, `security.json`); **`ainl install-mcp --host armaraos`** for **`~/.armaraos/config.toml`**; **`ainl status --host armaraos`**; **`docs/ARMARAOS_INTEGRATION.md`**.
 - **v1.4.1 — Core + LLM:** **`R core.GET`** (structured reads on **`CoreBuiltinAdapter`**); register **`offline`** **`AbstractLLMAdapter`** for deterministic **`R llm.COMPLETION`** in config-driven demos/CI; strict wishlist smoke in **`parser-compat`**. See **`docs/CHANGELOG.md`**, **`docs/RELEASE_NOTES.md`**.
+- **v1.5.2 — Graph memory gap audit:** five IR-level architectural gaps closed; **`PersonaLoad`** op with frame injection; **`memory.pattern_recall`** (PatternRecall) for executable procedural memory; **`memory_type`** IR node annotations; **`AINLBundle`** single-artifact serialization; **`emit_edges`** typed data-flow edges in IR topology. 14 new tests across **`test_persona_load_engine`**, **`test_memory_execute_op`**, **`test_ainl_bundle`**, **`test_strict_adapter_contracts`**. See §6.8.
 
 ---
 
@@ -298,6 +299,86 @@ Graph-preferred mode is the default for production intelligence. Authors must av
 ### 6.7 Adapter recording and replay (verification)
 
 For **tests and golden runs**, `runtime/adapters/replay.py` supplies **`RecordingAdapterRegistry`** (logs adapter name, verb, args, and results) and **`ReplayAdapterRegistry`** (replays a prior log with signature matching). This keeps integration tests **deterministic** without stubbing every adapter by hand and complements trajectory JSONL (§6.5), which targets human/ops forensics rather than exact replay.
+
+### 6.8 Graph memory substrate — architectural gaps closed (v1.5.2)
+
+AINL's claim that "the graph is the memory" requires the four intrinsic memory node types — Episode, Semantic, Procedural, and Persona — to be first-class artifacts at every layer of the system: compiler, IR, runtime, and serialized bundle. Prior to v1.5.2, several gaps existed between the claim and the implementation. This section documents what was closed and the commit evidence for each.
+
+#### Gap 1 — Persona subgraph (closed in commit `feat(persona)`)
+
+**Claim:** A persona graph is a subgraph the runtime reads at prompt-construction time.
+**Previous state:** PersonaNode existed in the graph store but there was no `PersonaLoad` op, no `persona.load` in the compiler registry, and no runtime hook that injected persona traits into the execution frame at inference time.
+**Closed by:**
+- `PersonaNode` dataclass with `trait_name`, `strength`, `learned_from`, `last_updated` and round-trip `to_payload()`/`from_payload()` serialization
+- `persona.load` registered in `OP_REGISTRY`, `MODULE_ALIASES`, `ADAPTER_EFFECT`, and grammar sets
+- `runtime/engine.py`: `R persona.load` queries the graph store, filters traits with `strength >= 0.1`, writes `__persona__: {trait_name: strength}` and `persona_instruction: "[Persona traits active: ...]"` to the execution frame — both sync and async paths
+- `examples/persona_demo.ainl`: reference program compiling strict with `ok=True, warnings=[], errors=[]`
+- 8 tests passing: `test_persona_load_engine.py`, `test_strict_adapter_contracts.py`
+
+#### Gap 2 — Compiler op registration (closed in commit `feat(compiler)`)
+
+**Claim:** Any `.ainl` program can use memory and persona ops and have the compiler validate them in strict mode.
+**Previous state:** `MemoryRecall`, `MemorySearch`, `persona.update`, `persona.get` existed at runtime but were absent from `OP_REGISTRY`, `MODULE_ALIASES`, and `ADAPTER_EFFECT` — the compiler treated them as unknown ops and warned or rejected in strict mode.
+**Closed by:**
+- 6 ops added to `OP_REGISTRY`: `memory.store_pattern`, `memory.recall`, `memory.search`, `memory.export_graph`, `persona.update`, `persona.get`
+- 6 aliases added to `MODULE_ALIASES`
+- `ADAPTER_EFFECT` rows added for strict graph validation
+- `memory` and `persona` added to `KNOWN_MODULES` for suggestions
+- `compiler_grammar.py` unchanged — picks up new ops automatically via `TOP_LEVEL_OPS` and `ACTIVE_LABEL_LINE_STARTERS` set comprehensions
+- 5 strict adapter contract tests passing
+
+#### Gap 3 — Unified single-artifact serialization (closed in commit `feat(bundle)`)
+
+**Claim:** A single AINL graph encodes persona + tools + workflow + memory.
+**Previous state:** Workflow, memory, persona, and tools were four separate artifacts: `.ainl` file, `~/.armaraos/ainl_graph_memory.json`, PersonaNode objects, and implicit R ops.
+**Closed by:**
+- `runtime/ainl_bundle.py`: `AINLBundle` dataclass encoding all four dimensions — `workflow` (compiled IR), `memory` (MemoryNode snapshot), `persona` (PersonaNode snapshot), `tools` (R-op adapter.target strings extracted from IR)
+- `AINLBundleBuilder`: compiles `.ainl` source, extracts tools from IR topology, snapshots memory and persona from a live graph bridge
+- JSON save/load round-trip: `bundle.save("agent.ainlbundle")` / `AINLBundle.load("agent.ainlbundle")`
+- `examples/armaraos_agent.ainlbundle`: reference bundle with persona traits + workflow
+- 4 tests passing: `test_ainl_bundle.py`
+
+#### Gap A — Memory node type annotation in IR (closed in commit `feat(ir)`)
+
+**Claim:** Episode, Semantic, Procedural, and Persona node types are first-class in the IR graph.
+**Previous state:** IR nodes were typed by op (`R`, `If`, `J`, etc.) but not by memory type. The four memory types existed only at the `GraphStore` layer.
+**Closed by:**
+- `_MEMORY_TYPE_MAP` in `compiler_v2.py`: maps canonical op names to memory type strings (`episode` / `semantic` / `procedural` / `persona`)
+- IR nodes for memory/persona R steps now carry a `memory_type` field alongside `op`, `effect`, `reads`, `writes`
+- `tooling/graph_api.py`: `memory_nodes(ir, label_id, memory_type=None)` for type-filtered graph queries
+- Non-memory R nodes are unaffected — the field is additive and optional
+
+#### Gap B — PatternRecall op (closed in commit `feat(ir)`)
+
+**Claim:** Stored procedural patterns are retrievable and executable from the DSL.
+**Previous state:** `memory.store_pattern` was write-only from the DSL; there was no op to retrieve a stored pattern subgraph.
+**Closed by:**
+- `memory.pattern_recall` registered in `OP_REGISTRY`, `MODULE_ALIASES`, `ADAPTER_EFFECT`, and `_MEMORY_TYPE_MAP`
+- `pattern_recall` verb in `ainl_graph_memory` bridge: searches procedural nodes by `pattern_name`, returns `steps_hint` payload
+- `memory.store_pattern` updated to persist `steps_hint` when value is a list
+- `runtime/engine.py`: `R memory.pattern_recall` sets `__last_pattern__` frame key
+- Strict compile: `ok=True, errors=[]`
+
+#### Gap C — Emit targets as typed graph edges in IR topology (closed in commit `feat(ir)`)
+
+**Claim:** Output routing is defined structurally as graph edges rather than hardcoded in imperative logic.
+**Previous state:** `required_emit_targets` was a flat metadata list in the IR. The claim held in spirit but not in IR encoding — the topology was a flat list, not a typed edge set.
+**Closed by:**
+- `emit_edges` list added to label IR alongside existing control-flow `edges` — backward compatible
+- `->varname` output bindings encoded as `{from, to, port:"data", var}` typed edges
+- `required_emit_targets` metadata preserved for backward compatibility
+- `tooling/graph_api.py`: `emit_edges(ir, label_id)` and `data_flow_edges(ir, label_id)` helpers
+
+---
+
+After these five closures, the following architectural claims in this whitepaper are backed by production code with verifiable commit evidence in the `sbhooley/ainativelang` repository:
+
+- The graph is the memory (intrinsic, not external retrieval)
+- All four memory types are first-class IR node annotations
+- Persona subgraphs are read by the runtime at inference time
+- A single `.ainlbundle` artifact encodes all four agent dimensions
+- Output routing is structurally encoded as typed IR edges
+- Procedural memory patterns are retrievable and executable from the DSL
 
 ---
 
