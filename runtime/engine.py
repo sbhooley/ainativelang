@@ -133,7 +133,7 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                 found.add("queue")
             elif op in ("CacheGet", "CacheSet"):
                 found.add("cache")
-            elif op in ("MemoryRecall", "MemorySearch", "MemoryExecute"):
+            elif op in ("MemoryRecall", "MemorySearch", "MemoryExecute", "MemoryPatch"):
                 found.add("ainl_graph_memory")
             elif op in ("memory.merge", "MemoryMerge"):
                 found.add("memory")
@@ -153,14 +153,14 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                             sub = "export_graph"
                         if sub in ("store",):
                             sub = "store_pattern"
-                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
+                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute", "patch"):
                             found.add("ainl_graph_memory")
         for n in (body.get("nodes") or []):
             if not isinstance(n, dict):
                 continue
             st = n.get("data") or {}
             gop = str(st.get("op") or n.get("op") or "").strip()
-            if gop in ("MemoryRecall", "MemorySearch", "MemoryExecute"):
+            if gop in ("MemoryRecall", "MemorySearch", "MemoryExecute", "MemoryPatch"):
                 found.add("ainl_graph_memory")
             elif gop in ("memory.merge", "MemoryMerge"):
                 found.add("memory")
@@ -1678,6 +1678,34 @@ class RuntimeEngine:
                 "ainl_graph_memory", "memory_search", [query, node_type, agent_id, limit], call_ctx
             )
             return {"action": "continue", "out": frame.get(out_var)}
+        if op == "MemoryPatch":
+            out_var = str(step.get("out", "patch_result"))
+            # Extract pattern source (first arg)
+            raw_pattern = step.get("pattern")
+            if raw_pattern is None:
+                # Fallback to positional args if pattern not set
+                args = step.get("args", [])
+                raw_pattern = args[0] if len(args) >= 1 else ""
+            pattern_src = self._resolve(raw_pattern, frame) if raw_pattern is not None else ""
+
+            # Extract label name (second arg)
+            raw_label = step.get("label_name")
+            if raw_label is None:
+                args = step.get("args", [])
+                raw_label = args[1] if len(args) >= 2 else ""
+            label_name = str(self._resolve(raw_label, frame) if raw_label is not None else "")
+
+            self._count_adapter_call(lid, idx, op, stack)
+            result = self._memory_patch_dispatch(
+                memory_node_id=pattern_src,
+                label_name=label_name,
+                frame=frame,
+                lid=lid,
+                idx=idx,
+                stack=stack,
+            )
+            frame[out_var] = result
+            return {"action": "continue", "out": frame.get(out_var)}
         if op == "QueuePut":
             queue = step.get("queue", "")
             value = self._resolve(step.get("value"), frame)
@@ -2644,6 +2672,43 @@ class RuntimeEngine:
                     frame[out_var] = self.adapters.call(
                         "ainl_graph_memory", "memory_search", [query, node_type, agent_id, limit], call_ctx
                     )
+                    self._emit_trace(
+                        lid,
+                        op,
+                        idx,
+                        t0,
+                        frame,
+                        frame.get(out_var),
+                        node_id=cur,
+                        trajectory_step=step,
+                    )
+
+                elif op == "MemoryPatch":
+                    out_var = str(step.get("out", "patch_result"))
+                    # Extract pattern source (first arg)
+                    raw_pattern = step.get("pattern")
+                    if raw_pattern is None:
+                        args = step.get("args", [])
+                        raw_pattern = args[0] if len(args) >= 1 else ""
+                    pattern_src = self._resolve(raw_pattern, frame) if raw_pattern is not None else ""
+
+                    # Extract label name (second arg)
+                    raw_label = step.get("label_name")
+                    if raw_label is None:
+                        args = step.get("args", [])
+                        raw_label = args[1] if len(args) >= 2 else ""
+                    label_name = str(self._resolve(raw_label, frame) if raw_label is not None else "")
+
+                    self._count_adapter_call(lid, idx, op, stack)
+                    result = self._memory_patch_dispatch(
+                        memory_node_id=pattern_src,
+                        label_name=label_name,
+                        frame=frame,
+                        lid=lid,
+                        idx=idx,
+                        stack=stack,
+                    )
+                    frame[out_var] = result
                     self._emit_trace(
                         lid,
                         op,

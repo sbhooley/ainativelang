@@ -390,3 +390,228 @@ Without strict mode, AINL becomes soft; implementations should treat it as the d
 - **Emission**: Emitters read IR and produce target code; they must respect path→label_id→return_var and fe.routes/layouts/forms/tables/events when present.
 
 This spec is the single source of truth for “valid AINL” and “meaning of an AINL program.” It can be used to train or fine-tune small models (e.g. 3B) on AINL-only parsing/generation, with emission to one or more targets as a separate step.
+
+---
+
+## 6. GraphPatch — Runtime Self-Modification
+
+**GraphPatch** is a controlled, auditable mechanism for a running agent to promote a stored `PROCEDURAL` memory pattern into a live, first-class IR label. Once patched, the label becomes callable by name and persists across engine restarts.
+
+### What It Does
+
+- **Promotes** a stored PROCEDURAL pattern from graph memory into a live IR label
+- The label becomes **callable by name** within the running engine (`Call patched_label`)
+- Enables agents to **learn from execution history** and modify their own program structure
+- Closes the "execution IS memory" loop: memory can shape future execution
+
+### PatchRegistry Persistence
+
+- Patches are stored as `NodeType.PATCH` nodes in the graph store (JSON-backed)
+- **Survive engine restarts** via `_reinstall_patches()` called during engine boot
+- **Keyed by** `(label_name, agent_id)` for multi-agent scoping
+- Default storage: `~/.armaraos/ainl_graph_memory.json`
+- Override path: `AINL_GRAPH_MEMORY_PATH` environment variable
+
+### Metadata Fields
+
+Each `PatchRecord` contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `node_id` | string | Unique patch node identifier |
+| `label_name` | string | Target IR label name (installed in `engine.labels`) |
+| `pattern_name` | string | Source pattern name from graph memory |
+| `source_pattern_node_id` | string | PROCEDURAL node that was promoted |
+| `source_episode_ids` | list[str] | Episodes that motivated this patch |
+| `declared_reads` | list[str] | Union of all step reads (post-normalization) |
+| `fitness` | float | EMA-tracked success metric (0.0–1.0) |
+| `patch_version` | int | Increments on re-patch (v1, v2, v3...) |
+| `patched_at` | int | Unix timestamp (creation time) |
+| `parent_patch_id` | str? | Prior PatchRecord node_id if re-patch |
+| `retired_at` | int? | Unix timestamp if retired |
+| `retired_reason` | str? | "superseded", "manual", etc. |
+
+### Lineage Edges
+
+GraphPatch creates typed edges for traceability:
+
+- **`DERIVED_FROM`**: `source_pattern_node` → `patch_node`  
+  Links the patch to the PROCEDURAL pattern it promotes
+  
+- **`CAUSED_PATCH`**: `episode_node` → `patch_node`  
+  Links motivating episodes to the patch (from `source_episode_ids`)
+
+On **re-patch** (same label_name, new pattern):
+- Old patch is **retired** (`retired_at` set, `retired_reason = "superseded"`)
+- New patch gets `parent_patch_id = old_patch.node_id`
+- Forms a **version chain**: v1 → v2 → v3 → ...
+
+### Fitness EMA
+
+Patches track a **fitness score** updated after each successful execution:
+
+**Formula:**
+```
+fitness_new = α * reward + (1 - α) * fitness_old
+```
+
+**Parameters:**
+- `α = 0.2` (learning rate)
+- `reward = 1.0` on successful execution
+- `fitness_old` defaults to `0.5` on creation
+
+**Progression example:**
+```
+v1 creation:    fitness = 0.5
+after 1 exec:   fitness = 0.2 * 1.0 + 0.8 * 0.5 = 0.6
+after 2 execs:  fitness = 0.2 * 1.0 + 0.8 * 0.6 = 0.68
+after 3 execs:  fitness = 0.2 * 1.0 + 0.8 * 0.68 = 0.744
+→ converges to 1.0
+```
+
+**Implementation:**
+- Updated in `_update_patch_fitness_if_needed()` after `_run_label` succeeds
+- Stored in both `engine.labels[label]["__fitness__"]` and graph store
+- Enables future **patch selection** by fitness ranking
+
+### Overwrite Guard
+
+**Default behavior:** Patching an existing label name raises an error
+
+**Bypass mechanisms:**
+1. **Re-patch** (same pattern name): Automatically supersedes the old patch
+2. **`allow_overwrite=True`** flag (future): Explicitly allow collision
+3. **`__patched__` marker**: Only patched labels may be re-patched  
+   Compiled labels cannot be overwritten (safety guard)
+
+**Re-patch workflow:**
+```python
+# First patch
+bridge.memory_patch("pattern_v1", "my_label", agent_id="X")
+# → creates patch v1
+
+# Re-patch (new pattern, same label)
+bridge.memory_patch("pattern_v2", "my_label", agent_id="X")
+# → retires v1, creates v2 with parent_patch_id=v1.node_id
+```
+
+### Dry-Run Semantics
+
+**`memory_patch(..., dry_run=True)`** performs validation without installation:
+
+1. **Pattern resolution:** Verifies source pattern exists and has steps
+2. **Dataflow validation:** Checks all reads are satisfied by frame + prior writes
+3. **Normalization:** Builds full IR structure with `declared_reads`
+4. **Returns:** `{ok: True, steps: [...], declared_reads: [...]}` without:
+   - Writing to graph store
+   - Installing in `engine.labels`
+   - Creating lineage edges
+
+**Use cases:**
+- Pre-flight checks in strict mode
+- Testing pattern viability before committing
+- CI/CD validation pipelines
+
+### Thread Safety
+
+**GraphStore operations:**
+- Per-method locking via `self._lock` (threading.Lock)
+- `add_patch_record()`, `retire_patch()`, `update_patch_fitness()` are atomic
+- JSON file writes use atomic replace (`os.replace()` after tmp write)
+
+**Engine boot:**
+- `_reinstall_patches()` runs **once at `__init__`** before any label dispatch
+- No concurrent modification during reinstall (single-threaded boot)
+- Patches installed into `self.labels` before user code runs
+
+**Runtime updates:**
+- `_update_patch_fitness_if_needed()` uses `self._in_fitness_update` flag to prevent recursion
+- Fitness writes are **best-effort** (exceptions are caught and logged)
+- No locking needed for label execution (read-only after boot)
+
+### Call Entry Guard (Strict Mode)
+
+When `unknown_op_policy == "error"` (strict mode), patched labels enforce **declared reads**:
+
+```python
+# In _run_label, before execution:
+if body.get("__patched__") and self.unknown_op_policy == "error":
+    declared_reads = set(body.get("__declared_reads__", []))
+    missing_reads = declared_reads - set(frame.keys())
+    if missing_reads:
+        raise AinlRuntimeError(
+            f"Patched label '{lid}' requires missing frame variables: {sorted(missing_reads)}",
+            code="RUNTIME_PATCH_MISSING_READS",
+            data={"missing": sorted(missing_reads), "declared": sorted(declared_reads)}
+        )
+```
+
+**Purpose:** Prevent runtime errors from undefined variable access in patched code
+
+**Bypass:** Non-strict mode (`unknown_op_policy != "error"`) skips the check
+
+### AINL Syntax
+
+**R-step invocation** (requires routing — see §6.1 below):
+```
+R memory.patch "pattern_name" "target_label" ->patch_result
+```
+
+**Bridge API** (current, direct):
+```python
+bridge.memory_patch(
+    pattern_src="pattern_name",  # or dict with steps
+    label_name="target_label",
+    agent_id="my_agent",
+    source_episode_ids=["ep_1", "ep_2"],  # optional
+    dry_run=False
+)
+```
+
+**Returns:**
+```json
+{
+  "ok": true,
+  "label_name": "target_label",
+  "steps": [...],
+  "pattern_name": "pattern_name",
+  "step_count": 5,
+  "node_id": "patch_abc123...",
+  "patch_version": 1,
+  "parent_patch_id": null
+}
+```
+
+### Implementation Notes
+
+**Compiler integration:**
+- `OP_REGISTRY["memory.patch"]`: 2–3 slots (pattern, label, optional episodes)
+- `STEP_OPS`: includes `"MemoryPatch"`
+- `_MEMORY_TYPE_MAP["memory.patch"]` → `"procedural"`
+- Effect tier: `EFFECT_TIER_IO_WRITE`
+- Effect kind: `EFFECT_KIND_MEMORY_WRITE`
+
+**Runtime integration:**
+- `_steps_to_nodes_edges()`: exported module-level function for IR construction
+- `_runtime_validate_patch_dataflow()`: validates reads vs. frame
+- `_runtime_normalize_patch()`: builds IR with `__declared_reads__`
+- `_memory_patch_dispatch()`: bridge call with validation
+- `_reinstall_patches()`: called in `RuntimeEngine.__init__`
+- `_update_patch_fitness_if_needed()`: EMA update hook in `_run_label`
+
+**Tooling integration:**
+- `tooling/effect_analysis.py`: `MemoryPatch` → `ainl_graph_memory.MEMORY_PATCH`
+- `tooling/adapter_manifest.json`: `MEMORY_PATCH` verb registered
+
+### Future Extensions
+
+- **Patch selection by fitness:** Auto-select highest-fitness version
+- **Patch expiration:** TTL-based auto-retirement
+- **Patch composition:** Merge multiple patterns into one label
+- **Patch rollback:** Restore parent version on failure
+- **Cross-agent patches:** Share patches between agents via graph replication
+
+---
+
+**Note:** GraphPatch is **experimental** and under active development. The API may change in minor versions. Production use should pin to specific patch versions and test reinstall behavior thoroughly.
+
