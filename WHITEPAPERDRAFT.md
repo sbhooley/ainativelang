@@ -7,6 +7,8 @@ Graph-based agent orchestration, canonical IR, and compile-once / run-many execu
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `cli/main.py` (including **`ainl serve`** REST: validate / compile / run / health), optional FastAPI runner (`scripts/runtime_runner_service.py` for richer operator endpoints)
 **Reference ecosystem:** OpenClaw / NemoClaw / Hermes Agent / ArmaraOS host integrations, canonical strict validation (**`tooling/artifact_profiles.json`** → **`strict-valid`** CI set), **MCP (`ainl-mcp`)** + **CLI** curated preset importers (Clawflows / Agency-Agents / Markdown → `.ainl`), optional **LSP** (`langserver.py`), multi-target emitters (including Solana clients and Hermes skill bundles), sandboxed operator deployments
 
+**Companion narrative (informal):** [`LATE_NIGHT_CONVO_WITH_AI.md`](https://github.com/sbhooley/ainativelang/blob/main/LATE_NIGHT_CONVO_WITH_AI.md) — conversational discussion of graph memory, ecosystem convergence (for example “LLM wiki” patterns), and ArmaraOS-class hosts in relation to this draft; also available in the repository beside this file as `./LATE_NIGHT_CONVO_WITH_AI.md`. Not normative specification text.
+
 ---
 
 ## Abstract
@@ -18,6 +20,8 @@ AINL addresses an emerging systems problem in modern AI engineering: as large la
 The surface language ships **two equivalent syntaxes**—compact (Python-like, recommended for new code; see `examples/compact/`) and opcode (low-level)—both compiling to the same IR. Through **v1.5.0**, the reference tree includes first-class **Solana** workflows (strict-valid demos, optional `ainativelang[solana]`), **Hermes Agent** skill emission (`--emit hermes-skill`), **ArmaraOS** hand packages (`--target armaraos`), an optional tiered **`code_context`** adapter for repository indexing, and a packaged **LLM adapter layer** under `adapters/llm/` (with an **`offline`** deterministic provider for tests and CI). Release **1.5.0** is primarily **version + documentation alignment** across the repo and skills (see **`docs/CHANGELOG.md`**); operator-facing runtime behavior continues to accrete in **1.4.x** lines below.
 
 The language has been exercised in production-style OpenClaw workflows involving email, calendar, social monitoring, database access, infrastructure checks, queues, WebAssembly modules, cache, memory, and autonomous operational monitors. This whitepaper describes AINL's architecture, semantics, strict-mode guarantees, operational role, benchmark posture, and relevance to AI-native systems design.
+
+For informal narrative context on graph-first memory, industry convergence, and reference hosts, see **[`LATE_NIGHT_CONVO_WITH_AI.md`](https://github.com/sbhooley/ainativelang/blob/main/LATE_NIGHT_CONVO_WITH_AI.md)** (repository root; cross-linked from the header metadata above).
 
 ### Positioning note (v1.2.6): portable authoring layer
 
@@ -1308,6 +1312,7 @@ Paths are relative to the repository root.
 - `tests/emits/server/Dockerfile` — emitted server container
 
 ### Examples and validation
+- `LATE_NIGHT_CONVO_WITH_AI.md` — informal companion essay on graph memory, Karpathy “LLM wiki” parallels, and ArmaraOS as a reference host ([GitHub](https://github.com/sbhooley/ainativelang/blob/main/LATE_NIGHT_CONVO_WITH_AI.md)); expands themes from this whitepaper for readers who want narrative context alongside the formal draft
 - `examples/` — canonical `.ainl` examples (hello, CRUD, RAG, retry, webhook, monitors, golden series); **CI `strict-valid`** paths are listed in **`tooling/artifact_profiles.json`** — see **`examples/README.md`** and **`docs/EXAMPLE_SUPPORT_MATRIX.md`**
 - `examples/openclaw/` — OpenClaw example programs
 - `examples/autonomous_ops/` — autonomous ops examples
