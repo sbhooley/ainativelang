@@ -88,6 +88,8 @@ MODULE_ALIASES = {
     "memory.search": "memory.search",
     "memory.export": "memory.export_graph",
     "memory.pattern_recall": "memory.pattern_recall",
+    "memory.execute": "memory.execute",
+    "MemoryExecute": "memory.execute",
     "MemoryMerge": "memory.merge",
     "persona.update": "persona.update",
     "persona.get": "persona.get",
@@ -104,6 +106,7 @@ _MEMORY_TYPE_MAP: Dict[str, str] = {
     "memory.export_graph": "episode",
     "memory.export": "episode",
     "memory.pattern_recall": "procedural",
+    "memory.execute": "procedural",
     "persona.load": "persona",
     "persona.update": "persona",
     "persona.get": "persona",
@@ -224,6 +227,13 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
         "slots": ["STRING"],
         "returns": "DICT",
         "doc": "Retrieve a named procedural pattern node from graph memory and return its payload for direct execution.",
+    },
+    "memory.execute": {
+        "scope": "any",
+        "min_slots": 0,
+        "max_slots": 2,
+        "returns": "ANY",
+        "doc": "Resolve procedural pattern steps via graph memory bridge and execute them in the current frame.",
     },
     "memory.merge": {
         "scope": "any",
@@ -1931,6 +1941,7 @@ class AICodeCompiler:
             "Enf",
             "memory.merge",
             "MemoryMerge",
+            "MemoryExecute",
             "persona.update",
         }
     )
@@ -2147,6 +2158,12 @@ class AICodeCompiler:
             outv = s.get("out", "mm_result")
             if outv:
                 writes.append(str(outv))
+        elif op == "MemoryExecute":
+            _add_read_if_var(s.get("pattern"), "pattern")
+            _add_read_if_var(s.get("node_id"), "node_id")
+            outv = s.get("out", "exec_result")
+            if outv:
+                writes.append(str(outv))
         elif op == "persona.update":
             _add_read_if_var(s.get("trait_name"), "trait_name")
             _add_read_if_var(s.get("strength"), "strength")
@@ -2263,6 +2280,7 @@ class AICodeCompiler:
                     "Tx",
                     "memory.merge",
                     "MemoryMerge",
+                    "MemoryExecute",
                     "persona.update",
                 )
                 else ("meta" if op in ("Err", "Retry") else "pure")
@@ -2283,6 +2301,8 @@ class AICodeCompiler:
                 mt = _MEMORY_TYPE_MAP.get(ad_key) or _MEMORY_TYPE_MAP.get(ad_raw)
                 if mt:
                     node["memory_type"] = mt
+            elif op == "MemoryExecute":
+                node["memory_type"] = "procedural"
             nodes.append(node)
             if op == "If":
                 if last_nid:
@@ -2960,6 +2980,8 @@ class AICodeCompiler:
                 adapters.add("cache")
             elif op in ("memory.merge", "MemoryMerge"):
                 adapters.add("memory")
+            elif op == "MemoryExecute":
+                adapters.add("ainl_graph_memory")
             else:
                 adapter = str(st.get("adapter") or "").strip()
                 if not adapter:
@@ -3734,10 +3756,24 @@ class AICodeCompiler:
 
             elif op == "R":
                 parsed = self._parse_req_slots(slots)
-                if self.current_label:
-                    self._label_steps(self.current_label).append({"op": "R", "lineno": lineno, **parsed} if parsed else {"op": "R", "lineno": lineno, "raw": slots})
+                step_payload: Dict[str, Any]
+                if parsed and str(parsed.get("adapter") or "").strip().lower() == "memory.execute":
+                    step_payload = {
+                        "op": "MemoryExecute",
+                        "lineno": lineno,
+                        "pattern": parsed.get("target"),
+                        "out": parsed.get("out", "exec_result"),
+                    }
+                    if len(slot_kinds) > 1 and slot_kinds[1] == "string":
+                        step_payload["__literal_fields"] = {"pattern": True}
+                elif parsed:
+                    step_payload = {"op": "R", "lineno": lineno, **parsed}
                 else:
-                    self._label_steps("_anon").append({"op": "R", "lineno": lineno, **(parsed or {}), "raw": slots})
+                    step_payload = {"op": "R", "lineno": lineno, "raw": slots}
+                if self.current_label:
+                    self._label_steps(self.current_label).append(step_payload)
+                else:
+                    self._label_steps("_anon").append(step_payload)
 
             elif op == "J":
                 var = slots[0] if slots else "data"

@@ -4,6 +4,11 @@ Use these instead of crawling raw JSON so contract and semantics stay in one pla
 """
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union
 
+# Dotted graph-memory R verbs → memory_type tier (mirrors compiler_v2._MEMORY_TYPE_MAP).
+_MEMORY_TYPE_MAP = {
+    "memory.execute": "procedural",
+}
+
 # Ports that represent "success" flow (not error/retry).
 SUCCESS_PORTS = frozenset({"next", "then", "else", "body", "after"})
 ERROR_PORTS = frozenset({"err", "retry", "handler"})

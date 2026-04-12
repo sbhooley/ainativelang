@@ -132,7 +132,7 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                 found.add("queue")
             elif op in ("CacheGet", "CacheSet"):
                 found.add("cache")
-            elif op in ("MemoryRecall", "MemorySearch"):
+            elif op in ("MemoryRecall", "MemorySearch", "MemoryExecute"):
                 found.add("ainl_graph_memory")
             elif op in ("memory.merge", "MemoryMerge"):
                 found.add("memory")
@@ -152,14 +152,14 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                             sub = "export_graph"
                         if sub in ("store",):
                             sub = "store_pattern"
-                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
                             found.add("ainl_graph_memory")
         for n in (body.get("nodes") or []):
             if not isinstance(n, dict):
                 continue
             st = n.get("data") or {}
             gop = str(st.get("op") or n.get("op") or "").strip()
-            if gop in ("MemoryRecall", "MemorySearch"):
+            if gop in ("MemoryRecall", "MemorySearch", "MemoryExecute"):
                 found.add("ainl_graph_memory")
             elif gop in ("memory.merge", "MemoryMerge"):
                 found.add("memory")
@@ -183,7 +183,7 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                             sub = "export_graph"
                         if sub in ("store",):
                             sub = "store_pattern"
-                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
                             found.add("ainl_graph_memory")
     return sorted(found)
 
@@ -1032,7 +1032,7 @@ class RuntimeEngine:
                         sub = "export_graph"
                     if sub == "store":
                         sub = "store_pattern"
-                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
                         emit_adp, emit_tgt = "ainl_graph_memory", sub
                         agent_id = str(call_ctx.get("agent_id") or frame.get("agent_id") or "")
                         if sub == "recall":
@@ -1076,12 +1076,20 @@ class RuntimeEngine:
                                 [pattern_name, steps, aid_sp, [str(x) for x in tags]],
                                 call_ctx,
                             )
-                        else:
+                        elif sub == "pattern_recall":
                             pname = str(t0) if t0 is not None else ""
                             kw = {"pattern_name": pname}
                             out = self.adapters.call("ainl_graph_memory", "memory_pattern_recall", [kw], call_ctx)
                             if isinstance(out, dict):
                                 frame["__last_pattern__"] = out
+                        elif sub == "execute":
+                            out = self._memory_execute_dispatch(
+                                pattern_src=t0,
+                                frame=frame,
+                                lid=lid,
+                                idx=idx,
+                                stack=stack,
+                            )
                     else:
                         out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
                 else:
@@ -1161,7 +1169,7 @@ class RuntimeEngine:
                         sub = "export_graph"
                     if sub == "store":
                         sub = "store_pattern"
-                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall", "execute"):
                         emit_adp, emit_tgt = "ainl_graph_memory", sub
                         agent_id = str(call_ctx.get("agent_id") or frame.get("agent_id") or "")
                         if sub == "recall":
@@ -1205,7 +1213,7 @@ class RuntimeEngine:
                                 [pattern_name, steps, aid_sp, [str(x) for x in tags_a]],
                                 call_ctx,
                             )
-                        else:
+                        elif sub == "pattern_recall":
                             pname = str(t0) if t0 is not None else ""
                             kw = {"pattern_name": pname}
                             out = await self.adapters.call_async(
@@ -1213,6 +1221,14 @@ class RuntimeEngine:
                             )
                             if isinstance(out, dict):
                                 frame["__last_pattern__"] = out
+                        elif sub == "execute":
+                            out = self._memory_execute_dispatch(
+                                pattern_src=t0,
+                                frame=frame,
+                                lid=lid,
+                                idx=idx,
+                                stack=stack,
+                            )
                     else:
                         out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
                 else:
@@ -1341,6 +1357,39 @@ class RuntimeEngine:
             return None
         entry_new = id_map[entry_old]
         return self._run_label(entry_new, frame, stack, force_steps=False)
+
+    @staticmethod
+    def _call_ctx_dry_run(call_ctx: Dict[str, Any]) -> bool:
+        v = call_ctx.get("dry_run")
+        if v in (True, 1, "1", "true", "True", "yes", "on"):
+            return True
+        return str(os.environ.get("AINL_DRY_RUN", "")).strip().lower() in ("1", "true", "yes", "on")
+
+    def _memory_execute_dispatch(
+        self,
+        *,
+        pattern_src: Any,
+        frame: Dict[str, Any],
+        lid: str,
+        idx: int,
+        stack: List[str],
+    ) -> Any:
+        call_ctx = dict(frame)
+        call_ctx["_runtime_async"] = self.runtime_async
+        call_ctx["_observability"] = self.observability
+        call_ctx["_adapter_registry"] = self.adapters
+        bridge_result = self.adapters.call("ainl_graph_memory", "memory_execute", [pattern_src], call_ctx)
+        steps = (bridge_result or {}).get("steps") or []
+        if not steps:
+            return bridge_result
+        if self._call_ctx_dry_run(call_ctx):
+            return {"dry_run": True, "steps": steps}
+        synthetic_lid = f"__pattern_{uuid.uuid4().hex[:8]}__"
+        self.labels[synthetic_lid] = {"legacy": {"steps": steps}}
+        try:
+            return self._run_label(synthetic_lid, frame, stack)
+        finally:
+            self.labels.pop(synthetic_lid, None)
 
     def _exec_step(
         self,
@@ -1476,6 +1525,22 @@ class RuntimeEngine:
             out_var = step.get("out", "mm_result")
             frame[out_var] = merged_out
             return {"action": "continue", "out": merged_out}
+        if op == "MemoryExecute":
+            out_var = str(step.get("out", "exec_result"))
+            raw_pat = step.get("pattern")
+            if raw_pat is None:
+                raw_pat = step.get("node_id", "")
+            pattern_src = self._resolve(raw_pat, frame) if raw_pat is not None else ""
+            self._count_adapter_call(lid, idx, op, stack)
+            result = self._memory_execute_dispatch(
+                pattern_src=pattern_src,
+                frame=frame,
+                lid=lid,
+                idx=idx,
+                stack=stack,
+            )
+            frame[out_var] = result
+            return {"action": "continue", "out": frame.get(out_var)}
         if op == "persona.update":
             self._count_adapter_call(lid, idx, op, stack)
             call_ctx = dict(frame)
@@ -2159,7 +2224,18 @@ class RuntimeEngine:
                     cur = None
                     continue
 
-                elif op in ("J", "Call", "Set", "Filt", "Sort", "X", "memory.merge", "MemoryMerge", "persona.update"):
+                elif op in (
+                    "J",
+                    "Call",
+                    "Set",
+                    "Filt",
+                    "Sort",
+                    "X",
+                    "memory.merge",
+                    "MemoryMerge",
+                    "MemoryExecute",
+                    "persona.update",
+                ):
                     shared = self._exec_step(step, frame, lid, idx, stack, force_steps_for_call=False)
                     self._emit_trace(
                         lid,

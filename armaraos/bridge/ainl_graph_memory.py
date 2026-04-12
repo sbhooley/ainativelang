@@ -456,6 +456,15 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
                 pn = arg_list[0]
             return self.pattern_recall({"pattern_name": pn}, context)
 
+        if verb == "memory_execute":
+            raw = None
+            if isinstance(args, dict) or (isinstance(args, (list, tuple)) and args and isinstance(args[0], dict)):
+                kw_e = _coerce_call_kwargs(args)
+                raw = kw_e.get("pattern") if kw_e else None
+            if raw is None and arg_list:
+                raw = arg_list[0]
+            return self.memory_execute(raw, context)
+
         if verb == "memory_recall":
             if len(arg_list) < 1:
                 raise AdapterError("memory_recall requires node_id")
@@ -614,6 +623,45 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
                     "steps_hint": steps_hint,
                 }
         return {"ok": False, "error": f"pattern '{pattern_name}' not found"}
+
+    def memory_execute(self, raw: Any, ctx: Dict[str, Any]) -> Dict[str, Any]:
+        """Resolve procedural pattern steps for runtime execution (does not run steps)."""
+        payload: Optional[Dict[str, Any]] = None
+        pattern_name: str = ""
+        if isinstance(raw, dict):
+            if isinstance(raw.get("steps"), list):
+                payload = raw
+                pattern_name = str(raw.get("pattern_name") or raw.get("label") or "").strip()
+            else:
+                inner = raw.get("payload")
+                if isinstance(inner, dict) and isinstance(inner.get("steps"), list):
+                    payload = inner
+                    pattern_name = str(inner.get("pattern_name") or raw.get("pattern_name") or "").strip()
+                else:
+                    return {"ok": False, "error": "no steps in pattern", "steps": []}
+        elif isinstance(raw, str):
+            pn = raw.strip()
+            if not pn:
+                return {"ok": False, "error": "pattern_name required", "steps": []}
+            rec = self.pattern_recall({"pattern_name": pn}, ctx)
+            if not rec.get("ok"):
+                return {**rec, "steps": []}
+            inner_pl = rec.get("payload")
+            if isinstance(inner_pl, dict) and isinstance(inner_pl.get("steps"), list):
+                payload = inner_pl
+                pattern_name = str(inner_pl.get("pattern_name") or pn).strip()
+            else:
+                return {"ok": False, "error": "pattern payload has no steps", "steps": []}
+        else:
+            return {"ok": False, "error": "invalid pattern source", "steps": []}
+
+        steps = list((payload or {}).get("steps") or [])
+        return {
+            "ok": True,
+            "steps": steps,
+            "pattern_name": pattern_name or str((payload or {}).get("pattern_name") or ""),
+            "step_count": len(steps),
+        }
 
     def memory_store_pattern(
         self,

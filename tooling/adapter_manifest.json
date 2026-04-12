@@ -689,7 +689,9 @@
         "store_pattern",
         "store",
         "merge",
-        "recall_pattern"
+        "recall_pattern",
+        "pattern_recall",
+        "execute"
       ],
       "effect_default": "io",
       "privilege_tier": "local_state",
@@ -705,7 +707,9 @@
       "recommended_lane": "noncanonical",
       "verbs": [
         "MEMORY_RECALL",
-        "MEMORY_SEARCH"
+        "MEMORY_SEARCH",
+        "MEMORY_PATTERN_RECALL",
+        "MEMORY_EXECUTE"
       ],
       "effect_default": "io",
       "privilege_tier": "local_state",

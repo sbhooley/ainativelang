@@ -209,6 +209,7 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "memory.MERGE": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "memory.RECALL_PATTERN": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "memory.PATTERN_RECALL": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "memory.EXECUTE": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "persona.UPDATE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
     "persona.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "persona.LOAD": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
@@ -216,6 +217,7 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "ainl_graph_memory.MEMORY_RECALL": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "ainl_graph_memory.MEMORY_SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "ainl_graph_memory.MEMORY_PATTERN_RECALL": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "ainl_graph_memory.MEMORY_EXECUTE": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.LIST_SIMILAR": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.UPSERT": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
@@ -355,6 +357,8 @@ def strict_adapter_key_for_step(step: Dict[str, Any]) -> str:
     op0 = str(step.get("op") or "").strip()
     if op0 in ("memory.merge", "MemoryMerge"):
         return "memory.MERGE"
+    if op0 == "MemoryExecute":
+        return "ainl_graph_memory.MEMORY_EXECUTE"
     if op0 == "persona.update":
         return "persona.UPDATE"
     adapter = step.get("adapter") or step.get("src") or ""
@@ -395,7 +399,7 @@ def effect_tier_for_node(node: Dict[str, Any]) -> str:
         return EFFECT_TIER_IO_WRITE
     if op == "CacheGet":
         return EFFECT_TIER_IO_READ
-    if op in ("MemoryRecall", "MemorySearch"):
+    if op in ("MemoryRecall", "MemorySearch", "MemoryExecute"):
         return EFFECT_TIER_IO_READ
     if op in ("memory.merge", "MemoryMerge"):
         return EFFECT_TIER_IO_READ
@@ -429,7 +433,7 @@ def effect_kinds_for_node(node: Dict[str, Any]) -> Set[str]:
     if op == "CacheGet":
         out.add(EFFECT_KIND_CACHE_READ)
         return out
-    if op in ("MemoryRecall", "MemorySearch"):
+    if op in ("MemoryRecall", "MemorySearch", "MemoryExecute"):
         out.add(EFFECT_KIND_MEMORY_READ)
         return out
     if op in ("memory.merge", "MemoryMerge"):
