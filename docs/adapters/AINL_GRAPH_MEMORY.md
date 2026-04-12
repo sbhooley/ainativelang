@@ -32,6 +32,19 @@ Registered under the canonical adapter name **`ainl_graph_memory`**. Dispatch is
 
 **Python hooks** (used by the bridge runner and demos, not IR ops): `boot`, `on_delegation`, `on_tool_execution`, `on_prompt_compress`, `on_swarm_message`, `on_persona_update`.
 
+### `boot()`, `AINL_BUNDLE_PATH`, and ArmaraOS scheduled `ainl run`
+
+When **`AINLGraphMemoryBridge.boot(agent_id=…)`** runs, it sets the active agent id, then **best-effort** loads a host-provided bundle:
+
+| Env | When set | Behavior |
+|-----|----------|----------|
+| **`AINL_BUNDLE_PATH`** | Absolute path to an existing **`.ainlbundle`** file (ArmaraOS sets this on the **`ainl run`** child when `~/.armaraos/agents/<agent_id>/bundle.ainlbundle` exists) | `AINLBundle.load(path)`; for each entry in **`persona`** (list of dicts), call **`persona.update`** so the JSON graph store matches the last saved bundle. Malformed or missing files are ignored (non-fatal). |
+| **`AINL_AGENT_ID`** | Set with the bundle path by the host | Carried for host/debug alignment; bridge behavior is driven by the **`agent_id`** argument to **`boot`**. |
+
+After a successful scheduled graph, the ArmaraOS kernel runs a **background** Python export that calls **`boot`** again and **`AINLBundleBuilder.build(..., bridge).save(...)`** so the next cron tick sees updated **persona** / memory snapshots in the bundle file. Details: **ArmaraOS** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md) (*AINL bundle + graph memory*), bundle schema: **`runtime/ainl_bundle.py`**.
+
+**Not the same store:** chat agents also use Rust **`ainl-memory`** SQLite at **`~/.armaraos/agents/<id>/ainl_memory.db`** for **persona** lines injected into the **LLM system prompt** (`GraphMemoryWriter` in **armaraos**). That path is separate from this JSON **`ainl_graph_memory`** file used inside **`ainl run`**.
+
 ### Example `R` lines (when the adapter is allowed + registered)
 
 ```text

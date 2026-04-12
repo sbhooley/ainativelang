@@ -65,10 +65,17 @@ AINL prefers `ARMARAOS_*` for ArmaraOS integration, with `AINL_*` and legacy `OP
 | Monitor cache JSON | `MONITOR_CACHE_JSON` | (none) |
 | FS sandbox root | `AINL_FS_ROOT` | (none) |
 | JSON graph memory file | `AINL_GRAPH_MEMORY_PATH` | (default `~/.armaraos/ainl_graph_memory.json`) |
+| Bundle file for scheduled `ainl run` (host sets on child) | `AINL_BUNDLE_PATH` | Absolute path to `~/.armaraos/agents/<agent_id>/bundle.ainlbundle` when that file exists; **`AINLGraphMemoryBridge.boot`** pre-seeds **persona** nodes from the bundle (see **`docs/adapters/AINL_GRAPH_MEMORY.md`**). |
+| Agent id for bundle + export subprocesses | `AINL_AGENT_ID` | Set with **`AINL_BUNDLE_PATH`** by ArmaraOS cron (**`Kernel::cron_run_job`**). |
+| Bundle export helper only | `AINL_EXPORT_AGENT_ID` | Internal: set by **`export_ainl_bundle_after_ainl_run_best_effort`** in **armaraos** `openfang-runtime` when rewriting the bundle after a successful **`ainl`**. |
 
 ## AINL graph memory (bridge + runtime)
 
 The **`ainl_graph_memory`** adapter stores typed **nodes** and **edges** in a JSON file (default under `~/.armaraos/`). The ArmaraOS bridge runner (`armaraos/bridge/runner.py`) registers it, calls **`boot()`** on startup, and after each successful wrapper run records a delegation node via **`on_delegation`**.
+
+**Scheduled `ainl run` (kernel cron):** when the host runs **`ainl run`** for a job, it may set **`AINL_BUNDLE_PATH`** / **`AINL_AGENT_ID`** so **`boot()`** can merge **persona** rows from **`bundle.ainlbundle`** into the live JSON store before the graph executes, and a post-run step rebuilds that bundle from the bridge. See **armaraos** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md).
+
+**Dashboard chat (Rust `ainl-memory`):** the daemon’s agent loop uses per-agent SQLite **`~/.armaraos/agents/<id>/ainl_memory.db`** to append recent **persona** traits to the **system prompt** (separate from the JSON file above). See the same **armaraos** doc (*AINL bundle + graph memory*) and **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
 
 AINL’s **`RuntimeEngine`** also supports IR ops **`MemoryRecall`** and **`MemorySearch`**, which dispatch the same adapter (for graphs compiled with those steps or nodes). Full contract, `R` examples, optional **FastAPI + D3** graph browser, and tests: **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
 

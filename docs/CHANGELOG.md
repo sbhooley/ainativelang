@@ -4,6 +4,8 @@
 
 <!-- Next release changes go here -->
 
+- **docs**: **`docs/adapters/AINL_GRAPH_MEMORY.md`** — **`boot()`**, **`AINL_BUNDLE_PATH`** / **`AINL_AGENT_ID`**, scheduled **`ainl run`** bundle round-trip vs per-agent Rust **`ainl_memory.db`**; **`docs/ARMARAOS_INTEGRATION.md`** — env table rows + cron / chat graph-memory split with link to **armaraos** **`docs/scheduled-ainl.md`**.
+
 ## v1.6.0 (April 12, 2026) — GraphPatch (memory.patch), strict dataflow, bridge graph_patch
 
 - **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.6.0** (mirrored **`tests/emits/server/runtime/engine.py`**).
