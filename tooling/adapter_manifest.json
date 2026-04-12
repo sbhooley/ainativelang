@@ -709,7 +709,8 @@
         "MEMORY_RECALL",
         "MEMORY_SEARCH",
         "MEMORY_PATTERN_RECALL",
-        "MEMORY_EXECUTE"
+        "MEMORY_EXECUTE",
+        "MEMORY_PATCH"
       ],
       "effect_default": "io",
       "privilege_tier": "local_state",

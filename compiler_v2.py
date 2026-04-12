@@ -90,6 +90,8 @@ MODULE_ALIASES = {
     "memory.pattern_recall": "memory.pattern_recall",
     "memory.execute": "memory.execute",
     "MemoryExecute": "memory.execute",
+    "memory.patch": "memory.patch",
+    "MemoryPatch": "memory.patch",
     "MemoryMerge": "memory.merge",
     "persona.update": "persona.update",
     "persona.get": "persona.get",
@@ -107,6 +109,7 @@ _MEMORY_TYPE_MAP: Dict[str, str] = {
     "memory.export": "episode",
     "memory.pattern_recall": "procedural",
     "memory.execute": "procedural",
+    "memory.patch": "procedural",
     "persona.load": "persona",
     "persona.update": "persona",
     "persona.get": "persona",
@@ -234,6 +237,14 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
         "max_slots": 2,
         "returns": "ANY",
         "doc": "Resolve procedural pattern steps via graph memory bridge and execute them in the current frame.",
+    },
+    "memory.patch": {
+        "scope": "any",
+        "min_slots": 2,
+        "max_slots": 3,
+        "slots": ["FREE_ARG", "STRING", "FREE_ARG"],
+        "returns": "DICT",
+        "doc": "Promote a PROCEDURAL memory node to a live IR label. First arg: pattern source (name or dict), second: target label name, optional third: source episode IDs list.",
     },
     "memory.merge": {
         "scope": "any",
@@ -747,6 +758,210 @@ def runtime_canonicalize_r_step(step: Dict[str, Any]) -> Dict[str, Any]:
 
     out = step.get("out", "res")
     return {"adapter": adapter, "target": target, "args": args, "out": out}
+
+
+def _steps_to_nodes_edges(steps: List[Dict[str, Any]], label_name: str) -> Dict[str, Any]:
+    """
+    Lifted from AICodeCompiler._steps_to_graph: builds nodes/edges/entry/exits
+    for a flat step list. Annotates memory_type from _MEMORY_TYPE_MAP.
+    Calls runtime_canonicalize_r_step on R steps.
+
+    Used by GraphPatch runtime normalization and other runtime IR construction.
+
+    Returns:
+        Dict with keys: nodes, edges, entry, exits, emit_edges
+    """
+    if not steps:
+        return {"nodes": [], "edges": [], "entry": None, "exits": [], "emit_edges": []}
+
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+    last_nid: Optional[str] = None
+    k = 0
+
+    # Temp compiler instance for STEP_OPS lookup (could be passed but this is cleaner)
+    _compiler = AICodeCompiler()
+
+    def _norm_lid(tgt: Any) -> str:
+        return runtime_normalize_label_id(tgt)
+
+    def _parse_at_node_id(tok: Any) -> Optional[str]:
+        return runtime_normalize_node_id(tok)
+
+    def _analyze_step_rw_local(s: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """Inline minimal RW analysis for runtime use."""
+        op = s.get("op")
+        reads: List[str] = []
+        writes: List[str] = []
+
+        if op == "R":
+            out_var = s.get("out", "res")
+            if out_var:
+                writes.append(str(out_var))
+        elif op == "J":
+            var = s.get("var", "data")
+            if var and isinstance(var, str) and var.startswith("$"):
+                reads.append(var[1:])
+        elif op == "Set":
+            name = s.get("name")
+            if name:
+                writes.append(str(name))
+        elif op == "Call":
+            out_var = s.get("out") or "_call_result"
+            if out_var:
+                writes.append(str(out_var))
+
+        return reads, writes
+
+    for s in steps:
+        op = s.get("op")
+        if op not in _compiler.STEP_OPS:
+            continue
+        k += 1
+        nid = f"n{k}"
+        effect = (
+            "io"
+            if op in (
+                "R", "Call", "CacheSet", "QueuePut", "Tx",
+                "memory.merge", "MemoryMerge", "MemoryExecute", "MemoryPatch", "persona.update",
+            )
+            else ("meta" if op in ("Err", "Retry") else "pure")
+        )
+        reads, writes = _analyze_step_rw_local(s)
+        node = {
+            "id": nid,
+            "op": op,
+            "effect": effect,
+            "reads": reads,
+            "writes": writes,
+            "lineno": s.get("lineno"),
+            "data": s,
+        }
+        if op == "R":
+            canon = runtime_canonicalize_r_step(s)
+            ad_raw = str(canon.get("adapter") or "").strip()
+            ad_key = MODULE_ALIASES.get(ad_raw, ad_raw)
+            mt = _MEMORY_TYPE_MAP.get(ad_key) or _MEMORY_TYPE_MAP.get(ad_raw)
+            if mt:
+                node["memory_type"] = mt
+        elif op == "MemoryExecute":
+            node["memory_type"] = "procedural"
+        elif op == "MemoryPatch":
+            node["memory_type"] = "procedural"
+        nodes.append(node)
+
+        if op == "If":
+            if last_nid:
+                edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+            then_id = _norm_lid(s.get("then"))
+            else_id = _norm_lid(s.get("else"))
+            if then_id:
+                edges.append({"from": nid, "to": then_id, "port": "then", "to_kind": "label"})
+            if else_id:
+                edges.append({"from": nid, "to": else_id, "port": "else", "to_kind": "label"})
+            last_nid = None
+        elif op == "Loop":
+            if last_nid:
+                edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+            body_id = _norm_lid(s.get("body"))
+            after_id = _norm_lid(s.get("after"))
+            if body_id:
+                edges.append({"from": nid, "to": body_id, "port": "body", "to_kind": "label"})
+            if after_id:
+                edges.append({"from": nid, "to": after_id, "port": "after", "to_kind": "label"})
+            last_nid = None
+        elif op == "Call":
+            if last_nid:
+                edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+            callee_id = _norm_lid(s.get("label"))
+            if callee_id:
+                edges.append(
+                    {"from": nid, "to": callee_id, "port": "next", "to_kind": "label", "analysis_only": True}
+                )
+            last_nid = nid
+        elif op == "While":
+            if last_nid:
+                edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+            body_id = _norm_lid(s.get("body"))
+            after_id = _norm_lid(s.get("after"))
+            if body_id:
+                edges.append({"from": nid, "to": body_id, "port": "body", "to_kind": "label"})
+            if after_id:
+                edges.append({"from": nid, "to": after_id, "port": "after", "to_kind": "label"})
+            last_nid = None
+        elif op == "Err":
+            if last_nid:
+                edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+            node_ids_so_far = {n["id"] for n in nodes[:-1]}
+            source_for_err = s.get("at_node_id")
+            if source_for_err:
+                norm = _parse_at_node_id(source_for_err) or source_for_err
+                if norm not in node_ids_so_far:
+                    source_for_err = last_nid
+                else:
+                    source_for_err = norm
+            else:
+                source_for_err = last_nid
+            if source_for_err:
+                edges.append({"from": source_for_err, "to": nid, "port": "err", "to_kind": "node"})
+            handler = _norm_lid(s.get("handler"))
+            if handler:
+                edges.append({"from": nid, "to": handler, "to_kind": "label", "port": "handler"})
+            last_nid = nid
+        elif op == "Retry":
+            if last_nid:
+                edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+            node_ids_so_far = {n["id"] for n in nodes[:-1]}
+            source_for_retry = s.get("at_node_id")
+            if source_for_retry:
+                norm = _parse_at_node_id(source_for_retry) or source_for_retry
+                if norm not in node_ids_so_far:
+                    source_for_retry = last_nid
+                else:
+                    source_for_retry = norm
+            else:
+                source_for_retry = last_nid
+            if source_for_retry:
+                edges.append({"from": source_for_retry, "to": nid, "port": "retry", "to_kind": "node"})
+            last_nid = nid
+        else:
+            if last_nid:
+                edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+            if op == "J":
+                j_var = s.get("var") or s.get("ref") or ""
+                j_tgt = _norm_lid(str(j_var)) if j_var else None
+                # Cannot verify label existence at runtime - skip analysis edge
+            last_nid = nid
+
+    exits = [{"node": n["id"], "var": n["data"].get("var", "data")} for n in nodes if n["op"] == "J"]
+
+    emit_edges: List[Dict[str, Any]] = []
+    next_node_by_from: Dict[str, str] = {}
+    for e in edges:
+        if e.get("port") == "next" and e.get("to_kind") == "node":
+            fid = e.get("from")
+            tid = e.get("to")
+            if isinstance(fid, str) and isinstance(tid, str):
+                next_node_by_from[fid] = tid
+    for n in nodes:
+        st = n.get("data") or {}
+        n_id = n.get("id")
+        if not n_id:
+            continue
+        succ = next_node_by_from.get(str(n_id))
+        if succ:
+            if st.get("op") == "R" and st.get("out"):
+                emit_edges.append({"from": n_id, "to": succ, "port": "data", "var": st["out"]})
+            elif st.get("op") == "Set" and st.get("name"):
+                emit_edges.append({"from": n_id, "to": succ, "port": "data", "var": st["name"]})
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "entry": nodes[0]["id"] if nodes else None,
+        "exits": exits,
+        "emit_edges": emit_edges,
+    }
 
 
 def grammar_prefix_completable(prefix: str, tokenizer: Optional["AICodeCompiler"] = None) -> bool:
@@ -1942,6 +2157,7 @@ class AICodeCompiler:
             "memory.merge",
             "MemoryMerge",
             "MemoryExecute",
+            "MemoryPatch",
             "persona.update",
         }
     )
@@ -2164,6 +2380,12 @@ class AICodeCompiler:
             outv = s.get("out", "exec_result")
             if outv:
                 writes.append(str(outv))
+        elif op == "MemoryPatch":
+            _add_read_if_var(s.get("pattern"), "pattern")
+            _add_read_if_var(s.get("label_name"), "label_name")
+            outv = s.get("out", "patch_result")
+            if outv:
+                writes.append(str(outv))
         elif op == "persona.update":
             _add_read_if_var(s.get("trait_name"), "trait_name")
             _add_read_if_var(s.get("strength"), "strength")
@@ -2281,6 +2503,7 @@ class AICodeCompiler:
                     "memory.merge",
                     "MemoryMerge",
                     "MemoryExecute",
+                    "MemoryPatch",
                     "persona.update",
                 )
                 else ("meta" if op in ("Err", "Retry") else "pure")
@@ -2302,6 +2525,8 @@ class AICodeCompiler:
                 if mt:
                     node["memory_type"] = mt
             elif op == "MemoryExecute":
+                node["memory_type"] = "procedural"
+            elif op == "MemoryPatch":
                 node["memory_type"] = "procedural"
             nodes.append(node)
             if op == "If":
@@ -2980,7 +3205,7 @@ class AICodeCompiler:
                 adapters.add("cache")
             elif op in ("memory.merge", "MemoryMerge"):
                 adapters.add("memory")
-            elif op == "MemoryExecute":
+            elif op in ("MemoryExecute", "MemoryPatch"):
                 adapters.add("ainl_graph_memory")
             else:
                 adapter = str(st.get("adapter") or "").strip()

@@ -359,6 +359,8 @@ def strict_adapter_key_for_step(step: Dict[str, Any]) -> str:
         return "memory.MERGE"
     if op0 == "MemoryExecute":
         return "ainl_graph_memory.MEMORY_EXECUTE"
+    if op0 == "MemoryPatch":
+        return "ainl_graph_memory.MEMORY_PATCH"
     if op0 == "persona.update":
         return "persona.UPDATE"
     adapter = step.get("adapter") or step.get("src") or ""
@@ -403,7 +405,7 @@ def effect_tier_for_node(node: Dict[str, Any]) -> str:
         return EFFECT_TIER_IO_READ
     if op in ("memory.merge", "MemoryMerge"):
         return EFFECT_TIER_IO_READ
-    if op == "persona.update":
+    if op in ("persona.update", "MemoryPatch"):
         return EFFECT_TIER_IO_WRITE
     if op in ("If", "Loop", "While"):
         return EFFECT_TIER_CONTROL
@@ -439,7 +441,7 @@ def effect_kinds_for_node(node: Dict[str, Any]) -> Set[str]:
     if op in ("memory.merge", "MemoryMerge"):
         out.add(EFFECT_KIND_MEMORY_READ)
         return out
-    if op == "persona.update":
+    if op in ("persona.update", "MemoryPatch"):
         out.add(EFFECT_KIND_MEMORY_WRITE)
         return out
     if op == "CacheSet":

@@ -17,6 +17,7 @@ from compiler_v2 import (
     runtime_canonicalize_r_step,
     runtime_normalize_label_id,
     runtime_normalize_node_id,
+    _steps_to_nodes_edges,
 )
 from tooling.graph_normalize import normalize_labels
 from runtime.values import compare, deep_get, deep_put, json_safe, stable_sort, truthy
@@ -322,6 +323,7 @@ class RuntimeEngine:
         # Ensure core stdlib exists for MVP.
         self.adapters.register("core", CoreBuiltinAdapter())
         self._ensure_optional_adapters_registered(allowed)
+        self._reinstall_patches()
         self._source_lines = (ir.get("source") or {}).get("lines", []) or []
         self._cst_by_line = {ln.get("lineno"): ln for ln in ((ir.get("cst") or {}).get("lines") or []) if isinstance(ln, dict)}
         self._validate_ir_version()
@@ -1391,6 +1393,200 @@ class RuntimeEngine:
         finally:
             self.labels.pop(synthetic_lid, None)
 
+    def _runtime_validate_patch_dataflow(
+        self,
+        steps: List[Dict[str, Any]],
+        label_name: str,
+        frame: Dict[str, Any],
+    ) -> Optional[str]:
+        """
+        Walks steps via _analyze_step_rw logic (inline here).
+        Checks every read against current frame + prior writes in sequence.
+        Returns error string or None.
+        """
+        available = set(frame.keys())
+        for i, s in enumerate(steps):
+            op = s.get("op", "")
+            reads: List[str] = []
+            writes: List[str] = []
+
+            # Minimal RW analysis (matches _steps_to_nodes_edges logic)
+            if op == "R":
+                out_var = s.get("out", "res")
+                if out_var:
+                    writes.append(str(out_var))
+            elif op == "J":
+                var = s.get("var", "data")
+                if var and isinstance(var, str) and var.startswith("$"):
+                    reads.append(var[1:])
+                elif var and isinstance(var, str) and var and (var[0].isalpha() or var[0] == "_"):
+                    reads.append(var)
+            elif op == "Set":
+                name = s.get("name")
+                ref = s.get("ref")
+                if name:
+                    writes.append(str(name))
+                if ref and isinstance(ref, str) and ref.startswith("$"):
+                    reads.append(ref[1:])
+                elif ref and isinstance(ref, str) and ref and (ref[0].isalpha() or ref[0] == "_"):
+                    reads.append(ref)
+            elif op == "Call":
+                out_var = s.get("out") or "_call_result"
+                if out_var:
+                    writes.append(str(out_var))
+
+            # Check reads
+            for r in reads:
+                if r not in available:
+                    return f"Patch validation failed for label '{label_name}': step {i} (op={op}) reads undefined variable '{r}'"
+
+            # Add writes to available set
+            for w in writes:
+                available.add(w)
+
+        return None
+
+    def _runtime_normalize_patch(
+        self,
+        steps: List[Dict[str, Any]],
+        label_name: str,
+    ) -> Dict[str, Any]:
+        """
+        Calls _steps_to_nodes_edges for graph structure.
+        Computes __declared_reads__ = union of all reads across steps.
+        Returns complete IR label body.
+        """
+        graph_data = _steps_to_nodes_edges(steps, label_name)
+
+        # Compute declared reads: union of all node reads
+        all_reads: Set[str] = set()
+        for node in graph_data.get("nodes", []):
+            all_reads.update(node.get("reads", []))
+
+        return {
+            "__patched__": True,
+            "__declared_reads__": sorted(all_reads),
+            "legacy": {"steps": steps},
+            **graph_data,
+        }
+
+    def _memory_patch_dispatch(
+        self,
+        *,
+        memory_node_id: str,
+        label_name: str,
+        frame: Dict[str, Any],
+        lid: str,
+        idx: int,
+        stack: List[str],
+    ) -> Dict[str, Any]:
+        """
+        GraphPatch runtime dispatch:
+        1. Call bridge to get pattern steps from ainl-memory
+        2. Validate dataflow (reads vs. current frame)
+        3. Normalize to full IR label body
+        4. Install into self.labels with __patched__ marker
+        """
+        call_ctx = dict(frame)
+        call_ctx["_runtime_async"] = self.runtime_async
+        call_ctx["_observability"] = self.observability
+        call_ctx["_adapter_registry"] = self.adapters
+
+        # Query ainl-memory for the procedural node
+        bridge_result = self.adapters.call(
+            "ainl_graph_memory",
+            "graph_patch",
+            [memory_node_id, label_name],
+            call_ctx,
+        )
+
+        if not bridge_result or not bridge_result.get("ok"):
+            error_msg = bridge_result.get("error", "Unknown error") if bridge_result else "No response from bridge"
+            return {"ok": False, "error": error_msg}
+
+        steps = bridge_result.get("steps", [])
+        if not steps:
+            return {"ok": False, "error": "No steps returned from memory node"}
+
+        # Validate dataflow
+        validation_error = self._runtime_validate_patch_dataflow(steps, label_name, frame)
+        if validation_error:
+            return {"ok": False, "error": validation_error}
+
+        # Normalize patch
+        normalized = self._runtime_normalize_patch(steps, label_name)
+
+        # Resolve label name
+        resolved_label = _norm_lid(label_name)
+
+        # Install patch
+        self.labels[resolved_label] = normalized
+
+        _LOG.info(
+            f"GraphPatch: installed label '{resolved_label}' from memory node '{memory_node_id}' "
+            f"with {len(steps)} steps, {len(normalized.get('__declared_reads__', []))} declared reads"
+        )
+
+        return {
+            "ok": True,
+            "label": resolved_label,
+            "steps": len(steps),
+            "declared_reads": normalized.get("__declared_reads__", []),
+        }
+
+    def _reinstall_patches(self) -> None:
+        """
+        Re-install all active PatchRegistry entries from the GraphStore
+        into self.labels on engine boot. Skips labels that already exist
+        in the compiled IR (overwrite guard: __patched__ only).
+        Logs a warning for each skipped collision.
+        """
+        try:
+            bridge = self.adapters._adapters.get("ainl_graph_memory")
+            if bridge is None:
+                return
+            agent_id = str(
+                (self.ir.get("services") or {})
+                .get("core", {})
+                .get("agent_id", "")
+                or "armaraos"
+            )
+            records = bridge._store.get_patch_registry(agent_id=agent_id)
+            for rec in records:
+                if rec.label_name in self.labels:
+                    existing = self.labels[rec.label_name]
+                    if not existing.get("__patched__"):
+                        _LOG.warning(
+                            "GraphPatch boot: skipping label %r — "
+                            "already exists as compiled label",
+                            rec.label_name,
+                        )
+                        continue
+                # Retrieve steps from the source pattern node
+                source_node = bridge._store.get_node(rec.source_pattern_node_id)
+                if source_node is None:
+                    _LOG.warning(
+                        "GraphPatch boot: source node %r missing for label %r",
+                        rec.source_pattern_node_id, rec.label_name,
+                    )
+                    continue
+                steps = (source_node.payload or {}).get("steps") or []
+                if not steps:
+                    continue
+                normalized = self._runtime_normalize_patch(steps, rec.label_name)
+                self.labels[rec.label_name] = {
+                    "__patched__": True,
+                    "__declared_reads__": set(rec.declared_reads),
+                    "__patch_node_id__": rec.node_id,
+                    "__patch_version__": rec.patch_version,
+                    "__fitness__": rec.fitness,
+                    **normalized,
+                }
+            if records:
+                _LOG.info(f"GraphPatch boot: reinstalled {len(records)} patch(es)")
+        except Exception as e:
+            _LOG.warning("GraphPatch boot reinstall failed: %s", e)
+
     def _exec_step(
         self,
         step: Dict[str, Any],
@@ -1833,11 +2029,30 @@ class RuntimeEngine:
         stack = stack + [lid]
         self._guard_depth(stack)
         body = self.labels.get(lid, {})
+
+        # GraphPatch call entry guard: check declared reads if patched + strict mode
+        if body.get("__patched__") and self.unknown_op_policy == "error":
+            declared_reads = set(body.get("__declared_reads__", []))
+            frame_keys = set(frame.keys())
+            missing_reads = declared_reads - frame_keys
+            if missing_reads:
+                raise AinlRuntimeError(
+                    f"Patched label '{lid}' requires missing frame variables: {sorted(missing_reads)}",
+                    lid,
+                    0,
+                    "PATCH_CALL",
+                    stack,
+                    code="RUNTIME_PATCH_MISSING_READS",
+                    data={"missing": sorted(missing_reads), "declared": sorted(declared_reads)},
+                )
+
         has_graph = bool(body.get("nodes")) and body.get("edges") is not None and bool(body.get("entry"))
         if self.execution_mode == "steps-only":
             force_steps = True
         if self.execution_mode == "graph-only" and not force_steps and has_graph:
-            return self._run_label_graph(lid, frame, stack)
+            result = self._run_label_graph(lid, frame, stack)
+            self._update_patch_fitness_if_needed(lid, body, frame)
+            return result
         if self.execution_mode == "graph-only" and not force_steps and not has_graph:
             raise AinlRuntimeError(
                 "graph-only mode requires graph label data",
@@ -1850,7 +2065,9 @@ class RuntimeEngine:
         if not force_steps:
             body = self.labels.get(lid, {})
             if body.get("nodes") and body.get("edges") is not None and body.get("entry"):
-                return self._run_label_graph(lid, frame, stack)
+                result = self._run_label_graph(lid, frame, stack)
+                self._update_patch_fitness_if_needed(lid, body, frame)
+                return result
         steps = self._steps(lid)
         err_routes = self._build_step_err_routes(steps)
         retry_routes = self._build_step_retry_routes(steps)
@@ -2109,7 +2326,34 @@ class RuntimeEngine:
                     self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
                     return self._run_label(err_handler, frame, stack)
                 self._raise_runtime_error(e, lid, i, op, stack, frame, s)
+        self._update_patch_fitness_if_needed(lid, body, frame)
         return None
+
+    def _update_patch_fitness_if_needed(
+        self,
+        lid: str,
+        body: Dict[str, Any],
+        frame: Dict[str, Any],
+    ) -> None:
+        """Update fitness score for patched labels after successful execution."""
+        patch_node_id = body.get("__patch_node_id__")
+        if not patch_node_id or getattr(self, "_in_fitness_update", False):
+            return
+        try:
+            self._in_fitness_update = True
+            bridge = self.adapters._adapters.get("ainl_graph_memory")
+            if not bridge:
+                return
+            agent_id = str(frame.get("agent_id") or "armaraos")
+            old_fitness = body.get("__fitness__", 0.5)
+            # Exponential moving average: alpha=0.2
+            new_fitness = round(0.8 * old_fitness + 0.2 * 1.0, 4)
+            body["__fitness__"] = new_fitness
+            bridge._store.update_patch_fitness(lid, agent_id, new_fitness)
+        except Exception:
+            pass
+        finally:
+            self._in_fitness_update = False
 
     def _run_label_graph(self, lid: str, frame: Dict[str, Any], stack: List[str]) -> Any:
         body = self.labels.get(lid, {})

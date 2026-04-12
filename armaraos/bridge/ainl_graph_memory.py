@@ -22,6 +22,7 @@ class NodeType(str, Enum):
     SEMANTIC = "semantic"
     PROCEDURAL = "procedural"
     PERSONA = "persona"
+    PATCH = "patch"
 
 
 class EdgeType(str, Enum):
@@ -34,6 +35,8 @@ class EdgeType(str, Enum):
     BELIEVES = "believes"
     LEARNED_FROM = "learned_from"
     CONTRADICTS = "contradicts"
+    CAUSED_PATCH = "caused_patch"
+    STRENGTHENS = "strengthens"
 
 
 def _new_id(prefix: str) -> str:
@@ -107,6 +110,67 @@ class PersonaNode:
             learned_from=[str(x) for x in lf],
             last_updated=int(d.get("last_updated", 0)),
             edge_type=str(et) if et is not None else None,
+        )
+
+
+@dataclass
+class PatchRecord:
+    """Typed patch record stored under MemoryNode.node_type == \"patch\" (payload projection)."""
+
+    node_id: str  # the PatchRegistry MemoryNode id
+    label_name: str  # installed IR label name
+    pattern_name: str  # source pattern name
+    source_pattern_node_id: str  # PROCEDURAL node that was promoted
+    source_episode_ids: List[str]  # episodes that motivated the patch
+    declared_reads: List[str]  # union of all step reads
+    fitness: float  # 0.0–1.0, updated post-execution
+    patch_version: int  # increments on re-patch
+    patched_at: int  # unix seconds
+    parent_patch_id: Optional[str] = None  # prior PatchRecord node_id if re-patch
+    retired_at: Optional[int] = None  # unix seconds if retired
+    retired_reason: Optional[str] = None
+
+    def to_payload(self) -> Dict[str, Any]:
+        out = {
+            "node_id": self.node_id,
+            "label_name": self.label_name,
+            "pattern_name": self.pattern_name,
+            "source_pattern_node_id": self.source_pattern_node_id,
+            "source_episode_ids": list(self.source_episode_ids),
+            "declared_reads": list(self.declared_reads),
+            "fitness": float(self.fitness),
+            "patch_version": int(self.patch_version),
+            "patched_at": int(self.patched_at),
+        }
+        if self.parent_patch_id is not None:
+            out["parent_patch_id"] = str(self.parent_patch_id)
+        if self.retired_at is not None:
+            out["retired_at"] = int(self.retired_at)
+        if self.retired_reason is not None:
+            out["retired_reason"] = str(self.retired_reason)
+        return out
+
+    @classmethod
+    def from_payload(cls, d: Dict[str, Any]) -> "PatchRecord":
+        sei = d.get("source_episode_ids") or []
+        if not isinstance(sei, list):
+            sei = [str(sei)]
+        dr = d.get("declared_reads") or []
+        if not isinstance(dr, list):
+            dr = []
+        return cls(
+            node_id=str(d.get("node_id", "")),
+            label_name=str(d.get("label_name", "")),
+            pattern_name=str(d.get("pattern_name", "")),
+            source_pattern_node_id=str(d.get("source_pattern_node_id", "")),
+            source_episode_ids=[str(x) for x in sei],
+            declared_reads=[str(x) for x in dr],
+            fitness=float(d.get("fitness", 0.5)),
+            patch_version=int(d.get("patch_version", 1)),
+            patched_at=int(d.get("patched_at", 0)),
+            parent_patch_id=str(d["parent_patch_id"]) if d.get("parent_patch_id") else None,
+            retired_at=int(d["retired_at"]) if d.get("retired_at") is not None else None,
+            retired_reason=str(d["retired_reason"]) if d.get("retired_reason") else None,
         )
 
 
@@ -380,6 +444,154 @@ class GraphStore:
         with self._lock:
             self._touch(persist=True)
 
+    def add_patch_record(
+        self,
+        patch: PatchRecord,
+        *,
+        agent_id: Optional[str] = None,
+        persist: bool = True,
+        dry_run: bool = False,
+    ) -> MemoryNode:
+        """Store a PatchRecord as a NodeType.PATCH node."""
+        node = MemoryNode(
+            id=patch.node_id,
+            node_type=NodeType.PATCH.value,
+            agent_id=agent_id or "armaraos",  # patches are agent-scoped
+            label=f"patch:{patch.label_name}",
+            payload=patch.to_payload(),
+            tags=["patch", patch.pattern_name, f"v{patch.patch_version}"],
+            created_at=float(patch.patched_at),
+            ttl=None,
+        )
+        return self.add_node(node, persist=persist, dry_run=dry_run)
+
+    def get_patch_registry(
+        self,
+        agent_id: Optional[str] = None,
+        include_retired: bool = False,
+    ) -> List[PatchRecord]:
+        """Return all active PatchRecord nodes for re-installation on boot."""
+        with self._lock:
+            self._prune_expired_unlocked()
+            out: List[PatchRecord] = []
+            for node in self._nodes.values():
+                if node.node_type != NodeType.PATCH.value:
+                    continue
+                if agent_id is not None and node.agent_id != agent_id:
+                    continue
+                try:
+                    patch = PatchRecord.from_payload(node.payload or {})
+                    if not include_retired and patch.retired_at is not None:
+                        continue
+                    out.append(patch)
+                except (KeyError, TypeError, ValueError):
+                    continue
+            # Sort by patch_version descending for determinism
+            out.sort(key=lambda p: (p.label_name, -p.patch_version))
+            return out
+
+    def get_patch_record(self, label_name: str, agent_id: str) -> Optional[PatchRecord]:
+        """Return the most recent non-retired PatchRecord for a label."""
+        with self._lock:
+            self._prune_expired_unlocked()
+            candidates: List[PatchRecord] = []
+            for node in self._nodes.values():
+                if node.node_type != NodeType.PATCH.value:
+                    continue
+                if node.agent_id != agent_id:
+                    continue
+                try:
+                    patch = PatchRecord.from_payload(node.payload or {})
+                    if patch.label_name == label_name and patch.retired_at is None:
+                        candidates.append(patch)
+                except (KeyError, TypeError, ValueError):
+                    continue
+            if not candidates:
+                return None
+            # Return highest patch_version
+            candidates.sort(key=lambda p: -p.patch_version)
+            return candidates[0]
+
+    def retire_patch(
+        self,
+        label_name: str,
+        agent_id: str,
+        reason: str,
+        *,
+        persist: bool = True,
+    ) -> bool:
+        """Mark a PatchRecord as retired. Returns True if found."""
+        with self._lock:
+            self._prune_expired_unlocked()
+            for node in self._nodes.values():
+                if node.node_type != NodeType.PATCH.value or node.agent_id != agent_id:
+                    continue
+                try:
+                    patch = PatchRecord.from_payload(node.payload or {})
+                    if patch.label_name == label_name and patch.retired_at is None:
+                        # Update the patch record
+                        patch.retired_at = int(time.time())
+                        patch.retired_reason = reason
+                        # Update the node
+                        node.payload = patch.to_payload()
+                        node.tags.append("retired")
+                        self._nodes[node.id] = node
+                        self._touch(persist=persist)
+                        return True
+                except (KeyError, TypeError, ValueError):
+                    continue
+            return False
+
+    def update_patch_fitness(
+        self,
+        label_name: str,
+        agent_id: str,
+        new_fitness: float,
+        *,
+        persist: bool = True,
+    ) -> bool:
+        """Update fitness score on an existing PatchRecord. Returns True if found."""
+        with self._lock:
+            self._prune_expired_unlocked()
+            for node in self._nodes.values():
+                if node.node_type != NodeType.PATCH.value or node.agent_id != agent_id:
+                    continue
+                try:
+                    patch = PatchRecord.from_payload(node.payload or {})
+                    if patch.label_name == label_name and patch.retired_at is None:
+                        # Update fitness
+                        patch.fitness = new_fitness
+                        # Update the node
+                        node.payload = patch.to_payload()
+                        self._nodes[node.id] = node
+                        self._touch(persist=persist)
+                        return True
+                except (KeyError, TypeError, ValueError):
+                    continue
+            return False
+
+    def finalize_patch(
+        self,
+        node_id: str,
+        declared_reads: List[str],
+        *,
+        persist: bool = True,
+    ) -> bool:
+        """Update declared_reads on a PatchRecord after normalization. Returns True if found."""
+        with self._lock:
+            node = self._nodes.get(node_id)
+            if node is None or node.node_type != NodeType.PATCH.value:
+                return False
+            try:
+                patch = PatchRecord.from_payload(node.payload or {})
+                patch.declared_reads = list(declared_reads)
+                node.payload = patch.to_payload()
+                self._nodes[node.id] = node
+                self._touch(persist=persist)
+                return True
+            except (KeyError, TypeError, ValueError):
+                return False
+
 
 # Historical / doc name: persistence is JSON file–backed, not SQLite.
 SqliteGraphStore = GraphStore
@@ -464,6 +676,28 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             if raw is None and arg_list:
                 raw = arg_list[0]
             return self.memory_execute(raw, context)
+
+        if verb in ("memory_patch", "graph_patch"):
+            kw = _coerce_call_kwargs(args) if (isinstance(args, dict) or (isinstance(args, (list, tuple)) and args and isinstance(args[0], dict))) else {}
+            pattern_src = kw.get("pattern") if kw else None
+            label_name = kw.get("label_name") if kw else None
+            source_episode_ids = kw.get("source_episode_ids") if kw else None
+
+            if pattern_src is None and len(arg_list) >= 1:
+                pattern_src = arg_list[0]
+            if label_name is None and len(arg_list) >= 2:
+                label_name = arg_list[1]
+            if source_episode_ids is None and len(arg_list) >= 3:
+                source_episode_ids = arg_list[2]
+
+            agent_id = str(context.get("agent_id") or self._agent_id)
+            return self.memory_patch(
+                pattern_src,
+                str(label_name) if label_name else "",
+                agent_id=agent_id,
+                source_episode_ids=source_episode_ids,
+                dry_run=dry,
+            )
 
         if verb == "memory_recall":
             if len(arg_list) < 1:
@@ -661,6 +895,146 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             "steps": steps,
             "pattern_name": pattern_name or str((payload or {}).get("pattern_name") or ""),
             "step_count": len(steps),
+        }
+
+    def memory_patch(
+        self,
+        pattern_src: Any,
+        label_name: str,
+        *,
+        agent_id: str,
+        source_episode_ids: Optional[List[str]] = None,
+        dry_run: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        GraphPatch: promote a PROCEDURAL node to a live, first-class IR label.
+
+        Args:
+            pattern_src: str (pattern name) or dict (pattern_recall result with steps)
+            label_name: target IR label name
+            agent_id: agent performing the patch
+            source_episode_ids: episodes that motivated this patch
+            dry_run: if True, don't persist to disk
+
+        Returns:
+            {ok: bool, label_name: str, steps: list, pattern_name: str, step_count: int,
+             node_id: str, patch_version: int, parent_patch_id: str|None, error?: str}
+        """
+        # 1. Resolve pattern_src
+        payload: Optional[Dict[str, Any]] = None
+        pattern_name: str = ""
+        source_node_id: str = ""
+
+        if isinstance(pattern_src, dict):
+            # Direct dict with steps or payload.steps
+            if isinstance(pattern_src.get("steps"), list):
+                payload = pattern_src
+                pattern_name = str(pattern_src.get("pattern_name") or pattern_src.get("label") or "").strip()
+                source_node_id = str(pattern_src.get("node_id") or pattern_src.get("id") or "").strip()
+            else:
+                inner = pattern_src.get("payload")
+                if isinstance(inner, dict) and isinstance(inner.get("steps"), list):
+                    payload = inner
+                    pattern_name = str(inner.get("pattern_name") or pattern_src.get("pattern_name") or "").strip()
+                    source_node_id = str(pattern_src.get("node_id") or pattern_src.get("id") or "").strip()
+                else:
+                    return {"ok": False, "error": "unresolvable pattern: no steps in dict"}
+        elif isinstance(pattern_src, str):
+            # Pattern name - recall it first
+            pn = pattern_src.strip()
+            if not pn:
+                return {"ok": False, "error": "unresolvable pattern: empty name"}
+            rec = self.pattern_recall({"pattern_name": pn}, {"agent_id": agent_id})
+            if not rec.get("ok"):
+                return {"ok": False, "error": f"pattern_recall failed: {rec.get('error', 'unknown')}"}
+            inner_pl = rec.get("payload")
+            source_node_id = str(rec.get("node_id") or rec.get("id") or "").strip()
+            if isinstance(inner_pl, dict) and isinstance(inner_pl.get("steps"), list):
+                payload = inner_pl
+                pattern_name = str(inner_pl.get("pattern_name") or pn).strip()
+            else:
+                return {"ok": False, "error": "pattern payload has no steps"}
+        else:
+            return {"ok": False, "error": "unresolvable pattern: must be str or dict"}
+
+        # 2. Validate steps
+        steps = list((payload or {}).get("steps") or [])
+        if not steps:
+            return {"ok": False, "error": "pattern has no steps"}
+        if not all(isinstance(s, dict) for s in steps):
+            return {"ok": False, "error": "all steps must be dicts"}
+
+        # 3. Check for existing non-retired PatchRecord
+        existing = self._store.get_patch_record(label_name, agent_id)
+        patch_version = 1
+        parent_patch_id: Optional[str] = None
+
+        if existing:
+            # This is a re-patch
+            patch_version = existing.patch_version + 1
+            parent_patch_id = existing.node_id
+            # Retire the old record
+            self._store.retire_patch(label_name, agent_id, "superseded", persist=not dry_run)
+
+        # 4. Build PatchRecord
+        patch_rec = PatchRecord(
+            node_id=_new_id("patch"),
+            label_name=label_name,
+            pattern_name=pattern_name or "unnamed",
+            source_pattern_node_id=source_node_id or "unknown",
+            source_episode_ids=list(source_episode_ids or []),
+            declared_reads=[],  # engine fills this after normalize
+            fitness=0.5,
+            patch_version=patch_version,
+            patched_at=int(time.time()),
+            parent_patch_id=parent_patch_id,
+            retired_at=None,
+            retired_reason=None,
+        )
+
+        # 5. Store patch record
+        self._store.add_patch_record(patch_rec, agent_id=agent_id, persist=not dry_run, dry_run=dry_run)
+
+        # 6. Add lineage edges
+        if source_node_id and not dry_run:
+            # source_pattern --[DERIVED_FROM]--> patch
+            edge1 = MemoryEdge(
+                id=_new_id("edge"),
+                src=source_node_id,
+                dst=patch_rec.node_id,
+                edge_type=EdgeType.DERIVED_FROM.value,
+                label="pattern_to_patch",
+                confidence=1.0,
+            )
+            self._store.add_edge(edge1, persist=False, dry_run=dry_run)
+
+        for ep_id in (source_episode_ids or []):
+            if not dry_run:
+                # episode --[CAUSED_PATCH]--> patch
+                edge2 = MemoryEdge(
+                    id=_new_id("edge"),
+                    src=ep_id,
+                    dst=patch_rec.node_id,
+                    edge_type=EdgeType.CAUSED_PATCH.value,
+                    label="episode_to_patch",
+                    confidence=1.0,
+                )
+                self._store.add_edge(edge2, persist=False, dry_run=dry_run)
+
+        # Flush to disk
+        if not dry_run:
+            self._store.flush()
+
+        # 7. Return
+        return {
+            "ok": True,
+            "label_name": label_name,
+            "steps": steps,
+            "pattern_name": pattern_name,
+            "step_count": len(steps),
+            "node_id": patch_rec.node_id,
+            "patch_version": patch_version,
+            "parent_patch_id": parent_patch_id,
         }
 
     def memory_store_pattern(
