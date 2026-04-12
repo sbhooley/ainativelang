@@ -200,6 +200,9 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "memory.LIST": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "memory.DELETE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
     "memory.PRUNE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    # Bridge / ArmaraOS JSON graph store (IR MemoryRecall / MemorySearch also dispatch here).
+    "ainl_graph_memory.MEMORY_RECALL": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "ainl_graph_memory.MEMORY_SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.LIST_SIMILAR": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "vector_memory.UPSERT": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
@@ -374,6 +377,8 @@ def effect_tier_for_node(node: Dict[str, Any]) -> str:
         return EFFECT_TIER_IO_WRITE
     if op == "CacheGet":
         return EFFECT_TIER_IO_READ
+    if op in ("MemoryRecall", "MemorySearch"):
+        return EFFECT_TIER_IO_READ
     if op in ("If", "Loop", "While"):
         return EFFECT_TIER_CONTROL
     return EFFECT_TIER_PURE
@@ -401,6 +406,9 @@ def effect_kinds_for_node(node: Dict[str, Any]) -> Set[str]:
         return out
     if op == "CacheGet":
         out.add(EFFECT_KIND_CACHE_READ)
+        return out
+    if op in ("MemoryRecall", "MemorySearch"):
+        out.add(EFFECT_KIND_MEMORY_READ)
         return out
     if op == "CacheSet":
         out.add(EFFECT_KIND_CACHE_WRITE)

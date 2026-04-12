@@ -192,7 +192,7 @@ http       — HTTP requests
 web        — Web search/fetch (SEARCH, FETCH, SCRAPE, GET)
 tiktok     — TikTok data (RECENT, SEARCH, PROFILE, STATS, TRENDING)
 memory     — Key-value memory store
-ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch); see docs/adapters/AINL_GRAPH_MEMORY.md
+ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch); see docs/adapters/AINL_GRAPH_MEMORY.md; demos demo/procedural_roundtrip_demo.py, demo/ainl_graph_memory_demo.py
 cache      — Cache get/set
 queue      — Message queue put/get (use R queue Put "name" val ->_)
 svc        — Service control (STATUS, RESTART, CADDY, NGINX, HEALTH)

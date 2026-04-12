@@ -5,7 +5,7 @@
 **PyPI / runtime:** **`ainativelang` 1.5.1** — **`RUNTIME_VERSION` `1.5.1`**.
 
 - **Runtime:** compiler IR may emit **`MemoryRecall`** / **`MemorySearch`**; **`RuntimeEngine`** calls the **`ainl_graph_memory`** adapter (same capability / registration rules as other extension adapters). See **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
-- **Bridge:** JSON-backed graph memory under **`armaraos/bridge/`** (default store **`~/.armaraos/ainl_graph_memory.json`**, override **`AINL_GRAPH_MEMORY_PATH`**), runner wiring, optional graph browser, procedural demo.
+- **Bridge:** JSON-backed graph memory under **`armaraos/bridge/`** (default store **`~/.armaraos/ainl_graph_memory.json`**, override **`AINL_GRAPH_MEMORY_PATH`**), runner wiring, optional graph browser, **`demo/procedural_roundtrip_demo.py`**, and **`demo/ainl_graph_memory_demo.py`** (in-repo graph-memory walkthrough + JSON export).
 - **Docs:** graph memory contract page + cross-links (memory vs graph, ArmaraOS integration, state discipline, runtime/compiler contract).
 - See **`docs/CHANGELOG.md`** § v1.5.1.
 

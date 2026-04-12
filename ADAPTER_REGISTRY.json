@@ -1021,6 +1021,32 @@
         "No network; no extra dependencies."
       ]
     },
+    "ainl_graph_memory": {
+      "description": "JSON-backed graph memory for bridge workflows; runtime dispatches IR MemoryRecall / MemorySearch to this adapter namespace.",
+      "privilege_tier": "local_state",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
+      "targets": {
+        "memory_recall": {
+          "args": ["node_id"],
+          "returns": "object",
+          "pure": false
+        },
+        "memory_search": {
+          "args": ["query", "node_type?", "agent_id?", "limit?"],
+          "returns": "list",
+          "pure": false
+        }
+      },
+      "config": {
+        "path_env": "AINL_GRAPH_MEMORY_PATH (ArmaraOS bridge default: ~/.armaraos/ainl_graph_memory.json)"
+      },
+      "notes": [
+        "Strict dotted verbs: MEMORY_RECALL, MEMORY_SEARCH; runtime uses lowercase memory_recall / memory_search in adapters.call.",
+        "Operator contract: docs/adapters/AINL_GRAPH_MEMORY.md."
+      ]
+    },
     "tool_registry": {
       "description": "Local JSON registry for named tools (metadata + optional JSON schema).",
       "privilege_tier": "local_state",

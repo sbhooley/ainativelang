@@ -79,7 +79,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **ZeroClaw skill + bootstrap (`ainl install-mcp --host zeroclaw`, `~/.zeroclaw/mcp.json`, `examples/ecosystem/`):** `docs/ZEROCLAW_INTEGRATION.md`
 - **Hermes Agent + bootstrap (`ainl install-mcp --host hermes`, `~/.hermes/config.yaml`, `--emit hermes-skill`, `skills/hermes/`):** `docs/HERMES_INTEGRATION.md` · hub `docs/integrations/hermes-agent.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 - **ArmaraOS + bootstrap (`ainl install armaraos`, `~/.armaraos/config.toml`, `~/.armaraos/bin/ainl-run`):** `docs/ARMARAOS_INTEGRATION.md` (PostHog for the **desktop app** is configured on the **armaraos** repo / marketing site env — not in this compiler repo)
-- **ArmaraOS JSON graph memory (`ainl_graph_memory`, `MemoryRecall`/`MemorySearch`, viz server):** `docs/adapters/AINL_GRAPH_MEMORY.md`
+- **ArmaraOS JSON graph memory (`ainl_graph_memory`, `MemoryRecall`/`MemorySearch`, viz server):** `docs/adapters/AINL_GRAPH_MEMORY.md` · demos `demo/procedural_roundtrip_demo.py`, `demo/ainl_graph_memory_demo.py`
 - Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage, long-context memory
 - OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
 - Workflow patterns: `docs/PATTERNS.md`

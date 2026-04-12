@@ -661,6 +661,21 @@
       "recommended_for": "stateful_workflows",
       "notes": "Recommended durable state adapter for any workflow needing persistence across runs. Keyed by (namespace, record_kind, record_id). Extension classification reflects packaging origin, not importance."
     },
+    "ainl_graph_memory": {
+      "support_tier": "extension_openclaw",
+      "strict_contract": true,
+      "recommended_lane": "noncanonical",
+      "verbs": [
+        "MEMORY_RECALL",
+        "MEMORY_SEARCH"
+      ],
+      "effect_default": "io",
+      "privilege_tier": "local_state",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
+      "notes": "JSON-backed graph memory for bridge / ArmaraOS; runtime IR MemoryRecall and MemorySearch dispatch adapters.call here. Default path under ArmaraOS home; override AINL_GRAPH_MEMORY_PATH. See docs/adapters/AINL_GRAPH_MEMORY.md."
+    },
     "vector_memory": {
       "support_tier": "compatibility",
       "strict_contract": true,

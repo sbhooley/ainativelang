@@ -101,8 +101,9 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 ## New in v1.5.1
 
 - **Graph memory in the runtime:** IR ops **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter (ArmaraOS JSON graph store); see **`docs/adapters/AINL_GRAPH_MEMORY.md`** and **`tests/test_memory_recall_op.py`**.
-- **ArmaraOS bridge:** `armaraos/bridge/ainl_graph_memory.py`, runner registration + delegation hook, optional **`graph_viz`** server, **`demo/procedural_roundtrip_demo.py`**, token-budget bridge shim (**`bridge_token_budget_adapter.py`**).
+- **ArmaraOS bridge:** `armaraos/bridge/ainl_graph_memory.py`, runner registration + delegation hook, optional **`graph_viz`** server, **`demo/procedural_roundtrip_demo.py`**, **`demo/ainl_graph_memory_demo.py`** (graph-memory walkthrough + export), token-budget bridge shim (**`bridge_token_budget_adapter.py`**).
 - **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, and mirrored emit server engine aligned to **1.5.1**.
+- **Catalog parity:** **`ainl_graph_memory`** appears in **`tooling/adapter_manifest.json`**, **`ADAPTER_REGISTRY.json`**, and **`tooling/effect_analysis.py`** (**`ADAPTER_EFFECT`**) alongside the human registry in **`docs/reference/ADAPTER_REGISTRY.md`**.
 
 ## New in v1.5.0
 

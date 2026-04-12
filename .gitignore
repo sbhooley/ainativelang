@@ -49,3 +49,6 @@ runtime_runner.log
 
 # Local code_context adapter index (machine-specific paths)
 .ainl_code_context.json
+
+# demo/ainl_graph_memory_demo.py export artifact (local JSON graph snapshot)
+demo/ainl_graph_memory_export.json

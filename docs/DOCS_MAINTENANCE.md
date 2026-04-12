@@ -29,6 +29,8 @@ If IR/graph shapes change, also update:
 - `reference/GRAPH_SCHEMA.md`
 - `AINL_SPEC.md` (if normative language changes)
 
+If new runtime ops dispatch a named adapter (for example IR **`MemoryRecall`/`MemorySearch`** → **`ainl_graph_memory`**), also align **`tooling/effect_analysis.py`** (**`ADAPTER_EFFECT`** + node effect helpers), **`tooling/adapter_manifest.json`**, and the operator catalog in **`docs/reference/ADAPTER_REGISTRY.md`** (plus **`ADAPTER_REGISTRY.json`** when that JSON is maintained for the release).
+
 If strict-mode behavior changes, also update:
 
 - `AINL_SPEC.md` strict guarantees

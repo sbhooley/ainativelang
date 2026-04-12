@@ -76,9 +76,10 @@ cd /path/to/AI_Native_Lang
 PYTHONPATH=. uvicorn armaraos.bridge.graph_viz.server:app --reload --port 8765
 ```
 
-## Demo
+## Demos
 
-`demo/procedural_roundtrip_demo.py` — two-agent procedural round-trip using real OpenRouter when configured; uses **`memory_store_pattern`** so recall returns **`payload.steps`**.
+- **`demo/procedural_roundtrip_demo.py`** — two-agent procedural round-trip using real OpenRouter when configured; uses **`memory_store_pattern`** so recall returns **`payload.steps`**.
+- **`demo/ainl_graph_memory_demo.py`** — self-contained Python walkthrough (episodic, semantic, procedural, persona nodes; graph walk + **`ainl_graph_memory_export.json`** under **`demo/`**). Run from repo root: **`python3 demo/ainl_graph_memory_demo.py`**. Export path is gitignored.
 
 ## Related bridge code
 

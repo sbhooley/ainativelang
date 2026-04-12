@@ -291,7 +291,7 @@ These tests define “conformance in spirit”; implement as automated suite whe
 | Graph validation | No duplicate node IDs, canonical `n`&lt;number&gt; only | §3.5 |
 | Runtime | Graph traversal parity with step execution on reducible graphs | Semantic equivalence |
 | Strict dataflow | `Call ->out` + `Retry @nX` + downstream `J out` compiles clean in strict mode | Compiler-owned RW/dataflow correctness |
-| Strict literals | Quoted-vs-bare matrix for `Set.ref`, `Filt.value`, `CacheGet.key/fallback`, `CacheSet.value`, `QueuePut.value` | Ambiguity elimination in strict mode |
+| Strict literals | Quoted-vs-bare matrix for `Set.ref`, `Filt.value`, `CacheGet.key/fallback`, `CacheSet.value`, `QueuePut.value`, `MemoryRecall` / `MemorySearch` operand slots | Ambiguity elimination in strict mode |
 | Schema | Legacy step-list under `labels[id].legacy.steps` when emitted | IR shape |
 | Schema | P never as executable step; R pay.* for payment in labels | One Rule |
 

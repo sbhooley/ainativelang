@@ -85,7 +85,7 @@ Current policy remains graph-preferred:
 - If label graph data (`nodes`, `edges`, `entry`) is present, runtime executes graph semantics.
 - Step execution is retained as compatibility/fallback and for explicit `steps-only`.
 - Both paths share the same op handlers where possible to reduce semantic drift.
-- **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter from **`_exec_step`** (shared with async graph) and from sync **`_run_label_graph`**; see **[`docs/adapters/AINL_GRAPH_MEMORY.md`](adapters/AINL_GRAPH_MEMORY.md)**.
+- **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter from **`_exec_step`** (shared with async graph) and from sync **`_run_label_graph`**. **`tooling/effect_analysis.py`** classifies both ops as **io-read** (**`memory_read`**) and registers **`ainl_graph_memory.MEMORY_RECALL`** / **`ainl_graph_memory.MEMORY_SEARCH`** in **`ADAPTER_EFFECT`** for strict **`R`** allowlisting when authors use dotted adapter verbs. See **[`docs/adapters/AINL_GRAPH_MEMORY.md`](adapters/AINL_GRAPH_MEMORY.md)** and **`tooling/adapter_manifest.json`**.
 
 ### Graph execution pitfalls (object literals, `J`, `Set` lists)
 
