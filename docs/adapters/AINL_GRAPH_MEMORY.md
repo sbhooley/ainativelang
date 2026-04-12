@@ -41,6 +41,28 @@ R ainl_graph_memory memory_search "transformer" "procedural" "" 5 ->hits
 
 Use frame variables for dynamic ids/queries; follow normal strict dataflow rules for quoted vs bare tokens.
 
+### Dotted `memory.*` / `persona.*` on `R` (compiler sugar → same bridge)
+
+When **`ainl_graph_memory`** is allowed and registered, **`RuntimeEngine`** also accepts **dotted** adapter verbs on **`R`** lines (single token after **`R`**). They compile to graph nodes whose **`data.adapter`** is the dotted name and optional IR field **`memory_type`** (for introspection — see **`../reference/GRAPH_SCHEMA.md`**).
+
+| Source (`R …`) | Bridge target (typical) | Notes |
+|----------------|-------------------------|--------|
+| `memory.recall` | `memory_recall` | Load one node by id. |
+| `memory.search` | `memory_search` | Substring search + filters. |
+| `memory.export_graph` / `memory.export` | `export_graph` | Full JSON snapshot. |
+| `memory.store_pattern` / `memory.store` | `memory_store_pattern` | Persist procedural steps; you may pass one frame dict `{"pattern_name", "steps"}`. |
+| `memory.pattern_recall` | `memory_pattern_recall` | Load named pattern **`steps`** into the frame and set **`__last_pattern__`** for **`memory.merge`**. |
+| `persona.load` / `persona.get` / `persona.update` | `persona_load` / `persona_get` / `persona_update` | Persona bundle ops (**`persona.update`** also exists as a standalone label step — see below). |
+
+**Typical `pattern_recall` → `merge` (SQLite procedural executor):**
+
+```text
+R memory.pattern_recall my_pattern ->steps
+R memory.merge steps ->merged_result
+```
+
+**Not the same path:** split-token **`R memory store_pattern …`** / **`R memory recall_pattern …`** targets the **SQLite** **`memory`** adapter (see **`MEMORY_CONTRACT.md`** §3.7), not this JSON graph file.
+
 ## Engine IR ops: `MemoryRecall` and `MemorySearch`
 
 `RuntimeEngine` (`runtime/engine.py`) treats these like **`CacheGet` / `CacheSet`**: shared handling in **`_exec_step`** (step mode and async graph `else` path) plus explicit branches in sync **`_run_label_graph`** for trace + linear graph advance.

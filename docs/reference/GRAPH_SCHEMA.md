@@ -21,8 +21,9 @@ Every node has:
 | `writes` | list[string]   | yes      | Frame keys written. |
 | `lineno` | int \| null   | no       | Source line for tooling. |
 | `data`   | object         | yes      | Legacy step dict (op payload); runtime reads `n.get("data")` for execution. |
+| `memory_type` | string   | no       | Present on **`R`** nodes when `data.adapter` is a graph-memory / persona dotted verb (`memory.recall` → **`episode`**, `memory.search` → **`semantic`**, `memory.store_pattern` / `memory.store` → **`procedural`**, `memory.export_graph` / `memory.export` → **`episode`**, `memory.pattern_recall` → **`procedural`**, `persona.{load,get,update}` → **`persona`**). Omitted for other ops. |
 
-**Design:** Agents use `node.op`, `node.effect`, `node.reads`, `node.writes`, `node.lineno` for analysis. They do not need to parse deep into `data` for basics.
+**Design:** Agents use `node.op`, `node.effect`, `node.reads`, `node.writes`, `node.lineno` for analysis. They do not need to parse deep into `data` for basics. Optional **`memory_type`** supports tiered introspection without parsing `data.adapter`.
 
 Optional (future): `types: { var: "Any" | "List" | ... }`.
 
@@ -42,6 +43,11 @@ Every edge has:
 - **Linear:** `next` - normal successor node.
 - **Branch:** `then` / `else` (If); `body` / `after` (Loop, While).
 - **Error/retry:** `err`, `retry` (node edges); `handler` (label edge from Err node).
+
+**`labels[label_id].emit_edges`** (separate from **`edges`**, additive IR):
+
+- **`port: "data"`** — producer **`R` / `Set`** node → linear **`next`** successor; includes **`var`** (frame key written by that step).
+- **`port: "emit"`** — exit **`J`** node → literal **`to: "emit_target"`**; includes **`var`** (return var) and **`target`** (emit platform name from **`ir["required_emit_targets"]["minimal_emit"]`** after compile-time stub fallback).
 - **Targeting contract:** explicit `Err @nX` / `Retry @nX` in source must lower to edges whose `from` is that exact canonical node id.
 
 When a single node-successor exists and `port` is missing, normalizers may default `port` to `"next"` for backward compatibility. After full normalization, **every edge must have `port`**; linear successor must be `port=\"next\"` only.
@@ -51,7 +57,8 @@ When a single node-successor exists and `port` is missing, normalizers may defau
 Per label:
 
 - **nodes**: list of nodes (canonical ids, no gaps).
-- **edges**: list of edges.
+- **edges**: list of edges (control-flow only).
+- **emit_edges**: list of data-flow + emit-routing edges (see ports above); may be empty on older IR.
 - **entry**: node id of the single entry.
 - **exits**: list of `{ node, var }` for each `J` node.
 
@@ -74,7 +81,9 @@ So legacy IR still runs; normalization makes it query-safe without breaking exis
 
 Use **`tooling.graph_api`** for deterministic answers:
 
-- `label_nodes`, `label_edges`, `successors`, `predecessors`
+- `label_nodes`, `label_edges` (each accepts a **single** label id or a **sequence** of ids — merged list / dict)
+- `emit_edges`, `data_flow_edges` (`port=="data"` subset), `memory_nodes` (nodes with **`memory_type`**, optional filter)
+- `successors`, `predecessors`
 - `io_nodes(label)`, `nodes_using_adapter(label, adapter_prefix)`
 - `error_paths(label, from_node=None)`, `exit_nodes(label)`
 

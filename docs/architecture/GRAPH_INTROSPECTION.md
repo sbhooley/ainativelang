@@ -23,7 +23,7 @@ ainl-validate examples/status_branching.ainl
 
 This prints the full IR object, including:
 
-- `labels` (nodes, edges, entry, exits, legacy.steps)
+- `labels` (nodes, edges, optional `emit_edges`, entry, exits, legacy.steps)
 - `services` (endpoints -> labels)
 - `errors` / `warnings` / `diagnostics`
 - `graph_semantic_checksum`
@@ -66,9 +66,13 @@ Key fields for control-flow and effects:
   - `effect` / `effect_tier` - `"pure"` vs `"io"` vs `"meta"`.
   - `reads` / `writes` - frame keys used/defined.
   - `lineno` - link back to source for audits.
+  - optional `memory_type` - on **`R`** nodes for dotted graph-memory / persona verbs (`episode`, `semantic`, `procedural`, `persona`); see **`../reference/GRAPH_SCHEMA.md`**.
 - `ir.labels[label_id].edges[*]` - control-flow edges:
   - `from`, `to`, `to_kind`
   - `port` - `"next"`, `"then"`, `"else"`, `"err"`, `"retry"`, `"body"`, `"after"`, `"handler"`.
+- `ir.labels[label_id].emit_edges[*]` (when present) - data-flow + emit routing, separate from control-flow:
+  - `port` **`"data"`** - producer **`R` / `Set`** → linear **`next`** successor; includes `var`.
+  - `port` **`"emit"`** - exit **`J`** → literal **`emit_target`**; includes `var` and `target` (emit platform).
 - `ir.labels[label_id].exits[*]` - `J` nodes and their return vars.
 
 For autonomous agents, the recommended pattern is:
@@ -81,8 +85,8 @@ For autonomous agents, the recommended pattern is:
 For more structured queries, use the graph helpers described in `../reference/GRAPH_SCHEMA.md`:
 
 - `tooling/graph_api.py` (implementation)
-  - `label_nodes(ir, label_id)`
-  - `label_edges(ir, label_id)`
+  - `label_nodes(ir, label_id | sequence)` / `label_edges(ir, label_id | sequence)` — merged when a **sequence** of label ids is passed
+  - `emit_edges`, `data_flow_edges`, `memory_nodes` — emit topology and typed memory nodes (optional `memory_type` filter)
   - `successors(ir, label_id, node_id)`
   - `predecessors(ir, label_id, node_id)`
   - `io_nodes(ir, label_id)`
