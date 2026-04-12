@@ -4,11 +4,29 @@
 
 **PyPI / runtime:** **`ainativelang` 1.6.0** — **`RUNTIME_VERSION` `1.6.0`**.
 
+### Architectural milestone
+
+Agents can **promote stored procedural graph memory** into **live IR label bodies** that **persist across sessions** (boot **`_reinstall_patches`**) and **improve over time** via **patch fitness tracking** (EMA on label completion, including early **`J`**). Invalid promotions hit **`OverwriteGuardError`** (compiled labels) or **`StrictModeError`** (bad **`memory.patch`** literals under **`strict_literals`**).
+
+### GraphPatch in four commits + release docs
+
+| Commit | Summary |
+|--------|---------|
+| **`15c98ab`** | **`feat(graph-patch)`** — implement GraphPatch op (**bridge**, **runtime**, **compiler**, **tooling**). |
+| **`e950425`** | **`feat(graph-patch)`** — wire **runtime verb routing** (**`R memory.patch`** through engine **`memory`** dispatch) + **`AINL_SPEC`** § GraphPatch. |
+| **`1c76492`** | **`test(graph-patch)`** — eight unit tests + supporting fixes (**strict** / **overwrite** / **fitness**). |
+| **This release** | **`docs(release): v1.6.0 — GraphPatch complete`** — **`docs/CHANGELOG.md`** **[1.6.0]**, **`docs/RELEASE_NOTES.md`**, **`docs/POST_RELEASE_ROADMAP.md`**. |
+
 - **GraphPatch:** runtime **`R memory.patch`** / graph **`memory.patch`** fetches procedural steps from the graph store, validates declared reads against the live frame, installs a **`__patched__`** label body, bumps **`__patch_version__`**, and updates fitness on completion (including early **`J`**). Collisions with compiled (non-patch) labels raise an overwrite guard.
 - **Boot / ArmaraOS:** **`_reinstall_patches`** replays active **`PatchRecord`** entries into **`RuntimeEngine.labels`** when the **`ainl_graph_memory`** bridge is present; agent scoping uses **`ir["services"]["core"]["agent_id"]`**.
 - **Strict compile:** dedicated **`StrictModeError`** path for invalid **`memory.patch`** literal usage when **`strict_literals`** is enabled on the compiler.
 - **Registry:** **`ADAPTER_REGISTRY.json`** documents **`ainl_graph_memory.memory_patch`** (GraphPatch; runtime **`adapters.call`** uses target string **`graph_patch`**) alongside recall/search; **`tooling/effect_analysis.py`** includes **`MEMORY_PATCH`**.
-- See **`docs/CHANGELOG.md`** § v1.6.0 and **`tests/test_graph_patch_op.py`**.
+- See **`docs/CHANGELOG.md`** § **[1.6.0]** / **v1.6.0** and **`tests/test_graph_patch_op.py`**.
+
+### Remaining open items
+
+- **`MemoryExecute`** — core IR/runtime path exists; **remaining**: bridge + **`.ainlbundle`** ergonomics, operator docs, strict-valid **examples**, and CI coverage at the same bar as **GraphPatch**.
+- **Whitepaper** — dedicated **GraphPatch** narrative (fitness, boot reinstall, cross-session procedural IR) still to fold into **`WHITEPAPERDRAFT.md`**.
 
 ## AINL v1.5.2 — Graph memory IR closure + operator hardening (2026-04-12)
 

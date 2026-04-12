@@ -4,7 +4,14 @@
 
 <!-- Next release changes go here -->
 
-- **docs**: **`docs/adapters/AINL_GRAPH_MEMORY.md`** — **`boot()`**, **`AINL_BUNDLE_PATH`** / **`AINL_AGENT_ID`**, scheduled **`ainl run`** bundle round-trip vs Rust **`ainl_memory.db`** chat **`[Persona traits active: …]`** hook; **`docs/ARMARAOS_INTEGRATION.md`** — env table rows + cron / chat split + **armaraos** **`docs/graph-memory.md`**; **`docs/INTELLIGENCE_PROGRAMS.md`** — stateful **`bundle.ainlbundle`** + **armaraos** doc links; **`AGENTS.md`** (ArmaraOS bullets).
+## [1.6.0] — GraphPatch complete (2026-04-12)
+
+Ship tag for the GraphPatch line; full conventional list under **v1.6.0** below.
+
+- **GraphPatch op** end-to-end: **bridge** (`graph_patch`), **runtime** (install + fitness + boot reinstall), **compiler** (strict literals / dataflow), **tooling** (`MEMORY_PATCH` / effect analysis), **tests** (`tests/test_graph_patch_op.py`).
+- **Guards / strictness**: **`OverwriteGuardError`** on compiled-label collision; **`StrictModeError`** for invalid **`memory.patch`** literals when **`strict_literals`** is enabled.
+- **Fitness + boot**: fitness **EMA** on patched-label exit (including early **`J`**); **`_reinstall_patches`** reapplies active patches after engine boot when the graph-memory bridge is present.
+- **Dispatch**: **`R memory.patch`** is routed through the same **engine `memory` adapter dispatch** path as other **`memory.*`** verbs (not a special-case bypass).
 
 ## v1.6.0 (April 12, 2026) — GraphPatch (memory.patch), strict dataflow, bridge graph_patch
 
@@ -15,6 +22,7 @@
 - **fix(runtime)**: **`Loop`/`While`** inner locals renamed (**`body_lid`**) so inner graphs do not shadow **`body`** (patch fitness updates).
 - **test**: **`tests/test_graph_patch_op.py`** — eight pytest cases (step vs graph mode, frame **`$var`**, overwrite guard, re-patch versioning, boot reinstall + **`_reinstall_patches`**, fitness EMA, strict compile).
 - **docs**: **`docs/RELEASE_NOTES.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/RELEASING.md`**, **`ADAPTER_REGISTRY.json`** / **`docs/reference/ADAPTER_REGISTRY.md`** (**`memory_patch`** target for GraphPatch; runtime call target **`graph_patch`**), current-release pointers to **v1.6.0** across hub and integration docs.
+- **docs**: **`docs/adapters/AINL_GRAPH_MEMORY.md`** — **`boot()`**, **`AINL_BUNDLE_PATH`** / **`AINL_AGENT_ID`**, scheduled **`ainl run`** bundle round-trip vs Rust **`ainl_memory.db`** chat **`[Persona traits active: …]`** hook; **`docs/ARMARAOS_INTEGRATION.md`** — env table rows + cron / chat split + **armaraos** **`docs/graph-memory.md`**; **`docs/INTELLIGENCE_PROGRAMS.md`** — stateful **`bundle.ainlbundle`** + **armaraos** doc links; **`AGENTS.md`** (ArmaraOS bullets).
 
 ## v1.5.2 (April 12, 2026) — Graph memory IR substrate, bundle serialization, operator surfaces
 

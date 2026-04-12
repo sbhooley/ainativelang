@@ -13,7 +13,7 @@ Use this as the **done** baseline when opening new work; do not re-plan these wi
 | Area | Shipped | Pointers |
 |------|---------|----------|
 | **Release line** | **PyPI / runtime `ainativelang` 1.6.0** (`pyproject.toml`, **`RUNTIME_VERSION`**, **`CITATION.cff`**) — see **`docs/RELEASE_NOTES.md`** / **`docs/CHANGELOG.md`** | `docs/RELEASING.md` |
-| **GraphPatch (runtime + bridge)** | **`R memory.patch`** / graph **`memory.patch`** → **`adapters.call("ainl_graph_memory", "graph_patch", …)`**; overwrite guard; **`_reinstall_patches`** on boot; fitness EMA; strict **`memory.patch`** literals (**`StrictModeError`**) | `runtime/engine.py`, **`tests/test_graph_patch_op.py`**, `armaraos/bridge/ainl_graph_memory.py`, `compiler_v2.py`, `tooling/effect_analysis.py` |
+| **GraphPatch (runtime + bridge)** — **✅ complete (v1.6.0)** | **`R memory.patch`** / graph **`memory.patch`** → **`adapters.call("ainl_graph_memory", "graph_patch", …)`**; **`OverwriteGuardError`**; **`StrictModeError`**; **`_reinstall_patches`** on boot; fitness EMA; engine dispatch for **`patch`** | `runtime/engine.py`, **`tests/test_graph_patch_op.py`**, `armaraos/bridge/ainl_graph_memory.py`, `compiler_v2.py`, `tooling/effect_analysis.py` |
 | **Graph memory (bridge + runtime)** | IR **`MemoryRecall`/`MemorySearch`** → **`ainl_graph_memory`**; JSON store + ArmaraOS **`armaraos/bridge/`**; **`docs/adapters/AINL_GRAPH_MEMORY.md`**; demos **`demo/procedural_roundtrip_demo.py`**, **`demo/ainl_graph_memory_demo.py`** | `runtime/engine.py`, `tests/test_memory_recall_op.py`, **`tests/test_memory_search_op.py`**, `armaraos/bridge/ainl_graph_memory.py` |
 | **Hybrid interop + `S hybrid`** | LangGraph / Temporal wrappers, **`validate_ainl.py --emit langgraph|temporal`**, **`langchain_tool`** adapter, **`S hybrid langgraph|temporal`** for **`minimal_emit`** / planners | `docs/HYBRID_GUIDE.md`, `docs/AINL_SPEC.md` §2.3.1, `runtime/wrappers/`, `examples/hybrid/`, `docs/hybrid/OPERATOR_RUNBOOK.md`, `docs/PACKAGING_AND_INTEROP.md` |
 | **CI benchmark regression** | **`benchmark-regression`** prefers committed **`tooling/benchmark_*_ci.json`** on baseline SHA; **Python 3.10** jobs; **`make benchmark-ci`** echoes **`PYTHON`** | `.github/workflows/ci.yml`, `BENCHMARK.md` § *CI regression baselines*, `docs/benchmarks.md` § CI |
@@ -24,6 +24,15 @@ Use this as the **done** baseline when opening new work; do not re-plan these wi
 | **OpenClaw intelligence + ops (v1.2.8–v1.6.0)** | **`run_intelligence.py`** (context, summarizer, consolidation, **`auto_tune_ainl_caps`**), **`tooling/intelligence_budget_hydrate.py`**, profiles + env templates, **`OPENCLAW_AINL_GOLD_STANDARD.md`** / **`OPENCLAW_HOST_AINL_1_2_8.md`**, embedding pilot + startup token clamps, graph-safe intelligence fixes | `scripts/run_intelligence.py`, `intelligence/`, `docs/operations/OPENCLAW_*.md`, **`WHITEPAPERDRAFT.md`** §10.5 / §13.5 |
 | **Graph visualizer CLI** | **`ainl visualize`** / **`ainl-visualize`** → **Mermaid** from **`ir["labels"]`**; subgraph clusters per include alias; synthetic **`Call →` entry** edges + `%%` comment | `scripts/visualize_ainl.py`, `docs/architecture/GRAPH_INTROSPECTION.md` §7, root README *Visualize your workflow* |
 | **Strict literal / dataflow** | Quoted string literals in read positions where required; **`J "payload"`** style for strict dataflow | `docs/RUNTIME_COMPILER_CONTRACT.md`, `docs/CONFORMANCE.md`, canonical lint / strict tests |
+
+---
+
+## GraphPatch follow-ups (next)
+
+1. **`MemoryExecute` verb** — close the executable memory loop (invoke stored procedural graphs with explicit budgets); align compiler, **`ADAPTER_EFFECT`**, and runtime dispatch with **`memory.patch`** lessons learned.
+2. **GraphPatch whitepaper section** — add a **`WHITEPAPERDRAFT.md`** subsection covering promotion, fitness EMA, boot reinstall, and operator safety (**`OverwriteGuardError`** / **`StrictModeError`**).
+3. **Cross-agent patch sharing** — policy + storage for exporting/importing **`PatchRecord`** / procedural nodes across **`agent_id`** scopes (tenant isolation defaults).
+4. **Fitness decay / TTL policy** — age out or down-rank stale patches beyond EMA alone (session caps, graph-store GC hooks).
 
 ---
 
