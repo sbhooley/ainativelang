@@ -14,7 +14,6 @@ This document establishes the chronological record of graph-as-memory architectu
 | **March 16, 2026** | AINL Whitepaper documentation | Theory | WHITEPAPERDRAFT.md |
 | **March 18, 2026** | Google ADK 2.0 Alpha | Industry | google-adk 2.0.0a1 |
 | **March 21-26, 2026** | AINL refinements | Development | AINL repo commits |
-| **April 6-10, 2026** | Karpathy LLM Wiki | Independent | @karpathy (Twitter) |
 | **April 12, 2026 3:13 AM MDT** | ArmaraOS ainl-memory v0.1.1-alpha | Implementation | crates.io |
 
 **Prior Art Timeline Summary:**
@@ -160,34 +159,11 @@ Google ADK 2.0 uses graphs for **workflow execution** (similar to AINL) but trea
 - March 25: "feat(ops): intelligence hydration, profiles, embedding pilot, graph-runtime docs"
 - March 26: "feat(openclaw): budget-gated summarizer, local embeddings, wrapper low-budget guard"
 
-**Status:** Refinements and enhancements to the working implementation released March 10.
+**Status:** Refinements and enhancements to the working implementation released February 22.
 
 ---
 
-### 3. Karpathy LLM Wiki (April 6-10, 2026)
-
-**Publication:** Twitter thread by Andrej Karpathy  
-**Date:** April 6-10, 2026 (exact date TBD, between April 6 and April 10)  
-**Author:** @karpathy (former Tesla AI Director, OpenAI co-founder)  
-**Type:** Public proposal/thought experiment
-
-**Key contributions:**
-- Proposed "LLM Wiki" concept: execution trace as memory graph
-- "Nodes = actions. Edges = causality. Retrieval = graph traversal."
-- Advocated for storing agent memory as graphs instead of unstructured text
-
-**Relationship to AINL:**
-- Posted **6 months after** AINL whitepaper
-- Posted **2-6 days before** ArmaraOS implementation published to crates.io
-- Independent convergence on same architectural pattern
-- No reference to AINL (high-profile validation without coordination)
-
-**Relevant quote:**
-> "Why are we still storing agent memory as unstructured text? The execution trace IS the memory. Store it as a graph. Nodes = actions. Edges = causality. Retrieval = graph traversal."
-
----
-
-### 4. ArmaraOS ainl-memory v0.1.1-alpha (April 12, 2026)
+### 3. ArmaraOS ainl-memory v0.1.1-alpha (April 12, 2026)
 
 **Publication:** crates.io package publication  
 **Exact timestamp:** April 12, 2026, 3:13 AM MDT (09:13 UTC)  
@@ -202,10 +178,10 @@ Google ADK 2.0 uses graphs for **workflow execution** (similar to AINL) but trea
 - 10 passing tests, production-ready for integration
 
 **Relationship to AINL:**
-- Implements AINL whitepaper's theoretical architecture **6 months after** publication
+- Implements AINL working implementation's architecture **49 days after** initial release
 - Proves graph-as-memory is implementable with existing infrastructure (SQLite)
 - Validates end-to-end: delegation → graph write → query → retrieval
-- Published **2-6 days after** Karpathy's proposal (independent implementation timeline)
+- First standalone crate extraction of AINL's graph-memory substrate
 
 **Code artifact:**
 ```rust
@@ -260,8 +236,7 @@ The **verified timeline** shows:
 4. **AINL whitepaper documentation (March 16, 2026):** Theory documentation 23 days after initial release
 5. **Google ADK 2.0 (March 18, 2026):** Industry adoption (**24 days after AINL**)
 6. **AINL refinements (March 21-26, 2026):** Continued development work
-7. **Karpathy LLM Wiki (April 6-10, 2026):** Independent high-profile proposal
-8. **ArmaraOS (April 12, 2026):** Standalone open-source crate extraction
+7. **ArmaraOS (April 12, 2026):** Standalone open-source crate extraction
 
 **Key observations:**
 
@@ -270,8 +245,7 @@ The **verified timeline** shows:
   - **Public release (Mar 10)** predates Google ADK 2.0 by **8 days**
 - **AINL published working graph-in-memory code only 47 days after MAGMA paper** (January 6 to February 22)
 - **49 days** from AINL working implementation to standalone ArmaraOS crates (February 22 to April 12)
-- **Karpathy proposal** emerged independently 2-6 days before ArmaraOS publication
-- **Consistent pattern:** AINL, Google ADK 2.0, and Karpathy all converge on graph-based architectures
+- **Convergent pattern:** AINL and Google ADK 2.0 both adopt graph-based architectures independently
 - **Architectural divergence:** MAGMA (external), AINL (intrinsic), Google ADK (hybrid)
 - **Rapid innovation:** From academic paper (MAGMA) to working implementation (AINL) to industry adoption (Google ADK) in 71 days
 
@@ -294,7 +268,6 @@ The **verified timeline** shows:
 
 **For theoretical documentation (verified):**
 - AINL whitepaper (March 16, 2026) documented the architecture **23 days after** initial working code release
-- Karpathy LLM Wiki (April 6-10, 2026) independent convergence on same pattern
 
 **For standalone crate implementations (verified):**
 - ArmaraOS ainl-memory (April 12, 2026) **first open-source standalone crate**
@@ -345,11 +318,6 @@ The **verified timeline** shows:
 - **Documentation:** [To be filled with actual Google ADK docs when located]
 - **Key quote:** "Execution graphs as first-class memory primitives"
 
-### Karpathy LLM Wiki
-- **Platform:** Twitter (@karpathy)
-- **Date range:** April 6-10, 2026
-- **Archive:** [To be filled with tweet archive link when located]
-
 ### ArmaraOS Implementation
 - **crates.io publication:** April 12, 2026, 3:13 AM MDT
   - `ainl-memory` v0.1.1-alpha: https://crates.io/crates/ainl-memory/0.1.1-alpha
@@ -383,7 +351,7 @@ When citing graph-as-memory architecture, the appropriate attribution depends on
 > "MAGMA (January 2026) treats memory as an external artifact with retrieval layers, while AINL (February 2026) treats the execution graph itself as intrinsic memory without separate retrieval."
 
 **For ecosystem convergence:**
-> "Independent convergence on graph-based agent memory from MAGMA (Jan 2026), AINL (Feb 2026), Google ADK 2.0 (Mar 2026), and Karpathy's LLM Wiki proposal (Apr 2026) suggests this is an emergent architectural pattern for agent memory systems."
+> "Independent convergence on graph-based agent memory from MAGMA (Jan 2026), AINL (Feb 2026), and Google ADK 2.0 (Mar 2026) suggests this is an emergent architectural pattern for agent memory systems."
 
 ---
 
