@@ -22,7 +22,7 @@ class TestProfileToGrant:
         assert "local_state" in g["forbidden_privilege_tiers"]
         assert "operator_sensitive" in g["forbidden_privilege_tiers"]
         assert g["limits"]["max_steps"] == 500
-        assert g["limits"]["max_adapter_calls"] == 0
+        assert g["limits"]["max_adapter_calls"] == 500
 
     def test_sandbox_compute_and_store_grant(self):
         g = load_profile_as_grant("sandbox_compute_and_store")

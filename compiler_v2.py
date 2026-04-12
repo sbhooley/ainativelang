@@ -87,11 +87,27 @@ MODULE_ALIASES = {
     "memory.recall": "memory.recall",
     "memory.search": "memory.search",
     "memory.export": "memory.export_graph",
+    "MemoryMerge": "memory.merge",
     "persona.update": "persona.update",
     "persona.get": "persona.get",
     "persona.load": "persona.load",
 }
 KNOWN_MODULES = {"ops", "fe", "rag", "arch", "test", "core", "memory", "persona"}
+
+# Valid edge kinds for persona.update / graph memory (structural + epistemic).
+EDGE_TYPE_TOKENS: frozenset = frozenset(
+    {
+        "knows",
+        "believes",
+        "learned_from",
+        "contradicts",
+        "caused_by",
+        "part_of",
+        "references",
+        "derived_from",
+        "inherited_by",
+    }
+)
 
 # Canonical op registry: scope and minimum slot arity.
 # scope:
@@ -187,10 +203,16 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
         "returns": "DICT",
         "doc": "Export the full AINL graph memory as a JSON-serializable dict.",
     },
+    "memory.merge": {
+        "scope": "any",
+        "min_slots": 1,
+        "slots": ["STRING"],
+        "doc": "Recall a named IR fragment from SQLite memory, merge into live labels, run entry, bind result.",
+    },
     "persona.update": {
         "scope": "any",
         "min_slots": 2,
-        "slots": ["STRING", "FLOAT"],
+        "slots": ["STRING", "FLOAT", "FREE_ARG", "EDGE_TYPE_TOKEN"],
         "doc": "Update or create a persona trait node in the graph memory store.",
     },
     "persona.get": {
@@ -270,6 +292,21 @@ OP_GRAMMAR: Dict[str, Dict[str, Any]] = {
             {"name": "var", "class": "VAR_NAME", "required": False},
         ]
     },
+    "memory.merge": {
+        "slots": [
+            {"name": "pattern", "class": "STRING", "required": True},
+            {"name": "entry", "class": "LABEL_REF", "required": False},
+            {"name": "out", "class": "OUT_VAR", "required": False},
+        ]
+    },
+    "persona.update": {
+        "slots": [
+            {"name": "trait", "class": "STRING", "required": True},
+            {"name": "strength", "class": "FREE_ARG", "required": True},
+            {"name": "learned_from", "class": "FREE_ARG", "required": False},
+            {"name": "edge_type", "class": "EDGE_TYPE_TOKEN", "required": False},
+        ]
+    },
     "U": {
         "slots": [
             {"name": "ui", "class": "UI_NAME", "required": True},
@@ -345,6 +382,14 @@ def grammar_matches_token_class(token_class: str, tok: str) -> bool:
         return bool(tok) and not tok.startswith("->")
     if token_class == "COND":
         return bool(tok) and not tok.startswith("->")
+    if token_class == "STRING":
+        if not tok:
+            return False
+        if len(tok) >= 2 and tok[0] == '"' and tok[-1] == '"':
+            return True
+        return bool(grammar_is_identifier(tok))
+    if token_class == "EDGE_TYPE_TOKEN":
+        return tok in EDGE_TYPE_TOKENS
     return False
 
 
@@ -366,6 +411,10 @@ def grammar_next_slot_classes(op: str, slots_so_far: List[str]) -> Set[str]:
         if slots_so_far and slots_so_far[-1].startswith("->"):
             return set()
         return {"FREE_ARG", "OUT_VAR"}
+
+    if op == "persona.update" and len(slots_so_far) == 2:
+        # Third slot may be free-form learned_from or an EDGE_TYPE_TOKEN (e.g. ... 0.8 learned_from).
+        return {"FREE_ARG", "EDGE_TYPE_TOKEN"}
 
     if op == "E":
         if len(slots_so_far) == 0:
@@ -435,6 +484,28 @@ def grammar_prefix_line_ok(op: str, slots: List[str], is_last_partial: bool) -> 
             return False if not is_last_partial else True
     if op == "R" and slots and slots[-1].startswith("->") and not grammar_is_out_var(slots[-1]):
         return False if not is_last_partial else True
+    if op == "memory.merge":
+        if len(slots) >= 1 and not grammar_matches_token_class("STRING", slots[0]):
+            return False if not is_last_partial else True
+        if len(slots) >= 2 and not (
+            grammar_is_label_ref(slots[1])
+            or grammar_matches_token_class("OUT_VAR", slots[1])
+            or (is_last_partial and (slots[1].startswith("L") or slots[1].startswith("->")))
+        ):
+            return False if not is_last_partial else True
+        if len(slots) >= 3 and not grammar_matches_token_class("OUT_VAR", slots[2]):
+            return False if not is_last_partial else True
+    if op == "persona.update":
+        if len(slots) >= 1 and not grammar_matches_token_class("STRING", slots[0]):
+            return False if not is_last_partial else True
+        if len(slots) >= 2 and not grammar_matches_token_class("FREE_ARG", slots[1]):
+            return False if not is_last_partial else True
+        if len(slots) >= 3 and not (
+            grammar_matches_token_class("FREE_ARG", slots[2]) or grammar_matches_token_class("EDGE_TYPE_TOKEN", slots[2])
+        ):
+            return False if not is_last_partial else True
+        if len(slots) >= 4 and not grammar_matches_token_class("EDGE_TYPE_TOKEN", slots[3]):
+            return False if not is_last_partial else True
     return True
 
 
@@ -1836,6 +1907,9 @@ class AICodeCompiler:
             "QueuePut",
             "Tx",
             "Enf",
+            "memory.merge",
+            "MemoryMerge",
+            "persona.update",
         }
     )
 
@@ -2046,6 +2120,15 @@ class AICodeCompiler:
         elif op == "Enf":
             # Policy enforcement typically inspects auth/role context.
             reads.extend(["_auth_present", "_role"])
+        elif op in ("memory.merge", "MemoryMerge"):
+            _add_read_if_var(s.get("pattern"), "pattern")
+            outv = s.get("out", "mm_result")
+            if outv:
+                writes.append(str(outv))
+        elif op == "persona.update":
+            _add_read_if_var(s.get("trait_name"), "trait_name")
+            _add_read_if_var(s.get("strength"), "strength")
+            _add_read_if_var(s.get("learned_from"), "learned_from")
 
         # De-duplicate while preserving order
         seen_r: set = set()
@@ -2147,7 +2230,21 @@ class AICodeCompiler:
                 continue
             k += 1
             nid = f"n{k}"
-            effect = "io" if op in ("R", "Call", "CacheSet", "QueuePut", "Tx") else ("meta" if op in ("Err", "Retry") else "pure")
+            effect = (
+                "io"
+                if op
+                in (
+                    "R",
+                    "Call",
+                    "CacheSet",
+                    "QueuePut",
+                    "Tx",
+                    "memory.merge",
+                    "MemoryMerge",
+                    "persona.update",
+                )
+                else ("meta" if op in ("Err", "Retry") else "pure")
+            )
             reads, writes = self._analyze_step_rw(s)
             node = {
                 "id": nid,
@@ -2785,6 +2882,8 @@ class AICodeCompiler:
                 adapters.add("queue")
             elif op in ("CacheGet", "CacheSet"):
                 adapters.add("cache")
+            elif op in ("memory.merge", "MemoryMerge"):
+                adapters.add("memory")
             else:
                 adapter = str(st.get("adapter") or "").strip()
                 if not adapter:
@@ -3186,6 +3285,9 @@ class AICodeCompiler:
                 leg = self.labels[label]["legacy"]
                 # Parse inline steps: R ... J var | If | Set | Filt | Sort | Err | Retry | Call | capability steps
                 i = 0
+                # Delimiters when scanning args for ``R ...`` on an ``Ln:`` line. Exclude ``mod.verb``
+                # tokens that are also standalone STEP_OPS (e.g. ``persona.update``), otherwise
+                # ``R persona.update ...`` would terminate the R scan before the adapter name.
                 step_ops = (
                     "R",
                     "J",
@@ -3494,6 +3596,63 @@ class AICodeCompiler:
                     elif slots[i] == "Enf" and i + 1 < len(slots):
                         leg["steps"].append({"op": "Enf", "lineno": lineno, "policy": slots[i + 1]})
                         i += 2
+                    elif slots[i] in ("memory.merge", "MemoryMerge") and i + 1 < len(slots):
+                        pattern = slots[i + 1]
+                        j = i + 2
+                        label_id = None
+                        out = "mm_result"
+                        if j < len(slots) and grammar_is_label_ref(slots[j]):
+                            lr = slots[j]
+                            label_id = lr[2:] if lr.startswith("->L") else (lr[1:] if lr.startswith("L") else lr)
+                            if ":" in str(label_id):
+                                label_id = str(label_id).split(":")[-1]
+                            j += 1
+                        if j < len(slots) and slots[j].startswith("->") and not slots[j].startswith("->L"):
+                            out = slots[j][2:]
+                            j += 1
+                        leg["steps"].append(
+                            {
+                                "op": "memory.merge",
+                                "lineno": lineno,
+                                "pattern": pattern,
+                                "label_id": label_id,
+                                "out": out,
+                            }
+                        )
+                        i = j
+                    elif slots[i] == "persona.update" and i + 2 < len(slots):
+                        trait = slots[i + 1]
+                        strength = slots[i + 2]
+                        learned_from = None
+                        edge_type = None
+                        j = i + 3
+                        if j < len(slots):
+                            t3 = slots[j]
+                            if t3 in EDGE_TYPE_TOKENS:
+                                edge_type = t3
+                            else:
+                                learned_from = t3
+                            j += 1
+                            if j < len(slots) and slots[j] in EDGE_TYPE_TOKENS:
+                                edge_type = slots[j]
+                                j += 1
+                        st = {
+                            "op": "persona.update",
+                            "lineno": lineno,
+                            "trait_name": trait,
+                            "strength": strength,
+                            "learned_from": learned_from,
+                            "edge_type": edge_type,
+                        }
+                        lit_fields: Dict[str, Any] = {}
+                        if i + 1 < len(slot_kinds) and slot_kinds[i + 1] == "string":
+                            lit_fields["trait_name"] = True
+                        if i + 2 < len(slot_kinds) and slot_kinds[i + 2] == "string":
+                            lit_fields["strength"] = True
+                        if lit_fields:
+                            st["__literal_fields"] = lit_fields
+                        leg["steps"].append(st)
+                        i = j
                     else:
                         i += 1
 
@@ -3870,6 +4029,63 @@ class AICodeCompiler:
                 if slots and self.current_label:
                     self._ensure_label(self.current_label)
                     self._label_steps(self.current_label).append({"op": "Enf", "lineno": lineno, "policy": slots[0]})
+            elif op in ("memory.merge", "MemoryMerge"):
+                if len(slots) >= 1 and self.current_label:
+                    self._ensure_label(self.current_label)
+                    pattern = slots[0]
+                    label_id = None
+                    out = "mm_result"
+                    ix = 1
+                    if ix < len(slots) and grammar_is_label_ref(slots[ix]):
+                        lr = slots[ix]
+                        label_id = lr[2:] if lr.startswith("->L") else (lr[1:] if lr.startswith("L") else lr)
+                        if ":" in str(label_id):
+                            label_id = str(label_id).split(":")[-1]
+                        ix += 1
+                    if ix < len(slots) and slots[ix].startswith("->") and not slots[ix].startswith("->L"):
+                        out = slots[ix][2:]
+                    self._label_steps(self.current_label).append(
+                        {
+                            "op": "memory.merge",
+                            "lineno": lineno,
+                            "pattern": pattern,
+                            "label_id": label_id,
+                            "out": out,
+                        }
+                    )
+            elif op == "persona.update":
+                if len(slots) >= 2 and self.current_label:
+                    self._ensure_label(self.current_label)
+                    trait = slots[0]
+                    strength = slots[1]
+                    learned_from = None
+                    edge_type = None
+                    if len(slots) == 3:
+                        t3 = slots[2]
+                        if t3 in EDGE_TYPE_TOKENS:
+                            edge_type = t3
+                        else:
+                            learned_from = t3
+                    elif len(slots) >= 4:
+                        learned_from = slots[2]
+                        if slots[3] in EDGE_TYPE_TOKENS:
+                            edge_type = slots[3]
+                    pst = {
+                        "op": "persona.update",
+                        "lineno": lineno,
+                        "trait_name": trait,
+                        "strength": strength,
+                        "learned_from": learned_from,
+                        "edge_type": edge_type,
+                    }
+                    lit_fields2: Dict[str, Any] = {}
+                    if len(slot_kinds) > 0 and slot_kinds[0] == "string":
+                        lit_fields2["trait_name"] = True
+                    if len(slot_kinds) > 1 and slot_kinds[1] == "string":
+                        lit_fields2["strength"] = True
+                    if lit_fields2:
+                        pst["__literal_fields"] = lit_fields2
+                    self._label_steps(self.current_label).append(pst)
             elif op == "Inc":
                 if slots:
                     path = slots[0]

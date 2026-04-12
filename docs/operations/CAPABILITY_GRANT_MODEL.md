@@ -18,7 +18,7 @@ The grant model ties together several related concepts:
 | **Security profile** | Named baseline bundle of restrictions/defaults (e.g. `local_minimal`). Stored in `tooling/security_profiles.json`. |
 | **Capability grant** | The effective restriction envelope for a run — derived by loading a security profile and merging with caller restrictions. |
 | **Policy** | Execution-time IR checks extracted from the grant (`forbidden_adapters`, `forbidden_effects`, `forbidden_privilege_tiers`, etc.). |
-| **Limits** | Resource ceilings (`max_steps`, `max_depth`, `max_adapter_calls`, etc.) extracted from the grant. |
+| **Limits** | Resource ceilings (`max_steps`, `max_depth`, `max_adapter_calls`, etc.) extracted from the grant. For **`max_adapter_calls`**, **`0`** means *zero adapter calls allowed* (the first `R` / cache / queue dispatch fails). Other limit keys continue to treat non-positive values as unset where noted in runtime code. |
 | **Allowlist** | The final adapter surface permitted for a run — the intersection of server and caller `allowed_adapters`. |
 | **Privilege tier** | Adapter risk classification metadata (`pure`, `local_state`, `network`, `operator_sensitive`). Used by policy, security reports, and grants. |
 | **Adapter metadata** | Discovery/classification fields per adapter (`destructive`, `network_facing`, `sandbox_safe`, privilege tier). Exposed via `/capabilities`. |

@@ -7,6 +7,7 @@
 - **Runtime:** compiler IR may emit **`MemoryRecall`** / **`MemorySearch`**; **`RuntimeEngine`** calls the **`ainl_graph_memory`** adapter (same capability / registration rules as other extension adapters). See **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
 - **Bridge:** JSON-backed graph memory under **`armaraos/bridge/`** (default store **`~/.armaraos/ainl_graph_memory.json`**, override **`AINL_GRAPH_MEMORY_PATH`**), runner wiring, optional graph browser, **`demo/procedural_roundtrip_demo.py`**, and **`demo/ainl_graph_memory_demo.py`** (in-repo graph-memory walkthrough + JSON export).
 - **Docs:** graph memory contract page + cross-links (memory vs graph, ArmaraOS integration, state discipline, runtime/compiler contract).
+- **Docs (rolling):** MCP **`frame_hints`** / **`# frame:`** conventions, **`ainl_mcp_limits.json`** parse warnings + **`max_adapter_calls: 0`**, MCP auto-**`cache`** JSON validation vs default engine cache paths, ArmaraOS **`ainl emit --target armaraos`** **`security.json`** **`capability_declarations`** + **`HAND.toml`** **`ainl_ir_version`** — see **`docs/operations/MCP_RESEARCH_CONTRACT.md`**, **`docs/ARMARAOS_INTEGRATION.md`**, **`AGENTS.md`**, and **`docs/CHANGELOG.md`** *Unreleased*.
 - See **`docs/CHANGELOG.md`** § v1.5.1.
 
 ## AINL v1.5.0 — Minor release + documentation alignment (2026-04-10)

@@ -16,7 +16,7 @@
       "runtime_limits": {
         "max_steps": 500,
         "max_depth": 10,
-        "max_adapter_calls": 0,
+        "max_adapter_calls": 500,
         "max_time_ms": 5000
       },
       "orchestrator_expectations": [

@@ -127,7 +127,12 @@
       "strict_contract": true,
       "recommended_lane": "canonical",
       "verbs": [
-        "G"
+        "G",
+        "send",
+        "read",
+        "search",
+        "reply",
+        "draft"
       ],
       "effect_default": "io",
       "privilege_tier": "network",
@@ -350,6 +355,22 @@
       "network_facing": false,
       "sandbox_safe": true,
       "notes": "Runtime SQLite adapter namespace."
+    },
+    "persona": {
+      "support_tier": "extension_openclaw",
+      "strict_contract": true,
+      "recommended_lane": "noncanonical",
+      "verbs": [
+        "update",
+        "get",
+        "load"
+      ],
+      "effect_default": "io",
+      "privilege_tier": "local_state",
+      "destructive": false,
+      "network_facing": false,
+      "sandbox_safe": true,
+      "notes": "Persona trait ops; runtime dispatches persona.* R lines and persona.update steps to ainl_graph_memory."
     },
     "postgres": {
       "support_tier": "core",
@@ -651,7 +672,14 @@
         "append",
         "list",
         "delete",
-        "prune"
+        "prune",
+        "recall",
+        "search",
+        "export_graph",
+        "store_pattern",
+        "store",
+        "merge",
+        "recall_pattern"
       ],
       "effect_default": "io",
       "privilege_tier": "local_state",
@@ -781,7 +809,9 @@
       "strict_contract": true,
       "recommended_lane": "canonical",
       "verbs": [
-        "COMPLETION"
+        "COMPLETION",
+        "GENERATE",
+        "CHAT"
       ],
       "effect_default": "io",
       "privilege_tier": "network",

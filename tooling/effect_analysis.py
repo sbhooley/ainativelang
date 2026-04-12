@@ -206,6 +206,8 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "memory.EXPORT_GRAPH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "memory.STORE_PATTERN": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
     "memory.STORE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    "memory.MERGE": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "memory.RECALL_PATTERN": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "persona.UPDATE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
     "persona.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "persona.LOAD": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
@@ -348,6 +350,11 @@ def strict_adapter_key_for_step(step: Dict[str, Any]) -> str:
     ``req_op`` is absent so the allowlist check uses the real verb rather than
     the sentinel ``"F"``.
     """
+    op0 = str(step.get("op") or "").strip()
+    if op0 in ("memory.merge", "MemoryMerge"):
+        return "memory.MERGE"
+    if op0 == "persona.update":
+        return "persona.UPDATE"
     adapter = step.get("adapter") or step.get("src") or ""
     req_op = step.get("req_op")
     if isinstance(adapter, str) and "." not in adapter and not str(req_op or "").strip():
@@ -388,6 +395,10 @@ def effect_tier_for_node(node: Dict[str, Any]) -> str:
         return EFFECT_TIER_IO_READ
     if op in ("MemoryRecall", "MemorySearch"):
         return EFFECT_TIER_IO_READ
+    if op in ("memory.merge", "MemoryMerge"):
+        return EFFECT_TIER_IO_READ
+    if op == "persona.update":
+        return EFFECT_TIER_IO_WRITE
     if op in ("If", "Loop", "While"):
         return EFFECT_TIER_CONTROL
     return EFFECT_TIER_PURE
@@ -418,6 +429,12 @@ def effect_kinds_for_node(node: Dict[str, Any]) -> Set[str]:
         return out
     if op in ("MemoryRecall", "MemorySearch"):
         out.add(EFFECT_KIND_MEMORY_READ)
+        return out
+    if op in ("memory.merge", "MemoryMerge"):
+        out.add(EFFECT_KIND_MEMORY_READ)
+        return out
+    if op == "persona.update":
+        out.add(EFFECT_KIND_MEMORY_WRITE)
         return out
     if op == "CacheSet":
         out.add(EFFECT_KIND_CACHE_WRITE)

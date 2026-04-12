@@ -1,8 +1,10 @@
 from __future__ import annotations
 import uuid
 
+import copy
 import json
 import asyncio
+import logging
 import os
 import time
 from datetime import datetime, timezone
@@ -10,10 +12,12 @@ from typing import Any, Callable, Dict, List, Optional, Set
 
 from compiler_v2 import (
     AICodeCompiler,
+    EDGE_TYPE_TOKENS,
     runtime_canonicalize_r_step,
     runtime_normalize_label_id,
     runtime_normalize_node_id,
 )
+from tooling.graph_normalize import normalize_labels
 from runtime.values import compare, deep_get, deep_put, json_safe, stable_sort, truthy
 from runtime.adapters.base import AdapterRegistry, AdapterError
 from runtime.adapters.builtins import CoreBuiltinAdapter
@@ -67,6 +71,38 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 SUPPORTED_IR_MAJOR = 1
 RUNTIME_VERSION = "1.5.1"
 
+_LOG = logging.getLogger(__name__)
+
+_MM_STEP_LABEL_KEYS = frozenset({"then", "else", "label", "body", "after", "handler"})
+
+
+def _rewrite_mm_label_refs(obj: Any, id_map: Dict[str, str]) -> None:
+    if isinstance(obj, dict):
+        for k, v in list(obj.items()):
+            if k in _MM_STEP_LABEL_KEYS and v is not None and v != "":
+                nk = _norm_lid(str(v))
+                if nk in id_map:
+                    obj[k] = id_map[nk]
+            else:
+                _rewrite_mm_label_refs(v, id_map)
+    elif isinstance(obj, list):
+        for it in obj:
+            _rewrite_mm_label_refs(it, id_map)
+
+
+def _pick_mm_fragment_entry(orig_labels: Dict[str, Any], override: Optional[str]) -> Optional[str]:
+    keys = [_norm_lid(str(k)) for k in orig_labels.keys()]
+    if not keys:
+        return None
+    if override:
+        o = _norm_lid(str(override))
+        if o in keys:
+            return o
+    nums = [int(k) for k in keys if str(k).isdigit()]
+    if nums:
+        return str(min(nums))
+    return keys[0]
+
 
 def _parse_host_csv_env(name: str) -> Optional[List[str]]:
     raw = str(os.environ.get(name) or "").strip()
@@ -97,6 +133,10 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                 found.add("cache")
             elif op in ("MemoryRecall", "MemorySearch"):
                 found.add("ainl_graph_memory")
+            elif op in ("memory.merge", "MemoryMerge"):
+                found.add("memory")
+            elif op == "persona.update":
+                found.add("ainl_graph_memory")
             elif op == "R":
                 adapter = str(step.get("adapter") or "").strip()
                 if adapter:
@@ -110,6 +150,10 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
             st = n.get("data") or {}
             gop = str(st.get("op") or n.get("op") or "").strip()
             if gop in ("MemoryRecall", "MemorySearch"):
+                found.add("ainl_graph_memory")
+            elif gop in ("memory.merge", "MemoryMerge"):
+                found.add("memory")
+            elif gop == "persona.update":
                 found.add("ainl_graph_memory")
             elif gop in ("CacheGet", "CacheSet"):
                 found.add("cache")
@@ -262,6 +306,7 @@ class RuntimeEngine:
         self._source_lines = (ir.get("source") or {}).get("lines", []) or []
         self._cst_by_line = {ln.get("lineno"): ln for ln in ((ir.get("cst") or {}).get("lines") or []) if isinstance(ln, dict)}
         self._validate_ir_version()
+        self._mm_merge_seq = 0
 
     def _ensure_optional_adapters_registered(self, allowed: List[str]) -> None:
         """Register adapters referenced by the IR when missing (minimal `ainl serve` / no CLI registry)."""
@@ -472,9 +517,24 @@ class RuntimeEngine:
             if frame_bytes > max_frame_bytes:
                 raise AinlRuntimeError("max_frame_bytes exceeded", lid, idx, op, stack, code=ERROR_CODE_MAX_FRAME_BYTES)
 
+    def _adapter_calls_ceiling(self) -> Optional[int]:
+        """Max adapter calls including zero (``0`` means no adapter calls allowed).
+
+        Unlike :meth:`_limit_int`, a value of ``0`` is a real ceiling, not "unset".
+        Negative values are ignored.
+        """
+        raw = self.limits.get("max_adapter_calls")
+        if raw is None:
+            return None
+        try:
+            v = int(raw)
+        except Exception:
+            return None
+        return v if v >= 0 else None
+
     def _count_adapter_call(self, lid: str, idx: int, op: str, stack: List[str]) -> None:
         self._adapter_calls += 1
-        lim = self._limit_int("max_adapter_calls")
+        lim = self._adapter_calls_ceiling()
         if lim is not None and self._adapter_calls > lim:
             raise AinlRuntimeError("max_adapter_calls exceeded", lid, idx, op, stack, code=ERROR_CODE_MAX_ADAPTER_CALLS)
 
@@ -920,10 +980,21 @@ class RuntimeEngine:
                     out = self._persona_load_into_frame(frame, call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_load"
                 elif adp_name == "persona" and verb_l == "update":
+                    learned_from: List[Any] = []
+                    if len(args) > 1:
+                        a1 = args[1]
+                        if isinstance(a1, list):
+                            learned_from = list(a1)
+                        elif a1 is not None and str(a1).strip() and str(a1) != "*":
+                            learned_from = [a1]
+                    edge_type: Optional[str] = None
+                    if len(args) > 2 and str(args[2]) in EDGE_TYPE_TOKENS:
+                        edge_type = str(args[2])
                     kw = {
                         "trait_name": str(t0) if t0 is not None else "",
                         "strength": float(args[0]) if args else 0.0,
-                        "learned_from": args[1] if len(args) > 1 and isinstance(args[1], list) else [],
+                        "learned_from": learned_from,
+                        "edge_type": edge_type,
                     }
                     out = self.adapters.call("ainl_graph_memory", "persona_update", [kw], call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_update"
@@ -979,10 +1050,21 @@ class RuntimeEngine:
                     out = await self._persona_load_into_frame_async(frame, call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_load"
                 elif adp_name == "persona" and verb_l == "update":
+                    learned_from_a: List[Any] = []
+                    if len(args) > 1:
+                        a1 = args[1]
+                        if isinstance(a1, list):
+                            learned_from_a = list(a1)
+                        elif a1 is not None and str(a1).strip() and str(a1) != "*":
+                            learned_from_a = [a1]
+                    edge_type_a: Optional[str] = None
+                    if len(args) > 2 and str(args[2]) in EDGE_TYPE_TOKENS:
+                        edge_type_a = str(args[2])
                     kw = {
                         "trait_name": str(t0) if t0 is not None else "",
                         "strength": float(args[0]) if args else 0.0,
-                        "learned_from": args[1] if len(args) > 1 and isinstance(args[1], list) else [],
+                        "learned_from": learned_from_a,
+                        "edge_type": edge_type_a,
                     }
                     out = await self.adapters.call_async("ainl_graph_memory", "persona_update", [kw], call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_update"
@@ -1063,6 +1145,59 @@ class RuntimeEngine:
         if out_var != "_call_result":
             frame["_call_result"] = out
         return out_var
+
+    def _exec_memory_merge(self, step: Dict[str, Any], frame: Dict[str, Any], stack: List[str]) -> Any:
+        patt = step.get("pattern", "")
+        name0 = self._resolve(patt, frame) if patt is not None else ""
+        name = str(name0).strip() if name0 is not None else ""
+        call_ctx = dict(frame)
+        call_ctx["_runtime_async"] = self.runtime_async
+        call_ctx["_observability"] = self.observability
+        call_ctx["_adapter_registry"] = self.adapters
+        frag: Any = None
+        try:
+            frag = self.adapters.call("memory", "recall_pattern", [name], call_ctx)
+        except Exception:
+            frag = None
+        if not frag or not isinstance(frag, dict):
+            _LOG.warning("memory.merge: pattern %r not found or invalid; skipping", name)
+            return None
+        labels_src = frag.get("labels")
+        if not isinstance(labels_src, dict) or not labels_src:
+            _LOG.warning("memory.merge: pattern %r has no labels; skipping", name)
+            return None
+        frag_copy = copy.deepcopy(frag)
+        labels_src = frag_copy["labels"]
+        prefix = f"_mm_{self._mm_merge_seq}_"
+        self._mm_merge_seq += 1
+        id_map: Dict[str, str] = {}
+        new_ids: List[str] = []
+        for old_id, body in labels_src.items():
+            oid = _norm_lid(str(old_id))
+            nid = f"{prefix}{oid}"
+            id_map[oid] = nid
+            self.labels[nid] = copy.deepcopy(body)
+            new_ids.append(nid)
+        for nid in new_ids:
+            body = self.labels.get(nid) or {}
+            for st in ((body.get("legacy") or {}).get("steps") or []):
+                if isinstance(st, dict):
+                    _rewrite_mm_label_refs(st, id_map)
+        comp = AICodeCompiler(strict_mode=False, strict_reachability=False)
+        comp.labels = self.labels
+        for nid in new_ids:
+            comp._steps_to_graph(nid, context=None)
+        normalize_labels(self.labels)
+        ov_raw = step.get("label_id")
+        ov: Optional[str] = None
+        if ov_raw is not None and str(ov_raw).strip() != "":
+            ov = str(self._resolve(ov_raw, frame)).strip()
+        entry_old = _pick_mm_fragment_entry(labels_src, ov)
+        if not entry_old or entry_old not in id_map:
+            _LOG.warning("memory.merge: could not resolve entry label for pattern %r", name)
+            return None
+        entry_new = id_map[entry_old]
+        return self._run_label(entry_new, frame, stack, force_steps=False)
 
     def _exec_step(
         self,
@@ -1191,6 +1326,42 @@ class RuntimeEngine:
             req_role = constraints.get("role")
             if req_role and str(frame.get("_role", "")) != str(req_role):
                 raise RuntimeError(f"POLICY_VIOLATION[{policy_name}]: role mismatch")
+            return {"action": "continue", "out": None}
+        if op in ("memory.merge", "MemoryMerge"):
+            self._count_adapter_call(lid, idx, op, stack)
+            merged_out = self._exec_memory_merge(step, frame, stack)
+            out_var = step.get("out", "mm_result")
+            frame[out_var] = merged_out
+            return {"action": "continue", "out": merged_out}
+        if op == "persona.update":
+            self._count_adapter_call(lid, idx, op, stack)
+            call_ctx = dict(frame)
+            call_ctx["_runtime_async"] = self.runtime_async
+            call_ctx["_observability"] = self.observability
+            call_ctx["_adapter_registry"] = self.adapters
+            trait = str(self._resolve(step.get("trait_name", ""), frame))
+            st_raw = step.get("strength", 0)
+            try:
+                strength = float(self._resolve(st_raw, frame))
+            except Exception:
+                strength = 0.0
+            lf_raw = step.get("learned_from")
+            if lf_raw is None:
+                lf_list: List[Any] = []
+            elif isinstance(lf_raw, list):
+                lf_list = list(lf_raw)
+            else:
+                lf_list = [lf_raw]
+            learned_from = [str(self._resolve(x, frame)) for x in lf_list]
+            et = step.get("edge_type")
+            edge_type = str(et).strip() if et is not None and str(et).strip() else None
+            kw = {
+                "trait_name": trait,
+                "strength": strength,
+                "learned_from": learned_from,
+                "edge_type": edge_type,
+            }
+            self.adapters.call("ainl_graph_memory", "persona_update", [kw], call_ctx)
             return {"action": "continue", "out": None}
         return None
 
@@ -1845,7 +2016,7 @@ class RuntimeEngine:
                     cur = None
                     continue
 
-                elif op in ("J", "Call", "Set", "Filt", "Sort", "X"):
+                elif op in ("J", "Call", "Set", "Filt", "Sort", "X", "memory.merge", "MemoryMerge", "persona.update"):
                     shared = self._exec_step(step, frame, lid, idx, stack, force_steps_for_call=False)
                     self._emit_trace(
                         lid,

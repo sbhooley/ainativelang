@@ -16,6 +16,9 @@ OP_EFFECT: Dict[str, str] = {
     "QueuePut": "io",
     "CacheSet": "io",
     "Tx": "io",
+    "memory.merge": "io",
+    "MemoryMerge": "io",
+    "persona.update": "io",
 }
 
 # Valid ports per source op (edges from this op may only use these ports).
@@ -39,6 +42,9 @@ VALID_PORTS: Dict[str, frozenset] = {
     "QueuePut": frozenset({"next", "err", "retry"}),
     "Tx": frozenset({"next", "err", "retry"}),
     "Enf": frozenset({"next", "err", "retry"}),
+    "memory.merge": frozenset({"next", "err", "retry"}),
+    "MemoryMerge": frozenset({"next", "err", "retry"}),
+    "persona.update": frozenset({"next", "err", "retry"}),
 }
 DEFAULT_PORTS = frozenset({"next"})
 
@@ -147,6 +153,17 @@ def rw_for_step(step: Dict[str, Any]) -> Tuple[List[str], List[str]]:
 
     elif op == "Enf":
         r.update({"_auth_present", "_role"})
+
+    elif op in ("memory.merge", "MemoryMerge"):
+        add_read(step.get("pattern"))
+        out = step.get("out", "mm_result")
+        if out:
+            w.add(out)
+
+    elif op == "persona.update":
+        add_read(step.get("trait_name"))
+        add_read(step.get("strength"))
+        add_read(step.get("learned_from"))
 
     return sorted(r), sorted(w)
 

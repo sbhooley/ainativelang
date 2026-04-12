@@ -10,7 +10,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
 
@@ -30,6 +30,10 @@ class EdgeType(str, Enum):
     REFERENCES = "references"
     DERIVED_FROM = "derived_from"
     INHERITED_BY = "inherited_by"
+    KNOWS = "knows"
+    BELIEVES = "believes"
+    LEARNED_FROM = "learned_from"
+    CONTRADICTS = "contradicts"
 
 
 def _new_id(prefix: str) -> str:
@@ -46,6 +50,7 @@ class MemoryNode:
     tags: List[str]
     created_at: float
     ttl: Optional[float] = None
+    contradicted_by: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -53,6 +58,9 @@ class MemoryNode:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> MemoryNode:
+        cb = d.get("contradicted_by") or []
+        if not isinstance(cb, list):
+            cb = [str(cb)]
         return cls(
             id=str(d["id"]),
             node_type=str(d["node_type"]),
@@ -62,6 +70,7 @@ class MemoryNode:
             tags=[str(x) for x in (d.get("tags") or [])],
             created_at=float(d["created_at"]),
             ttl=float(d["ttl"]) if d.get("ttl") is not None else None,
+            contradicted_by=[str(x) for x in cb],
         )
 
 
@@ -73,25 +82,31 @@ class PersonaNode:
     strength: float  # 0.0–1.0
     learned_from: List[str] = field(default_factory=list)  # episode node IDs
     last_updated: int = 0  # unix seconds
+    edge_type: Optional[str] = None  # epistemic link kind (knows, believes, …)
 
     def to_payload(self) -> Dict[str, Any]:
-        return {
+        out = {
             "trait_name": self.trait_name,
             "strength": float(self.strength),
             "learned_from": list(self.learned_from),
             "last_updated": int(self.last_updated),
         }
+        if self.edge_type:
+            out["edge_type"] = str(self.edge_type)
+        return out
 
     @classmethod
     def from_payload(cls, d: Dict[str, Any]) -> "PersonaNode":
         lf = d.get("learned_from") or []
         if not isinstance(lf, list):
             lf = [str(lf)]
+        et = d.get("edge_type")
         return cls(
             trait_name=str(d.get("trait_name", "")),
             strength=float(d.get("strength", 0.0)),
             learned_from=[str(x) for x in lf],
             last_updated=int(d.get("last_updated", 0)),
+            edge_type=str(et) if et is not None else None,
         )
 
 
@@ -102,18 +117,28 @@ class MemoryEdge:
     dst: str
     edge_type: str
     label: str = ""
+    confidence: float = 1.0
+    meta: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> MemoryEdge:
+        conf = d.get("confidence", 1.0)
+        try:
+            conf_f = float(conf)
+        except (TypeError, ValueError):
+            conf_f = 1.0
+        meta = d.get("meta") if isinstance(d.get("meta"), dict) else {}
         return cls(
             id=str(d["id"]),
             src=str(d["src"]),
             dst=str(d["dst"]),
             edge_type=str(d["edge_type"]),
             label=str(d.get("label", "")),
+            confidence=conf_f,
+            meta=dict(meta),
         )
 
 
@@ -244,12 +269,54 @@ class GraphStore:
                     out.append(node)
             return out
 
+    def _allowed_edge_types(self) -> Set[str]:
+        return {e.value for e in EdgeType}
+
+    def _node_flag_contradiction(self, nid: str, other_id: str) -> None:
+        node = self._nodes.get(nid)
+        if node is None:
+            return
+        pl = dict(node.payload or {})
+        meta = pl.setdefault("metadata", {})
+        meta["has_contradiction"] = True
+        cb = list(node.contradicted_by)
+        if other_id not in cb:
+            cb.append(other_id)
+        self._nodes[nid] = MemoryNode(
+            id=node.id,
+            node_type=node.node_type,
+            agent_id=node.agent_id,
+            label=node.label,
+            payload=pl,
+            tags=list(node.tags),
+            created_at=node.created_at,
+            ttl=node.ttl,
+            contradicted_by=cb,
+        )
+
     def add_edge(self, edge: MemoryEdge, *, persist: bool = True, dry_run: bool = False) -> MemoryEdge:
         with self._lock:
             if dry_run:
                 logger.info("[dry_run] graph add_edge %s — no write", edge.id)
                 return edge
+            et = str(edge.edge_type or "")
+            if et and et not in self._allowed_edge_types():
+                raise AdapterError(f"graph add_edge: unsupported edge_type {et!r}")
+            if et == EdgeType.BELIEVES.value:
+                conf = float(edge.meta.get("confidence", edge.confidence))
+                edge = MemoryEdge(
+                    id=edge.id,
+                    src=edge.src,
+                    dst=edge.dst,
+                    edge_type=edge.edge_type,
+                    label=edge.label,
+                    confidence=conf,
+                    meta=dict(edge.meta),
+                )
             self._edges[edge.id] = edge
+            if et == EdgeType.CONTRADICTS.value:
+                self._node_flag_contradiction(edge.src, edge.dst)
+                self._node_flag_contradiction(edge.dst, edge.src)
             self._touch(persist=persist)
             return edge
 
@@ -430,6 +497,12 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             lf_in = [str(lf_in)]
         learned_from = [str(x) for x in lf_in]
         ts = int(time.time())
+        edge_type_raw = params.get("edge_type")
+        edge_type = str(edge_type_raw).strip() if edge_type_raw is not None else None
+        if edge_type == "":
+            edge_type = None
+        if edge_type is not None and edge_type not in {e.value for e in EdgeType}:
+            raise AdapterError(f"persona_update: unsupported edge_type {edge_type!r}")
 
         existing: Optional[MemoryNode] = None
         for n in self._store.all_nodes():
@@ -457,6 +530,7 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             strength=strength,
             learned_from=merged_learned,
             last_updated=ts,
+            edge_type=edge_type,
         )
         nid = existing.id if existing is not None else _new_id("persona")
         node = MemoryNode(

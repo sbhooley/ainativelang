@@ -937,6 +937,7 @@ def ainl_run(
     """
     trace_id = str(uuid.uuid4())
     _on_run_started(code)
+    run_warnings: List[str] = []
 
     ir = _compile(code, strict=strict)
     errors = ir.get("errors") or []
@@ -981,6 +982,10 @@ def ainl_run(
                 workspace_limits = json.loads(_ws_limits_path.read_text(encoding="utf-8"))
             except Exception:
                 workspace_limits = {}
+                run_warnings.append(
+                    f"ainl_mcp_limits.json at {_ws_limits_path} is not valid JSON; "
+                    "using default limits."
+                )
     # Caller limits override workspace defaults; workspace defaults override nothing
     # (server ceiling enforced in _merge_limits either way).
     effective_caller_limits: Dict[str, Any] = {**workspace_limits, **(limits or {})}
@@ -1079,6 +1084,17 @@ def ainl_run(
             ]
             for _cp in _candidates:
                 if _cp.is_file():
+                    try:
+                        raw = _cp.read_text(encoding="utf-8")
+                        if raw.strip():
+                            json.loads(raw)
+                    except json.JSONDecodeError as e:
+                        return {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": f"cache.json at {_cp} is not valid JSON: {e}",
+                        }
                     reg.register("cache", LocalFileCacheAdapter(path=str(_cp)))
                     break
 
@@ -1118,7 +1134,7 @@ def ainl_run(
     except Exception as e:
         return {"ok": False, "trace_id": trace_id, "error": str(e)}
 
-    return {
+    out_run: Dict[str, Any] = {
         "ok": True,
         "trace_id": trace_id,
         "label": entry,
@@ -1126,6 +1142,9 @@ def ainl_run(
         "runtime_version": RUNTIME_VERSION,
         "ir_version": ir.get("ir_version"),
     }
+    if run_warnings:
+        out_run["warnings"] = run_warnings
+    return out_run
 
 
 @_register_tool

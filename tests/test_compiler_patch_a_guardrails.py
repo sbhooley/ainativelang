@@ -46,7 +46,7 @@ def test_diagnostic_classifier_substrings_remain_present(code: str, expected_sub
             {
                     "labels_sha256": "487cfb1568b0636656efd5335c2830e52176750829fc9a367fe91396cfee2d86",
                     "graph_semantic_checksum": "sha256:fdf1018d524adaeca8c6037e9cfc64635bf82a06c59bc87efbad1b28b29072c4",
-                    "emit_ir_json_sha256": "f7c81855238ae0a9c4266fa514f7a2c6d55868d0d453c8787cd9a21f18eaabd7",
+                    "emit_ir_json_sha256": "bcf12281e7f4cb3442488815d8c1eea377964e3a0a8ff95d04a99a1c73911207",
                 "emit_openapi_sha256": "25afd06f70d158286c9a39aa23415b8ed87619f4705c97c56c67e88653f0a805",
                 "emit_server_sha256": "f6bb40b5dccdcd4bed39a7708e402f94532e2345cc1b732be3914a7c590cda62",
                 "emit_react_sha256": "25e1fe1ba3bf5e91937e07974fb3a604afdad6d306aab3229f5d769c755b83f7",
@@ -58,7 +58,7 @@ def test_diagnostic_classifier_substrings_remain_present(code: str, expected_sub
             {
                 "labels_sha256": "63aaf5c65678a1ca7966a3b2f51b872f3e071155691d76546b15546d72e24a11",
                 "graph_semantic_checksum": "sha256:03597e2e690a15964074adb1fcdf52b0f323fd47267fc493b69bb610277f111e",
-                "emit_ir_json_sha256": "1375e09898518a71fb75ce8c720df4aaf4586f1172f58efd63c0a50cd5d211a4",
+                "emit_ir_json_sha256": "437a9d69f197d1e3084957c4eb169e7454a1cbb1ec9ccb4bfe856fd7fae7b237",
                 "emit_openapi_sha256": "264d34063bacf9343560e06e4d505242f3dcd8971a00ed52c670dc2fc6b82d9c",
                 "emit_server_sha256": "78bf2178ac822946213ba08acf1d41e9557fe1c352bbfa84386bc40924af3e0a",
                 "emit_react_sha256": "25e1fe1ba3bf5e91937e07974fb3a604afdad6d306aab3229f5d769c755b83f7",

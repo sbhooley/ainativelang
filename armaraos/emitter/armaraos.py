@@ -65,6 +65,7 @@ def _generate_hand_toml(ir: Dict[str, Any], stem: str) -> str:
         f'id = "ainl-{stem}"',
         f'name = "{stem.replace("_", " ").title()}"',
         f'version = "1.0.0"',
+        f'ainl_ir_version = "{ir.get("ir_version", "unknown")}"',
         f'description = "{description}"',
         f'author = "{author}"',
         "",
@@ -117,6 +118,8 @@ def _generate_hand_toml(ir: Dict[str, Any], stem: str) -> str:
 def _generate_security_policy(ir: Dict[str, Any]) -> Dict[str, Any]:
     """Generate ArmaraOS-compatible security policy."""
     security = ir.get("_security", {})
+    avm = ir.get("avm_policy_fragment") or {}
+    adapters = list(avm.get("allowed_adapters") or [])
     return {
         "version": "1.0",
         "sandbox": security.get("sandbox", "wasm"),
@@ -131,6 +134,7 @@ def _generate_security_policy(ir: Dict[str, Any]) -> Dict[str, Any]:
         "merkle": security.get("merkle", {"hooks_enabled": True, "incremental": True}),
         "allowed_networks": [],  # Can be populated by user
         "max_execution_time_sec": 300,
+        "capability_declarations": {"adapters": adapters},
     }
 
 

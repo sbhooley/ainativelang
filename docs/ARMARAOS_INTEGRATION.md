@@ -6,7 +6,7 @@ ArmaraOS is an **optional** host runtime for AINL workflows. AINL supports Armar
 
 - **MCP support**: `ainl-mcp` registered into the host’s `config.toml` so ArmaraOS can call AINL tools over stdio (**today:** `~/.openfang/config.toml` in the upstream fork; **after rebrand:** `~/.armaraos/config.toml`).
 - **Run wrapper**: a host-local `ainl-run` shim (installed under `~/.armaraos/bin/`) that forwards to `ainl run` (you may also mirror it under `~/.openfang/bin/` during the transition).
-- **Emit to Hand package**: `ainl emit --target armaraos` produces a directory with `HAND.toml`, compiled IR JSON, and a `security.json`.
+- **Emit to Hand package**: `ainl emit --target armaraos` produces a directory with `HAND.toml`, compiled IR JSON (`<stem>.ainl.json`), `security.json`, and `README.md`.
 - **Status + schema bootstrap**: `ainl status --host armaraos` validates the local AINL memory DB schema and reports what’s installed.
 - **Cron helper**: `ainl cron add ... --host armaraos` shells out to `armaraos cron add` when the ArmaraOS CLI is present.
 
@@ -44,10 +44,12 @@ ainl emit my_flow.ainl --target armaraos -o ./my_flow_armaraos_hand
 
 Expected outputs:
 
-- `HAND.toml`
-- `<stem>.ainl.json`
-- `security.json`
-- `README.md`
+- `HAND.toml` — `[hand]` manifest including **`name`**, **`version`** (semver string), **`entrypoint`** (the `<stem>.ainl.json` filename), **`ainl_ir_version`** (from the compiled IR), plus metadata fields such as **`id`**, **`description`**, **`author`**.
+- `<stem>.ainl.json` — canonical compiled IR JSON.
+- `security.json` — WASM / sandbox policy hints plus **`capability_declarations.adapters`**, a sorted list of adapter roots inferred from the graph (from `ir["avm_policy_fragment"]["allowed_adapters"]`; empty when the program has no adapter-using steps).
+- `README.md` — short human-oriented summary referencing the stem.
+
+Regression coverage: **`tests/test_emit_armaraos_handpack.py`** (artifact set + manifest / security / README checks).
 
 ## Env vars (canonical + aliases)
 

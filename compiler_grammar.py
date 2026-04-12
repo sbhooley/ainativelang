@@ -2,7 +2,10 @@
 Compiler-owned formal prefix grammar/state machine for AINL decoding.
 
 This module is the single source of truth for lexical + structural prefix
-admissibility used by decoder constraints. It intentionally separates:
+admissibility used by decoder constraints. Slot schemas for ops such as
+``memory.merge`` / ``persona.update`` live in ``compiler_v2.OP_GRAMMAR`` and are
+consumed via ``grammar_next_slot_classes`` / ``grammar_matches_token_class``.
+It intentionally separates:
 - structural plausibility (formal)
 - semantic strict compilation (outside this module)
 """

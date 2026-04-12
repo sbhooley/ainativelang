@@ -10,7 +10,7 @@ The following fields are considered stable in the v1.2.7+ research pack surface 
 - `ainl_ir_diff(...).diff.changed_nodes[]` as a list of `{label_id, node_id, changes}`
 - `ainl_fitness_report(...).metrics.fitness_score`
 - `ainl_fitness_report(...).metrics.fitness_components.weights`
-- `ainl_compile(...).frame_hints[]` as a list of `{name, type, source}` — added v1.4.3
+- `ainl_compile(...).frame_hints[]` as a list of `{name, type, source}` — added v1.4.3 (present only when `ok: true`)
 
 Future versions may add fields but should not remove or rename these without a versioned migration note.
 
@@ -22,7 +22,7 @@ Future versions may add fields but should not remove or rename these without a v
 
 - `ainl_compile(code, strict=True)`
   - Returns: `ok`, `ir`, `frame_hints[]`
-  - `frame_hints` is a list of `{"name": str, "type": str, "source": "comment"|"inferred"}` entries describing variables the caller should supply via `frame` when calling `ainl_run`. Authoritative entries come from `# frame: name: type` comment lines in source; additional heuristic entries are inferred from IR variables referenced but never assigned. Best-effort — may include false positives for inferred entries.
+  - `frame_hints` is a list of `{"name": str, "type": str, "source": "comment"|"inferred"}` entries describing variables the caller should supply via `frame` when calling `ainl_run`. Authoritative entries come from `# frame: name: type` (or `# frame: name`, which sets `type` to `"any"`) comment lines in source; additional heuristic entries are inferred from IR variables referenced but never assigned. Best-effort — may include false positives for inferred entries.
   - Workflow: call `ainl_compile` first to discover `frame_hints`, then construct the `frame` dict and call `ainl_run`.
 
 - `ainl_ir_diff(file1, file2, strict=True)`
@@ -63,6 +63,10 @@ Place `ainl_mcp_limits.json` at `<fs.root>/ainl_mcp_limits.json` to adjust limit
 
 The server default ceiling still wins via restrictive merge — this file can only tighten or match defaults, not exceed the server ceiling.
 
+If `ainl_mcp_limits.json` is present but cannot be parsed as JSON, limits fall back to server defaults and a successful `ainl_run` may include `warnings` (string list) explaining that the file was ignored.
+
+**`max_adapter_calls`:** A value of **`0`** is a real ceiling (no adapter calls). Positive integers cap total adapter dispatches (`R` lines, cache/queue helpers, etc.).
+
 ### Auto-registered `cache` adapter
 
 When the `fs` adapter is enabled in `ainl_run` and no `cache` adapter is explicitly listed in `adapters.enable`, the MCP server will automatically register the `cache` adapter if any of these files exist:
@@ -70,6 +74,10 @@ When the `fs` adapter is enabled in `ainl_run` and no `cache` adapter is explici
 - `<fs.root>/cache.json`
 
 This makes per-workspace caching zero-config for scripts that already have a cache file. Explicit `"cache"` in `adapters.enable` always takes precedence.
+
+Before registration, a **non-empty** candidate file must contain valid JSON; otherwise `ainl_run` returns `{"ok": false, "error": "adapter_config_error", "details": "…"}`. An empty file (0 bytes) is skipped by the pre-check and handled by the adapter as an empty object store.
+
+**Interaction with `RuntimeEngine`:** graphs that reference `cache` may still get a default file-backed `cache` adapter from the engine when no MCP-scoped adapter was registered — that default uses `AINL_CACHE_JSON` / `MONITOR_CACHE_JSON` / `~/.openclaw/ainl_cache.json`. To prove the workspace path in tests, isolate `HOME` and seed only `<fs.root>/…/cache.json`.
 
 ### `frame` declaration convention
 

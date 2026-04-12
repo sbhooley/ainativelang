@@ -60,6 +60,10 @@ class AdapterRegistry:
     def register(self, name: str, adapter: RuntimeAdapter) -> None:
         self._adapters[name] = adapter
 
+    def keys(self):
+        """Registered adapter names (dict-like; ``sorted(registry.keys())`` for stable order)."""
+        return self._adapters.keys()
+
     def __contains__(self, name: object) -> bool:
         return isinstance(name, str) and name in self._adapters
 

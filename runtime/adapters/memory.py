@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -85,6 +86,19 @@ class MemoryAdapter(RuntimeAdapter):
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_memory_ns_kind_id ON memory_records(namespace, record_kind, record_id)"
         )
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ainl_memory_patterns (
+                name TEXT PRIMARY KEY NOT NULL,
+                content_hash TEXT NOT NULL,
+                ir_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ainl_memory_patterns_hash ON ainl_memory_patterns(content_hash)"
+        )
         self._conn.commit()
 
     def _validate_namespace(self, namespace: Any) -> str:
@@ -124,6 +138,79 @@ class MemoryAdapter(RuntimeAdapter):
             default_ttl = self.default_ttl_by_namespace[namespace]
             return self._validate_ttl(default_ttl)
         return None
+
+    def _pattern_content_hash(self, ir_fragment: Dict[str, Any]) -> str:
+        payload = json.dumps(ir_fragment, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def store_pattern(self, name: str, ir_fragment: Dict[str, Any]) -> Dict[str, Any]:
+        """Persist a named procedural IR fragment; keyed by logical ``name`` with stable content hash."""
+        if not isinstance(name, str) or not name.strip():
+            raise AdapterError("store_pattern: name must be a non-empty string")
+        if not isinstance(ir_fragment, dict):
+            raise AdapterError("store_pattern: ir_fragment must be a dict")
+        labels = ir_fragment.get("labels")
+        if not isinstance(labels, dict) or not labels:
+            raise AdapterError("store_pattern: ir_fragment must contain non-empty 'labels' dict")
+        h = self._pattern_content_hash(ir_fragment)
+        now = _utc_now_iso()
+        cur = self._conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO ainl_memory_patterns (name, content_hash, ir_json, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET
+                content_hash = excluded.content_hash,
+                ir_json = excluded.ir_json,
+                updated_at = excluded.updated_at
+            """,
+            (name.strip(), h, json.dumps(ir_fragment, separators=(",", ":"), default=str), now),
+        )
+        self._conn.commit()
+        return self._response({"ok": True, "name": name.strip(), "content_hash": h, "updated_at": now}, write=1)
+
+    @staticmethod
+    def _normalize_recall_pattern_ir(raw: Any) -> Optional[Dict[str, Any]]:
+        """Ensure recalled data matches partial IR shape expected by MemoryMerge / tooling."""
+        if not isinstance(raw, dict):
+            return None
+        labels = raw.get("labels")
+        if not isinstance(labels, dict) or not labels:
+            return None
+        out_labels: Dict[str, Any] = {}
+        for lid, body in labels.items():
+            if not isinstance(body, dict):
+                continue
+            leg = body.get("legacy")
+            if not isinstance(leg, dict):
+                leg = {}
+            steps = leg.get("steps")
+            if not isinstance(steps, list):
+                steps = []
+            nb = dict(body)
+            nb["nodes"] = nb["nodes"] if isinstance(nb.get("nodes"), list) else []
+            nb["edges"] = nb["edges"] if isinstance(nb.get("edges"), list) else []
+            nb["legacy"] = {**leg, "steps": steps}
+            out_labels[str(lid)] = nb
+        return {"labels": out_labels}
+
+    def recall_pattern(self, name: str) -> Optional[Dict[str, Any]]:
+        """Load a stored pattern by logical name; returns a partial IR dict or ``None``."""
+        if not isinstance(name, str) or not name.strip():
+            return None
+        cur = self._conn.cursor()
+        cur.execute(
+            "SELECT ir_json FROM ainl_memory_patterns WHERE name = ?",
+            (name.strip(),),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        try:
+            parsed = json.loads(row["ir_json"])
+        except (TypeError, json.JSONDecodeError):
+            return None
+        return self._normalize_recall_pattern_ir(parsed)
 
     def _validate_metadata(self, metadata: Any) -> Optional[Dict[str, Any]]:
         if metadata is None:
@@ -596,6 +683,19 @@ class MemoryAdapter(RuntimeAdapter):
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
         verb = (target or "").strip().lower()
+        if verb == "store_pattern":
+            if len(args) < 2:
+                raise AdapterError("memory.store_pattern requires name and ir_fragment dict")
+            nm = str(args[0])
+            frag = args[1]
+            if not isinstance(frag, dict):
+                raise AdapterError("memory.store_pattern: ir_fragment must be a dict")
+            return self.store_pattern(nm, frag)
+        if verb == "recall_pattern":
+            if len(args) < 1:
+                raise AdapterError("memory.recall_pattern requires name")
+            return self.recall_pattern(str(args[0]))
+
         if verb not in {"put", "get", "append", "list", "delete", "prune"}:
             raise AdapterError(f"memory adapter unsupported verb: {target}")
 

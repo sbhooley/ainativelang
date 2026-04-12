@@ -685,6 +685,7 @@
       ]),
       'trace': False,
     }),
+    'ok': True,
     'rag': dict({
       'augment': dict({
       }),
@@ -2574,6 +2575,7 @@
       ]),
       'trace': False,
     }),
+    'ok': True,
     'rag': dict({
       'augment': dict({
       }),
@@ -4300,6 +4302,7 @@
       ]),
       'trace': False,
     }),
+    'ok': True,
     'rag': dict({
       'augment': dict({
       }),
