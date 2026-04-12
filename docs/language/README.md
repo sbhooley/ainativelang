@@ -11,6 +11,8 @@ Use this section for the AINL language definition itself: spec, canonical core, 
 - [`AINL_EXTENSIONS.md`](AINL_EXTENSIONS.md) — extension lanes
 - [`grammar.md`](grammar.md) — grammar quick reference
 
+**Label header vs bare number:** Only `L1:` (letter **L** + digits + colon) starts a label block. A line like `1:` is **not** a label declaration; indented steps under it are stored on the compiler’s synthetic label `_anon`, not on label id `1`. If you call `RuntimeEngine.run(..., label="1")` (or any host that picks an entry label by id), use `L1:` in source so steps land under the real label `1` in IR.
+
 ## Related sections
 
 - Getting started: [`../getting_started/README.md`](../getting_started/README.md)

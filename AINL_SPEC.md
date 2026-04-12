@@ -1,5 +1,7 @@
 # AINL formal spec (pointer)
 
+> **Sharp edge:** `1:` ≠ `L1:` — see §2.1 for the label header gotcha.
+
 The canonical **AINL_SPEC** document lives in the repository at:
 
 **[docs/AINL_SPEC.md](docs/AINL_SPEC.md)**
