@@ -14,7 +14,9 @@ metadata and filters (no vector semantics, no policy cognition).
 
 **OpenClaw daily markdown (bridge):** Operator workflows that append human-readable logs via `openclaw_memory` typically use **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`** (directory overridable with `OPENCLAW_MEMORY_DIR`). That path is **orthogonal** to the SQLite-backed `memory` adapter contract below; see [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](../operations/UNIFIED_MONITORING_GUIDE.md) for token-budget and related bridge monitoring.
 
-**ArmaraOS JSON graph memory (bridge, separate adapter):** typed nodes/edges in **`~/.armaraos/ainl_graph_memory.json`** (or **`AINL_GRAPH_MEMORY_PATH`**), adapter name **`ainl_graph_memory`**, plus runtime IR ops **`MemoryRecall`** / **`MemorySearch`** — see **[`AINL_GRAPH_MEMORY.md`](AINL_GRAPH_MEMORY.md)**.
+**ArmaraOS JSON graph memory (bridge, separate adapter):** typed nodes/edges in **`~/.armaraos/ainl_graph_memory.json`** (or **`AINL_GRAPH_MEMORY_PATH`**), adapter name **`ainl_graph_memory`**, plus runtime IR ops **`MemoryRecall`** / **`MemorySearch`**, typed **`EdgeType`** relations (structural + epistemic), and label / engine integration for **`persona.update`** — see **[`AINL_GRAPH_MEMORY.md`](AINL_GRAPH_MEMORY.md)**.
+
+**SQLite procedural patterns + live merge:** the same **`memory`** adapter also persists **named IR fragments** (partial `labels` maps) in table **`ainl_memory_patterns`**, with a stable **SHA-256 `content_hash`** per row. Use **`memory.store_pattern`** / **`memory.recall_pattern`** from **`R`** lines, and the compiler/runtime step **`memory.merge`** (alias **`MemoryMerge`**) to **re-inject** a stored fragment into the running program’s **`labels`**, execute its entry label, and bind the subgraph exit to a frame variable (default **`mm_result`**). Details: §3.7 below.
 
 **Public article (tiers, hosts, bridge vs adapter):** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
 
@@ -112,7 +114,7 @@ but validators and tooling can use them for light shape checks.
 
 ## 3. Verbs (v1)
 
-The `memory` adapter exposes six v1 verbs:
+The `memory` adapter exposes the six **namespace** v1 verbs below (§3.1–3.6), plus **pattern** helpers in §3.7. The **`memory.merge`** / **`MemoryMerge`** step is implemented in **`RuntimeEngine`** (not an adapter `call` verb) but requires a registered **`memory`** adapter for **`recall_pattern`**.
 
 ### 3.1 `memory.put(namespace, record_kind, record_id, payload, ttl_seconds?)`
 
@@ -331,6 +333,30 @@ It does **not**:
 - provide bulk deletion by pattern or arbitrary query,
 - change TTL semantics beyond what's already in `memory.get`,
 - act as a general-purpose retention or archival system.
+
+### 3.7 Procedural patterns (`store_pattern` / `recall_pattern`) and engine **`memory.merge`**
+
+These features use the **same SQLite file** as v1 namespace records but a **dedicated table** `ainl_memory_patterns` (`name` primary key, `content_hash`, `ir_json`, `updated_at`). They do **not** use the `(namespace, record_kind, record_id)` triple.
+
+| Surface | Role |
+|--------|------|
+| **`MemoryAdapter.store_pattern(name, ir_fragment)`** | Validates `ir_fragment` is a dict with a non-empty **`labels`** map; writes JSON + **SHA-256** content hash; upserts by **`name`**. |
+| **`MemoryAdapter.recall_pattern(name)`** | Returns a **normalized** partial IR `{"labels": {…}}` with each label body containing **`legacy.steps`**, **`nodes`**, **`edges`**, or **`None`** if missing/invalid. |
+| **`R memory store_pattern …` / `recall_pattern`** | Adapter dispatch mirrors the methods (see `runtime/adapters/memory.py`). |
+| **`memory.merge`** / **`MemoryMerge`** (label step) | **`RuntimeEngine`** (`_exec_memory_merge`): **`deepcopy`** of the fragment, new label keys **`_mm_{seq}_<originalLabel>`**, **`_steps_to_graph`** + **`normalize_labels`** on merged labels, run merged **entry** (or optional **override** label id from the step), write return value to **`out`** (default **`mm_result`**). Missing or invalid pattern: **warning**, no exception. |
+
+**Authoring (opcode / compact body):**
+
+```text
+memory.merge my_pattern ->out_var
+MemoryMerge my_pattern L2 ->out_var
+```
+
+Optional middle slot: **entry label id** inside the recalled fragment (override auto-picked entry). Grammar / slot classes: **`compiler_v2.OP_GRAMMAR["memory.merge"]`** (STRING pattern, optional LABEL_REF, optional OUT_VAR).
+
+**Recall vs merge:** **`MemoryRecall`** (graph adapter) loads a **single graph node** into the frame for inspection. **`memory.merge`** turns a **stored procedural `labels` fragment** back into **live** engine labels and **runs** that subgraph — see **[`AINL_GRAPH_MEMORY.md`](AINL_GRAPH_MEMORY.md)** (section **MemoryMerge vs graph recall**).
+
+**Tests:** `tests/test_memory_merge.py`.
 
 ---
 

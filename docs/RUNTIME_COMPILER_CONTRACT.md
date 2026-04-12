@@ -48,6 +48,7 @@ Covered strict migration fields include:
 - `CacheSet.value`
 - `MemoryRecall.node_id`
 - `MemorySearch.query` / `MemorySearch.limit`
+- `memory.merge` / `MemoryMerge` step fields (`pattern`, optional `label_id`, optional `out`)
 - `QueuePut.value`
 
 ### Top-level `S` (service) lines and cron
@@ -86,6 +87,8 @@ Current policy remains graph-preferred:
 - Step execution is retained as compatibility/fallback and for explicit `steps-only`.
 - Both paths share the same op handlers where possible to reduce semantic drift.
 - **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter from **`_exec_step`** (shared with async graph) and from sync **`_run_label_graph`**. **`tooling/effect_analysis.py`** classifies both ops as **io-read** (**`memory_read`**) and registers **`ainl_graph_memory.MEMORY_RECALL`** / **`ainl_graph_memory.MEMORY_SEARCH`** in **`ADAPTER_EFFECT`** for strict **`R`** allowlisting when authors use dotted adapter verbs. See **[`docs/adapters/AINL_GRAPH_MEMORY.md`](adapters/AINL_GRAPH_MEMORY.md)** and **`tooling/adapter_manifest.json`**.
+- **`memory.merge`** / **`MemoryMerge`** are **compiler-emitted label steps** handled in **`_exec_step`** / **`_run_label_graph`**: they call the SQLite **`memory`** adapter’s **`recall_pattern`**, **deep-copy** and **re-prefix** merged **`labels`**, rebuild graphs for merged ids, **`Call`**-semantically run the fragment’s entry label, then bind the subgraph return to **`out`** (default **`mm_result`**). Mapped to adapter key **`memory.MERGE`** (**io-read** / **`memory_read`** tier) in **`tooling/effect_analysis.py`**. Missing patterns log a **warning** and continue. Contract: **[`docs/adapters/MEMORY_CONTRACT.md`](adapters/MEMORY_CONTRACT.md)** §3.7.
+- **`persona.update`** is a **standalone label step** (optional fourth slot **`edge_type`**) dispatched to **`ainl_graph_memory`** **`persona_update`**. See **[`docs/adapters/AINL_GRAPH_MEMORY.md`](adapters/AINL_GRAPH_MEMORY.md)** (persona + **`EdgeType`** sections).
 
 ### Graph execution pitfalls (object literals, `J`, `Set` lists)
 

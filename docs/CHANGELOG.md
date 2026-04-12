@@ -4,6 +4,7 @@
 
 <!-- Next release changes go here -->
 
+- **docs**: **`docs/adapters/MEMORY_CONTRACT.md`** (§3.7 SQLite **`ainl_memory_patterns`**, **`memory.merge`**), **`docs/adapters/AINL_GRAPH_MEMORY.md`** (**`EdgeType`** epistemic edges, **`persona.update`**, bridge verb table, MemoryMerge vs recall), **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/DOCS_INDEX.md`**, **`docs/adapters/README.md`**, **`docs/architecture/STATE_DISCIPLINE.md`**, **`docs/README.md`**, **`docs/RELEASE_NOTES.md`**, **`AGENTS.md`** — MemoryMerge + semantic graph edges + test pointers.
 - **docs**: **`AGENTS.md`**, **`README.md`**, **`docs/operations/MCP_RESEARCH_CONTRACT.md`**, **`docs/ARMARAOS_INTEGRATION.md`**, **`docs/operations/CAPABILITY_GRANT_MODEL.md`** — MCP `frame_hints` / `# frame:` edge cases, per-workspace **`ainl_mcp_limits.json`** parse warnings + **`max_adapter_calls: 0`** semantics, MCP auto-cache JSON validation + interaction with default **`RuntimeEngine`** cache registration, ArmaraOS emit pack (**`capability_declarations`**, **`ainl_ir_version`**, **`README.md`**).
 - **feat(mcp)**: malformed workspace **`ainl_mcp_limits.json`** → successful **`ainl_run`** may include **`warnings`**; invalid non-empty workspace **`cache.json`** during MCP auto-registration → **`adapter_config_error`** with **`details`**.
 - **feat(emit/armaraos)**: **`security.json`** includes **`capability_declarations.adapters`**; **`HAND.toml`** **`[hand]`** includes **`ainl_ir_version`**.

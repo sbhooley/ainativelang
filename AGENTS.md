@@ -191,8 +191,8 @@ airtable   — Airtable API
 http       — HTTP requests
 web        — Web search/fetch (SEARCH, FETCH, SCRAPE, GET)
 tiktok     — TikTok data (RECENT, SEARCH, PROFILE, STATS, TRENDING)
-memory     — Key-value memory store
-ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch); see docs/adapters/AINL_GRAPH_MEMORY.md; demos demo/procedural_roundtrip_demo.py, demo/ainl_graph_memory_demo.py
+memory     — Key-value SQLite store + procedural patterns (`store_pattern`/`recall_pattern`, table `ainl_memory_patterns`); IR label steps `memory.merge` / `MemoryMerge` re-inject stored `labels` as live IR (`docs/adapters/MEMORY_CONTRACT.md` §3.7; tests/test_memory_merge.py)
+ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch; EdgeType epistemic edges; persona.update → persona_update); see docs/adapters/AINL_GRAPH_MEMORY.md; demos demo/procedural_roundtrip_demo.py, demo/ainl_graph_memory_demo.py; tests/test_semantic_edges.py
 cache      — Cache get/set
 queue      — Message queue put/get (use R queue Put "name" val ->_)
 svc        — Service control (STATUS, RESTART, CADDY, NGINX, HEALTH)
@@ -208,7 +208,7 @@ python -m pytest tests/ -x -q -k "not test_profiles_cover"
 # Expected: ~1000 passed, 6 skipped (ArmaraOS CLI / langgraph / temporalio not installed)
 ```
 
-Focused suites (optional): **`tests/test_compact_opcode_ir_parity.py`** (compact ↔ opcode IR), **`tests/test_memory_search_op.py`** (**`MemorySearch`** + **`GraphStore`**), **`tests/test_core_builtins_v143.py`** (v1.4.3 **`core.*`**). Shared fixture **`offline_llm_provider_config`** lives in **`tests/conftest.py`** (no network).
+Focused suites (optional): **`tests/test_compact_opcode_ir_parity.py`** (compact ↔ opcode IR), **`tests/test_memory_search_op.py`** (**`MemorySearch`** + **`GraphStore`**), **`tests/test_memory_merge.py`** (**`memory.merge`** + SQLite patterns), **`tests/test_semantic_edges.py`** (**`EdgeType`** / **`persona.update`** compile + graph store), **`tests/test_core_builtins_v143.py`** (v1.4.3 **`core.*`**). Shared fixture **`offline_llm_provider_config`** lives in **`tests/conftest.py`** (no network).
 
 ## ⚠️ NOTE: Tutorial Syntax Variants
 
