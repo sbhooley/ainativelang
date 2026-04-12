@@ -232,10 +232,11 @@ def test_memory_search_op_in_step_mode():
 
 
 def test_memory_recall_missing_adapter_raises():
-    """Without ``ainl_graph_memory`` registered, dispatch must fail.
+    """When ``ainl_graph_memory`` is blocked by capability allowlist, dispatch must fail.
 
-    Before ``MemoryRecall`` exists in the engine, this is an ``AinlRuntimeError``
-    (unknown op). After implementation, expect ``AdapterError`` (adapter not registered).
+    ``RuntimeEngine`` may auto-register ``ainl_graph_memory`` when the IR allowlist includes it;
+    keep ``capabilities.allow`` core-only so the bridge stays unreachable and we still surface
+    an ``AdapterError`` / capability gate failure.
     """
     ir = {
         "labels": {
@@ -253,11 +254,11 @@ def test_memory_recall_missing_adapter_raises():
         },
         "source": {"lines": []},
         "cst": {"lines": []},
-        "capabilities": _capabilities(),
+        "capabilities": {"allow": ["core"]},
     }
     from runtime.adapters.base import AdapterRegistry
 
-    reg = AdapterRegistry(allowed=["core", "ainl_graph_memory"])
+    reg = AdapterRegistry(allowed=["core"])
     # Deliberately omit ainl_graph_memory registration (core still registered by engine).
     eng = RuntimeEngine(
         ir=ir,

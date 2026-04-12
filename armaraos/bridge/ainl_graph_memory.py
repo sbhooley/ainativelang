@@ -428,6 +428,18 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
         arg_list: List[Any] = args if isinstance(args, (list, tuple)) else []
 
         if verb == "memory_store_pattern":
+            if isinstance(args, dict) or (isinstance(args, (list, tuple)) and args and isinstance(args[0], dict)):
+                kw = _coerce_call_kwargs(args)
+                label = str(kw.get("pattern_name") or kw.get("label") or "").strip()
+                steps = kw.get("value")
+                if steps is None:
+                    steps = kw.get("steps") or []
+                if not isinstance(steps, list):
+                    steps = [steps]
+                agent_id = str(kw.get("agent_id") or context.get("agent_id") or self._agent_id)
+                tags = kw.get("tags") if isinstance(kw.get("tags"), list) else []
+                tags = [str(t) for t in tags]
+                return self.memory_store_pattern(label, steps, agent_id, tags, dry_run=dry)
             if len(arg_list) < 4:
                 raise AdapterError("memory_store_pattern requires label, steps, agent_id, tags")
             label, steps, agent_id, tags = arg_list[0], arg_list[1], arg_list[2], arg_list[3]
@@ -436,6 +448,13 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             if not isinstance(tags, list):
                 tags = []
             return self.memory_store_pattern(str(label), steps, str(agent_id), [str(t) for t in tags], dry_run=dry)
+
+        if verb in ("pattern_recall", "memory_pattern_recall"):
+            kw = _coerce_call_kwargs(args) if (isinstance(args, dict) or (isinstance(args, (list, tuple)) and args and isinstance(args[0], dict))) else {}
+            pn = kw.get("pattern_name") if kw else None
+            if pn is None and arg_list:
+                pn = arg_list[0]
+            return self.pattern_recall({"pattern_name": pn}, context)
 
         if verb == "memory_recall":
             if len(arg_list) < 1:
@@ -567,28 +586,76 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
                 }
         raise AdapterError(f"persona_get: no trait {trait_name!r} for agent_id={agent_id!r}")
 
+    def pattern_recall(self, args: Any, ctx: Dict[str, Any]) -> Dict[str, Any]:
+        """Retrieve a named procedural pattern node from the graph store."""
+        pattern_name: Optional[str] = None
+        if isinstance(args, dict):
+            pattern_name = args.get("pattern_name")
+        if pattern_name is None and isinstance(args, list) and args:
+            pattern_name = args[0]
+        pattern_name = str(pattern_name or "").strip()
+        if not pattern_name:
+            return {"ok": False, "error": "pattern_name required"}
+        agent_id = str((ctx or {}).get("agent_id") or self._agent_id or "")
+        nodes = self._store.find_by_type(
+            NodeType.PROCEDURAL.value, agent_id=agent_id if agent_id else None
+        )
+        for node in nodes:
+            if not hasattr(node, "payload"):
+                continue
+            payload = dict(node.payload or {})
+            if payload.get("pattern_name") == pattern_name or str(node.label) == pattern_name:
+                steps_hint = list(payload.get("steps_hint") or [])
+                return {
+                    "ok": True,
+                    "pattern_name": pattern_name,
+                    "payload": payload,
+                    "node_id": node.id,
+                    "steps_hint": steps_hint,
+                }
+        return {"ok": False, "error": f"pattern '{pattern_name}' not found"}
+
     def memory_store_pattern(
         self,
         label: str,
-        steps: List[Dict[str, Any]],
+        steps: List[Any],
         agent_id: str,
         tags: List[str],
         *,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
+        norm_steps: List[Dict[str, Any]] = []
+        steps_hint: List[str] = []
+        for s in steps:
+            if isinstance(s, dict):
+                norm_steps.append(s)
+            else:
+                norm_steps.append({"value": s})
+                steps_hint.append(str(s))
+        if not steps_hint and norm_steps:
+            for d in norm_steps:
+                v = d.get("value")
+                if isinstance(v, str):
+                    steps_hint.append(v)
         root_id = _new_id("proc")
         root = MemoryNode(
             id=root_id,
             node_type=NodeType.PROCEDURAL.value,
             agent_id=agent_id,
             label=label,
-            payload={"kind": "pattern", "step_count": len(steps), "steps": steps},
+            payload={
+                "kind": "pattern",
+                "pattern_name": str(label),
+                "step_count": len(norm_steps),
+                "steps": norm_steps,
+                "steps_hint": steps_hint,
+            },
             tags=list(tags),
             created_at=time.time(),
             ttl=None,
         )
         self._store.add_node(root, persist=False, dry_run=dry_run)
-        for i, step in enumerate(steps):
+        for i, step in enumerate(norm_steps):
             if not isinstance(step, dict):
                 step = {"value": step}
             sid = _new_id("step")
@@ -613,7 +680,7 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             self._store.add_edge(ed, persist=False, dry_run=dry_run)
         if not dry_run:
             self._store.flush()
-        return {"node_id": root_id, "step_count": len(steps)}
+        return {"node_id": root_id, "step_count": len(norm_steps)}
 
     def memory_recall(self, node_id: str) -> Dict[str, Any]:
         n = self._store.get_node(node_id)

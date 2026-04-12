@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from compiler_v2 import (
     AICodeCompiler,
     EDGE_TYPE_TOKENS,
+    MODULE_ALIASES,
     runtime_canonicalize_r_step,
     runtime_normalize_label_id,
     runtime_normalize_node_id,
@@ -144,6 +145,15 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                     found.add(root)
                     if root == "persona":
                         found.add("ainl_graph_memory")
+                    elif root == "memory" and "." in adapter:
+                        full = MODULE_ALIASES.get(adapter, adapter)
+                        sub = full.split(".", 1)[1].lower() if "." in full else ""
+                        if sub in ("export",):
+                            sub = "export_graph"
+                        if sub in ("store",):
+                            sub = "store_pattern"
+                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                            found.add("ainl_graph_memory")
         for n in (body.get("nodes") or []):
             if not isinstance(n, dict):
                 continue
@@ -166,6 +176,15 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                     found.add(root)
                     if root == "persona":
                         found.add("ainl_graph_memory")
+                    elif root == "memory" and "." in adapter:
+                        full = MODULE_ALIASES.get(adapter, adapter)
+                        sub = full.split(".", 1)[1].lower() if "." in full else ""
+                        if sub in ("export",):
+                            sub = "export_graph"
+                        if sub in ("store",):
+                            sub = "store_pattern"
+                        if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                            found.add("ainl_graph_memory")
     return sorted(found)
 
 
@@ -339,6 +358,10 @@ class RuntimeEngine:
                     or str(Path.home() / ".openclaw" / "ainl_memory.sqlite3")
                 )
                 reg.register("memory", MemoryAdapter(db_path=mem_db))
+            if "ainl_graph_memory" in need and "ainl_graph_memory" not in reg:
+                from armaraos.bridge.ainl_graph_memory import AINLGraphMemoryBridge
+
+                reg.register("ainl_graph_memory", AINLGraphMemoryBridge())
         except Exception:
             pass
 
@@ -1002,6 +1025,65 @@ class RuntimeEngine:
                     kw = {"trait_name": str(t0) if t0 is not None else ""}
                     out = self.adapters.call("ainl_graph_memory", "persona_get", [kw], call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_get"
+                elif adp_name == "memory":
+                    canon_full = MODULE_ALIASES.get(f"{adp_name}.{verb}", f"{adp_name}.{verb}")
+                    sub = canon_full.split(".", 1)[1].lower() if "." in canon_full else verb_l
+                    if sub == "export":
+                        sub = "export_graph"
+                    if sub == "store":
+                        sub = "store_pattern"
+                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                        emit_adp, emit_tgt = "ainl_graph_memory", sub
+                        agent_id = str(call_ctx.get("agent_id") or frame.get("agent_id") or "")
+                        if sub == "recall":
+                            nid = str(t0) if t0 is not None else ""
+                            out = self.adapters.call("ainl_graph_memory", "memory_recall", [nid], call_ctx)
+                        elif sub == "search":
+                            q = str(t0) if t0 is not None else ""
+                            nt = args[0] if len(args) >= 1 else None
+                            aid = args[1] if len(args) >= 2 else None
+                            lim = int(args[2]) if len(args) >= 3 else 10
+                            if nt is not None and str(nt).strip() == "*":
+                                nt = None
+                            if aid is not None and str(aid).strip() in ("*", ""):
+                                aid = agent_id or None
+                            elif aid is None:
+                                aid = agent_id or None
+                            out = self.adapters.call(
+                                "ainl_graph_memory", "memory_search", [q, nt, aid, lim], call_ctx
+                            )
+                        elif sub == "export_graph":
+                            out = self.adapters.call("ainl_graph_memory", "export_graph", [], call_ctx)
+                        elif sub == "store_pattern":
+                            pattern_name = str(t0) if t0 is not None else ""
+                            val = args[0] if args else None
+                            tags: List[Any] = []
+                            if len(args) > 1 and args[1] not in (None, "*"):
+                                if isinstance(args[1], list):
+                                    tags = list(args[1])
+                                else:
+                                    tags = [args[1]]
+                            aid_sp = agent_id or "armaraos"
+                            if isinstance(val, list):
+                                steps = val
+                            elif isinstance(val, dict) and isinstance(val.get("labels"), dict):
+                                steps = [val]
+                            else:
+                                steps = [{"value": val}]
+                            out = self.adapters.call(
+                                "ainl_graph_memory",
+                                "memory_store_pattern",
+                                [pattern_name, steps, aid_sp, [str(x) for x in tags]],
+                                call_ctx,
+                            )
+                        else:
+                            pname = str(t0) if t0 is not None else ""
+                            kw = {"pattern_name": pname}
+                            out = self.adapters.call("ainl_graph_memory", "memory_pattern_recall", [kw], call_ctx)
+                            if isinstance(out, dict):
+                                frame["__last_pattern__"] = out
+                    else:
+                        out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
                 else:
                     out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
                 return out
@@ -1072,6 +1154,67 @@ class RuntimeEngine:
                     kw = {"trait_name": str(t0) if t0 is not None else ""}
                     out = await self.adapters.call_async("ainl_graph_memory", "persona_get", [kw], call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_get"
+                elif adp_name == "memory":
+                    canon_full = MODULE_ALIASES.get(f"{adp_name}.{verb}", f"{adp_name}.{verb}")
+                    sub = canon_full.split(".", 1)[1].lower() if "." in canon_full else verb_l
+                    if sub == "export":
+                        sub = "export_graph"
+                    if sub == "store":
+                        sub = "store_pattern"
+                    if sub in ("recall", "search", "export_graph", "store_pattern", "pattern_recall"):
+                        emit_adp, emit_tgt = "ainl_graph_memory", sub
+                        agent_id = str(call_ctx.get("agent_id") or frame.get("agent_id") or "")
+                        if sub == "recall":
+                            nid = str(t0) if t0 is not None else ""
+                            out = await self.adapters.call_async("ainl_graph_memory", "memory_recall", [nid], call_ctx)
+                        elif sub == "search":
+                            q = str(t0) if t0 is not None else ""
+                            nt = args[0] if len(args) >= 1 else None
+                            aid = args[1] if len(args) >= 2 else None
+                            lim = int(args[2]) if len(args) >= 3 else 10
+                            if nt is not None and str(nt).strip() == "*":
+                                nt = None
+                            if aid is not None and str(aid).strip() in ("*", ""):
+                                aid = agent_id or None
+                            elif aid is None:
+                                aid = agent_id or None
+                            out = await self.adapters.call_async(
+                                "ainl_graph_memory", "memory_search", [q, nt, aid, lim], call_ctx
+                            )
+                        elif sub == "export_graph":
+                            out = await self.adapters.call_async("ainl_graph_memory", "export_graph", [], call_ctx)
+                        elif sub == "store_pattern":
+                            pattern_name = str(t0) if t0 is not None else ""
+                            val = args[0] if args else None
+                            tags_a: List[Any] = []
+                            if len(args) > 1 and args[1] not in (None, "*"):
+                                if isinstance(args[1], list):
+                                    tags_a = list(args[1])
+                                else:
+                                    tags_a = [args[1]]
+                            aid_sp = agent_id or "armaraos"
+                            if isinstance(val, list):
+                                steps = val
+                            elif isinstance(val, dict) and isinstance(val.get("labels"), dict):
+                                steps = [val]
+                            else:
+                                steps = [{"value": val}]
+                            out = await self.adapters.call_async(
+                                "ainl_graph_memory",
+                                "memory_store_pattern",
+                                [pattern_name, steps, aid_sp, [str(x) for x in tags_a]],
+                                call_ctx,
+                            )
+                        else:
+                            pname = str(t0) if t0 is not None else ""
+                            kw = {"pattern_name": pname}
+                            out = await self.adapters.call_async(
+                                "ainl_graph_memory", "memory_pattern_recall", [kw], call_ctx
+                            )
+                            if isinstance(out, dict):
+                                frame["__last_pattern__"] = out
+                    else:
+                        out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
                 else:
                     out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
                 return out

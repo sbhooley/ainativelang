@@ -87,12 +87,27 @@ MODULE_ALIASES = {
     "memory.recall": "memory.recall",
     "memory.search": "memory.search",
     "memory.export": "memory.export_graph",
+    "memory.pattern_recall": "memory.pattern_recall",
     "MemoryMerge": "memory.merge",
     "persona.update": "persona.update",
     "persona.get": "persona.get",
     "persona.load": "persona.load",
 }
 KNOWN_MODULES = {"ops", "fe", "rag", "arch", "test", "core", "memory", "persona"}
+
+# IR graph annotation: dotted R adapter → memory tier (optional on nodes; additive schema).
+_MEMORY_TYPE_MAP: Dict[str, str] = {
+    "memory.recall": "episode",
+    "memory.search": "semantic",
+    "memory.store_pattern": "procedural",
+    "memory.store": "procedural",
+    "memory.export_graph": "episode",
+    "memory.export": "episode",
+    "memory.pattern_recall": "procedural",
+    "persona.load": "persona",
+    "persona.update": "persona",
+    "persona.get": "persona",
+}
 
 # Valid edge kinds for persona.update / graph memory (structural + epistemic).
 EDGE_TYPE_TOKENS: frozenset = frozenset(
@@ -202,6 +217,13 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
         "slots": [],
         "returns": "DICT",
         "doc": "Export the full AINL graph memory as a JSON-serializable dict.",
+    },
+    "memory.pattern_recall": {
+        "scope": "any",
+        "min_slots": 1,
+        "slots": ["STRING"],
+        "returns": "DICT",
+        "doc": "Retrieve a named procedural pattern node from graph memory and return its payload for direct execution.",
     },
     "memory.merge": {
         "scope": "any",
@@ -2255,6 +2277,12 @@ class AICodeCompiler:
                 "lineno": s.get("lineno"),
                 "data": s,
             }
+            if op == "R":
+                ad_raw = str(s.get("adapter") or "").strip()
+                ad_key = MODULE_ALIASES.get(ad_raw, ad_raw)
+                mt = _MEMORY_TYPE_MAP.get(ad_key) or _MEMORY_TYPE_MAP.get(ad_raw)
+                if mt:
+                    node["memory_type"] = mt
             nodes.append(node)
             if op == "If":
                 if last_nid:
@@ -2398,15 +2426,63 @@ class AICodeCompiler:
                         )
                 last_nid = nid
         exits = [{"node": n["id"], "var": n["data"].get("var", "data")} for n in nodes if n["op"] == "J"]
+        emit_edges: List[Dict[str, Any]] = []
+        next_node_by_from: Dict[str, str] = {}
+        for e in edges:
+            if e.get("port") == "next" and e.get("to_kind") == "node":
+                fid = e.get("from")
+                tid = e.get("to")
+                if isinstance(fid, str) and isinstance(tid, str):
+                    next_node_by_from[fid] = tid
+        for n in nodes:
+            st = n.get("data") or {}
+            n_id = n.get("id")
+            if not n_id:
+                continue
+            succ = next_node_by_from.get(str(n_id))
+            if succ:
+                if st.get("op") == "R" and st.get("out"):
+                    emit_edges.append({"from": n_id, "to": succ, "port": "data", "var": st["out"]})
+                elif st.get("op") == "Set" and st.get("name"):
+                    emit_edges.append({"from": n_id, "to": succ, "port": "data", "var": st["name"]})
         body["nodes"] = nodes
         body["edges"] = edges
         body["entry"] = nodes[0]["id"] if nodes else None
         body["exits"] = exits
+        body["emit_edges"] = emit_edges
 
     def _steps_to_graph_all(self, context: Optional[CompilerContext] = None) -> None:
         """Populate nodes/edges/entry/exits for every label from legacy.steps."""
         for lid in list(self.labels.keys()):
             self._steps_to_graph(lid, context=context)
+
+    def _attach_emit_port_edges(self, ir: Dict[str, Any]) -> None:
+        """Append IR-level emit routing edges (port=emit) next to data-flow emit_edges on each label."""
+        req = ir.get("required_emit_targets") or {}
+        targets = list(req.get("minimal_emit") or [])
+        if not targets:
+            return
+        labels = ir.get("labels") or {}
+        for _lid, body in labels.items():
+            if not isinstance(body, dict):
+                continue
+            ee: List[Dict[str, Any]] = list(body.get("emit_edges") or [])
+            for ex in body.get("exits") or []:
+                node_id = ex.get("node")
+                var = ex.get("var") or "data"
+                if not node_id:
+                    continue
+                for tgt in targets:
+                    ee.append(
+                        {
+                            "from": node_id,
+                            "to": "emit_target",
+                            "port": "emit",
+                            "var": var,
+                            "target": tgt,
+                        }
+                    )
+            body["emit_edges"] = ee
 
     def _validate_graphs(self, context: Optional[CompilerContext] = None) -> None:
         """Strict-mode graph validation: canonical node ids, entry/exits, and reachability.
@@ -4901,6 +4977,7 @@ class AICodeCompiler:
         _req["minimal_emit"] = apply_minimal_emit_python_api_stub_fallback(
             ir=ir, targets=_req["minimal_emit"]
         )
+        self._attach_emit_port_edges(ir)
         # Attach semantic hashes and graph checksum without changing semantics.
         ir = attach_label_and_node_hashes(ir)
         ir["graph_semantic_checksum"] = graph_semantic_checksum(ir)

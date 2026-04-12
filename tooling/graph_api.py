@@ -2,7 +2,7 @@
 Graph query API for agents and tooling. Pure functions over IR; no side effects.
 Use these instead of crawling raw JSON so contract and semantics stay in one place.
 """
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 # Ports that represent "success" flow (not error/retry).
 SUCCESS_PORTS = frozenset({"next", "then", "else", "body", "after"})
@@ -38,19 +38,62 @@ def endpoint_entry_label(ir: Dict[str, Any], path: str, method: str) -> Optional
     return None
 
 
-def label_nodes(ir: Dict[str, Any], label_id: str) -> Dict[str, Dict[str, Any]]:
-    """Return {node_id: node} for the label. Empty dict if label or nodes missing."""
+def label_nodes(ir: Dict[str, Any], label_id: Union[str, int, Sequence[Any]]) -> Dict[str, Dict[str, Any]]:
+    """Return {node_id: node} for the label. Empty dict if label or nodes missing.
+
+    ``label_id`` may be a single label id or a sequence of ids (merged map; later labels win on id collision).
+    """
     labels = ir.get("labels") or {}
+    if label_id is not None and not isinstance(label_id, (str, int)) and hasattr(label_id, "__iter__"):
+        merged: Dict[str, Dict[str, Any]] = {}
+        for lid in label_id:
+            merged.update(label_nodes(ir, lid))
+        return merged
     body = labels.get(str(label_id)) or {}
     nodes = body.get("nodes") or []
     return {n.get("id"): n for n in nodes if n.get("id")}
 
 
-def label_edges(ir: Dict[str, Any], label_id: str) -> List[Dict[str, Any]]:
-    """Return list of edges for the label."""
+def label_edges(ir: Dict[str, Any], label_id: Union[str, int, Sequence[Any]]) -> List[Dict[str, Any]]:
+    """Return list of edges for the label (concatenated when ``label_id`` is a sequence)."""
     labels = ir.get("labels") or {}
+    if label_id is not None and not isinstance(label_id, (str, int)) and hasattr(label_id, "__iter__"):
+        out: List[Dict[str, Any]] = []
+        for lid in label_id:
+            out.extend(label_edges(ir, lid))
+        return out
     body = labels.get(str(label_id)) or {}
     return list(body.get("edges") or [])
+
+
+def emit_edges(ir: Dict[str, Any], label_id: Union[str, int, Sequence[Any]]) -> List[Dict[str, Any]]:
+    """Return all emit/data-flow edges for a label (or merged list for a sequence of labels)."""
+    labels = ir.get("labels") or {}
+    if label_id is not None and not isinstance(label_id, (str, int)) and hasattr(label_id, "__iter__"):
+        acc: List[Dict[str, Any]] = []
+        for lid in label_id:
+            acc.extend(emit_edges(ir, lid))
+        return acc
+    body = labels.get(str(label_id)) or {}
+    return list(body.get("emit_edges") or [])
+
+
+def data_flow_edges(ir: Dict[str, Any], label_id: Union[str, int, Sequence[Any]]) -> List[Dict[str, Any]]:
+    """Return only data-flow edges (port='data') — variable bindings between nodes."""
+    return [e for e in emit_edges(ir, label_id) if e.get("port") == "data"]
+
+
+def memory_nodes(
+    ir: Dict[str, Any],
+    label_id: Union[str, int, Sequence[Any]],
+    memory_type: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return all nodes with a memory_type field, optionally filtered by type."""
+    nodes = label_nodes(ir, label_id)
+    mem = [n for n in nodes.values() if "memory_type" in n]
+    if memory_type:
+        mem = [n for n in mem if n.get("memory_type") == memory_type]
+    return mem
 
 
 def label_entry(ir: Dict[str, Any], label_id: str) -> Optional[str]:
