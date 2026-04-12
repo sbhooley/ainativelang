@@ -1,0 +1,5 @@
+S persona_demo core noop
+
+L1:
+  R persona.load * ->traits
+  J traits

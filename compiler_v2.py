@@ -89,8 +89,9 @@ MODULE_ALIASES = {
     "memory.export": "memory.export_graph",
     "persona.update": "persona.update",
     "persona.get": "persona.get",
+    "persona.load": "persona.load",
 }
-KNOWN_MODULES = {"ops", "fe", "rag", "arch", "test", "core"}
+KNOWN_MODULES = {"ops", "fe", "rag", "arch", "test", "core", "memory", "persona"}
 
 # Canonical op registry: scope and minimum slot arity.
 # scope:
@@ -198,6 +199,13 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
         "slots": ["STRING"],
         "returns": "DICT",
         "doc": "Retrieve a persona trait node by name.",
+    },
+    "persona.load": {
+        "scope": "any",
+        "min_slots": 0,
+        "slots": [],
+        "returns": "LIST",
+        "doc": "Load all persona trait nodes from graph memory and inject into runtime context as system persona.",
     },
 }
 
@@ -761,6 +769,8 @@ class AICodeCompiler:
             "queue",
             "svc",
             "wasm",
+            "memory",
+            "persona",
         }
 
         new_errors = []

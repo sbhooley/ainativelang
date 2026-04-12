@@ -100,7 +100,10 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
             elif op == "R":
                 adapter = str(step.get("adapter") or "").strip()
                 if adapter:
-                    found.add(adapter.split(".", 1)[0].lower())
+                    root = adapter.split(".", 1)[0].lower()
+                    found.add(root)
+                    if root == "persona":
+                        found.add("ainl_graph_memory")
         for n in (body.get("nodes") or []):
             if not isinstance(n, dict):
                 continue
@@ -115,7 +118,10 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
             elif gop == "R":
                 adapter = str(st.get("adapter") or "").strip()
                 if adapter:
-                    found.add(adapter.split(".", 1)[0].lower())
+                    root = adapter.split(".", 1)[0].lower()
+                    found.add(root)
+                    if root == "persona":
+                        found.add("ainl_graph_memory")
     return sorted(found)
 
 
@@ -860,6 +866,38 @@ class RuntimeEngine:
                 code=ERROR_CODE_UNKNOWN_OP,
             )
 
+    def _apply_persona_instruction(self, frame: Dict[str, Any]) -> None:
+        """Set ``persona_instruction`` for LLM adapters when ``__persona__`` has active traits."""
+        persona = frame.get("__persona__")
+        if not isinstance(persona, dict) or not persona:
+            frame.pop("persona_instruction", None)
+            return
+        traits_s = ", ".join(
+            f"{trait} (strength={float(strength):.2f})"
+            for trait, strength in sorted(persona.items(), key=lambda x: -x[1])
+        )
+        frame["persona_instruction"] = f"[Persona traits active: {traits_s}]"
+
+    def _persona_apply_bridge_payload(self, frame: Dict[str, Any], raw: Any) -> List[Dict[str, Any]]:
+        traits: List[Dict[str, Any]] = []
+        ctxmap: Dict[str, float] = {}
+        if isinstance(raw, dict):
+            traits = list(raw.get("traits") or [])
+            pc = raw.get("persona_context") or {}
+            if isinstance(pc, dict):
+                ctxmap = {str(k): float(v) for k, v in pc.items()}
+        frame["__persona__"] = ctxmap
+        self._apply_persona_instruction(frame)
+        return traits
+
+    def _persona_load_into_frame(self, frame: Dict[str, Any], call_ctx: Dict[str, Any]) -> List[Dict[str, Any]]:
+        raw = self.adapters.call("ainl_graph_memory", "persona_load", [], call_ctx)
+        return self._persona_apply_bridge_payload(frame, raw)
+
+    async def _persona_load_into_frame_async(self, frame: Dict[str, Any], call_ctx: Dict[str, Any]) -> List[Dict[str, Any]]:
+        raw = await self.adapters.call_async("ainl_graph_memory", "persona_load", [], call_ctx)
+        return self._persona_apply_bridge_payload(frame, raw)
+
     def _exec_r_call(
         self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
     ) -> Any:
@@ -875,18 +913,36 @@ class RuntimeEngine:
             call_ctx["_runtime_async"] = self.runtime_async
             call_ctx["_observability"] = self.observability
             call_ctx["_adapter_registry"] = self.adapters
+            verb_l = str(verb).lower()
+            emit_adp, emit_tgt = adp_name, verb
             try:
-                out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+                if adp_name == "persona" and verb_l == "load":
+                    out = self._persona_load_into_frame(frame, call_ctx)
+                    emit_adp, emit_tgt = "ainl_graph_memory", "persona_load"
+                elif adp_name == "persona" and verb_l == "update":
+                    kw = {
+                        "trait_name": str(t0) if t0 is not None else "",
+                        "strength": float(args[0]) if args else 0.0,
+                        "learned_from": args[1] if len(args) > 1 and isinstance(args[1], list) else [],
+                    }
+                    out = self.adapters.call("ainl_graph_memory", "persona_update", [kw], call_ctx)
+                    emit_adp, emit_tgt = "ainl_graph_memory", "persona_update"
+                elif adp_name == "persona" and verb_l == "get":
+                    kw = {"trait_name": str(t0) if t0 is not None else ""}
+                    out = self.adapters.call("ainl_graph_memory", "persona_get", [kw], call_ctx)
+                    emit_adp, emit_tgt = "ainl_graph_memory", "persona_get"
+                else:
+                    out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
                 return out
             finally:
                 duration_ms = round((time.perf_counter() - started) * 1000, 3)
                 self.observability.emit(
                     "adapter.call.duration_ms",
                     duration_ms,
-                    labels={"adapter": adp_name, "target": verb},
+                    labels={"adapter": emit_adp, "target": emit_tgt},
                 )
                 if "out" in locals():
-                    self._record_reactive_metrics(adp_name, verb, out)
+                    self._record_reactive_metrics(emit_adp, emit_tgt, out)
         call_ctx = dict(frame)
         call_ctx["_runtime_async"] = self.runtime_async
         call_ctx["_observability"] = self.observability
@@ -916,18 +972,36 @@ class RuntimeEngine:
         if "." in adapter:
             adp_name, verb = adapter.split(".", 1)
             t0 = self._resolve(target, frame) if isinstance(target, str) else target
+            verb_l = str(verb).lower()
+            emit_adp, emit_tgt = adp_name, verb
             try:
-                out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
+                if adp_name == "persona" and verb_l == "load":
+                    out = await self._persona_load_into_frame_async(frame, call_ctx)
+                    emit_adp, emit_tgt = "ainl_graph_memory", "persona_load"
+                elif adp_name == "persona" and verb_l == "update":
+                    kw = {
+                        "trait_name": str(t0) if t0 is not None else "",
+                        "strength": float(args[0]) if args else 0.0,
+                        "learned_from": args[1] if len(args) > 1 and isinstance(args[1], list) else [],
+                    }
+                    out = await self.adapters.call_async("ainl_graph_memory", "persona_update", [kw], call_ctx)
+                    emit_adp, emit_tgt = "ainl_graph_memory", "persona_update"
+                elif adp_name == "persona" and verb_l == "get":
+                    kw = {"trait_name": str(t0) if t0 is not None else ""}
+                    out = await self.adapters.call_async("ainl_graph_memory", "persona_get", [kw], call_ctx)
+                    emit_adp, emit_tgt = "ainl_graph_memory", "persona_get"
+                else:
+                    out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
                 return out
             finally:
                 duration_ms = round((time.perf_counter() - started) * 1000, 3)
                 self.observability.emit(
                     "adapter.call.duration_ms",
                     duration_ms,
-                    labels={"adapter": adp_name, "target": verb},
+                    labels={"adapter": emit_adp, "target": emit_tgt},
                 )
                 if "out" in locals():
-                    self._record_reactive_metrics(adp_name, verb, out)
+                    self._record_reactive_metrics(emit_adp, emit_tgt, out)
         try:
             out = await self.adapters.call_async(adapter, target, args, call_ctx)
             return out

@@ -7,7 +7,7 @@ import os
 import threading
 import time
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -62,6 +62,36 @@ class MemoryNode:
             tags=[str(x) for x in (d.get("tags") or [])],
             created_at=float(d["created_at"]),
             ttl=float(d["ttl"]) if d.get("ttl") is not None else None,
+        )
+
+
+@dataclass
+class PersonaNode:
+    """Typed persona trait stored under MemoryNode.node_type == \"persona\" (payload projection)."""
+
+    trait_name: str
+    strength: float  # 0.0–1.0
+    learned_from: List[str] = field(default_factory=list)  # episode node IDs
+    last_updated: int = 0  # unix seconds
+
+    def to_payload(self) -> Dict[str, Any]:
+        return {
+            "trait_name": self.trait_name,
+            "strength": float(self.strength),
+            "learned_from": list(self.learned_from),
+            "last_updated": int(self.last_updated),
+        }
+
+    @classmethod
+    def from_payload(cls, d: Dict[str, Any]) -> "PersonaNode":
+        lf = d.get("learned_from") or []
+        if not isinstance(lf, list):
+            lf = [str(lf)]
+        return cls(
+            trait_name=str(d.get("trait_name", "")),
+            strength=float(d.get("strength", 0.0)),
+            learned_from=[str(x) for x in lf],
+            last_updated=int(d.get("last_updated", 0)),
         )
 
 
@@ -191,6 +221,29 @@ class GraphStore:
             self._touch(persist=persist)
             return node
 
+    def write_node(self, node: MemoryNode, *, persist: bool = True, dry_run: bool = False) -> MemoryNode:
+        """Persist any graph node (including ``node_type=\"persona\"``). Same semantics as :meth:`add_node`."""
+        return self.add_node(node, persist=persist, dry_run=dry_run)
+
+    def find_by_type(self, node_type: str, agent_id: Optional[str] = None) -> List[Any]:
+        """Return nodes of the given type. For ``persona``, returns :class:`PersonaNode` projections."""
+        with self._lock:
+            self._prune_expired_unlocked()
+            out: List[Any] = []
+            for node in self._nodes.values():
+                if node.node_type != node_type:
+                    continue
+                if agent_id is not None and node.agent_id != agent_id:
+                    continue
+                if node_type == NodeType.PERSONA.value:
+                    pl = dict(node.payload or {})
+                    if not pl.get("trait_name") and node.label.startswith("persona:"):
+                        pl.setdefault("trait_name", node.label.split(":", 1)[-1])
+                    out.append(PersonaNode.from_payload(pl))
+                else:
+                    out.append(node)
+            return out
+
     def add_edge(self, edge: MemoryEdge, *, persist: bool = True, dry_run: bool = False) -> MemoryEdge:
         with self._lock:
             if dry_run:
@@ -261,6 +314,18 @@ class GraphStore:
             self._touch(persist=True)
 
 
+# Historical / doc name: persistence is JSON file–backed, not SQLite.
+SqliteGraphStore = GraphStore
+
+
+def _coerce_call_kwargs(args: Any) -> Dict[str, Any]:
+    if isinstance(args, dict):
+        return dict(args)
+    if isinstance(args, (list, tuple)) and args and isinstance(args[0], dict):
+        return dict(args[0])
+    return {}
+
+
 class AINLGraphMemoryBridge(RuntimeAdapter):
     """AINL adapter + typed hooks for ArmaraOS runtime events."""
 
@@ -268,9 +333,11 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
 
     def __init__(self, store: Optional[GraphStore] = None) -> None:
         self._store = store or GraphStore()
+        self._agent_id: str = "armaraos"
 
     def boot(self, agent_id: str = "armaraos") -> str:
         """Record an episodic boot node (call once at ArmaraOS / bridge startup)."""
+        self._agent_id = str(agent_id)
         ctx: Dict[str, Any] = {}
         dry = _dry_run(ctx)
         nid = _new_id("boot")
@@ -288,14 +355,15 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
         logger.info("graph memory boot node %s (agent_id=%s)", nid, agent_id)
         return nid
 
-    def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
-        verb = str(target or "").strip().lower()
+    def call(self, target: str, args: Any, context: Dict[str, Any]) -> Any:
+        verb = str(target or "").strip().lower().replace(".", "_")
         dry = _dry_run(context)
+        arg_list: List[Any] = args if isinstance(args, (list, tuple)) else []
 
         if verb == "memory_store_pattern":
-            if len(args) < 4:
+            if len(arg_list) < 4:
                 raise AdapterError("memory_store_pattern requires label, steps, agent_id, tags")
-            label, steps, agent_id, tags = args[0], args[1], args[2], args[3]
+            label, steps, agent_id, tags = arg_list[0], arg_list[1], arg_list[2], arg_list[3]
             if not isinstance(steps, list):
                 raise AdapterError("memory_store_pattern: steps must be a list")
             if not isinstance(tags, list):
@@ -303,21 +371,127 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             return self.memory_store_pattern(str(label), steps, str(agent_id), [str(t) for t in tags], dry_run=dry)
 
         if verb == "memory_recall":
-            if len(args) < 1:
+            if len(arg_list) < 1:
                 raise AdapterError("memory_recall requires node_id")
-            return self.memory_recall(str(args[0]))
+            return self.memory_recall(str(arg_list[0]))
 
         if verb == "memory_search":
-            query = str(args[0]) if len(args) >= 1 else ""
-            nt = args[1] if len(args) >= 2 else None
-            aid = args[2] if len(args) >= 3 else None
-            lim = int(args[3]) if len(args) >= 4 else 10
+            query = str(arg_list[0]) if len(arg_list) >= 1 else ""
+            nt = arg_list[1] if len(arg_list) >= 2 else None
+            aid = arg_list[2] if len(arg_list) >= 3 else None
+            lim = int(arg_list[3]) if len(arg_list) >= 4 else 10
             return self.memory_search(query, nt, aid, lim)
 
         if verb == "export_graph":
             return self.export_graph()
 
+        if verb == "persona_update":
+            kw = _coerce_call_kwargs(args)
+            agent_id = str(context.get("agent_id") or self._agent_id)
+            return self.persona_update(kw, agent_id=agent_id, dry_run=dry)
+
+        if verb == "persona_get":
+            kw = _coerce_call_kwargs(args)
+            agent_id = str(context.get("agent_id") or self._agent_id)
+            return self.persona_get(kw, agent_id=agent_id)
+
+        if verb == "persona_load":
+            agent_id = str(context.get("agent_id") or self._agent_id or "")
+            traits: List[PersonaNode] = []
+            for n in self._store.all_nodes():
+                if n.node_type != NodeType.PERSONA.value:
+                    continue
+                if agent_id and n.agent_id != agent_id:
+                    continue
+                pl = dict(n.payload or {})
+                if not pl.get("trait_name") and str(n.label).startswith("persona:"):
+                    pl.setdefault("trait_name", str(n.label).split(":", 1)[-1])
+                traits.append(PersonaNode.from_payload(pl))
+            traits.sort(key=lambda p: -p.strength)
+            trait_dicts = [p.to_payload() for p in traits]
+            persona_context = {p.trait_name: float(p.strength) for p in traits if p.strength >= 0.1}
+            return {"traits": trait_dicts, "persona_context": persona_context}
+
         raise AdapterError(f"ainl_graph_memory: unknown verb {verb!r}")
+
+    def persona_update(
+        self,
+        params: Dict[str, Any],
+        *,
+        agent_id: str,
+        dry_run: bool = False,
+    ) -> Dict[str, Any]:
+        trait_name = str(params.get("trait_name", "")).strip()
+        if not trait_name:
+            raise AdapterError("persona_update requires trait_name")
+        strength = float(params.get("strength", 0.0))
+        lf_in = params.get("learned_from") or []
+        if not isinstance(lf_in, list):
+            lf_in = [str(lf_in)]
+        learned_from = [str(x) for x in lf_in]
+        ts = int(time.time())
+
+        existing: Optional[MemoryNode] = None
+        for n in self._store.all_nodes():
+            if n.node_type != NodeType.PERSONA.value or n.agent_id != agent_id:
+                continue
+            pl = dict(n.payload or {})
+            tname = str(pl.get("trait_name", "")).strip()
+            if not tname and str(n.label).startswith("persona:"):
+                tname = str(n.label).split(":", 1)[-1].strip()
+            if tname == trait_name:
+                existing = n
+                break
+
+        merged_learned = list(learned_from)
+        created = time.time()
+        if existing is not None:
+            created = float(existing.created_at)
+            old_lf = (existing.payload or {}).get("learned_from") or []
+            if not isinstance(old_lf, list):
+                old_lf = [str(old_lf)]
+            merged_learned = sorted({str(x) for x in list(old_lf) + merged_learned})
+
+        persona = PersonaNode(
+            trait_name=trait_name,
+            strength=strength,
+            learned_from=merged_learned,
+            last_updated=ts,
+        )
+        nid = existing.id if existing is not None else _new_id("persona")
+        node = MemoryNode(
+            id=nid,
+            node_type=NodeType.PERSONA.value,
+            agent_id=agent_id,
+            label=f"persona:{trait_name}",
+            payload=persona.to_payload(),
+            tags=["persona", "trait"],
+            created_at=created,
+            ttl=None,
+        )
+        self._store.write_node(node, persist=True, dry_run=dry_run)
+        return {"ok": True, "node_id": nid, **persona.to_payload()}
+
+    def persona_get(self, params: Dict[str, Any], *, agent_id: str) -> Dict[str, Any]:
+        trait_name = str(params.get("trait_name", "")).strip()
+        if not trait_name:
+            raise AdapterError("persona_get requires trait_name")
+        for n in self._store.all_nodes():
+            if n.node_type != NodeType.PERSONA.value or n.agent_id != agent_id:
+                continue
+            pl = dict(n.payload or {})
+            tname = str(pl.get("trait_name", "")).strip()
+            if not tname and str(n.label).startswith("persona:"):
+                tname = str(n.label).split(":", 1)[-1].strip()
+            if tname == trait_name:
+                p = PersonaNode.from_payload(pl)
+                return {
+                    "trait_name": p.trait_name,
+                    "strength": p.strength,
+                    "learned_from": list(p.learned_from),
+                    "last_updated": p.last_updated,
+                }
+        raise AdapterError(f"persona_get: no trait {trait_name!r} for agent_id={agent_id!r}")
 
     def memory_store_pattern(
         self,

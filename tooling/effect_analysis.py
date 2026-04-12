@@ -208,6 +208,7 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "memory.STORE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
     "persona.UPDATE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
     "persona.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "persona.LOAD": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     # Bridge / ArmaraOS JSON graph store (IR MemoryRecall / MemorySearch also dispatch here).
     "ainl_graph_memory.MEMORY_RECALL": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "ainl_graph_memory.MEMORY_SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),

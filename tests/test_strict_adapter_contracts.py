@@ -97,6 +97,7 @@ def test_strict_adapter_effect_includes_memory_persona_graph_ops():
         "memory.STORE",
         "persona.UPDATE",
         "persona.GET",
+        "persona.LOAD",
     ):
         assert strict_adapter_effect(key) is not None, key
 
@@ -111,6 +112,7 @@ def test_strict_compile_allows_memory_persona_graph_adapter_verbs():
         'L1: R memory.store "p" v * ->out J out\n',
         'L1: R persona.update "t" 0.5 * ->out J out\n',
         'L1: R persona.get "t" * ->out J out\n',
+        'L1: R persona.load * ->out J out\n',
     ]
     for code in programs:
         errs = _strict_errors(code)
