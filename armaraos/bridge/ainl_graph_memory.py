@@ -617,6 +617,27 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
     def boot(self, agent_id: str = "armaraos") -> str:
         """Record an episodic boot node (call once at ArmaraOS / bridge startup)."""
         self._agent_id = str(agent_id)
+        # Pre-seed from bundle if provided by the host runtime (scheduled `ainl run`).
+        bundle_path = os.environ.get("AINL_BUNDLE_PATH")
+        if bundle_path and os.path.exists(bundle_path):
+            try:
+                from runtime.ainl_bundle import AINLBundle
+
+                bundle = AINLBundle.load(bundle_path)
+                for persona_node in (bundle.persona or []):
+                    if not isinstance(persona_node, dict):
+                        continue
+                    self.call(
+                        "persona.update",
+                        {
+                            "trait_name": persona_node.get("trait_name"),
+                            "strength": persona_node.get("strength", 0.0),
+                            "learned_from": persona_node.get("learned_from", []),
+                        },
+                        {},
+                    )
+            except Exception:
+                pass
         ctx: Dict[str, Any] = {}
         dry = _dry_run(ctx)
         nid = _new_id("boot")
