@@ -98,6 +98,16 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.5.2
+
+- **Graph memory IR closure:** optional **`memory_type`** on compiled **`R`** steps; typed **`emit_edges`** + **`tooling/graph_api`** helpers (**`emit_edges`**, **`data_flow_edges`**, **`memory_nodes`**); **`memory.pattern_recall`** + **`__last_pattern__`** for procedural **`memory.merge`** round-trips — **`docs/architecture/GRAPH_INTROSPECTION.md`**, **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
+- **Persona + strict registry:** **`persona.load`** injects graph-store traits into the execution frame; memory / persona graph ops registered for strict validation — **`examples/persona_demo.ainl`**, **`tests/test_persona_load_engine.py`**, **`tests/test_strict_adapter_contracts.py`**.
+- **Single portable bundle:** **`AINLBundle`** / **`AINLBundleBuilder`** (**`runtime/ainl_bundle.py`**) round-trip workflow IR + memory + persona + tool strings to **`.ainlbundle`** JSON — **`tests/test_ainl_bundle.py`**.
+- **MCP + limits:** workspace **`ainl_mcp_limits.json`** warnings on successful runs; invalid workspace **`cache.json`** → **`adapter_config_error`** during MCP auto-cache; **`max_adapter_calls: 0`** enforced at the first adapter dispatch.
+- **ArmaraOS emit metadata:** **`security.json`** **`capability_declarations.adapters`**; **`HAND.toml`** **`ainl_ir_version`**.
+- **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, and mirrored emit server engine aligned to **1.5.2**.
+- **Whitepaper:** **`WHITEPAPERDRAFT.md`** **v1.5.2** + **§6.8** (graph-memory gap audit narrative).
+
 ## New in v1.5.1
 
 - **Graph memory in the runtime:** IR ops **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter (ArmaraOS JSON graph store); see **`docs/adapters/AINL_GRAPH_MEMORY.md`**, **`tests/test_memory_recall_op.py`** (dispatch contract), and **`tests/test_memory_search_op.py`** (search + temp **`GraphStore`**).
@@ -884,7 +894,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.5.1**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.5.2**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
@@ -941,7 +951,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.5.1** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.5.2** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

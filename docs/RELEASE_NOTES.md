@@ -1,5 +1,17 @@
 # Release notes
 
+## AINL v1.5.2 — Graph memory IR closure + operator hardening (2026-04-12)
+
+**PyPI / runtime:** **`ainativelang` 1.5.2** — **`RUNTIME_VERSION` `1.5.2`**.
+
+- **Graph IR:** per-step **`memory_type`** annotations; typed **`emit_edges`** / **`data_flow_edges`** helpers in **`tooling/graph_api`**; **`memory.pattern_recall`** + **`__last_pattern__`** for procedural round-trips with **`memory.merge`**.
+- **Persona + compiler registry:** **`persona.load`** (strict **`R persona.load`**) injects traits into the execution frame; memory / persona graph ops registered for strict adapter contracts.
+- **Single artifact:** **`AINLBundle`** / **`AINLBundleBuilder`** (**`runtime/ainl_bundle.py`**) serializes workflow IR + memory + persona + extracted tool targets to **`.ainlbundle`** JSON.
+- **MCP / limits:** workspace **`ainl_mcp_limits.json`** parse warnings on successful runs; invalid workspace **`cache.json`** fails **`adapter_config_error`** during MCP auto-cache registration; **`max_adapter_calls: 0`** is enforced literally (first **`R`** fails).
+- **ArmaraOS emit:** hand **`security.json`** carries adapter capability declarations; **`HAND.toml`** records **`ainl_ir_version`**.
+- **Docs / narrative:** **`WHITEPAPERDRAFT.md`** **v1.5.2** + **§6.8** (architectural gap closures); cross-links in graph-memory and MCP operator docs.
+- See **`docs/CHANGELOG.md`** § v1.5.2.
+
 ## AINL v1.5.1 — Graph memory ops + ArmaraOS bridge (2026-04-12)
 
 **PyPI / runtime:** **`ainativelang` 1.5.1** — **`RUNTIME_VERSION` `1.5.1`**.

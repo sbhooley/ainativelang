@@ -70,7 +70,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.5.1"
+RUNTIME_VERSION = "1.5.2"
 
 _LOG = logging.getLogger(__name__)
 
