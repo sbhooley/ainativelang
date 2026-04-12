@@ -113,7 +113,12 @@
       "verbs": [
         "G",
         "P",
-        "POST"
+        "POST",
+        "call",
+        "get",
+        "post",
+        "put",
+        "delete"
       ],
       "effect_default": "io",
       "privilege_tier": "network",
@@ -276,7 +281,10 @@
       "strict_contract": true,
       "recommended_lane": "canonical",
       "verbs": [
-        "Validate"
+        "Validate",
+        "login",
+        "logout",
+        "verify"
       ],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
@@ -321,7 +329,8 @@
       "strict_contract": true,
       "recommended_lane": "noncanonical",
       "verbs": [
-        "Post"
+        "Post",
+        "call"
       ],
       "effect_default": "io",
       "privilege_tier": "network",
@@ -555,7 +564,8 @@
       "strict_contract": true,
       "recommended_lane": "canonical",
       "verbs": [
-        "Call"
+        "Call",
+        "invoke"
       ],
       "effect_default": "io",
       "privilege_tier": "operator_sensitive",
@@ -843,7 +853,9 @@
       "verbs": [
         "search_repos",
         "get_repo",
-        "create_issue"
+        "create_issue",
+        "list_issues",
+        "get_pr"
       ],
       "effect_default": "io",
       "privilege_tier": "network",
@@ -880,7 +892,11 @@
         "create",
         "QUERY",
         "UPDATE",
-        "CREATE"
+        "CREATE",
+        "create_contact",
+        "get_contact",
+        "update_contact",
+        "list_contacts"
       ],
       "effect_default": "io",
       "privilege_tier": "network",
@@ -984,6 +1000,7 @@
         "fetch",
         "get",
         "post",
+        "G",
         "SEARCH",
         "FETCH",
         "GET",
