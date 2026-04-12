@@ -8,22 +8,24 @@ This document establishes the chronological record of graph-as-memory architectu
 
 | Date | Event | Type | Source |
 |------|-------|------|--------|
-| **October 2025** | AINL Whitepaper v1.0 | Theory | AI Native Lang project |
-| **January 2026** | MAGMA paper | Academic | Stanford/Berkeley |
-| **March 2026** | Google ADK 2.0 | Industry | Google AI |
+| **March 16, 2026** | AINL Whitepaper v1.0 | Theory | AI Native Lang project |
+| **March 21, 2026** | AINL graph-memory work begins | Development | AINL repo commits |
 | **April 6-10, 2026** | Karpathy LLM Wiki | Independent | @karpathy (Twitter) |
 | **April 12, 2026 3:13 AM MDT** | ArmaraOS ainl-memory v0.1.1-alpha | Implementation | crates.io |
+
+**Note:** MAGMA paper and Google ADK 2.0 are cited in LATE_NIGHT_CONVO_WITH_AI.md but specific dates/sources need verification. Timeline updated to reflect verifiable git commits only.
 
 ---
 
 ## Detailed Chronology
 
-### 1. AINL Whitepaper (October 2025)
+### 1. AINL Whitepaper (March 16, 2026)
 
 **Publication:** AI Native Lang Whitepaper v1.0  
-**Date:** October 2025  
+**Date:** March 16, 2026 (first git commit)  
 **Repository:** https://github.com/sbhooley/ainativelang  
-**File:** `WHITEPAPERDRAFT.md`
+**File:** `WHITEPAPERDRAFT.md`  
+**Commit:** `e3e218db1aaa1dfe833ac7f1c326f721255fb5cf`
 
 **Key theoretical contributions:**
 - "Execution IS the memory substrate. No separate retrieval layer."
@@ -38,51 +40,21 @@ This document establishes the chronological record of graph-as-memory architectu
 
 ---
 
-### 2. MAGMA Paper (January 2026)
+### 2. AINL Graph-Memory Development (March 21-26, 2026)
 
-**Publication:** "Memory-Augmented Graph for Multi-Agent Systems"  
-**Date:** January 2026  
-**Authors:** Stanford/Berkeley researchers  
-**Type:** Academic research paper
+**Activity:** Early graph-memory implementation work in AINL repository  
+**Dates:** March 21-26, 2026  
+**Repository:** https://github.com/sbhooley/ainativelang  
+**Key commits:**
+- March 21: "Access-aware memory: LACCESS_LIST_SAFE, graph fixes, demos, tests"
+- March 25: "feat(ops): intelligence hydration, profiles, embedding pilot, graph-runtime docs"
+- March 26: "feat(openclaw): budget-gated summarizer, local embeddings, wrapper low-budget guard"
 
-**Key contributions:**
-- Proposes "memory graphs" where agent interactions are nodes
-- Retrieval via subgraph matching
-- Reports 40% reduction in context window requirements
-
-**Relationship to AINL:**
-- Published **3 months after** AINL whitepaper
-- Independent academic validation of graph-as-memory approach
-- No citation of AINL (likely developed in parallel)
-- Complementary focus: multi-agent coordination vs. AINL's workflow compilation
+**Status:** Exploratory work in AINL ecosystem, not yet a standalone implementation.
 
 ---
 
-### 3. Google ADK 2.0 (March 2026)
-
-**Announcement:** Agent Development Kit 2.0  
-**Date:** March 2026  
-**Organization:** Google AI  
-**Type:** Production framework release
-
-**Key contributions:**
-- "Execution graphs as first-class memory primitives"
-- Agent actions stored as graph nodes
-- Retrieval via graph traversal instead of semantic search
-- Reported metrics: 60% reduction in retrieval latency, 23% improvement in task success
-
-**Relationship to AINL:**
-- Released **5 months after** AINL whitepaper
-- Production-scale validation of graph-as-memory architecture
-- No public acknowledgment of AINL (likely independent development)
-- Scale validation reduces research risk for AINL implementation
-
-**Relevant quote from announcement:**
-> "We found that storing execution as a graph eliminated 60% of retrieval latency and improved task success by 23% compared to vector-based memory."
-
----
-
-### 4. Karpathy LLM Wiki (April 6-10, 2026)
+### 3. Karpathy LLM Wiki (April 6-10, 2026)
 
 **Publication:** Twitter thread by Andrej Karpathy  
 **Date:** April 6-10, 2026 (exact date TBD, between April 6 and April 10)  
@@ -105,7 +77,7 @@ This document establishes the chronological record of graph-as-memory architectu
 
 ---
 
-### 5. ArmaraOS ainl-memory v0.1.1-alpha (April 12, 2026)
+### 4. ArmaraOS ainl-memory v0.1.1-alpha (April 12, 2026)
 
 **Publication:** crates.io package publication  
 **Exact timestamp:** April 12, 2026, 3:13 AM MDT (09:13 UTC)  
@@ -157,38 +129,49 @@ pub enum AinlNodeType {
 
 ---
 
-## Interpretation: Independent Convergence
+## Unverified External Sources
 
-The timeline demonstrates **independent convergence** on graph-as-memory architecture from **four separate sources** within **6 months**:
+**Note:** The following sources are mentioned in `LATE_NIGHT_CONVO_WITH_AI.md` but lack verified publication dates or links:
 
-1. **AINL (October 2025):** Theoretical foundation, no implementation
-2. **MAGMA (January 2026):** Academic validation, multi-agent focus
-3. **Google ADK 2.0 (March 2026):** Production-scale validation
-4. **Karpathy (April 6-10, 2026):** High-profile independent proposal
-5. **ArmaraOS (April 12, 2026):** First open-source reference implementation
+- **MAGMA paper** ("Memory-Augmented Graph for Multi-Agent Systems", January 2026, Stanford/Berkeley)
+- **Google ADK 2.0** (March 2026, "execution graphs as first-class memory")
+
+These are cited in informal discussion documents but are not included in the primary timeline above until verified sources can be located. If you have access to these publications, please submit an issue or PR with links.
+
+---
+
+## Interpretation: Development Timeline
+
+The **verified timeline** shows:
+
+1. **AINL whitepaper (March 16, 2026):** First documented theory of graph-as-memory
+2. **AINL development (March 21-26, 2026):** Early exploratory work
+3. **Karpathy LLM Wiki (April 6-10, 2026):** Independent high-profile proposal
+4. **ArmaraOS (April 12, 2026):** First standalone open-source implementation
 
 **Key observations:**
 
-- **No cross-pollination:** MAGMA, Google, and Karpathy show no evidence of AINL influence
-- **Rapid convergence:** 6 months from theory to multiple independent implementations
-- **Consistent pattern:** All arrive at "execution graph as memory" despite different approaches
-- **Emergent architecture:** Suggests graph-as-memory is a natural solution to agent memory scaling
+- **27 days** from AINL whitepaper to working ArmaraOS implementation
+- **Karpathy proposal** emerged independently 2-6 days before ArmaraOS publication
+- **Consistent pattern:** Both AINL and Karpathy arrive at "execution graph as memory"
+- **Rapid prototyping:** Theory to production-ready code in under a month
 
 ---
 
 ## Establishing Priority
 
-**For theoretical contributions:**
-- AINL whitepaper (October 2025) **preceded** all other publications
-- AINL proposed Episode/Semantic/Procedural/Persona taxonomy **before** MAGMA, Google, or Karpathy
+**For theoretical contributions (verified):**
+- AINL whitepaper (March 16, 2026) **first documented** graph-as-memory architecture
+- AINL proposed Episode/Semantic/Procedural/Persona taxonomy **before** ArmaraOS implementation
+- Karpathy LLM Wiki (April 6-10, 2026) independent convergence on same pattern
 
-**For production implementations:**
-- Google ADK 2.0 (March 2026) first **closed-source** production deployment
-- ArmaraOS (April 12, 2026) first **open-source** reference implementation
+**For production implementations (verified):**
+- ArmaraOS (April 12, 2026) **first open-source** standalone reference implementation
+- Published to crates.io with exact timestamp: 3:13 AM MDT
 
-**For academic contributions:**
-- MAGMA (January 2026) first **peer-reviewed** academic publication
-- AINL whitepaper (October 2025) first **public whitepaper** (not peer-reviewed)
+**For unverified claims:**
+- MAGMA paper (January 2026) - **not yet verified**, excluded from priority claims
+- Google ADK 2.0 (March 2026) - **not yet verified**, excluded from priority claims
 
 ---
 
@@ -197,8 +180,9 @@ The timeline demonstrates **independent convergence** on graph-as-memory archite
 ### AINL Whitepaper
 - **Repository:** https://github.com/sbhooley/ainativelang
 - **File:** `WHITEPAPERDRAFT.md`
-- **Git history:** Available via `git log --follow WHITEPAPERDRAFT.md`
-- **Initial commit:** October 2025 (verify via git log)
+- **Git history:** `git log --follow WHITEPAPERDRAFT.md`
+- **Initial commit:** March 16, 2026, 19:38:13 -0500 (commit `e3e218d`)
+- **Verification:** `git show e3e218d:WHITEPAPERDRAFT.md`
 
 ### MAGMA Paper
 - **Title:** "Memory-Augmented Graph for Multi-Agent Systems"
@@ -256,5 +240,5 @@ This document will be updated as:
 - Academic papers formally publish
 
 **Last updated:** April 12, 2026  
-**Maintainer:** AINL project  
-**Related documents:** `WHITEPAPERDRAFT.md` (Appendix A), `ARCHITECTURE.md` (ArmaraOS repo)
+**Maintainer:** ArmaraOS project  
+**Related documents:** `ARCHITECTURE.md`, `WHITEPAPERDRAFT.md` (AINL repo)
