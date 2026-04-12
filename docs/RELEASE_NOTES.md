@@ -1,5 +1,15 @@
 # Release notes
 
+## AINL v1.6.0 — GraphPatch + graph-memory bridge parity (2026-04-12)
+
+**PyPI / runtime:** **`ainativelang` 1.6.0** — **`RUNTIME_VERSION` `1.6.0`**.
+
+- **GraphPatch:** runtime **`R memory.patch`** / graph **`memory.patch`** fetches procedural steps from the graph store, validates declared reads against the live frame, installs a **`__patched__`** label body, bumps **`__patch_version__`**, and updates fitness on completion (including early **`J`**). Collisions with compiled (non-patch) labels raise an overwrite guard.
+- **Boot / ArmaraOS:** **`_reinstall_patches`** replays active **`PatchRecord`** entries into **`RuntimeEngine.labels`** when the **`ainl_graph_memory`** bridge is present; agent scoping uses **`ir["services"]["core"]["agent_id"]`**.
+- **Strict compile:** dedicated **`StrictModeError`** path for invalid **`memory.patch`** literal usage when **`strict_literals`** is enabled on the compiler.
+- **Registry:** **`ADAPTER_REGISTRY.json`** documents **`ainl_graph_memory.memory_patch`** (GraphPatch; runtime **`adapters.call`** uses target string **`graph_patch`**) alongside recall/search; **`tooling/effect_analysis.py`** includes **`MEMORY_PATCH`**.
+- See **`docs/CHANGELOG.md`** § v1.6.0 and **`tests/test_graph_patch_op.py`**.
+
 ## AINL v1.5.2 — Graph memory IR closure + operator hardening (2026-04-12)
 
 **PyPI / runtime:** **`ainativelang` 1.5.2** — **`RUNTIME_VERSION` `1.5.2`**.

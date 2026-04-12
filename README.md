@@ -98,6 +98,11 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.6.0
+
+- **GraphPatch:** runtime **`R memory.patch`** (and graph **`memory.patch`**) installs procedural label bodies from the JSON graph store via **`ainl_graph_memory.graph_patch`**, with compile-time strict literal checks, runtime dataflow validation (**`_analyze_step_rw`**), overwrite protection for compiled labels, boot-time **`_reinstall_patches`**, and per-label fitness EMA (including early **`J`** exits). Tests: **`tests/test_graph_patch_op.py`**.
+- **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine, and **`ADAPTER_REGISTRY.json`** / **`docs/reference/ADAPTER_REGISTRY.md`** aligned to **1.6.0**.
+
 ## New in v1.5.2
 
 - **Graph memory IR closure:** optional **`memory_type`** on compiled **`R`** steps; typed **`emit_edges`** + **`tooling/graph_api`** helpers (**`emit_edges`**, **`data_flow_edges`**, **`memory_nodes`**); **`memory.pattern_recall`** + **`__last_pattern__`** for procedural **`memory.merge`** round-trips — **`docs/architecture/GRAPH_INTROSPECTION.md`**, **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
@@ -894,7 +899,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.5.2**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.6.0**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
@@ -951,7 +956,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.5.2** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.6.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

@@ -1022,7 +1022,7 @@
       ]
     },
     "ainl_graph_memory": {
-      "description": "JSON-backed graph memory for bridge workflows; runtime dispatches IR MemoryRecall / MemorySearch to this adapter namespace.",
+      "description": "JSON-backed graph memory for bridge workflows; runtime dispatches IR MemoryRecall / MemorySearch and GraphPatch (memory.patch) to this adapter namespace.",
       "privilege_tier": "local_state",
       "destructive": false,
       "network_facing": false,
@@ -1037,13 +1037,18 @@
           "args": ["query", "node_type?", "agent_id?", "limit?"],
           "returns": "list",
           "pure": false
+        },
+        "memory_patch": {
+          "args": ["memory_node_id", "label_name", "source_episode_ids?"],
+          "returns": "object",
+          "pure": false
         }
       },
       "config": {
         "path_env": "AINL_GRAPH_MEMORY_PATH (ArmaraOS bridge default: ~/.armaraos/ainl_graph_memory.json)"
       },
       "notes": [
-        "Strict dotted verbs: MEMORY_RECALL, MEMORY_SEARCH; runtime uses lowercase memory_recall / memory_search in adapters.call.",
+        "Strict dotted verbs: MEMORY_RECALL, MEMORY_SEARCH, MEMORY_PATCH; runtime/engine.py GraphPatch uses adapters.call target graph_patch (bridge also accepts memory_patch as an alias).",
         "Operator contract: docs/adapters/AINL_GRAPH_MEMORY.md."
       ]
     },

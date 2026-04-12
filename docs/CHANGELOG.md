@@ -4,6 +4,16 @@
 
 <!-- Next release changes go here -->
 
+## v1.6.0 (April 12, 2026) — GraphPatch (memory.patch), strict dataflow, bridge graph_patch
+
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.6.0** (mirrored **`tests/emits/server/runtime/engine.py`**).
+- **feat(runtime / graph memory)**: **`R memory.patch`** installs procedural label bodies from **`ainl_graph_memory`** via **`adapters.call("ainl_graph_memory", "graph_patch", [memory_node_id, label_name], …)`**; **`_reinstall_patches`** on engine boot; overwrite guard for compiled labels (**`OverwriteGuardError`** → **`AinlRuntimeError`**); patch metadata (**`__patch_node_id__`**, **`__patch_version__`**, **`__fitness__`**) + **`finalize_patch`** declared reads; fitness EMA on label exit including early **`J`** returns; sync/async **`memory`** dispatch includes **`patch`**.
+- **feat(compiler)**: strict-mode **`memory.patch`** literal guard (**`StrictModeError`** / **`strict_literals`** on **`AICodeCompiler`**); patch dataflow validation uses per-step **`_analyze_step_rw`** (aligns with compiler read analysis for string **`Set`** refs).
+- **feat(tooling)**: **`ainl_graph_memory.MEMORY_PATCH`** in **`ADAPTER_EFFECT`** (**`tooling/effect_analysis.py`**).
+- **fix(runtime)**: **`Loop`/`While`** inner locals renamed (**`body_lid`**) so inner graphs do not shadow **`body`** (patch fitness updates).
+- **test**: **`tests/test_graph_patch_op.py`** — eight pytest cases (step vs graph mode, frame **`$var`**, overwrite guard, re-patch versioning, boot reinstall + **`_reinstall_patches`**, fitness EMA, strict compile).
+- **docs**: **`docs/RELEASE_NOTES.md`**, **`docs/POST_RELEASE_ROADMAP.md`**, **`docs/RELEASING.md`**, **`ADAPTER_REGISTRY.json`** / **`docs/reference/ADAPTER_REGISTRY.md`** (**`memory_patch`** target for GraphPatch; runtime call target **`graph_patch`**), current-release pointers to **v1.6.0** across hub and integration docs.
+
 ## v1.5.2 (April 12, 2026) — Graph memory IR substrate, bundle serialization, operator surfaces
 
 - **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.5.2** (mirrored **`tests/emits/server/runtime/engine.py`**).

@@ -2,7 +2,7 @@
 
 Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcp.servers.ainl`** (or YAML **`mcp_servers.ainl`** on Hermes), install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
 
-**Current PyPI release:** `ainativelang` **v1.5.2**.
+**Current PyPI release:** `ainativelang` **v1.6.0**.
 
 ## Two-step pattern (every host)
 

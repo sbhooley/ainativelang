@@ -1,6 +1,6 @@
 # OpenClaw requests 2–6 → AINL v1.2.8 mapping (docs-only, honest)
 
-> **Current `ainl` release:** **v1.5.2** (see `docs/RELEASE_NOTES.md`). The body below describes the **v1.2.8** request-mapping baseline; later releases add features (e.g. Hermes, OpenClaw CLI polish **v1.3.0**, native Solana **v1.3.1**, ArmaraOS host pack **v1.4.0**, docs alignment **v1.5.0**, graph-memory ops **v1.5.1**, graph-memory IR + **`.ainlbundle`** **v1.5.2**) without changing this lane analysis.
+> **Current `ainl` release:** **v1.6.0** (see `docs/RELEASE_NOTES.md`). The body below describes the **v1.2.8** request-mapping baseline; later releases add features (e.g. Hermes, OpenClaw CLI polish **v1.3.0**, native Solana **v1.3.1**, ArmaraOS host pack **v1.4.0**, docs alignment **v1.5.0**, graph-memory ops **v1.5.1**, graph-memory IR + **`.ainlbundle`** **v1.6.0**) without changing this lane analysis.
 
 **Purpose:** This note maps OpenClaw’s “2–6” requests (summarizer, WASM compute, vector retrieval, per-feature caps, sparse attention) to what **AINL v1.2.8** **already implements**, what is **operator/host wiring**, and what is **out of scope** for AINL’s lane (compile-once deterministic graph runtime).
 

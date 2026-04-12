@@ -717,7 +717,7 @@
       "destructive": false,
       "network_facing": false,
       "sandbox_safe": true,
-      "notes": "JSON-backed graph memory for bridge / ArmaraOS; runtime IR MemoryRecall and MemorySearch dispatch adapters.call here. Default path under ArmaraOS home; override AINL_GRAPH_MEMORY_PATH. See docs/adapters/AINL_GRAPH_MEMORY.md."
+      "notes": "JSON-backed graph memory for bridge / ArmaraOS; runtime IR MemoryRecall and MemorySearch plus GraphPatch (R memory.patch → graph_patch) dispatch adapters.call here. Default path under ArmaraOS home; override AINL_GRAPH_MEMORY_PATH. See docs/adapters/AINL_GRAPH_MEMORY.md."
     },
     "vector_memory": {
       "support_tier": "compatibility",
