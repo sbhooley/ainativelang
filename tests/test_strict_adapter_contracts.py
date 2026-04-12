@@ -85,3 +85,33 @@ def test_strict_adapter_helpers_are_deterministic_and_compiler_owned():
     assert key_b == "core.ADD"
     assert key_c == "core.ADD"
     assert strict_adapter_effect(key_a) is not None
+
+
+def test_strict_adapter_effect_includes_memory_persona_graph_ops():
+    """Strict keys use uppercased verbs (see strict_adapter_key)."""
+    for key in (
+        "memory.RECALL",
+        "memory.SEARCH",
+        "memory.EXPORT_GRAPH",
+        "memory.STORE_PATTERN",
+        "memory.STORE",
+        "persona.UPDATE",
+        "persona.GET",
+    ):
+        assert strict_adapter_effect(key) is not None, key
+
+
+def test_strict_compile_allows_memory_persona_graph_adapter_verbs():
+    """OP_REGISTRY memory.* / persona.* R steps must pass strict graph adapter contract."""
+    programs = [
+        'L1: R memory.recall * ->out J out\n',
+        'L1: R memory.search "q" * ->out J out\n',
+        'L1: R memory.export_graph * ->out J out\n',
+        'L1: R memory.store_pattern "p" v * ->out J out\n',
+        'L1: R memory.store "p" v * ->out J out\n',
+        'L1: R persona.update "t" 0.5 * ->out J out\n',
+        'L1: R persona.get "t" * ->out J out\n',
+    ]
+    for code in programs:
+        errs = _strict_errors(code)
+        assert not errs, f"{code!r} -> {errs!r}"

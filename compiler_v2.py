@@ -83,6 +83,12 @@ MODULE_ALIASES = {
     "RagSrc": "rag.Src", "RagChunk": "rag.Chunk", "RagEmbed": "rag.Embed",
     "RagStore": "rag.Store", "RagIdx": "rag.Idx", "RagRet": "rag.Ret",
     "RagAug": "rag.Aug", "RagGen": "rag.Gen", "RagPipe": "rag.Pipe",
+    "memory.store": "memory.store_pattern",
+    "memory.recall": "memory.recall",
+    "memory.search": "memory.search",
+    "memory.export": "memory.export_graph",
+    "persona.update": "persona.update",
+    "persona.get": "persona.get",
 }
 KNOWN_MODULES = {"ops", "fe", "rag", "arch", "test", "core"}
 
@@ -152,6 +158,47 @@ OP_REGISTRY: Dict[str, Dict[str, Any]] = {
     "QueuePut": {"scope": "label", "min_slots": 2},
     "Tx": {"scope": "label", "min_slots": 2},
     "Enf": {"scope": "label", "min_slots": 1},
+    # Graph memory + persona (AINL graph memory store; compiler registry + grammar line starters)
+    "memory.store_pattern": {
+        "scope": "any",
+        "min_slots": 2,
+        "slots": ["STRING", "EXPR"],
+        "doc": "Store a named procedural pattern in the AINL graph memory store.",
+    },
+    "memory.recall": {
+        "scope": "any",
+        "min_slots": 0,
+        "slots": [],
+        "returns": "LIST",
+        "doc": "Recall recent episode nodes from the graph memory store.",
+    },
+    "memory.search": {
+        "scope": "any",
+        "min_slots": 1,
+        "slots": ["STRING"],
+        "returns": "LIST",
+        "doc": "Search semantic memory nodes by keyword or domain.",
+    },
+    "memory.export_graph": {
+        "scope": "any",
+        "min_slots": 0,
+        "slots": [],
+        "returns": "DICT",
+        "doc": "Export the full AINL graph memory as a JSON-serializable dict.",
+    },
+    "persona.update": {
+        "scope": "any",
+        "min_slots": 2,
+        "slots": ["STRING", "FLOAT"],
+        "doc": "Update or create a persona trait node in the graph memory store.",
+    },
+    "persona.get": {
+        "scope": "any",
+        "min_slots": 1,
+        "slots": ["STRING"],
+        "returns": "DICT",
+        "doc": "Retrieve a persona trait node by name.",
+    },
 }
 
 # Compiler-owned grammar metadata used by prefix-constrained decoding.
@@ -1581,7 +1628,12 @@ class AICodeCompiler:
                     )
                 elif "." in adapter:
                     _, verb = adapter.split(".", 1)
-                    if verb and verb != verb.upper():
+                    canon_adapt = MODULE_ALIASES.get(adapter, adapter)
+                    if (
+                        verb
+                        and verb != verb.upper()
+                        and canon_adapt not in OP_REGISTRY
+                    ):
                         warn(
                             "Canonical lint: prefer uppercase dotted adapter verbs in canonical examples "
                             "(for example `core.ADD`, `http.GET`).",
@@ -2005,6 +2057,10 @@ class AICodeCompiler:
         if op.startswith("L") and op.endswith(":"):
             return OP_REGISTRY["L:"]
         if "." in op:
+            canon = MODULE_ALIASES.get(op, op)
+            dotted = OP_REGISTRY.get(canon) or OP_REGISTRY.get(op)
+            if dotted:
+                return dotted
             # module.op declarations are top-level metadata by design
             return {"scope": "top", "min_slots": 0}
         return OP_REGISTRY.get(op, {"scope": "top", "min_slots": 0})
@@ -4622,6 +4678,7 @@ class AICodeCompiler:
         # Attach semantic hashes and graph checksum without changing semantics.
         ir = attach_label_and_node_hashes(ir)
         ir["graph_semantic_checksum"] = graph_semantic_checksum(ir)
+        ir["ok"] = not bool(self._errors)
         return ir
 
     def emit_source_exact(self, ir: Dict[str, Any]) -> str:

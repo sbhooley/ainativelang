@@ -200,6 +200,14 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "memory.LIST": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "memory.DELETE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
     "memory.PRUNE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    # AINL graph memory store (compiler-registered memory.* / persona.*; strict keys are uppercased verbs).
+    "memory.RECALL": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "memory.SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "memory.EXPORT_GRAPH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
+    "memory.STORE_PATTERN": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    "memory.STORE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    "persona.UPDATE": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_MEMORY_WRITE),
+    "persona.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     # Bridge / ArmaraOS JSON graph store (IR MemoryRecall / MemorySearch also dispatch here).
     "ainl_graph_memory.MEMORY_RECALL": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
     "ainl_graph_memory.MEMORY_SEARCH": (EFFECT_TIER_IO_READ, EFFECT_KIND_MEMORY_READ),
