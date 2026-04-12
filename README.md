@@ -98,6 +98,12 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## New in v1.5.1
+
+- **Graph memory in the runtime:** IR ops **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter (ArmaraOS JSON graph store); see **`docs/adapters/AINL_GRAPH_MEMORY.md`** and **`tests/test_memory_recall_op.py`**.
+- **ArmaraOS bridge:** `armaraos/bridge/ainl_graph_memory.py`, runner registration + delegation hook, optional **`graph_viz`** server, **`demo/procedural_roundtrip_demo.py`**, token-budget bridge shim (**`bridge_token_budget_adapter.py`**).
+- **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, and mirrored emit server engine aligned to **1.5.1**.
+
 ## New in v1.5.0
 
 - **Minor release:** **`RUNTIME_VERSION`**, **`CITATION.cff`**, and **`tooling/bot_bootstrap.json`** aligned with PyPI **`ainativelang` 1.5.0** (see **`docs/CHANGELOG.md`** § v1.5.0).
@@ -877,7 +883,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.5.0**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.5.1**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
@@ -934,7 +940,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.5.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.5.1** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

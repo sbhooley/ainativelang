@@ -60,7 +60,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.5.0"
+RUNTIME_VERSION = "1.5.1"
 
 # Stable, machine-readable runtime error codes for agents.
 ERROR_CODE_MAX_DEPTH = "RUNTIME_MAX_DEPTH"

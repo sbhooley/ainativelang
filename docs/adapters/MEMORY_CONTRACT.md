@@ -14,6 +14,8 @@ metadata and filters (no vector semantics, no policy cognition).
 
 **OpenClaw daily markdown (bridge):** Operator workflows that append human-readable logs via `openclaw_memory` typically use **`~/.openclaw/workspace/memory/YYYY-MM-DD.md`** (directory overridable with `OPENCLAW_MEMORY_DIR`). That path is **orthogonal** to the SQLite-backed `memory` adapter contract below; see [`docs/operations/UNIFIED_MONITORING_GUIDE.md`](../operations/UNIFIED_MONITORING_GUIDE.md) for token-budget and related bridge monitoring.
 
+**ArmaraOS JSON graph memory (bridge, separate adapter):** typed nodes/edges in **`~/.armaraos/ainl_graph_memory.json`** (or **`AINL_GRAPH_MEMORY_PATH`**), adapter name **`ainl_graph_memory`**, plus runtime IR ops **`MemoryRecall`** / **`MemorySearch`** — see **[`AINL_GRAPH_MEMORY.md`](AINL_GRAPH_MEMORY.md)**.
+
 **Public article (tiers, hosts, bridge vs adapter):** [AINL, structured memory, and OpenClaw-style agents](https://ainativelang.com/blog/ainl-structured-memory-openclaw-agents).
 
 **Implementation note (v1.1 additive):** the current adapter now supports

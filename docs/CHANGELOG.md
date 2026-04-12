@@ -4,6 +4,13 @@
 
 <!-- Next release changes go here -->
 
+## v1.5.1 (April 12, 2026) — Graph memory runtime + ArmaraOS bridge docs
+
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.5.1** (mirrored **`tests/emits/server/runtime/engine.py`**).
+- **feat(runtime)**: IR ops **`MemoryRecall`** and **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter from **`_exec_step`** and sync **`_run_label_graph`**; fallback adapter inference includes legacy **`steps`** and label **graph** **`nodes`** (`_fallback_adapters_from_label_steps`). Tests: **`tests/test_memory_recall_op.py`**.
+- **bridge (ArmaraOS)**: JSON graph store + **`AINLGraphMemoryBridge`** (`armaraos/bridge/ainl_graph_memory.py`), registration and **`on_delegation`** hook in **`armaraos/bridge/runner.py`**, optional **`armaraos/bridge/graph_viz/`** FastAPI viewer, **`demo/procedural_roundtrip_demo.py`**, **`armaraos/bridge/bridge_token_budget_adapter.py`** importlib shim.
+- **docs**: new **`docs/adapters/AINL_GRAPH_MEMORY.md`**; cross-links from **`docs/adapters/MEMORY_CONTRACT.md`**, **`docs/adapters/README.md`**, **`docs/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/reference/README.md`**, **`docs/ARMARAOS_INTEGRATION.md`** ( **`AINL_GRAPH_MEMORY_PATH`** ), **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/architecture/STATE_DISCIPLINE.md`**; hub / overview / skills / **`README.md`** “current release” lines aligned to **v1.5.1**.
+
 ## v1.5.0 (April 10, 2026) — Minor release + documentation alignment
 
 - **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.5.0** (minor after **1.4.6**).

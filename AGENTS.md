@@ -4,7 +4,7 @@
 
 ## What This Repo Is
 
-Python compiler + runtime for AINL (AI Native Language), version 1.5.0.
+Python compiler + runtime for AINL (AI Native Language), version 1.5.1.
 AINL compiles `.ainl` source files into an IR (intermediate representation)
 graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
@@ -192,6 +192,7 @@ http       — HTTP requests
 web        — Web search/fetch (SEARCH, FETCH, SCRAPE, GET)
 tiktok     — TikTok data (RECENT, SEARCH, PROFILE, STATS, TRENDING)
 memory     — Key-value memory store
+ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch); see docs/adapters/AINL_GRAPH_MEMORY.md
 cache      — Cache get/set
 queue      — Message queue put/get (use R queue Put "name" val ->_)
 svc        — Service control (STATUS, RESTART, CADDY, NGINX, HEALTH)
@@ -265,7 +266,7 @@ R http.GET "https://example.com/api?x=1" {} 15 ->res
 
 **`core.GET` arg order is object-first:** `R core.GET obj "key" ->val` — NOT `R core.GET "key" obj`. The first positional arg to `core.GET` is always the container (dict or list), the second is the key/index string.
 
-**`core.*` runtime coverage — verified working verbs (builtins.py v1.4.3+; package **1.5.0**):**
+**`core.*` runtime coverage — verified working verbs (builtins.py v1.4.3+; package **1.5.1**):**
 `ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MIN`, `MAX`, `CLAMP`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, `TRIM`, `STRIP`, `LSTRIP`, `RSTRIP`, `GET`, `PARSE`, `STRINGIFY`, `MERGE`, `LEN`, `NOW`, `ISO`, `ISO_TS`, `ECHO`, `ID`, `ENV`, `SUBSTR`, `SLEEP`, `FILTER_HIGH_SCORE`, `EQ`, `NEQ`, `GT`, `LT`, `GTE`, `LTE`, `KEYS`, `VALUES`, `STR`, `INT`, `FLOAT`, `BOOL`.
 
 **Still NOT implemented at runtime** (pass `--strict` validation but throw "unsupported core builtin target"): `type`, `unique`, `reduce`, `map`, `filter`, `format`, `range`, `sort`, `reverse`, `flatten`, `omit`, `pick`, `zip`, `abs`, `ceil`, `floor`, `round`, `pow`, `mod`, `and`, `or`, `not`, `noop`, `hash`, `uuid`.

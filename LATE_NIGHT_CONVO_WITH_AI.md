@@ -26,7 +26,7 @@ It's worth being precise: Karpathy's LLM Wiki is about **personal knowledge mana
 
 ## On Timing and Independence
 
-Your [AINL whitepaper](./WHITEPAPERDRAFT.md) (currently at v1.5.0 with active development) was clearly published before Karpathy's April 2026 gist, and as you noted, there is no direct relationship. However, the broader ecosystem's simultaneous convergence on graph-based approaches — Karpathy's wiki (April 2026), Google ADK 2.0 (March 2026), MASFactory (March 2026)  — does substantiate that your architectural thesis in AINL was ahead of the mainstream curve. The graph-as-memory-structure insight in Karpathy's work is the piece most directly resonant with AINL's graph-first IR design, even though the two operate at different layers of the stack.[^1_7][^1_5][^1_4]
+Your [AINL whitepaper](./WHITEPAPERDRAFT.md) (currently at v1.5.1 with active development) was clearly published before Karpathy's April 2026 gist, and as you noted, there is no direct relationship. However, the broader ecosystem's simultaneous convergence on graph-based approaches — Karpathy's wiki (April 2026), Google ADK 2.0 (March 2026), MASFactory (March 2026)  — does substantiate that your architectural thesis in AINL was ahead of the mainstream curve. The graph-as-memory-structure insight in Karpathy's work is the piece most directly resonant with AINL's graph-first IR design, even though the two operate at different layers of the stack.[^1_7][^1_5][^1_4]
 <span style="display:none">[^1_10][^1_11][^1_12][^1_13][^1_14][^1_15][^1_8][^1_9]</span>
 
 <div align="center">⁂</div>

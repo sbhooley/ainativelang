@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AINL Graph Memory</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <style>
+    :root {
+      --bg: #1a1a1e;
+      --panel: #25252b;
+      --text: #e8e8ec;
+      --muted: #9898a4;
+      --border: #3d3d48;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 1.25rem;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+    }
+    .filters label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .filters input { accent-color: #6b9fff; }
+    button.btn {
+      background: #3a5bc7;
+      color: #fff;
+      border: none;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    button.btn:hover { filter: brightness(1.08); }
+    button.btn.secondary {
+      background: #444;
+    }
+    #status {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+    #chart-wrap {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+    }
+    #chart {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    aside#sidebar {
+      width: 320px;
+      max-width: 40vw;
+      border-left: 1px solid var(--border);
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    aside#sidebar h2 {
+      margin: 0;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    #payload {
+      flex: 1;
+      margin: 0;
+      padding: 0.75rem;
+      overflow: auto;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #c8d4f0;
+    }
+    .hint {
+      padding: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .link line {
+      stroke: #5a5a6e;
+      stroke-opacity: 0.85;
+    }
+    .link-label {
+      font-size: 9px;
+      fill: #a0a0b8;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+    .node circle {
+      stroke: #111;
+      stroke-width: 1.2px;
+      cursor: grab;
+    }
+    .node text {
+      font-size: 10px;
+      fill: #ddd;
+      pointer-events: none;
+      text-shadow: 0 0 3px #000, 0 0 6px #000;
+    }
+    .node:hover circle { stroke: #fff; stroke-width: 2px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AINL graph memory</h1>
+    <div class="filters" id="type-filters">
+      <label><input type="checkbox" data-type="episodic" checked /> episodic</label>
+      <label><input type="checkbox" data-type="semantic" checked /> semantic</label>
+      <label><input type="checkbox" data-type="procedural" checked /> procedural</label>
+      <label><input type="checkbox" data-type="persona" checked /> persona</label>
+      <label><input type="checkbox" data-type="__other__" checked /> other</label>
+    </div>
+    <button type="button" class="btn secondary" id="reload">Reload</button>
+    <button type="button" class="btn" id="export">Export JSON</button>
+    <span id="status"></span>
+  </header>
+  <main>
+    <div id="chart-wrap">
+      <svg id="chart"></svg>
+    </div>
+    <aside id="sidebar">
+      <h2>Node payload</h2>
+      <pre id="payload" class="hint">Hover a node to inspect payload (full graph in memory).</pre>
+    </aside>
+  </main>
+  <script>
+(function () {
+  const COLORS = {
+    episodic: "#4e79a7",
+    semantic: "#f28e2b",
+    procedural: "#59a14f",
+    persona: "#b07aa1",
+  };
+  const DEFAULT_COLOR = "#bab0ac";
+  const KNOWN = new Set(["episodic", "semantic", "procedural", "persona"]);
+
+  const params = new URLSearchParams(window.location.search);
+  const srcParam = params.get("src");
+  const apiBase = params.get("api") || "";
+
+  function graphUrl() {
+    const path = "/api/memory/graph";
+    if (srcParam) {
+      return (apiBase || "") + path + "?src=" + encodeURIComponent(srcParam);
+    }
+    return (apiBase || "") + path;
+  }
+
+  let rawFull = { nodes: [], edges: [] };
+  let simulation = null;
+  let gRoot = null;
+  let zoom = null;
+
+  function setStatus(msg, isErr) {
+    const el = document.getElementById("status");
+    el.textContent = msg;
+    el.style.color = isErr ? "#f66" : "";
+  }
+
+  function visibleTypes() {
+    const set = new Set();
+    document.querySelectorAll("#type-filters input[type=checkbox]").forEach((cb) => {
+      if (cb.checked) set.add(cb.dataset.type);
+    });
+    return set;
+  }
+
+  function nodeColor(d) {
+    return COLORS[d.node_type] || DEFAULT_COLOR;
+  }
+
+  function nodeVisible(n, types) {
+    const t = n.node_type || "";
+    if (types.has(t)) return true;
+    if (!KNOWN.has(t) && types.has("__other__")) return true;
+    return false;
+  }
+
+  function computeDegrees(nodes, edges) {
+    const deg = new Map(nodes.map((n) => [n.id, 0]));
+    for (const e of edges) {
+      if (deg.has(e.src)) deg.set(e.src, deg.get(e.src) + 1);
+      if (deg.has(e.dst)) deg.set(e.dst, deg.get(e.dst) + 1);
+    }
+    for (const n of nodes) n.degree = deg.get(n.id) || 0;
+  }
+
+  function nodeRadius(d) {
+    return 4 + Math.sqrt((d.degree || 0) + 1) * 3.5;
+  }
+
+  function buildFiltered() {
+    const types = visibleTypes();
+    const nodes = rawFull.nodes
+      .filter((n) => nodeVisible(n, types))
+      .map((n) => Object.assign({}, n));
+    const idSet = new Set(nodes.map((n) => n.id));
+    const edges = rawFull.edges.filter((e) => idSet.has(e.src) && idSet.has(e.dst));
+    computeDegrees(nodes, edges);
+    const nodeById = new Map(nodes.map((n) => [n.id, n]));
+    const links = edges
+      .map((e) => ({
+        id: e.id,
+        edge_type: e.edge_type,
+        label: e.label || "",
+        source: nodeById.get(e.src),
+        target: nodeById.get(e.dst),
+      }))
+      .filter((l) => l.source && l.target);
+    return { nodes, edges, links };
+  }
+
+  function exportCurrent() {
+    const { nodes, edges } = buildFiltered();
+    const blob = new Blob(
+      [JSON.stringify({ nodes, edges }, null, 2)],
+      { type: "application/json" }
+    );
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "graph_export.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function showPayload(d) {
+    const pre = document.getElementById("payload");
+    const payload = d && d.payload !== undefined ? d.payload : {};
+    pre.textContent = JSON.stringify(
+      {
+        id: d.id,
+        node_type: d.node_type,
+        agent_id: d.agent_id,
+        label: d.label,
+        tags: d.tags,
+        created_at: d.created_at,
+        ttl: d.ttl,
+        payload,
+      },
+      null,
+      2
+    );
+  }
+
+  function render() {
+    if (simulation) {
+      simulation.stop();
+      simulation = null;
+    }
+    const wrap = document.getElementById("chart-wrap");
+    const svg = d3.select("#chart");
+    svg.selectAll("*").remove();
+
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight || window.innerHeight - 52;
+    svg.attr("width", w).attr("height", h);
+
+    const { nodes, links } = buildFiltered();
+    gRoot = svg.append("g");
+    zoom = d3.zoom().scaleExtent([0.2, 4]).on("zoom", (ev) => {
+      gRoot.attr("transform", ev.transform);
+    });
+    svg.call(zoom);
+
+    if (!nodes.length) {
+      gRoot
+        .append("text")
+        .attr("x", w / 2)
+        .attr("y", h / 2)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#888")
+        .text("No nodes (toggle filters or load data).");
+      return;
+    }
+
+    simulation = d3
+      .forceSimulation(nodes)
+      .force(
+        "link",
+        d3
+          .forceLink(links)
+          .id((d) => d.id)
+          .distance(90)
+      )
+      .force("charge", d3.forceManyBody().strength(-280))
+      .force("center", d3.forceCenter(w / 2, h / 2))
+      .force(
+        "collide",
+        d3.forceCollide().radius((d) => nodeRadius(d) + 2)
+      );
+
+    const linkG = gRoot
+      .append("g")
+      .attr("class", "links")
+      .selectAll("g.link")
+      .data(links)
+      .join("g")
+      .attr("class", "link");
+
+    linkG
+      .append("line")
+      .attr("stroke-width", 1.2);
+
+    linkG
+      .append("text")
+      .attr("class", "link-label")
+      .text((d) => d.edge_type || "");
+
+    const nodeG = gRoot
+      .append("g")
+      .attr("class", "nodes")
+      .selectAll("g.node")
+      .data(nodes)
+      .join("g")
+      .attr("class", "node")
+      .call(
+        d3
+          .drag()
+          .on("start", (ev, d) => {
+            if (!ev.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+          })
+          .on("drag", (ev, d) => {
+            d.fx = ev.x;
+            d.fy = ev.y;
+          })
+          .on("end", (ev, d) => {
+            if (!ev.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+          })
+      );
+
+    nodeG
+      .append("circle")
+      .attr("r", (d) => nodeRadius(d))
+      .attr("fill", (d) => nodeColor(d))
+      .on("mouseenter", (ev, d) => showPayload(d))
+      .on("focus", (ev, d) => showPayload(d));
+
+    nodeG
+      .append("text")
+      .attr("dy", "0.35em")
+      .attr("dx", (d) => nodeRadius(d) + 4)
+      .text((d) => (d.label || d.id).slice(0, 40));
+
+    simulation.on("tick", () => {
+      linkG.select("line").each(function (d) {
+        d3.select(this)
+          .attr("x1", d.source.x)
+          .attr("y1", d.source.y)
+          .attr("x2", d.target.x)
+          .attr("y2", d.target.y);
+      });
+      linkG.select("text.link-label").each(function (d) {
+        const mx = (d.source.x + d.target.x) / 2;
+        const my = (d.source.y + d.target.y) / 2;
+        d3.select(this).attr("x", mx).attr("y", my - 4);
+      });
+      nodeG.attr("transform", (d) => `translate(${d.x},${d.y})`);
+    });
+  }
+
+  async function loadData() {
+    setStatus("Loading…");
+    const url = graphUrl();
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (e) {
+      setStatus("Fetch failed — serve this page from the graph viz server, or set ?api=http://host:port", true);
+      document.getElementById("payload").textContent =
+        "Open via: PYTHONPATH=. uvicorn armaraos.bridge.graph_viz.server:app\n" +
+        "Then visit http://127.0.0.1:8765/\n\n" +
+        "Optional URL params:\n" +
+        "  ?src=/absolute/path/to/graph.json  — passed to API as src=\n" +
+        "  ?api=http://127.0.0.1:8765 — API base when opening HTML from another origin\n" +
+        String(e);
+      return;
+    }
+    if (!res.ok) {
+      setStatus(res.status + " " + res.statusText, true);
+      document.getElementById("payload").textContent = await res.text();
+      return;
+    }
+    rawFull = await res.json();
+    if (!rawFull.nodes) rawFull.nodes = [];
+    if (!rawFull.edges) rawFull.edges = [];
+    setStatus(`${rawFull.nodes.length} nodes · ${rawFull.edges.length} edges`);
+    render();
+  }
+
+  document.getElementById("reload").addEventListener("click", loadData);
+  document.getElementById("export").addEventListener("click", exportCurrent);
+  document.querySelectorAll("#type-filters input").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      if (rawFull.nodes.length) render();
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    if (rawFull.nodes.length) render();
+  });
+
+  loadData();
+})();
+  </script>
+</body>
+</html>

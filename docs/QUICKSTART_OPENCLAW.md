@@ -6,7 +6,7 @@ This path wires **gateway `env.shellEnv`**, **SQLite** (`weekly_remaining_v1` le
 
 ## Prerequisites
 
-- Python **3.10+** and `ainl` on `PATH` (`pip install ainativelang`; current PyPI **v1.5.0**, or editable install).
+- Python **3.10+** and `ainl` on `PATH` (`pip install ainativelang`; current PyPI **v1.5.1**, or editable install).
 - **OpenClaw CLI** on `PATH` (`openclaw --help` works).
 - Optional: set `OPENCLAW_WORKSPACE` before commands so `ainl status` resolves the same workspace as your agents (otherwise default is `~/.openclaw/workspace` when that directory exists, else current working directory).
 

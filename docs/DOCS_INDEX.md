@@ -29,7 +29,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
 - **OpenClaw quickstart (5 min: ainl install openclaw, ainl status, ainl doctor --ainl):** `docs/QUICKSTART_OPENCLAW.md` — `tooling/bot_bootstrap.json` → **`openclaw_quickstart`**
 - **OpenClaw + AINL gold standard (install / upgrade, agent checklist):** `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md` — also `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`**
-- **OpenClaw host briefing — AINL v1.2.8–v1.5.0 (what ships vs host obligations; current PyPI v1.5.0):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
+- **OpenClaw host briefing — AINL v1.2.8–v1.5.1 (what ships vs host obligations; current PyPI v1.5.1):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
 - **Token / usage observability (gateway, markdown, rolling budget, caps, embedding pilot):** `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
 - **Token caps (staging order, intelligence hydrate env):** `docs/operations/TOKEN_CAPS_STAGING.md`
 - **Embedding retrieval pilot:** `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`
@@ -79,6 +79,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **ZeroClaw skill + bootstrap (`ainl install-mcp --host zeroclaw`, `~/.zeroclaw/mcp.json`, `examples/ecosystem/`):** `docs/ZEROCLAW_INTEGRATION.md`
 - **Hermes Agent + bootstrap (`ainl install-mcp --host hermes`, `~/.hermes/config.yaml`, `--emit hermes-skill`, `skills/hermes/`):** `docs/HERMES_INTEGRATION.md` · hub `docs/integrations/hermes-agent.md` · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 - **ArmaraOS + bootstrap (`ainl install armaraos`, `~/.armaraos/config.toml`, `~/.armaraos/bin/ainl-run`):** `docs/ARMARAOS_INTEGRATION.md` (PostHog for the **desktop app** is configured on the **armaraos** repo / marketing site env — not in this compiler repo)
+- **ArmaraOS JSON graph memory (`ainl_graph_memory`, `MemoryRecall`/`MemorySearch`, viz server):** `docs/adapters/AINL_GRAPH_MEMORY.md`
 - Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage, long-context memory
 - OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
 - Workflow patterns: `docs/PATTERNS.md`

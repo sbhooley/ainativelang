@@ -2,7 +2,7 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.5.0** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.5.1** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
 ## Public API surface (for downstream apps)
 

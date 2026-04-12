@@ -37,6 +37,8 @@ from adapters.armaraos_integration import armaraos_monitor_registry
 from adapters.armaraos_memory import OpenFangMemoryAdapter
 from adapters.armaraos_token_tracker import OpenFangTokenTrackerAdapter
 
+from armaraos.bridge.ainl_graph_memory import AINLGraphMemoryBridge
+
 import importlib.util
 
 _ir_spec = importlib.util.spec_from_file_location("ainl_bridge_ir_cache", _BRIDGE_DIR / "ir_cache.py")
@@ -98,11 +100,15 @@ _BRIDGE_GRANT = _load_bridge_grant()
 _REQUIRED_ADAPTERS = {
     "core",  # always required
     "armaraos_memory",
+    "ainl_graph_memory",
     "github",
     "crm",
     "armaraos_token_tracker",
     "bridge",
 }
+
+# Last graph-memory bridge from build_wrapper_registry() (for delegation hooks in main).
+_GRAPH_MEMORY_BRIDGE: AINLGraphMemoryBridge | None = None
 
 # Validate at import time (before main)
 _eff_aa = grant_to_allowed_adapters(_BRIDGE_GRANT)
@@ -186,6 +192,7 @@ def _crm_health_url() -> str:
 
 
 def build_wrapper_registry():
+    global _GRAPH_MEMORY_BRIDGE
     if not (os.environ.get("OPENROUTER_API_KEY") or "").strip():
         os.environ["OPENROUTER_API_KEY"] = os.environ.get(
             "AINL_OPENROUTER_PLACEHOLDER_KEY", "unset-openrouter-key-wrapper-registry"
@@ -193,14 +200,17 @@ def build_wrapper_registry():
     # Keep registry construction simple: runtime AdapterRegistry + explicit allow/register.
     # (armaraos_monitor_registry is a thin helper returning an empty registry.)
     reg: AdapterRegistry = armaraos_monitor_registry()
-    for name in ("armaraos_memory", "github", "crm", "armaraos_token_tracker"):
+    for name in ("armaraos_memory", "ainl_graph_memory", "github", "crm", "armaraos_token_tracker"):
         reg.allow(name)
     reg.register("armaraos_memory", OpenFangMemoryAdapter())
+    _GRAPH_MEMORY_BRIDGE = AINLGraphMemoryBridge()
+    reg.register(AINLGraphMemoryBridge.NAME, _GRAPH_MEMORY_BRIDGE)
     reg.register("github", GitHubAdapter())
     reg.register("crm", CrmAdapter())
     reg.register("armaraos_token_tracker", OpenFangTokenTrackerAdapter())
     reg.allow("bridge")
     reg.register("bridge", BridgeTokenBudgetAdapter())
+    _GRAPH_MEMORY_BRIDGE.boot(agent_id="armaraos")
     return reg
 
 
@@ -249,6 +259,16 @@ def main() -> None:
     except Exception as e:
         logger.exception("Runtime error: %s", e)
         sys.exit(3)
+
+    # Record wrapper execution as a delegation edge in graph memory (replaces ad-hoc markdown lines).
+    if _GRAPH_MEMORY_BRIDGE is not None:
+        _GRAPH_MEMORY_BRIDGE.on_delegation(
+            delegator="armaraos_bridge",
+            delegatee=f"wrapper:{name}",
+            task=name,
+            payload={"wrapper": name, "dry_run": dry, "out_preview": str(out)[:500]},
+            context={"dry_run": dry},
+        )
 
     payload = {"ok": True, "wrapper": name, "out": out}
     print(json.dumps(payload, indent=2, default=str))

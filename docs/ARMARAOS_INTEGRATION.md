@@ -62,6 +62,13 @@ AINL prefers `ARMARAOS_*` for ArmaraOS integration, with `AINL_*` and legacy `OP
 | IR cache directory | `AINL_IR_CACHE_DIR` | (none) |
 | Monitor cache JSON | `MONITOR_CACHE_JSON` | (none) |
 | FS sandbox root | `AINL_FS_ROOT` | (none) |
+| JSON graph memory file | `AINL_GRAPH_MEMORY_PATH` | (default `~/.armaraos/ainl_graph_memory.json`) |
+
+## AINL graph memory (bridge + runtime)
+
+The **`ainl_graph_memory`** adapter stores typed **nodes** and **edges** in a JSON file (default under `~/.armaraos/`). The ArmaraOS bridge runner (`armaraos/bridge/runner.py`) registers it, calls **`boot()`** on startup, and after each successful wrapper run records a delegation node via **`on_delegation`**.
+
+AINL’s **`RuntimeEngine`** also supports IR ops **`MemoryRecall`** and **`MemorySearch`**, which dispatch the same adapter (for graphs compiled with those steps or nodes). Full contract, `R` examples, optional **FastAPI + D3** graph browser, and tests: **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
 
 ## PostHog (ArmaraOS desktop only)
 
@@ -92,6 +99,7 @@ args = []
 
 ## See also
 
+- **Graph memory adapter + engine ops:** `docs/adapters/AINL_GRAPH_MEMORY.md`
 - Host hub: `docs/getting_started/HOST_MCP_INTEGRATIONS.md`
 - ArmaraOS config reference: `armaraos/docs/CONFIG.md`
 - ArmaraOS install notes: `armaraos/docs/INSTALL.md`

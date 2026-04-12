@@ -46,6 +46,8 @@ Covered strict migration fields include:
 - `CacheGet.key`
 - `CacheGet.fallback`
 - `CacheSet.value`
+- `MemoryRecall.node_id`
+- `MemorySearch.query` / `MemorySearch.limit`
 - `QueuePut.value`
 
 ### Top-level `S` (service) lines and cron
@@ -83,6 +85,7 @@ Current policy remains graph-preferred:
 - If label graph data (`nodes`, `edges`, `entry`) is present, runtime executes graph semantics.
 - Step execution is retained as compatibility/fallback and for explicit `steps-only`.
 - Both paths share the same op handlers where possible to reduce semantic drift.
+- **`MemoryRecall`** / **`MemorySearch`** dispatch the **`ainl_graph_memory`** adapter from **`_exec_step`** (shared with async graph) and from sync **`_run_label_graph`**; see **[`docs/adapters/AINL_GRAPH_MEMORY.md`](adapters/AINL_GRAPH_MEMORY.md)**.
 
 ### Graph execution pitfalls (object literals, `J`, `Set` lists)
 
@@ -116,6 +119,7 @@ without requiring a global `python` on `PATH`.
 - Runtime/compiler step-schema conformance: `tests/test_runtime_compiler_conformance.py`
 - Runtime behavior sanity and capability op execution: `tests/test_runtime_basic.py`
 - Graph/step parity and retry/error routing: `tests/test_runtime_parity.py`, `tests/test_runtime_graph_only.py`
+- Graph memory ops + adapter call contract: `tests/test_memory_recall_op.py`
 - Malformed `S`+`cron` schedule lines (IR `services.path` drift): `tests/test_s_cron_schedule_lines.py`
 
 ## CI gate behavior note (v1.3.3 release line)

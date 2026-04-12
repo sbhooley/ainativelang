@@ -5,7 +5,7 @@ Use this section for real deployment-style operational docs: monitors, playbooks
 ## Key docs
 
 - [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) — **OpenClaw + AINL gold standard** (profiles, caps, cron, host behavior, verification); **`openclaw_ainl_gold_standard`**
-- [`OPENCLAW_HOST_AINL_1_2_8.md`](OPENCLAW_HOST_AINL_1_2_8.md) — **AINL v1.2.8–v1.5.0 host briefing** (bridge probe, rolling hydrate, profiles, explicit OpenClaw responsibilities); **`openclaw_host_ainl_1_2_8`**
+- [`OPENCLAW_HOST_AINL_1_2_8.md`](OPENCLAW_HOST_AINL_1_2_8.md) — **AINL v1.2.8–v1.5.1 host briefing** (bridge probe, rolling hydrate, profiles, explicit OpenClaw responsibilities); **`openclaw_host_ainl_1_2_8`**
 - [`AINL_PROFILES.md`](AINL_PROFILES.md) — **named env profiles** (`ainl profile list|show|emit-shell`), portable defaults for many installs
 - [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md) — separate DBs/paths per workspace or tenant
 - [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md) — OpenClaw reference bundle (links bootstrap + monitoring + profiles)

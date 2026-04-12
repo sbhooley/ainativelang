@@ -65,7 +65,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.5.0"
+RUNTIME_VERSION = "1.5.1"
 
 
 def _parse_host_csv_env(name: str) -> Optional[List[str]]:
@@ -95,8 +95,25 @@ def _fallback_adapters_from_label_steps(ir: Dict[str, Any]) -> List[str]:
                 found.add("queue")
             elif op in ("CacheGet", "CacheSet"):
                 found.add("cache")
+            elif op in ("MemoryRecall", "MemorySearch"):
+                found.add("ainl_graph_memory")
             elif op == "R":
                 adapter = str(step.get("adapter") or "").strip()
+                if adapter:
+                    found.add(adapter.split(".", 1)[0].lower())
+        for n in (body.get("nodes") or []):
+            if not isinstance(n, dict):
+                continue
+            st = n.get("data") or {}
+            gop = str(st.get("op") or n.get("op") or "").strip()
+            if gop in ("MemoryRecall", "MemorySearch"):
+                found.add("ainl_graph_memory")
+            elif gop in ("CacheGet", "CacheSet"):
+                found.add("cache")
+            elif gop == "QueuePut":
+                found.add("queue")
+            elif gop == "R":
+                adapter = str(st.get("adapter") or "").strip()
                 if adapter:
                     found.add(adapter.split(".", 1)[0].lower())
     return sorted(found)
@@ -1039,6 +1056,31 @@ class RuntimeEngine:
             self._count_adapter_call(lid, idx, op, stack)
             self.adapters.get_cache().set(name, key, value, ttl_s=ttl_s)
             return {"action": "continue", "out": None}
+        if op == "MemoryRecall":
+            out_var = step.get("out", "recalled")
+            node_id = str(self._resolve(step.get("node_id", ""), frame))
+            self._count_adapter_call(lid, idx, op, stack)
+            call_ctx = dict(frame)
+            call_ctx["_runtime_async"] = self.runtime_async
+            call_ctx["_observability"] = self.observability
+            call_ctx["_adapter_registry"] = self.adapters
+            frame[out_var] = self.adapters.call("ainl_graph_memory", "memory_recall", [node_id], call_ctx)
+            return {"action": "continue", "out": frame.get(out_var)}
+        if op == "MemorySearch":
+            out_var = step.get("out", "results")
+            query = str(self._resolve(step.get("query", ""), frame))
+            node_type = step.get("node_type")
+            agent_id = step.get("agent_id")
+            limit = int(step.get("limit", 10))
+            self._count_adapter_call(lid, idx, op, stack)
+            call_ctx = dict(frame)
+            call_ctx["_runtime_async"] = self.runtime_async
+            call_ctx["_observability"] = self.observability
+            call_ctx["_adapter_registry"] = self.adapters
+            frame[out_var] = self.adapters.call(
+                "ainl_graph_memory", "memory_search", [query, node_type, agent_id, limit], call_ctx
+            )
+            return {"action": "continue", "out": frame.get(out_var)}
         if op == "QueuePut":
             queue = step.get("queue", "")
             value = self._resolve(step.get("value"), frame)
@@ -1859,6 +1901,51 @@ class RuntimeEngine:
                     self._count_adapter_call(lid, idx, op, stack)
                     self.adapters.get_cache().set(name, key, value, ttl_s=ttl_s)
                     self._emit_trace(lid, op, idx, t0, frame, None, node_id=cur, trajectory_step=step)
+
+                elif op == "MemoryRecall":
+                    out_var = step.get("out", "recalled")
+                    node_id = str(self._resolve(step.get("node_id", ""), frame))
+                    self._count_adapter_call(lid, idx, op, stack)
+                    call_ctx = dict(frame)
+                    call_ctx["_runtime_async"] = self.runtime_async
+                    call_ctx["_observability"] = self.observability
+                    call_ctx["_adapter_registry"] = self.adapters
+                    frame[out_var] = self.adapters.call("ainl_graph_memory", "memory_recall", [node_id], call_ctx)
+                    self._emit_trace(
+                        lid,
+                        op,
+                        idx,
+                        t0,
+                        frame,
+                        frame.get(out_var),
+                        node_id=cur,
+                        trajectory_step=step,
+                    )
+
+                elif op == "MemorySearch":
+                    out_var = step.get("out", "results")
+                    query = str(self._resolve(step.get("query", ""), frame))
+                    node_type = step.get("node_type")
+                    agent_id = step.get("agent_id")
+                    limit = int(step.get("limit", 10))
+                    self._count_adapter_call(lid, idx, op, stack)
+                    call_ctx = dict(frame)
+                    call_ctx["_runtime_async"] = self.runtime_async
+                    call_ctx["_observability"] = self.observability
+                    call_ctx["_adapter_registry"] = self.adapters
+                    frame[out_var] = self.adapters.call(
+                        "ainl_graph_memory", "memory_search", [query, node_type, agent_id, limit], call_ctx
+                    )
+                    self._emit_trace(
+                        lid,
+                        op,
+                        idx,
+                        t0,
+                        frame,
+                        frame.get(out_var),
+                        node_id=cur,
+                        trajectory_step=step,
+                    )
 
                 elif op == "QueuePut":
                     queue = step.get("queue", "")

@@ -91,6 +91,8 @@ all deployment environments (OpenClaw, NemoClaw, custom hosts).
 - **Bridges:** JSON/JSONL export/import (`tooling/memory_bridge.py`),
   markdown export (`tooling/memory_markdown_bridge.py`)
 
+**Graph memory adapter (`ainl_graph_memory`)** — separate from SQLite **`memory`**: JSON file of typed **nodes/edges** (default `~/.armaraos/ainl_graph_memory.json`), ArmaraOS bridge integration, optional IR ops **`MemoryRecall`** / **`MemorySearch`**. See **[`../adapters/AINL_GRAPH_MEMORY.md`](../adapters/AINL_GRAPH_MEMORY.md)**.
+
 **SQLite adapter** — direct SQL access for structured queries and mutations.
 
 - **Verbs:** `Query` (read-only), `Execute` (write, if `allow_write=True`)
