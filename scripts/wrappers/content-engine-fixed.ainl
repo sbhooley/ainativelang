@@ -1,0 +1,125 @@
+# content-engine-fixed.ainl
+# Fixed version of content-engine.ainl with correct AINL syntax
+
+S core now ->L_start
+
+L_start:
+  # Configuration - get from environment or defaults
+  X repo_owner (core.env "GITHUB_REPO_OWNER" "apollo-x-bot")
+  X repo_name (core.env "GITHUB_REPO_NAME" "apollo-x-bot")
+  X telegram_target (core.env "TELEGRAM_TARGET" "")
+  
+  X repo_full (core.concat repo_owner "/" repo_name)
+
+  # Process trending repos
+  J L_process_trends
+
+L_process_trends:
+  # Search for trending repos using github adapter
+  R github search_repos { "q": "stars:>100", "sort": "stars", "order": "desc" } ->search_result
+  
+  # Extract items from search result
+  X items (core.get search_result "items")
+  
+  # Filter repos with language and sufficient stars
+  Filter items where (core.ne (core.get repo "language") null) ->f1
+  Filter f1 where (core.ne (core.get repo "language") "") ->f2
+  Filter f2 where (core.gt (core.get repo "stargazers_count") 100) ->repos
+  
+  # Log success
+  R openclaw_integration log_success { 
+    "program": "content-engine", 
+    "notes": core.concat "Fetched " (core.len repos) " trending repos" 
+  } ->_
+  J L_generate_content
+rescue:
+  R openclaw_integration log_failure { 
+    "program": "content-engine", 
+    "error": (core.get err "message"), 
+    "context": "Failed to fetch trending repos from GitHub" 
+  } ->_
+  Ret "error: trending fetch failed"
+
+L_generate_content:
+  # Initialize variables
+  Set i 0
+  Set count (core.len repos)
+  Set generated []
+  
+  # Determine which model to use: respect budget override if present
+  R cache Get "budget" "model_override" ->model_override
+  If (core.ne model_override "") ->L_model_override ->L_model_default
+  J L_gen_loop
+
+L_model_override:
+  X model model_override
+  J L_gen_loop
+  
+L_model_default:
+  Set model "stepfun/step-3.5-flash:free"
+  J L_gen_loop
+
+L_gen_loop:
+  If (core.ge i count) ->L_gen_done
+  begin:
+    X repo (core.get repos i)
+    X title (core.get repo "name")
+    X desc_raw (core.get repo "description" "")
+    X desc (core.if (core.eq desc_raw "") "No description" desc_raw)
+    X prompt (core.concat "Write a tweet (280 chars) about " title ". Focus on why developers care. Info: " desc)
+    
+    # Generate content using LLM
+    R llm COMPLETION { 
+      "model": model, 
+      "prompt": prompt, 
+      "max_tokens": 100 
+    } ->resp
+    
+    X content (core.get resp "text")
+    X item { 
+      "repo_id": (core.get repo "id"), 
+      "title": title, 
+      "content": content 
+    }
+    Set generated (core.append generated item)
+  rescue:
+    R openclaw_integration log_failure { 
+      "program": "content-engine", 
+      "error": (core.get err "message"), 
+      "context": core.concat "Failed to generate content for " title 
+    } ->_
+    # skip this item but continue
+  X i (core.add i 1)
+  J L_gen_loop
+  
+L_gen_done:
+  R openclaw_integration log_success { 
+    "program": "content-engine", 
+    "notes": core.concat "Generated " (core.len generated) " content pieces" 
+  } ->_
+  J L_send
+
+L_send:
+  begin:
+    X summary (core.join "\n\n---\n\n" generated)
+    X chat_id telegram_target
+    If (core.ne chat_id "") ->L_do_send ->L_skip_send
+  L_do_send:
+    # Send via Telegram using openclaw integration
+    R openclaw_integration send_telegram { 
+      "chat_id": chat_id, 
+      "text": summary 
+    } ->sent_status
+    R openclaw_integration log_success { 
+      "program": "content-engine", 
+      "notes": "Digest sent to Telegram" 
+    } ->_
+  L_skip_send:
+    Ret summary
+  rescue:
+    R openclaw_integration log_failure { 
+      "program": "content-engine", 
+      "error": (core.get err "message"), 
+      "context": "Failed to send Telegram digest" 
+    } ->_
+    Ret summary

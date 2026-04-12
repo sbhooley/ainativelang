@@ -57,7 +57,7 @@ logger = logging.getLogger("ainl.wrapper")
 WRAPPERS = {
     "github-intelligence": ROOT / "scripts" / "wrappers" / "github-intelligence.ainl",
     "content-engine": ROOT / "scripts" / "wrappers" / "content-engine.ainl",
-    "supervisor": ROOT / "scripts" / "wrappers" / "supervisor.ainl",
+    "supervisor": ROOT / "scripts" / "wrappers" / "supervisor_fixed.ainl",
     "full-unification": ROOT / "examples" / "openclaw_full_unification.ainl",
     "token-budget-alert": _BRIDGE_DIR / "wrappers" / "token_budget_alert.ainl",
     "weekly-token-trends": _BRIDGE_DIR / "wrappers" / "weekly_token_trends.ainl",
