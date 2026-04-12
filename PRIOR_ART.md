@@ -9,13 +9,18 @@ This document establishes the chronological record of graph-as-memory architectu
 | Date | Event | Type | Source |
 |------|-------|------|--------|
 | **January 6, 2026** | MAGMA paper (arXiv) | Academic | arXiv:2601.03236 |
-| **February 22, 2026** | AINL v1.0 initial release | Implementation | AI Native Lang project |
-| **March 10, 2026** | AINL public release to GitHub | Release | git commit d3a0305 |
+| **February 22, 2026** | AINL working implementation | **Implementation** | AI Native Lang project |
+| **March 10, 2026** | AINL public release (GitHub) | **Public Release** | git commit d3a0305 |
 | **March 16, 2026** | AINL Whitepaper documentation | Theory | WHITEPAPERDRAFT.md |
 | **March 18, 2026** | Google ADK 2.0 Alpha | Industry | google-adk 2.0.0a1 |
 | **March 21-26, 2026** | AINL refinements | Development | AINL repo commits |
 | **April 6-10, 2026** | Karpathy LLM Wiki | Independent | @karpathy (Twitter) |
 | **April 12, 2026 3:13 AM MDT** | ArmaraOS ainl-memory v0.1.1-alpha | Implementation | crates.io |
+
+**Prior Art Timeline Summary:**
+- **Working implementation (Feb 22)** predates Google ADK 2.0 by **24 days**
+- **Public release (Mar 10)** predates Google ADK 2.0 by **8 days**
+- Both establish clear prior art for intrinsic execution-as-memory architecture
 
 ---
 
@@ -41,21 +46,24 @@ MAGMA treats memory as an **external artifact** that augments the LLM. The memor
 
 ---
 
-### 2. AINL Initial Release with Working Code (February 22, 2026)
+### 2. AINL Working Implementation (February 22, 2026)
 
-**Publication:** AI Native Lang v1.0 — full language/substrate + graph-in-memory implementation  
+**Type:** Working implementation (private initial commit)  
 **Date:** February 22, 2026, 19:24:32 -0600  
 **Repository:** https://github.com/sbhooley/ainativelang  
 **Commit:** `08f4b16b8bd63d1cd333c5fa0fd4cae6fb68cd7e`  
 **Commit message:** "Initial commit: AI Native Lang project"
 
+**Prior Art Significance:**
+- **Working implementation predates Google ADK 2.0 by 24 days** (Feb 22 vs Mar 18)
+- **First working code** for intrinsic execution-as-memory architecture
+- Establishes implementation prior art independent of public release date
+
 **Key implementation contributions:**
-- **First working graph-in-memory implementation** based on intrinsic execution-as-memory architecture
 - Full language runtime with graph substrate
 - Episode, Semantic, Procedural, Persona memory types implemented
 - "Execution IS the memory substrate. No separate retrieval layer."
-- Published **47 days after** MAGMA (January 6 vs February 22)
-- Published **24 days before** Google ADK 2.0 (February 22 vs March 18)
+- Published **47 days after** MAGMA academic paper (January 6 vs February 22)
 
 **Architecture approach - INTRINSIC MEMORY:**
 > "AINL proposes that if workflows are already graphs (nodes = steps, edges = control flow), then **the graph itself should be the memory**. Every delegation becomes a graph node. Every tool call is an edge. The execution trace IS the retrievable memory."
@@ -63,13 +71,13 @@ MAGMA treats memory as an **external artifact** that augments the LLM. The memor
 AINL treats the execution graph as **intrinsic memory**. There is no external memory system - the workflow graph that orchestrates execution IS the memory. Retrieval = graph traversal of past executions.
 
 **Relationship to MAGMA:**
-- Published **47 days after** MAGMA (about 6 weeks)
+- Working implementation **47 days after** MAGMA (about 6 weeks)
 - **Architectural divergence**: MAGMA adds external memory layer, AINL unifies execution and memory
 - MAGMA: LLM + External Memory + Retrieval Layer
 - AINL: Execution Graph = Memory (no separate layers)
 
 **Relationship to Google ADK 2.0:**
-- Published **24 days before** Google ADK 2.0 with working code
+- Working implementation **24 days before** Google ADK 2.0
 - Both use graph-based workflows
 - AINL unifies execution and memory; ADK 2.0 separates MemoryService
 
@@ -77,15 +85,20 @@ AINL treats the execution graph as **intrinsic memory**. There is no external me
 
 ---
 
-### 2a. AINL Public GitHub Release (March 10, 2026)
+### 2a. AINL Public Release (March 10, 2026)
 
-**Publication:** Public push to GitHub  
+**Type:** Public release to GitHub  
 **Date:** March 10, 2026, 00:42:34 -0500  
 **Repository:** https://github.com/sbhooley/ainativelang  
 **Commit:** `d3a03051c93be3be04d07b631a92086c12aafd21`  
 **Commit message:** "Release: push full AI Native Lang project to sbhooley/ainativelang"
 
-**Status:** Public release of working code that was initially committed February 22.
+**Prior Art Significance:**
+- **Public release predates Google ADK 2.0 by 8 days** (Mar 10 vs Mar 18)
+- Makes working implementation (Feb 22) publicly verifiable
+- Establishes public disclosure prior art independent of private implementation date
+
+**Status:** Public release of working code that was initially committed February 22, now publicly accessible for verification and independent validation.
 
 ---
 
@@ -252,9 +265,11 @@ The **verified timeline** shows:
 
 **Key observations:**
 
+- **DUAL PRIOR ART CLAIM: AINL's strongest claim distinguishes implementation from disclosure**
+  - **Working implementation (Feb 22)** predates Google ADK 2.0 by **24 days**
+  - **Public release (Mar 10)** predates Google ADK 2.0 by **8 days**
 - **AINL published working graph-in-memory code only 47 days after MAGMA paper** (January 6 to February 22)
-- **AINL published 24 days before Google ADK 2.0** (February 22 vs March 18)
-- **49 days** from AINL initial release to standalone ArmaraOS crates (February 22 to April 12)
+- **49 days** from AINL working implementation to standalone ArmaraOS crates (February 22 to April 12)
 - **Karpathy proposal** emerged independently 2-6 days before ArmaraOS publication
 - **Consistent pattern:** AINL, Google ADK 2.0, and Karpathy all converge on graph-based architectures
 - **Architectural divergence:** MAGMA (external), AINL (intrinsic), Google ADK (hybrid)
@@ -265,10 +280,17 @@ The **verified timeline** shows:
 ## Establishing Priority
 
 **For intrinsic graph-as-memory implementations (verified):**
-- **AINL v1.0 (February 22, 2026)** — **first working implementation** of intrinsic execution-as-memory
-- Published **24 days before** Google ADK 2.0
-- Published **47 days after** MAGMA paper
+
+**DUAL PRIOR ART CLAIM:**
+- **Working implementation (Feb 22, 2026)** — predates Google ADK 2.0 by **24 days**
+- **Public release (Mar 10, 2026)** — predates Google ADK 2.0 by **8 days**
+- Both dates establish independent prior art for intrinsic execution-as-memory architecture
+
+**AINL v1.0 (February 22, 2026):**
+- **First working implementation** of intrinsic execution-as-memory
+- Git commit `08f4b16b8bd` with message "Initial commit: AI Native Lang project"
 - Full language runtime with Episode/Semantic/Procedural/Persona memory types
+- Published **47 days after** MAGMA academic paper (transforming theory to working code in 6 weeks)
 
 **For theoretical documentation (verified):**
 - AINL whitepaper (March 16, 2026) documented the architecture **23 days after** initial working code release
