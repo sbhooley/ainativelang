@@ -76,6 +76,15 @@ Add tests in `tests/` to cover:
 1. Create functions in `adapters/tools/openclaw/tools.py` that call `OpenClawGateway.call(tool_name, args)`.
 2. Register new tool names in a central mapping if needed.
 
+## `AdapterRegistry`: `get` vs `call` (runtime embedders)
+
+The Python runtime’s **`AdapterRegistry`** (`runtime/adapters/base.py`) holds **`RuntimeAdapter`** instances for **`ainl run`**, bridge runners, and tests.
+
+- **`registry.get(name: str) -> RuntimeAdapter | None`** — Returns the **registered** adapter, or **`None`** if the name was never **`register`**’d. It does **not** consult the capability **allowlist** (`_allowed`). Use **`get`** for **internal wiring** that already validated grants elsewhere (for example **`RuntimeEngine`** resolving **`ainl_graph_memory`** for GraphPatch paths, or **`boot_armaraos_graph_memory`** fetching the graph-memory bridge after **`allow`/`register`**).
+- **`registry.call(adapter_name, target, args, context)`** — Enforces **`adapter_name in _allowed`** before dispatch; this is the normal path for **operator-facing** adapter calls from compiled graphs.
+
+If you add embedder code that mirrors the ArmaraOS bridge pattern, prefer **`call`** for anything that should respect host profiles; reserve **`get`** for controlled call sites that need the concrete adapter object without a second capability check. See **`docs/ARMARAOS_INTEGRATION.md`** (graph-memory / registry) and **`tests/test_armaraos_monitor_registry.py`**.
+
 ## Conformance
 
 All adapters must pass:

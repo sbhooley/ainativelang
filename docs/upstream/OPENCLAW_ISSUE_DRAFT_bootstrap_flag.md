@@ -59,7 +59,7 @@ Alternatively, read from `openclaw.json` config (e.g., `config.get('bootstrap.pr
 
 ## Context for Maintainers
 
-- AINL **v1.2.8+** includes a wrapper `token_aware_startup_context.ainl` that generates the compact context file on a schedule (e.g., every 15 minutes); **current PyPI: v1.6.0**.
+- AINL **v1.2.8+** includes a wrapper `token_aware_startup_context.ainl` that generates the compact context file on a schedule (e.g., every 15 minutes); **current PyPI: v1.7.0**.
 - The wrapper and bridge integration are documented in `AI_Native_Lang/docs/openclaw/TOKEN_AWARE_STARTUP_CONTEXT.md`.
 - Current recommendation: use native support on recent OpenClaw builds and avoid patch scripts unless running an older version.
 - Making this native removes a significant barrier to adoption and aligns with OpenClaw’s philosophy of user-friendly AI integration.

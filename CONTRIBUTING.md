@@ -13,7 +13,7 @@ Please read the relevant project materials before making substantial changes.
 Start with:
 
 - `README.md`
-- **`docs/CHANGELOG.md`** / **`docs/RELEASE_NOTES.md`** — **current release v1.6.0** (see also **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**). Solana / prediction-market contributions: **`docs/solana_quickstart.md`** (including the community-team section).
+- **`docs/CHANGELOG.md`** / **`docs/RELEASE_NOTES.md`** — **current release v1.7.0** (see also **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**). Solana / prediction-market contributions: **`docs/solana_quickstart.md`** (including the community-team section).
 - `docs/DOCS_INDEX.md`
 - `docs/AINL_SPEC.md`
 - `SEMANTICS.md`

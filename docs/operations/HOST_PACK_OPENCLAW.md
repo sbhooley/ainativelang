@@ -6,7 +6,7 @@ This is a **documentation bundle** for a supported OpenClaw stack: **not** a sep
 
 **Start here:** [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) — profiles (`openclaw-default` → `cost-tight`), caps, cron, host bootstrap, verification, and **`budget_hydrate`** checks. **`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**.
 
-**AINL v1.6.0 — host responsibilities (what ships vs what you must wire):** [`OPENCLAW_HOST_AINL_1_2_8.md`](OPENCLAW_HOST_AINL_1_2_8.md) — **`openclaw_host_ainl_1_2_8`** (bridge probe, rolling hydrate, profiles, explicit OpenClaw obligations).
+**AINL v1.7.0 — host responsibilities (what ships vs what you must wire):** [`OPENCLAW_HOST_AINL_1_2_8.md`](OPENCLAW_HOST_AINL_1_2_8.md) — **`openclaw_host_ainl_1_2_8`** (bridge probe, rolling hydrate, profiles, explicit OpenClaw obligations).
 
 ## Contents
 

@@ -8,7 +8,7 @@ order: 9
 
 Upstream host: **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** (Nous Research).
 
-**PyPI:** `ainativelang` **v1.6.0**.
+**PyPI:** `ainativelang` **v1.7.0**.
 
 AINL ships **official, first-class Hermes Agent support**: compile-once deterministic graphs (AINL) paired with Hermes’ **closed learning loop** and persistent memory via **Honcho**.
 

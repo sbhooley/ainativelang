@@ -106,6 +106,12 @@ Daily markdown target (unless overridden): **`~/.openclaw/workspace/memory/YYYY-
 | `token-usage` | `python3 openclaw/bridge/ainl_bridge_main.py token-usage` | Ad-hoc report to stdout; optional append (see flags); `--json-output` for wrappers |
 | `cron_drift_check.py` | `python3 openclaw/bridge/cron_drift_check.py` | Read-only: registry vs IR vs `openclaw cron list` |
 | `ainl_memory_append_cli.py` | `python3 openclaw/bridge/ainl_memory_append_cli.py "line"` | Manual one-line append to today’s OpenClaw markdown |
+| `supervisor` | `python3 openclaw/bridge/run_wrapper_ainl.py supervisor` | **Source graph:** `scripts/wrappers/supervisor_fixed.ainl` (see `WRAPPERS["supervisor"]` in `run_wrapper_ainl.py`). Uses canonical **`R openclaw_memory append_today`** for daily markdown append — keep this form when editing copy-paste cron payloads. |
+
+#### OpenSpace / MCP dev smoke
+
+- **Wrapper name `test-openspace-mcp`:** `python3 openclaw/bridge/run_wrapper_ainl.py test-openspace-mcp --dry-run` — loads **`demo/test_openspace_mcp.ainl`** (HTTP MCP **`execute_task`**; demo tree, not strict-valid CI).
+- **Repo-root harness:** `python3 run_openspace_test.py` — same demo graph with **`openclaw_monitor_registry()`** for quick adapter/registry smoke (paths resolved from repo root).
 
 #### Environment variables (monitoring)
 

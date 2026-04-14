@@ -6,7 +6,7 @@
 
 The `token_aware_startup_context` wrapper (AINL) reads your full `MEMORY.md`, filters for high-signal lines (decisions, preferences, todos, lessons, settings), and writes an optimized bootstrap file targeted to a configurable token budget (tuned to **100-150** tokens, typically **~140**).
 
-This reduces session bootstrap tokens from ~3,200 (full MEMORY.md) to ~150 tokens (>95% reduction), preventing context max-outs during high-frequency usage. It is part of the AINL v1.2.8+ enhancements for OpenClaw (shipped; current **v1.6.0** includes `ainl install openclaw` and `ainl status`).
+This reduces session bootstrap tokens from ~3,200 (full MEMORY.md) to ~150 tokens (>95% reduction), preventing context max-outs during high-frequency usage. It is part of the AINL v1.2.8+ enhancements for OpenClaw (shipped; current **v1.7.0** includes `ainl install openclaw` and `ainl status`).
 
 ## Deployment Status
 
@@ -15,7 +15,7 @@ This reduces session bootstrap tokens from ~3,200 (full MEMORY.md) to ~150 token
 - Cron job: `Token-Aware Startup Context` (runs every 15 minutes)
 - Runner: `openclaw/bridge/run_wrapper_ainl.py`
 - Session key: `agent:default:ainl-advocate`
-- **Optimizations (v1.2.8–v1.6.0 cumulative):**
+- **Optimizations (v1.2.8–v1.7.0 cumulative):**
   - Token budget tightened: `MIN=100`, `MAX=150` (now `MAX=100` in config) → typical output **~115 tokens** (range 100–150)
   - Embedding selection currently disabled in wrapper runtime (`useEmb=false`) for stability; filesystem heuristics are used
   - Compaction tuned: `reserveTokens=30000` (from 50k) for more frequent pruning

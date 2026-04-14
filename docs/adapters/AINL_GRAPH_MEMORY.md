@@ -71,6 +71,17 @@ When the ArmaraOS host (or any wrapper) exports **`ARMARAOS_AGENT_ID`**, Python 
 
 **Typical Python producers:** the graph-memory bridge may push episodic **boot** rows after **`boot()`**, **persona** rows after **`persona_update()`**, and **patch** rows after **`memory_patch()`** flush when sync is available; **`armaraos/bridge/runner.py`** can record **non-core** adapter calls via **`on_tool_execution`** into the same inbox path when **`ARMARAOS_AGENT_ID`** is set.
 
+### Episodic cognitive vitals (`vitals_gate`, `vitals_phase`, `vitals_trust`)
+
+ArmaraOS can attach **Styxx-style** logprob-derived **cognitive vitals** to **episodic** graph nodes. The Python **`MemoryNode`** model and inbox envelope accept three optional **float** fields — **`vitals_gate`**, **`vitals_phase`**, **`vitals_trust`** — so rows written from Python or ingested from a Rust **`AgentGraphSnapshot` / inbox** round-trip without loss.
+
+| Concern | Detail |
+|---------|--------|
+| **Python model** | **`MemoryNode`** in **`armaraos/bridge/ainl_graph_memory.py`** — **`from_dict` / `to_dict`** include the three fields when present. |
+| **Inbox schema** | **`armaraos/bridge/ainl_graph_memory_inbox_schema_v1.json`** — optional keys on episodic node objects (validated in CI). |
+| **Rust parity** | **`EpisodeNode`** vitals in **ArmaraOS** `openfang-runtime` / extractor path; pair **AINL** **v1.7.0** with an ArmaraOS build that includes **patch** inbox drain + vitals ingest if you rely on **`node_type: patch`** from inbox. |
+| **Tests** | **`tests/test_vitals_bridge.py`** — snapshot import + dict round-trip. |
+
 ## Runtime adapter: `AINLGraphMemoryBridge`
 
 Registered under the canonical adapter name **`ainl_graph_memory`**. Dispatch is via `RuntimeAdapter.call(target, args, context)`:

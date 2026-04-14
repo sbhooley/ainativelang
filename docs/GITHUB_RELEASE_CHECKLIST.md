@@ -69,6 +69,7 @@ Advanced memory and TTL hygiene:
 
 - [ ] Memory adapter contract and verbs (`put`, `get`, `append`, `list`, `delete`, `prune`) match `docs/adapters/MEMORY_CONTRACT.md`, `tooling/adapter_manifest.json`, and `ADAPTER_REGISTRY.json`.
 - [ ] Graph memory (`ainl_graph_memory`, IR **`MemoryRecall`/`MemorySearch`**) is reflected in `docs/adapters/AINL_GRAPH_MEMORY.md`, `tooling/adapter_manifest.json`, `tooling/effect_analysis.py` (**`ADAPTER_EFFECT`**), and (when listed) `ADAPTER_REGISTRY.json` / `docs/reference/ADAPTER_REGISTRY.md`.
+- [ ] **Cross-repo ArmaraOS bridge CI:** `.github/workflows/cross-repo-armaraos-bridge.yml` is green on `main` when changes touch the Python inbox contract, **`armaraos/bridge/ainl_graph_memory_inbox_schema_v1.json`**, or other inbox / `openfang-runtime` integration surfaces (workflow validates schema JSON + `cargo build -p openfang-runtime --lib` against public **`sbhooley/armaraos`**).
 - [ ] For deployments that rely on TTLs or long-running memory usage, operators have an explicit plan or runbook entry to invoke `memory.prune` periodically as part of maintenance (no built-in scheduler is provided).
 
 ## 7) Final Publish Pass

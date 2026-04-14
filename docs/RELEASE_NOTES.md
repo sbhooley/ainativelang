@@ -1,5 +1,53 @@
 # Release notes
 
+## AINL v1.7.0 — Cognitive vitals on Python graph bridge + Hand schema_version (2026-04-14)
+
+**PyPI / runtime:** **`ainativelang` 1.7.0** — **`RUNTIME_VERSION` `1.7.0`**.
+
+This release documents **every commit on `main` after Git tag `v1.6.0` (`7b78f18`)** through **`3af546c`**. Use it with **ArmaraOS** builds that include the matching **Rust** inbox / vitals / patch-drain work for end-to-end parity.
+
+### What shipped (grouped)
+
+- **Bundle + `ainl run` continuity (`eece265`, `1e86f14`, `e3449fa`, `8492a8a`):** pre-seed the **JSON graph store** from **`.ainlbundle`** on boot (**non-persona** nodes); **`ainl run`** path can **pre-seed** graph memory and wire **persona** continuity; operator docs for **bundle env**, boot **pre-seed**, and **chat persona vs JSON graph**.
+- **Rust snapshot import + export alignment (`f2e6372`, `5a88026`, `c03d897`, `a2a2c78`):** Python bridge reads **`AgentGraphSnapshot`** via **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** (and related env); **per-agent** export filenames / directories; docs for **post-evolution** export refresh; accept Rust **`schema_version`: `"1"`** in snapshot JSON.
+- **Hand pack `schema_version` (`0bb96b8`, tests):** **`ainl emit --target armaraos`** writes **`schema_version = "1"`** on **`HAND.toml`** **`[hand]`**, the emitted **IR JSON** artifact, and **`security.json`** — **openfang-hands** / **`openfang hand validate`**. Tests: **`tests/test_emit_armaraos_handpack.py`**.
+- **Graph-memory inbox + schema + CI (`1300979`, `f1c4e62`, `965b8d5`, `843be1a`):** Python-side **inbox** toward **`ainl_memory.db`**; **`ainl_graph_memory_inbox_schema_v1.json`** + sync **envelope metadata**; **CI** workflow; cross-links from **AINL_GRAPH_MEMORY** and the **vendored armaraos** graph-memory-sync hub.
+- **Monitor registry + public adapter API (`4ad914c`, `1092daa`):** **`build_armaraos_monitor_registry`**, **`boot_armaraos_graph_memory`**, **`CronDriftCheckAdapter`**, pre-seeded **bridge** adapters; **`AdapterRegistry.get(name)`**; **`RuntimeEngine`** **GraphPatch** path uses **`adapters.get("ainl_graph_memory")`**. Tests: **`tests/test_armaraos_monitor_registry.py`**.
+- **Cognitive vitals — Python bridge (`3af546c`):** episodic **`MemoryNode`** fields **`vitals_gate`**, **`vitals_phase`**, **`vitals_trust`**; **`from_dict` / `to_dict`**; inbox schema keys; **`tests/test_vitals_bridge.py`**. (**Rust** side: inbox vitals + **patch** node drain ship in **ArmaraOS**; upgrade both together.)
+- **OpenClaw intelligence graph (`6a3b35b`, `a7dfb65`):** fix **`token_aware_startup_context.ainl`** includes + **`fs`** reads; doc notes for **wrapper `include` paths** and **`fs` / `If`** on bridge cron graphs.
+- **Docs + demo hygiene (`04dbbe2`, `1ed8ab2`, `eeeede8`, `8dcf043`, `c0a87c4`):** **PRIOR_ART** graph-memory narrative; **bundle graph boot** + **adapters index**; **blog** + **PRIOR_ART** + adapter frontmatter cross-links; post-**`v1.6.0`** release doc pass; demo **`test_openspace_mcp`** points at **HTTP MCP** **`execute_task`**.
+- **chore:** **`scripts/wrappers/supervisor_fixed.ainl`** — canonical **`R openclaw_memory append_today`** form.
+
+### Commit table (since `v1.6.0`, oldest → newest)
+
+| Commit | Summary |
+|--------|---------|
+| **`eece265`** | **`feat(runtime+bundle)`** — pre-seed graph store on **`ainl run`** + persona hook. |
+| **`e3449fa`** | **`docs`** — ArmaraOS bundle env, boot pre-seed, graph-memory cross-links. |
+| **`8492a8a`** | **`docs`** — bundle env, boot pre-seed, **chat persona vs JSON graph**. |
+| **`8dcf043`** | **`docs(release)`** — **v1.6.0** GraphPatch complete (post-tag doc alignment). |
+| **`6a3b35b`** | **`fix(openclaw)`** — **`token_aware_startup_context`** includes + **`fs`** read. |
+| **`f2e6372`** | **`feat(ainl_graph_memory)`** — read Rust **`AgentGraphSnapshot`** via export env. |
+| **`c0a87c4`** | **`chore(demo)`** — **`test_openspace_mcp`** → HTTP MCP **`execute_task`**. |
+| **`c03d897`** | **`docs(ainl_graph_memory)`** — post-evolution **ARMARAOS** export refresh. |
+| **`a2a2c78`** | **`fix(armaraos)`** — accept snapshot **`schema_version` "1"`** in Python bridge. |
+| **`0bb96b8`** | **`feat(armaraos-emit)`** — **`schema_version`** on **Hand** artifacts. |
+| **`5a88026`** | **`fix(bridge)`** — per-agent **ArmaraOS** export paths. |
+| **`1e86f14`** | **`feat(ainl_graph_memory)`** — **`.ainlbundle`** boot pre-seed (non-persona nodes). |
+| **`04dbbe2`** | **`docs(prior-art)`** — expand graph-memory timeline + claims. |
+| **`1300979`** | **`feat(armaraos)`** — inbox sync toward **`ainl_memory.db`**. |
+| **`4ad914c`** | **`feat(armaraos)`** — pre-seed monitor registry with bridge adapters. |
+| **`1092daa`** | **`feat(armaraos)`** — unify monitor bootstrap + **`AdapterRegistry.get`**. |
+| **`f1c4e62`** | **`feat(armaraos-bridge)`** — inbox schema, **CI**, sync envelope metadata. |
+| **`965b8d5`** | **`docs`** — inbox sync cross-links + contract. |
+| **`843be1a`** | **`docs`** — vendored graph-memory-sync hub + **AINL_GRAPH_MEMORY** links. |
+| **`1ed8ab2`** | **`docs`** — bundle graph boot, ArmaraOS integration, adapters index. |
+| **`a7dfb65`** | **`docs(openclaw)`** — wrapper includes + **`fs` / `If`** notes for bridge cron graphs. |
+| **`eeeede8`** | **`docs`** — graph-as-memory blog + **PRIOR_ART** + adapter frontmatter. |
+| **`3af546c`** | **`feat(gap-k)`** — **CognitiveVitals** round-trip through Python graph bridge. |
+
+See **`docs/CHANGELOG.md`** § **[1.7.0]** / **v1.7.0** for the full conventional-commit list (includes **`supervisor_fixed.ainl`** wrapper line).
+
 ## AINL v1.6.0 — GraphPatch + graph-memory bridge parity (2026-04-12)
 
 **PyPI / runtime:** **`ainativelang` 1.6.0** — **`RUNTIME_VERSION` `1.6.0`**.

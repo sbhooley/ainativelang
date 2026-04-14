@@ -2,7 +2,7 @@
 
 **Hub (all MCP hosts):** [`docs/getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md) — **`ainl install-mcp --host hermes`** (same as **`ainl hermes-install`**).
 
-**PyPI:** `ainativelang` **v1.6.0**.
+**PyPI:** `ainativelang` **v1.7.0**.
 
 AINL ships official Hermes Agent support via:
 
