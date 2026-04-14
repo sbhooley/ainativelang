@@ -2,6 +2,12 @@
 
 Uses ``ARMARAOS_AGENT_ID`` + ``ARMARAOS_HOME`` (or default ``~/.armaraos``) to resolve
 ``<home>/agents/<id>/ainl_graph_memory_inbox.json``. Safe no-ops when unset or offline.
+
+Envelope fields:
+  * ``schema_version`` — ``"1"`` (see ``ainl_graph_memory_inbox_schema_v1.json``).
+  * ``source_features`` — merged with ``DEFAULT_SOURCE_FEATURES``. Callers that emit
+    tagger-heavy semantic nodes may append ``REQUIRES_AINL_TAGGER`` so a Rust daemon built
+    without ``ainl-tagger`` can skip those rows.
 """
 from __future__ import annotations
 
@@ -16,6 +22,11 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("ainl.graph_memory.sync")
 
 INBOX_FILENAME = "ainl_graph_memory_inbox.json"
+# Inbox envelope metadata (Rust `ainl_inbox_reader` + CI schema contract).
+INBOX_SCHEMA_VERSION = "1"
+DEFAULT_SOURCE_FEATURES = ("ainl_graph_memory", "inbox_v1")
+# Opt-in from callers that emit tagger-heavy semantic nodes; Rust skips those rows when built without `ainl-tagger`.
+REQUIRES_AINL_TAGGER = "requires_ainl_tagger"
 
 
 @dataclass
@@ -66,30 +77,63 @@ class AinlMemorySyncWriter:
     def _atomic_write(self, path: Path, payload: Dict[str, Any]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
-        data = json.dumps(payload, indent=2, default=str)
+        envelope = dict(payload)
+        envelope.setdefault("schema_version", INBOX_SCHEMA_VERSION)
+        feats = list(envelope.get("source_features") or [])
+        for f in DEFAULT_SOURCE_FEATURES:
+            if f not in feats:
+                feats.append(f)
+        envelope["source_features"] = feats
+        data = json.dumps(envelope, indent=2, default=str)
         tmp.write_text(data, encoding="utf-8")
         os.replace(tmp, path)
 
     def _read_inbox_unlocked(self, path: Path) -> Dict[str, Any]:
         if not path.is_file():
-            return {"nodes": [], "edges": []}
+            return {
+                "nodes": [],
+                "edges": [],
+                "source_features": [],
+                "schema_version": INBOX_SCHEMA_VERSION,
+            }
         try:
             raw = path.read_text(encoding="utf-8").strip()
             if not raw:
-                return {"nodes": [], "edges": []}
+                return {
+                    "nodes": [],
+                    "edges": [],
+                    "source_features": [],
+                    "schema_version": INBOX_SCHEMA_VERSION,
+                }
             data = json.loads(raw)
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
             logger.warning("ainl graph memory inbox read failed (%s): %s", path, e)
-            return {"nodes": [], "edges": []}
+            return {
+                "nodes": [],
+                "edges": [],
+                "source_features": [],
+                "schema_version": INBOX_SCHEMA_VERSION,
+            }
         if not isinstance(data, dict):
-            return {"nodes": [], "edges": []}
+            return {
+                "nodes": [],
+                "edges": [],
+                "source_features": [],
+                "schema_version": INBOX_SCHEMA_VERSION,
+            }
         nodes = data.get("nodes") or []
         edges = data.get("edges") or []
         if not isinstance(nodes, list):
             nodes = []
         if not isinstance(edges, list):
             edges = []
-        return {"nodes": nodes, "edges": edges}
+        sf = data.get("source_features") or []
+        if not isinstance(sf, list):
+            sf = []
+        sv = data.get("schema_version")
+        if sv is None:
+            sv = INBOX_SCHEMA_VERSION
+        return {"nodes": nodes, "edges": edges, "source_features": sf, "schema_version": sv}
 
     def push_nodes(self, nodes: List[Any]) -> SyncResult:
         if not self.is_available() or self._inbox_path is None:
@@ -111,7 +155,15 @@ class AinlMemorySyncWriter:
                 cur_nodes = [x for x in cur["nodes"] if isinstance(x, dict)]
                 cur_edges = [x for x in cur["edges"] if isinstance(x, dict)]
                 cur_nodes.extend(rows)
-                self._atomic_write(path, {"nodes": cur_nodes, "edges": cur_edges})
+                self._atomic_write(
+                    path,
+                    {
+                        "nodes": cur_nodes,
+                        "edges": cur_edges,
+                        "source_features": cur.get("source_features") or [],
+                        "schema_version": cur.get("schema_version") or INBOX_SCHEMA_VERSION,
+                    },
+                )
             except OSError as e:
                 logger.warning("ainl graph memory inbox write failed (%s): %s", path, e)
                 return SyncResult(pushed=0, skipped=0, error=str(e))

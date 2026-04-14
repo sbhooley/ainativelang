@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainativelang.com/schemas/ainl_graph_memory_inbox_v1.json",
+  "title": "AINL graph memory inbox (Python → ArmaraOS)",
+  "description": "Envelope written by armaraos.bridge.ainl_memory_sync.AinlMemorySyncWriter and consumed by openfang-runtime ainl_inbox_reader.",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "source_features": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Capability hints for the Rust consumer (e.g. requires_ainl_tagger)."
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "node_type", "agent_id"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "node_type": {
+            "type": "string",
+            "enum": ["episodic", "episode", "semantic", "procedural", "persona", "patch"]
+          },
+          "agent_id": { "type": "string" },
+          "label": { "type": "string" },
+          "payload": { "type": "object" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "created_at": { "type": "number" },
+          "ttl": { "type": ["number", "null"] },
+          "contradicted_by": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "src", "dst", "edge_type"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "src": { "type": "string" },
+          "dst": { "type": "string" },
+          "edge_type": { "type": "string" },
+          "label": { "type": "string" },
+          "confidence": { "type": "number" },
+          "meta": { "type": "object" }
+        }
+      }
+    }
+  }
+}

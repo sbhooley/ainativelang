@@ -1,0 +1,35 @@
+# Validates the Python inbox envelope + optional sibling armaraos compile (public repo).
+name: Cross-repo ArmaraOS bridge
+
+on:
+  push:
+    paths:
+      - "armaraos/bridge/**"
+      - ".github/workflows/cross-repo-armaraos-bridge.yml"
+  pull_request:
+    paths:
+      - "armaraos/bridge/**"
+      - ".github/workflows/cross-repo-armaraos-bridge.yml"
+
+jobs:
+  inbox-schema-and-armaraos-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ainativelang
+        uses: actions/checkout@v4
+
+      - name: Validate inbox JSON schema is parseable
+        run: python3 -c "import json; json.load(open('armaraos/bridge/ainl_graph_memory_inbox_schema_v1.json'))"
+
+      - name: Checkout armaraos (public)
+        uses: actions/checkout@v4
+        with:
+          repository: sbhooley/armaraos
+          path: armaraos-upstream
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build openfang-runtime (validates AINL patches + inbox reader compile)
+        working-directory: armaraos-upstream
+        run: cargo build -p openfang-runtime --lib

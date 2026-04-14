@@ -11,5 +11,5 @@ L0:
   R core now ->ts
   R core concat "supervisor watchdog caddy=" s_caddy " cloudflared=" s_cloud " maddy=" s_maddy " crm=" s_crm " ts=" ts ->note
   R cache Set "supervisor" "last_check_ts" ts ->_
-  R openclaw_memory append_today note ->_
+  R openclaw_memory.append_today note ->_
   Ret ts
