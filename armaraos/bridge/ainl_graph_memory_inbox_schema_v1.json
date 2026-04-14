@@ -40,6 +40,20 @@
           "contradicted_by": {
             "type": "array",
             "items": { "type": "string" }
+          },
+          "vitals_gate": {
+            "type": "string",
+            "description": "Coarse signal quality gate from CognitiveVitals: 'pass', 'warn', or 'fail'. Absent when vitals were not computed (non-OpenAI drivers, pre-Styxx episodes)."
+          },
+          "vitals_phase": {
+            "type": "string",
+            "description": "Dominant cognitive phase with trust score, e.g. 'reasoning:0.69'. Absent when vitals were not computed."
+          },
+          "vitals_trust": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Scalar trust confidence [0, 1] derived from logprob entropy. Absent when vitals were not computed."
           }
         }
       }

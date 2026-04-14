@@ -57,9 +57,18 @@ class MemoryNode:
     created_at: float
     ttl: Optional[float] = None
     contradicted_by: List[str] = field(default_factory=list)
+    # Cognitive vitals from Rust CognitiveVitals (OpenAI logprobs classifier).
+    # Absent on non-OpenAI episodes and on pre-Styxx snapshots — always Optional.
+    vitals_gate: Optional[str] = None   # "pass" | "warn" | "fail"
+    vitals_phase: Optional[str] = None  # e.g. "reasoning:0.69"
+    vitals_trust: Optional[float] = None  # scalar [0, 1]
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
+        # Drop None vitals keys so inbox JSON stays compact when vitals are absent.
+        for k in ("vitals_gate", "vitals_phase", "vitals_trust"):
+            if d.get(k) is None:
+                d.pop(k, None)
         return d
 
     @classmethod
@@ -67,6 +76,7 @@ class MemoryNode:
         cb = d.get("contradicted_by") or []
         if not isinstance(cb, list):
             cb = [str(cb)]
+        vt = d.get("vitals_trust")
         return cls(
             id=str(d["id"]),
             node_type=str(d["node_type"]),
@@ -77,6 +87,9 @@ class MemoryNode:
             created_at=float(d["created_at"]),
             ttl=float(d["ttl"]) if d.get("ttl") is not None else None,
             contradicted_by=[str(x) for x in cb],
+            vitals_gate=str(d["vitals_gate"]) if d.get("vitals_gate") is not None else None,
+            vitals_phase=str(d["vitals_phase"]) if d.get("vitals_phase") is not None else None,
+            vitals_trust=float(vt) if vt is not None else None,
         )
 
 
@@ -121,6 +134,9 @@ def _normalize_bundle_memory_node(raw: Any, default_agent_id: str) -> Optional[M
         "created_at": raw.get("created_at"),
         "ttl": raw.get("ttl"),
         "contradicted_by": raw.get("contradicted_by") or [],
+        "vitals_gate": raw.get("vitals_gate"),
+        "vitals_phase": raw.get("vitals_phase"),
+        "vitals_trust": raw.get("vitals_trust"),
     }
     if coerced["created_at"] is None:
         coerced["created_at"] = time.time()
@@ -394,6 +410,27 @@ def _created_at_from_rust_export(node: Dict[str, Any]) -> float:
     return time.time()
 
 
+def _vitals_from_rust_export(node: Dict[str, Any]) -> tuple:
+    """Extract (vitals_gate, vitals_phase, vitals_trust) from a Rust snapshot episodic node.
+
+    Vitals live on the ``node_type`` episode dict (serialized from ``EpisodeNode`` fields).
+    Returns ``(None, None, None)`` for non-episodic nodes or pre-Styxx snapshots.
+    """
+    nt = node.get("node_type")
+    if not isinstance(nt, dict):
+        return None, None, None
+    if str(nt.get("type", "")).lower() != "episode":
+        return None, None, None
+    gate = nt.get("vitals_gate")
+    phase = nt.get("vitals_phase")
+    trust = nt.get("vitals_trust")
+    return (
+        str(gate) if gate is not None else None,
+        str(phase) if phase is not None else None,
+        float(trust) if trust is not None else None,
+    )
+
+
 def _memory_node_from_rust_export(node: Dict[str, Any]) -> Optional[MemoryNode]:
     try:
         nid = str(node["id"])
@@ -403,6 +440,7 @@ def _memory_node_from_rust_export(node: Dict[str, Any]) -> Optional[MemoryNode]:
         tags = _tags_from_rust_export(node)
         created = _created_at_from_rust_export(node)
         payload: Dict[str, Any] = {"rust_snapshot": node}
+        vitals_gate, vitals_phase, vitals_trust = _vitals_from_rust_export(node)
         return MemoryNode(
             id=nid,
             node_type=py_type,
@@ -411,6 +449,9 @@ def _memory_node_from_rust_export(node: Dict[str, Any]) -> Optional[MemoryNode]:
             payload=payload,
             tags=tags,
             created_at=created,
+            vitals_gate=vitals_gate,
+            vitals_phase=vitals_phase,
+            vitals_trust=vitals_trust,
         )
     except (KeyError, TypeError, ValueError):
         return None
