@@ -14,7 +14,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 - [`architecture/`](architecture/README.md) — system design, canonical IR, and compiler/runtime structure
 - [`runtime/`](runtime/README.md) — execution semantics, runtime behavior, and safety boundaries
 - [`language/`](language/README.md) — language definition, grammar, and canonical scope
-- [`adapters/`](adapters/README.md) — adapters, capabilities, and host integration surfaces (includes **[`adapters/AINL_GRAPH_MEMORY.md`](adapters/AINL_GRAPH_MEMORY.md)** for **`ainl_graph_memory`**, **`MemoryRecall`/`MemorySearch`**, **`EdgeType`** / **`persona.update`**, and **[`adapters/MEMORY_CONTRACT.md`](adapters/MEMORY_CONTRACT.md)** §3.7 for SQLite **`memory.merge`** / procedural patterns)
+- [`adapters/`](adapters/README.md) — adapters, capabilities, and host integration surfaces (includes **[`adapters/AINL_GRAPH_MEMORY.md`](adapters/AINL_GRAPH_MEMORY.md)** for **`ainl_graph_memory`**, **`MemoryRecall`/`MemorySearch`**, **`EdgeType`** / **`persona.update`**, ArmaraOS **inbox** **`armaraos/docs/graph-memory-sync.md`**, and **[`adapters/MEMORY_CONTRACT.md`](adapters/MEMORY_CONTRACT.md)** §3.7 for SQLite **`memory.merge`** / procedural patterns)
 - [`emitters/`](emitters/README.md) — multi-target output surfaces and emitter philosophy
 - [`examples/`](examples/README.md) — example support levels, walkthroughs, and example-oriented guidance
 - [`case_studies/`](case_studies/README.md) — narrative proof, production lessons, and applied explanations

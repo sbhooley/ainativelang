@@ -48,4 +48,5 @@ AINL provides:
 
 - See [INSTALL.md](INSTALL.md) for detailed setup
 - See [CONFIG.md](CONFIG.md) for configuration reference
+- **AINL graph memory inbox (Python write-back):** [graph-memory-sync.md](graph-memory-sync.md) — **`ARMARAOS_AGENT_ID`**, **`ainl_graph_memory_inbox.json`**
 - Visit [ArmaraOS docs](https://github.com/RightNow-AI/armaraos) for ArmaraOS specifics

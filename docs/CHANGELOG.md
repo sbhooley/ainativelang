@@ -4,6 +4,12 @@
 
 <!-- Next release changes go here -->
 
+- **docs**: **`armaraos/docs/graph-memory-sync.md`**, **`docs/adapters/AINL_GRAPH_MEMORY.md`**, **`docs/ARMARAOS_INTEGRATION.md`**, **`docs/adapters/README.md`**, **`docs/DOCS_INDEX.md`**, **`docs/reference/ADAPTER_REGISTRY.md`**, **`docs/adapters/MEMORY_CONTRACT.md`**, **`armaraos/docs/README.md`**, **`adapters/armaraos_integration.py`** module docstring, **`AGENTS.md`** — graph memory **inbox** write-back (**`AinlMemorySyncWriter`**, **`ARMARAOS_AGENT_ID`**, **`_GraphToolInboxAdapterRegistry`**, Rust **`drain_python_graph_memory_inbox`**), schema + CI pointers.
+- **feat(runtime)**: **`AdapterRegistry.get(name)`** — public read of a registered adapter (no allowlist check); **`RuntimeEngine`** graph-patch paths use **`adapters.get("ainl_graph_memory")`** instead of touching **`_adapters`**.
+- **feat(armaraos / bridge)**: **`adapters.armaraos_integration`** — **`build_armaraos_monitor_registry`**, **`boot_armaraos_graph_memory`**, and thin **`armaraos_monitor_registry()`**; pre-seeds **`ainl_graph_memory`**, **`bridge`**, **`cron_drift_check`** (allow + register); **`CronDriftCheckAdapter`** exposes **`run_report()`** to AINL; **`armaraos/bridge/runner.py`** uses the shared bootstrap (no private registry inspection in **`build_wrapper_registry`**).
+- **docs**: **`docs/adapters/AINL_GRAPH_MEMORY.md`**, **`docs/ARMARAOS_INTEGRATION.md`**, **`docs/adapters/README.md`**, **`docs/operations/CAPABILITY_GRANT_MODEL.md`**, **`AGENTS.md`** — monitor registry contract + capability notes.
+- **test**: **`tests/test_armaraos_monitor_registry.py`** — pre-seed, **`get()`**, boot, idempotency, runner source regression.
+
 ## [1.6.0] — GraphPatch complete (2026-04-12)
 
 Ship tag for the GraphPatch line; full conventional list under **v1.6.0** below.

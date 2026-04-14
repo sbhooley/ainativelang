@@ -15,6 +15,9 @@ pre-seeded names unless a security profile explicitly narrows the allowlist.
 call :meth:`armaraos.bridge.ainl_graph_memory.AINLGraphMemoryBridge.boot` unless
 ``boot_graph_memory=True``. Full bridge hosts register extra adapters first, then
 call :func:`boot_armaraos_graph_memory` once (see ``armaraos/bridge/runner.py``).
+**Inbox write-back** to ArmaraOS SQLite (**``ainl_graph_memory_inbox.json``**) is
+handled by :class:`armaraos.bridge.ainl_memory_sync.AinlMemorySyncWriter` from the
+bridge and runner; see ``armaraos/docs/graph-memory-sync.md``.
 """
 
 from __future__ import annotations

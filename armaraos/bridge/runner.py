@@ -12,7 +12,12 @@ Usage:
 
   Shims for legacy paths: scripts/run_wrapper_ainl.py
 
-Dry-run: sets frame[\"dry_run\"] so adapters skip network/disk side effects; execution still proceeds.
+Dry-run: sets frame["dry_run"] so adapters skip network/disk side effects; execution still proceeds.
+
+Graph memory **inbox:** the returned :class:`~runtime.adapters.base.AdapterRegistry` is wrapped with
+``_GraphToolInboxAdapterRegistry`` so non-core adapter calls become ``on_tool_execution`` nodes and may
+append to ``ainl_graph_memory_inbox.json`` when ``ARMARAOS_AGENT_ID`` is set (see
+``armaraos/docs/graph-memory-sync.md``).
 """
 from __future__ import annotations
 
