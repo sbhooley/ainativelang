@@ -214,10 +214,52 @@ def _default_graph_path() -> Path:
     return Path.home() / ".armaraos" / "ainl_graph_memory.json"
 
 
+def _armaraos_openfang_home() -> Path:
+    """Match `openfang_home_dir()` / per-agent `ainl_memory.db` layout (ARMARAOS_HOME, then OPENFANG_HOME, then ~/.armaraos vs ~/.openfang)."""
+    h = (os.environ.get("ARMARAOS_HOME") or os.environ.get("OPENFANG_HOME") or "").strip()
+    if h:
+        return Path(h).expanduser()
+    home = Path.home()
+    arm = home / ".armaraos"
+    try:
+        if arm.is_dir():
+            return arm
+    except OSError:
+        pass
+    return home / ".openfang"
+
+
+def _armaraos_export_env_looks_like_directory(expanded: Path) -> bool:
+    try:
+        if expanded.exists() and expanded.is_dir():
+            return True
+    except OSError:
+        pass
+    return not expanded.name.lower().endswith(".json")
+
+
 def _armaraos_export_snapshot_path() -> Optional[Path]:
-    """Optional JSON file: `AgentGraphSnapshot` from `openfang memory graph-export` (Rust ainl-memory)."""
-    p = (os.environ.get("AINL_GRAPH_MEMORY_ARMARAOS_EXPORT") or "").strip()
-    return Path(p).expanduser() if p else None
+    """Optional JSON: `AgentGraphSnapshot` from Rust graph export (per-agent path when env names a directory)."""
+    raw = (os.environ.get("AINL_GRAPH_MEMORY_ARMARAOS_EXPORT") or "").strip()
+    agent_id = (os.environ.get("ARMARAOS_AGENT_ID") or "").strip()
+
+    if raw:
+        p = Path(raw).expanduser()
+        if _armaraos_export_env_looks_like_directory(p):
+            if not agent_id:
+                logger.warning(
+                    "AINL_GRAPH_MEMORY_ARMARAOS_EXPORT names a directory (%s) but ARMARAOS_AGENT_ID is unset; "
+                    "skipping ArmaraOS snapshot merge",
+                    p,
+                )
+                return None
+            return p / f"{agent_id}_graph_export.json"
+        return p
+
+    if agent_id:
+        return _armaraos_openfang_home() / "agents" / agent_id / "ainl_graph_memory_export.json"
+
+    return None
 
 
 def _looks_like_armaraos_snapshot(data: Dict[str, Any]) -> bool:
@@ -365,10 +407,10 @@ def _dry_run(context: Dict[str, Any]) -> bool:
 class GraphStore:
     """JSON file graph: nodes + edges with atomic replace and TTL pruning.
 
-    Optional **read-through** from ArmaraOS Rust SQLite: set env
-    ``AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`` to a JSON file produced by
-    ``openfang memory graph-export <agent-uuid> --output snapshot.json`` so this store loads the authoritative
-    ``ainl_memory.db`` subgraph at construction (see ``_armaraos_export_snapshot_path``).
+    Optional **read-through** from ArmaraOS Rust SQLite: set ``AINL_GRAPH_MEMORY_ARMARAOS_EXPORT``
+    to a **directory** (``{dir}/{ARMARAOS_AGENT_ID}_graph_export.json``) or a single **.json** file
+    (backward compatible), or leave it unset and set ``ARMARAOS_AGENT_ID`` to load
+    ``<openfang_home>/agents/<id>/ainl_graph_memory_export.json`` when that file exists.
     """
 
     def __init__(self, path: Optional[Path] = None) -> None:
