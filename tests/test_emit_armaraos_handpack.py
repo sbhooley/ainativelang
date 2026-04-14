@@ -103,3 +103,42 @@ def test_ainl_json_is_valid_ir(tmp_path: Path):
     assert _run_emit(src, out_dir).returncode == 0
     ir = json.loads((out_dir / f"{_STEM}.ainl.json").read_text(encoding="utf-8"))
     assert "labels" in ir or "nodes" in ir
+
+
+def test_emit_hand_toml_contains_hand_schema_version(tmp_path: Path):
+    src = _write_source(tmp_path, _SOURCE_CORE)
+    out_dir = tmp_path / "hand_schema_toml"
+    assert _run_emit(src, out_dir).returncode == 0
+    hand = (out_dir / "HAND.toml").read_text(encoding="utf-8")
+    assert 'schema_version = "1"' in hand
+
+
+def test_emit_ainl_json_contains_ir_schema_version(tmp_path: Path):
+    src = _write_source(tmp_path, _SOURCE_CORE)
+    out_dir = tmp_path / "hand_schema_ir"
+    assert _run_emit(src, out_dir).returncode == 0
+    ir = json.loads((out_dir / f"{_STEM}.ainl.json").read_text(encoding="utf-8"))
+    assert ir.get("schema_version") == "1"
+
+
+def test_emit_security_json_contains_schema_version(tmp_path: Path):
+    src = _write_source(tmp_path, _SOURCE_CORE)
+    out_dir = tmp_path / "hand_schema_sec"
+    assert _run_emit(src, out_dir).returncode == 0
+    sec = json.loads((out_dir / "security.json").read_text(encoding="utf-8"))
+    assert sec.get("schema_version") == "1"
+
+
+def test_emit_ir_schema_version_stable_across_two_emits(tmp_path: Path):
+    """Emitter must not mutate the caller's IR dict; schema_version on disk stays stable."""
+    from armaraos.emitter.armaraos import emit_armaraos
+
+    ir: dict = {"labels": {"L1": []}, "metadata": {}, "ir_version": "test"}
+    out_a = tmp_path / "emit_a"
+    out_b = tmp_path / "emit_b"
+    emit_armaraos(ir, _STEM, out_a)
+    assert "schema_version" not in ir, "emit_armaraos must not mutate caller IR dict in place"
+    emit_armaraos(ir, _STEM, out_b)
+    ja = json.loads((out_a / f"{_STEM}.ainl.json").read_text(encoding="utf-8"))
+    jb = json.loads((out_b / f"{_STEM}.ainl.json").read_text(encoding="utf-8"))
+    assert ja.get("schema_version") == jb.get("schema_version") == "1"
