@@ -10,7 +10,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
 
@@ -76,6 +76,56 @@ class MemoryNode:
             ttl=float(d["ttl"]) if d.get("ttl") is not None else None,
             contradicted_by=[str(x) for x in cb],
         )
+
+
+# ``AINLBundleBuilder._snapshot_memory`` stores ``MemoryNode.to_dict()`` rows (GraphStore JSON shape).
+# Persona rows are omitted there; boot also ignores ``node_type == persona`` in ``bundle.memory`` so
+# ``bundle.persona`` stays the only persona pre-seed path.
+_BUNDLE_PRESEED_MEMORY_NODE_TYPES = frozenset(
+    {
+        NodeType.EPISODIC.value,
+        NodeType.SEMANTIC.value,
+        NodeType.PROCEDURAL.value,
+        NodeType.PATCH.value,
+    }
+)
+
+
+def _normalize_bundle_memory_node(raw: Any, default_agent_id: str) -> Optional[MemoryNode]:
+    """Map one ``bundle.memory`` row to :class:`MemoryNode` or return ``None`` if unusable."""
+    if not isinstance(raw, dict):
+        return None
+    nt = str(raw.get("node_type") or "").strip().lower()
+    if nt == NodeType.PERSONA.value:
+        return None
+    if nt not in _BUNDLE_PRESEED_MEMORY_NODE_TYPES:
+        return None
+    nid = str(raw.get("id") or "").strip()
+    if not nid:
+        return None
+    pl = raw.get("payload")
+    if pl is not None and not isinstance(pl, dict):
+        return None
+    tags_raw = raw.get("tags")
+    if tags_raw is not None and not isinstance(tags_raw, list):
+        return None
+    coerced: Dict[str, Any] = {
+        "id": nid,
+        "node_type": nt,
+        "agent_id": str(raw.get("agent_id") or default_agent_id),
+        "label": str(raw.get("label", "")),
+        "payload": dict(pl or {}),
+        "tags": [str(x) for x in (tags_raw or [])],
+        "created_at": raw.get("created_at"),
+        "ttl": raw.get("ttl"),
+        "contradicted_by": raw.get("contradicted_by") or [],
+    }
+    if coerced["created_at"] is None:
+        coerced["created_at"] = time.time()
+    try:
+        return MemoryNode.from_dict(coerced)
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 @dataclass
@@ -823,32 +873,80 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
         self._store = store or GraphStore()
         self._agent_id: str = "armaraos"
 
+    def _preseed_memory_nodes_from_bundle(
+        self, bundle: Any, *, agent_id: str, dry_run: bool
+    ) -> Tuple[int, int, int]:
+        """Insert ``bundle.memory`` rows when id not already in store. Returns (inserted, skip_existing, skip_invalid)."""
+        inserted = skip_existing = skip_invalid = 0
+        rows = getattr(bundle, "memory", None)
+        if not isinstance(rows, list):
+            return (0, 0, 0)
+        for raw in rows:
+            node = _normalize_bundle_memory_node(raw, agent_id)
+            if node is None:
+                skip_invalid += 1
+                continue
+            if self._store.get_node(node.id) is not None:
+                skip_existing += 1
+                continue
+            try:
+                self._store.write_node(node, persist=True, dry_run=dry_run)
+                inserted += 1
+            except Exception:
+                skip_invalid += 1
+                logger.debug("bundle memory pre-seed write failed for %s", node.id, exc_info=True)
+        return (inserted, skip_existing, skip_invalid)
+
     def boot(self, agent_id: str = "armaraos") -> str:
         """Record an episodic boot node (call once at ArmaraOS / bridge startup)."""
         self._agent_id = str(agent_id)
+        ctx: Dict[str, Any] = {}
+        dry = _dry_run(ctx)
+        persona_restored = 0
+        persona_skipped = 0
+        mem_ins = mem_skip_ex = mem_skip_inv = 0
         # Pre-seed from bundle if provided by the host runtime (scheduled `ainl run`).
-        bundle_path = os.environ.get("AINL_BUNDLE_PATH")
+        bundle_path = (os.environ.get("AINL_BUNDLE_PATH") or "").strip()
         if bundle_path and os.path.exists(bundle_path):
             try:
                 from runtime.ainl_bundle import AINLBundle
 
                 bundle = AINLBundle.load(bundle_path)
-                for persona_node in (bundle.persona or []):
+                for persona_node in bundle.persona or []:
                     if not isinstance(persona_node, dict):
+                        persona_skipped += 1
                         continue
-                    self.call(
-                        "persona.update",
-                        {
-                            "trait_name": persona_node.get("trait_name"),
-                            "strength": persona_node.get("strength", 0.0),
-                            "learned_from": persona_node.get("learned_from", []),
-                        },
-                        {},
+                    try:
+                        self.call(
+                            "persona.update",
+                            {
+                                "trait_name": persona_node.get("trait_name"),
+                                "strength": persona_node.get("strength", 0.0),
+                                "learned_from": persona_node.get("learned_from", []),
+                            },
+                            {},
+                        )
+                        persona_restored += 1
+                    except Exception:
+                        persona_skipped += 1
+                        logger.debug("bundle persona row skipped", exc_info=True)
+                try:
+                    mem_ins, mem_skip_ex, mem_skip_inv = self._preseed_memory_nodes_from_bundle(
+                        bundle, agent_id=agent_id, dry_run=dry
                     )
+                except Exception:
+                    logger.debug("bundle memory pre-seed batch failed", exc_info=True)
+                logger.info(
+                    "graph memory bundle boot: persona_restored=%d persona_skipped=%d memory_restored=%d "
+                    "memory_skip_existing=%d memory_skip_invalid=%d",
+                    persona_restored,
+                    persona_skipped,
+                    mem_ins,
+                    mem_skip_ex,
+                    mem_skip_inv,
+                )
             except Exception:
-                pass
-        ctx: Dict[str, Any] = {}
-        dry = _dry_run(ctx)
+                logger.warning("AINL bundle load or pre-seed failed (%s)", bundle_path, exc_info=True)
         nid = _new_id("boot")
         node = MemoryNode(
             id=nid,
