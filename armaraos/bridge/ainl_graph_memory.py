@@ -29,6 +29,7 @@ class EdgeType(str, Enum):
     CAUSED_BY = "caused_by"
     PART_OF = "part_of"
     REFERENCES = "references"
+    FOLLOWS = "follows"
     DERIVED_FROM = "derived_from"
     INHERITED_BY = "inherited_by"
     KNOWS = "knows"
@@ -213,6 +214,147 @@ def _default_graph_path() -> Path:
     return Path.home() / ".armaraos" / "ainl_graph_memory.json"
 
 
+def _armaraos_export_snapshot_path() -> Optional[Path]:
+    """Optional JSON file: `AgentGraphSnapshot` from `openfang memory graph-export` (Rust ainl-memory)."""
+    p = (os.environ.get("AINL_GRAPH_MEMORY_ARMARAOS_EXPORT") or "").strip()
+    return Path(p).expanduser() if p else None
+
+
+def _looks_like_armaraos_snapshot(data: Dict[str, Any]) -> bool:
+    if data.get("schema_version") == "1.0":
+        return True
+    return bool(
+        data.get("exported_at")
+        and isinstance(data.get("nodes"), list)
+        and "agent_id" in data
+    )
+
+
+def _node_type_from_rust_export(node: Dict[str, Any]) -> str:
+    mc = node.get("memory_category")
+    if isinstance(mc, str):
+        m = mc.lower().strip()
+        if m == "episodic":
+            return NodeType.EPISODIC.value
+        if m == "semantic":
+            return NodeType.SEMANTIC.value
+        if m == "procedural":
+            return NodeType.PROCEDURAL.value
+        if m == "persona":
+            return NodeType.PERSONA.value
+        if m == "runtime_state":
+            return NodeType.SEMANTIC.value
+    nt = node.get("node_type")
+    if isinstance(nt, dict):
+        t = str(nt.get("type", "")).lower()
+        if t == "episode":
+            return NodeType.EPISODIC.value
+        if t == "semantic":
+            return NodeType.SEMANTIC.value
+        if t == "procedural":
+            return NodeType.PROCEDURAL.value
+        if t == "persona":
+            return NodeType.PERSONA.value
+        if t == "runtime_state":
+            return NodeType.SEMANTIC.value
+    return NodeType.SEMANTIC.value
+
+
+def _label_from_rust_export(node: Dict[str, Any]) -> str:
+    nt = node.get("node_type")
+    if not isinstance(nt, dict):
+        return str(node.get("id", "node"))
+    kind = str(nt.get("type", "")).lower()
+    if kind == "episode":
+        tools = nt.get("tool_calls") or []
+        if isinstance(tools, list) and tools:
+            return f"episode:{tools[0]}"
+        return "episode"
+    if kind == "semantic":
+        return (str(nt.get("fact", "")) or "fact")[:200]
+    if kind == "procedural":
+        return str(nt.get("pattern_name", "pattern"))
+    if kind == "persona":
+        return str(nt.get("trait_name", "persona"))
+    if kind == "runtime_state":
+        return "runtime_state"
+    return str(node.get("id", ""))
+
+
+def _tags_from_rust_export(node: Dict[str, Any]) -> List[str]:
+    out = ["source:armaraos_export", f"rust_id:{node.get('id')}"]
+    nt = node.get("node_type")
+    if isinstance(nt, dict) and str(nt.get("type", "")).lower() == "semantic":
+        for t in nt.get("tags") or []:
+            if isinstance(t, str) and t and t not in out:
+                out.append(t)
+    return out
+
+
+def _created_at_from_rust_export(node: Dict[str, Any]) -> float:
+    nt = node.get("node_type")
+    if isinstance(nt, dict) and str(nt.get("type", "")).lower() == "episode":
+        ts = nt.get("timestamp")
+        if isinstance(ts, (int, float)):
+            return float(ts)
+    return time.time()
+
+
+def _memory_node_from_rust_export(node: Dict[str, Any]) -> Optional[MemoryNode]:
+    try:
+        nid = str(node["id"])
+        agent_id = str(node.get("agent_id") or "")
+        py_type = _node_type_from_rust_export(node)
+        label = _label_from_rust_export(node)
+        tags = _tags_from_rust_export(node)
+        created = _created_at_from_rust_export(node)
+        payload: Dict[str, Any] = {"rust_snapshot": node}
+        return MemoryNode(
+            id=nid,
+            node_type=py_type,
+            agent_id=agent_id,
+            label=label,
+            payload=payload,
+            tags=tags,
+            created_at=created,
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _memory_edges_from_rust_export(edges: Any) -> Dict[str, MemoryEdge]:
+    out: Dict[str, MemoryEdge] = {}
+    if not isinstance(edges, list):
+        return out
+    allowed = {e.value for e in EdgeType}
+    for raw in edges:
+        if not isinstance(raw, dict):
+            continue
+        try:
+            src = str(raw["source_id"])
+            dst = str(raw["target_id"])
+            et_raw = str(raw.get("edge_type") or "references").strip()
+            if et_raw in allowed:
+                et = et_raw
+                meta: Dict[str, Any] = {}
+            else:
+                et = EdgeType.REFERENCES.value
+                meta = {"armaraos_edge_type": et_raw}
+            eid = _new_id("edge")
+            out[eid] = MemoryEdge(
+                id=eid,
+                src=src,
+                dst=dst,
+                edge_type=et,
+                label=et_raw,
+                confidence=float(raw.get("weight", 1.0) or 1.0),
+                meta=meta,
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
 def _dry_run(context: Dict[str, Any]) -> bool:
     v = context.get("dry_run")
     if v in (True, 1, "1", "true", "True", "yes", "on"):
@@ -231,27 +373,47 @@ class GraphStore:
         self._load()
 
     def _load(self) -> None:
+        self._nodes = {}
+        self._edges = {}
+        exp = _armaraos_export_snapshot_path()
+        if exp and exp.is_file():
+            try:
+                snap_raw = exp.read_text(encoding="utf-8").strip()
+                if snap_raw:
+                    snap = json.loads(snap_raw)
+                    if isinstance(snap, dict) and _looks_like_armaraos_snapshot(snap):
+                        for n in snap.get("nodes") or []:
+                            if isinstance(n, dict):
+                                mn = _memory_node_from_rust_export(n)
+                                if mn:
+                                    self._nodes[mn.id] = mn
+                        for eid, me in _memory_edges_from_rust_export(snap.get("edges")).items():
+                            self._edges[eid] = me
+                        logger.info(
+                            "loaded ArmaraOS graph snapshot from %s (%d nodes, %d edges)",
+                            exp,
+                            len(self._nodes),
+                            len(self._edges),
+                        )
+            except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
+                logger.warning("ArmaraOS graph export load failed (%s): %s", exp, e)
+
         if not self.path.is_file():
-            self._nodes = {}
-            self._edges = {}
+            self._prune_expired_unlocked()
             return
         try:
             raw = self.path.read_text(encoding="utf-8").strip()
             if not raw:
-                self._nodes = {}
-                self._edges = {}
+                self._prune_expired_unlocked()
                 return
             data = json.loads(raw)
         except (OSError, json.JSONDecodeError) as e:
             logger.warning("graph memory load failed (%s): %s", self.path, e)
-            self._nodes = {}
-            self._edges = {}
+            self._prune_expired_unlocked()
             return
         if not isinstance(data, dict):
-            self._nodes = {}
-            self._edges = {}
+            self._prune_expired_unlocked()
             return
-        self._nodes = {}
         for item in data.get("nodes") or []:
             if isinstance(item, dict) and item.get("id"):
                 try:
@@ -259,7 +421,6 @@ class GraphStore:
                     self._nodes[n.id] = n
                 except (KeyError, TypeError, ValueError):
                     continue
-        self._edges = {}
         for item in data.get("edges") or []:
             if isinstance(item, dict) and item.get("id"):
                 try:
