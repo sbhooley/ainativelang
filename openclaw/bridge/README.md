@@ -22,6 +22,16 @@ This directory holds **OpenClaw-specific** helpers: cron runners, drift checks, 
 
 `--dry-run` sets `frame["dry_run"]` and `AINL_DRY_RUN` so adapters avoid network and disk side effects while the graph still executes.
 
+## Wrapper graphs under `wrappers/*.ainl`
+
+Cron wrappers in this folder are compiled like any other AINL file from their **on-disk path**:
+
+- **`include`** paths are resolved **relative to the wrapper file**. Files under `openclaw/bridge/wrappers/` should use relative paths such as **`../../modules/common/...`** to reach shared `modules/common` graphs, not bare `modules/...` (that only works when the wrapper lives at the repo root).
+- Prefer **`R fs read "<path>"`** plus string ops (e.g. **`core.split`**) over verbs that are not on the **`fs`** contract for your runner.
+- Multi-branch **`If`** uses **two** label targets (then / else); a single-label `If` is invalid.
+
+Example maintenance: **`wrappers/token_aware_startup_context.ainl`** (token budget cron).
+
 ## Recommended OpenClaw cron commands (`--session-key agent:default:ainl-advocate`)
 
 Use your workspace path and keep payloads stable so `tooling/cron_registry.json` fingerprints still match after `openclaw cron add`:
