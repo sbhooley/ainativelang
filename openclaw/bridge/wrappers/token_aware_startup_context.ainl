@@ -7,9 +7,9 @@
 # Pure compute — no LLM calls. Runs every 5 minutes.
 # Proven patterns: Loop + If branching + push array + J return.
 # Includes before S so module labels merge into the prelude.
-include "modules/common/generic_memory.ainl" as genmem
-include "modules/common/access_aware_memory.ainl" as accmem
-include "modules/common/vector_retrieval.ainl" as vec
+include "../../modules/common/generic_memory.ainl" as genmem
+include "../../modules/common/access_aware_memory.ainl" as accmem
+include "../../modules/common/vector_retrieval.ainl" as vec
 # S line is only `<adapter> cron "<expr>"` — extra tokens break the schedule (path becomes literal "cron").
 S core cron "*/5 * * * *"
 
@@ -100,7 +100,8 @@ L3b_prepare_allLines:
   If useEmb ->L3b_prepare_emb ->L3b_prepare_fs
 
 L3b_prepare_fs:
-  R fs readlines "MEMORY.md" ->allLines
+  R fs read "MEMORY.md" ->content
+  X allLines (core.split content "\n")
   J 1
 
 L3b_prepare_emb:
@@ -168,7 +169,8 @@ L9:
   X selected (push selected trimmed)
   Set usedTokens wouldUse
   # Hard cap: stop after reaching 100 tokens to ensure budget adherence
-  If (ge usedTokens 100) ->L7
+  X hitLimit (ge usedTokens 100)
+  If hitLimit ->L7 ->L4
   # Continue looping
   J L4
 
