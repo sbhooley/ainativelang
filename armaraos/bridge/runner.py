@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Run orchestration wrappers under the ArmaraOS monitor registry plus bridge adapters.
 
+Registry construction uses ``adapters.armaraos_integration.build_armaraos_monitor_registry``
+and ``boot_armaraos_graph_memory`` so pre-seeded adapters and graph-memory bootstrap
+stay consistent with other hosts (no ad-hoc ``_adapters`` access).
+
 Official location: armaraos/bridge/ (ArmaraOS integration layer; not AINL core).
 
 Usage:
@@ -33,7 +37,7 @@ from runtime.adapters.base import AdapterRegistry
 from adapters.crm import CrmAdapter
 from adapters.github import GitHubAdapter
 from adapters.armaraos_defaults import DEFAULT_CRM_HEALTH_URL
-from adapters.armaraos_integration import armaraos_monitor_registry
+from adapters.armaraos_integration import boot_armaraos_graph_memory, build_armaraos_monitor_registry
 from adapters.armaraos_memory import OpenFangMemoryAdapter
 from adapters.armaraos_token_tracker import OpenFangTokenTrackerAdapter
 
@@ -237,21 +241,14 @@ def build_wrapper_registry():
         os.environ["OPENROUTER_API_KEY"] = os.environ.get(
             "AINL_OPENROUTER_PLACEHOLDER_KEY", "unset-openrouter-key-wrapper-registry"
         )
-    # armaraos_monitor_registry pre-allows/registers ainl_graph_memory, bridge, cron_drift_check.
-    reg: AdapterRegistry = armaraos_monitor_registry()
+    reg: AdapterRegistry = build_armaraos_monitor_registry(boot_graph_memory=False)
     for name in ("armaraos_memory", "github", "crm", "armaraos_token_tracker"):
         reg.allow(name)
     reg.register("armaraos_memory", OpenFangMemoryAdapter())
-    existing_gm = reg._adapters.get(AINLGraphMemoryBridge.NAME)
-    if isinstance(existing_gm, AINLGraphMemoryBridge):
-        _GRAPH_MEMORY_BRIDGE = existing_gm
-    else:
-        _GRAPH_MEMORY_BRIDGE = AINLGraphMemoryBridge()
-        reg.register(AINLGraphMemoryBridge.NAME, _GRAPH_MEMORY_BRIDGE)
     reg.register("github", GitHubAdapter())
     reg.register("crm", CrmAdapter())
     reg.register("armaraos_token_tracker", OpenFangTokenTrackerAdapter())
-    _GRAPH_MEMORY_BRIDGE.boot(agent_id="armaraos")
+    _GRAPH_MEMORY_BRIDGE = boot_armaraos_graph_memory(reg, agent_id="armaraos")
     return _GraphToolInboxAdapterRegistry(reg)
 
 

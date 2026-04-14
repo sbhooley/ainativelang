@@ -41,6 +41,16 @@ class AdapterRegistry:
     def register(self, name: str, adapter: RuntimeAdapter) -> None:
         self._adapters[name] = adapter
 
+    def get(self, name: str) -> Optional[RuntimeAdapter]:
+        """Return the registered adapter instance, or ``None`` if not registered."""
+        return self._adapters.get(name)
+
+    def keys(self):
+        return self._adapters.keys()
+
+    def __contains__(self, name: object) -> bool:
+        return isinstance(name, str) and name in self._adapters
+
     def allow(self, name: str) -> None:
         self._allowed.add(name)
 

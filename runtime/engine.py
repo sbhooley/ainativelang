@@ -1537,7 +1537,7 @@ class RuntimeEngine:
         self.labels[resolved_label] = merged
 
         try:
-            bridge = self.adapters._adapters.get("ainl_graph_memory")
+            bridge = self.adapters.get("ainl_graph_memory")
             if bridge is not None and patch_nid:
                 bridge._store.finalize_patch(patch_nid, declared_reads, persist=True)
         except Exception:
@@ -1563,7 +1563,7 @@ class RuntimeEngine:
         Logs a warning for each skipped collision.
         """
         try:
-            bridge = self.adapters._adapters.get("ainl_graph_memory")
+            bridge = self.adapters.get("ainl_graph_memory")
             if bridge is None:
                 return
             agent_id = str(
@@ -2395,7 +2395,7 @@ class RuntimeEngine:
             return
         try:
             self._in_fitness_update = True
-            bridge = self.adapters._adapters.get("ainl_graph_memory")
+            bridge = self.adapters.get("ainl_graph_memory")
             if not bridge:
                 return
             agent_id = str(frame.get("agent_id") or "armaraos")

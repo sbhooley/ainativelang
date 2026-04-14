@@ -71,7 +71,7 @@ AINL prefers `ARMARAOS_*` for ArmaraOS integration, with `AINL_*` and legacy `OP
 
 ## AINL graph memory (bridge + runtime)
 
-The **`ainl_graph_memory`** adapter stores typed **nodes** and **edges** in a JSON file (default under `~/.armaraos/`). The ArmaraOS bridge runner (`armaraos/bridge/runner.py`) registers it, calls **`boot()`** on startup, and after each successful wrapper run records a delegation node via **`on_delegation`**.
+The **`ainl_graph_memory`** adapter stores typed **nodes** and **edges** in a JSON file (default under `~/.armaraos/`). The ArmaraOS bridge runner (`armaraos/bridge/runner.py`) builds a shared monitor registry via **`adapters.armaraos_integration.build_armaraos_monitor_registry`** (pre-allows and pre-registers **`ainl_graph_memory`**, **`bridge`**, **`cron_drift_check`**), registers host adapters (`armaraos_memory`, `github`, …), then calls **`boot_armaraos_graph_memory`** so **`AINLGraphMemoryBridge.boot()`** runs once after wiring. After each successful wrapper run it records a delegation node via **`on_delegation`**.
 
 **Scheduled `ainl run` (kernel cron):** when the host runs **`ainl run`** for a job, it may set **`AINL_BUNDLE_PATH`** / **`AINL_AGENT_ID`** so **`boot()`** can merge **persona** rows from **`bundle.ainlbundle`** into the live JSON store before the graph executes, and a post-run step rebuilds that bundle from the bridge. See **armaraos** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md).
 

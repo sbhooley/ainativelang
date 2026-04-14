@@ -60,6 +60,13 @@ class AdapterRegistry:
     def register(self, name: str, adapter: RuntimeAdapter) -> None:
         self._adapters[name] = adapter
 
+    def get(self, name: str) -> Optional[RuntimeAdapter]:
+        """Return the registered adapter instance, or ``None`` if not registered.
+
+        Does not check the capability allowlist (use :meth:`call` for gated dispatch).
+        """
+        return self._adapters.get(name)
+
     def keys(self):
         """Registered adapter names (dict-like; ``sorted(registry.keys())`` for stable order)."""
         return self._adapters.keys()

@@ -93,7 +93,7 @@ def test_hydrate_end_to_end(tmp_path: Path) -> None:
         assert c.get("daily_remaining") == 1000
         assert c.get("rolling_source") == "memory.budget.aggregate.weekly_remaining_v1"
     finally:
-        for ad in (ma, reg._adapters.get("memory") if reg else None):
+        for ad in (ma, reg.get("memory") if reg else None):
             if ad is not None and hasattr(ad, "_conn"):
                 try:
                     ad._conn.close()

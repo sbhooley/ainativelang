@@ -869,8 +869,15 @@ def _coerce_call_kwargs(args: Any) -> Dict[str, Any]:
 class AINLGraphMemoryBridge(RuntimeAdapter):
     """AINL adapter + typed hooks for ArmaraOS runtime events.
 
-    Registered under :attr:`NAME` by ``adapters.armaraos_integration.armaraos_monitor_registry``
-    (ArmaraOS bridge / monitor); hosts call :meth:`boot` once per run.
+    Registered under :attr:`NAME` by
+    ``adapters.armaraos_integration.build_armaraos_monitor_registry`` (or
+    :func:`~adapters.armaraos_integration.armaraos_monitor_registry` for the same
+    seeding without an immediate ``boot``).
+
+    **Lifecycle:** after the host finishes :meth:`~runtime.adapters.base.AdapterRegistry.register`
+    for any extra adapters, call :func:`~adapters.armaraos_integration.boot_armaraos_graph_memory`
+    (or :meth:`boot` on this instance) so bundle pre-seed and the episodic boot node run.
+    Each :meth:`boot` call appends another **bridge_boot** episodic record.
     """
 
     NAME = "ainl_graph_memory"

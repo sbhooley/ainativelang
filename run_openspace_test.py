@@ -41,11 +41,11 @@ def main() -> None:
         print("\nAdapter registry contents:")
         if engine.adapters:
             print(f"  Type: {type(engine.adapters)}")
-            print(f"  Registered adapters: {list(engine.adapters._adapters.keys())}")
+            print(f"  Registered adapters: {list(engine.adapters.keys())}")
             print(f"  Adapter 'mcp' in registry: {hasattr(engine.adapters, 'mcp')}")
             print(f"  Adapter lookup for 'mcp': {getattr(engine.adapters, 'mcp', None)}")
             try:
-                mcp_adapter = engine.adapters._adapters.get("mcp")
+                mcp_adapter = engine.adapters.get("mcp")
                 print(f"  mcp_adapter type: {type(mcp_adapter)}")
                 if mcp_adapter:
                     print(
