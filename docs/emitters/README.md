@@ -99,6 +99,29 @@ ainl compile examples/solana_demo.ainl --emit solana-client -o solana_client.py
 
 **DSL:** dotted verbs `R solana.<VERB> ...`, e.g. `GET_ACCOUNT`, `GET_BALANCE`, `GET_TOKEN_ACCOUNTS`, `GET_PROGRAM_ACCOUNTS`, `GET_SIGNATURES_FOR_ADDRESS`, `GET_LATEST_BLOCKHASH`, `GET_PYTH_PRICE`, `HERMES_FALLBACK`, `GET_MARKET_STATE`, `DERIVE_PDA`, `TRANSFER`, `TRANSFER_SPL`, `INVOKE`, `SIMULATE_EVENTS` (see `adapters/solana.py`). Policy/registry name **`solana`** is the first **blockchain.solana**-family adapter; strict DSL keeps the `solana.` prefix (first-dot split).
 
+## ArmaraOS Hand package emitter (`armaraos`)
+
+Emit a **directory** consumable by **ArmaraOS** / **openfang-hands**: manifest, compiled IR, security hints, and a short README.
+
+**Command** (repo root, typical):
+
+```bash
+ainl emit path/to/workflow.ainl --target armaraos -o ./workflow_hand
+```
+
+**Artifacts:**
+
+| File | Role |
+|------|------|
+| `HAND.toml` | `[hand]` table: `id`, `name`, `version`, `ainl_ir_version`, **`schema_version`** (contract **`1`** today), `entrypoint`, metadata, config/security stubs |
+| `<stem>.ainl.json` | Compiled IR JSON plus top-level **`schema_version`** (**emitter adds**; the in-memory IR passed into the emitter is **not** mutated) |
+| `security.json` | Policy object; **`schema_version`** is the **first** key, then `version`, `sandbox`, `wasm_config`, **`capability_declarations.adapters`**, etc. |
+| `README.md` | Operator summary |
+
+**Why `schema_version`:** the Rust **openfang-hands** loader and **`openfang hand validate`** expect **`schema_version`** in **`HAND.toml`** and warn when it is missing. AINL writes the same version family on **`HAND.toml`**, the IR file, and **`security.json`** so emitted packs validate cleanly.
+
+**Source + tests:** `armaraos/emitter/armaraos.py` (`HAND_SCHEMA_VERSION`, `AINL_IR_SCHEMA_VERSION`), `tests/test_emit_armaraos_handpack.py`. **Operator guide:** [`../ARMARAOS_INTEGRATION.md`](../ARMARAOS_INTEGRATION.md) § *Emit a Hand package*.
+
 ## Where to see emitters in action
 
 - Snapshot tests for emitted artifacts: `tests/test_snapshot_emitters.py`

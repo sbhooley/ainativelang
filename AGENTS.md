@@ -17,6 +17,7 @@ runtime/engine.py       — The runtime engine (2150 lines). Executes IR graphs.
 runtime/adapters/       — Runtime adapter base classes and builtins.
 cli/main.py             — CLI entry point (2700 lines). All `ainl` commands.
 adapters/               — 54 adapter modules (solana, postgres, redis, LLM, etc); ArmaraOS monitor bootstrap: `armaraos_integration.py`, `armaraos_defaults.py` (`build_armaraos_monitor_registry`, `boot_armaraos_graph_memory`). See `docs/ARMARAOS_INTEGRATION.md`, `docs/adapters/AINL_GRAPH_MEMORY.md`.
+armaraos/emitter/       — `armaraos.py`: `ainl emit --target armaraos` Hand pack (`HAND.toml`, IR JSON, `security.json`, README) with `schema_version` for openfang-hands validation.
 scripts/                — Standalone scripts (emit_langgraph, emit_temporal, etc).
 tooling/                — Graph analysis, normalization, effect analysis tools.
 examples/               — 154+ .ainl example files. **Training contract:** only paths listed as `strict-valid` in `tooling/artifact_profiles.json` are CI-checked with `ainl validate --strict`. See `examples/README.md` and `docs/EXAMPLE_SUPPORT_MATRIX.md` before copying random files.
@@ -46,8 +47,10 @@ ainl-validate <file> --emit <target>     # Separate script, more emit targets
 ```
 ir, langgraph, temporal, hermes-skill, hermes,
 solana-client, blockchain-client, server, python-api,
-react, openapi, prisma, sql, docker, k8s, cron
+react, openapi, prisma, sql, docker, k8s, cron, armaraos
 ```
+
+**`armaraos`:** emits an **openfang-hands** Hand directory (`HAND.toml`, `<stem>.ainl.json`, `security.json`, `README.md`) with **`schema_version`** on **`[hand]`**, the IR JSON, and **`security.json`** — see **`docs/ARMARAOS_INTEGRATION.md`** § *Emit a Hand package*.
 
 ### ainl serve Endpoints
 
@@ -192,7 +195,7 @@ http       — HTTP requests
 web        — Web search/fetch (SEARCH, FETCH, SCRAPE, GET)
 tiktok     — TikTok data (RECENT, SEARCH, PROFILE, STATS, TRENDING)
 memory     — Key-value SQLite store + procedural patterns (`store_pattern`/`recall_pattern`, table `ainl_memory_patterns`); IR label steps `memory.merge` / `MemoryMerge` re-inject stored `labels` as live IR (`docs/adapters/MEMORY_CONTRACT.md` §3.7; tests/test_memory_merge.py)
-ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch; EdgeType epistemic edges; persona.update → persona_update; **`boot()`** reads **`AINL_BUNDLE_PATH`** for scheduled **`ainl run`**; **`ainl_memory_sync`** → **`ainl_graph_memory_inbox.json`** when **`ARMARAOS_AGENT_ID`**); see docs/adapters/AINL_GRAPH_MEMORY.md, armaraos/docs/graph-memory-sync.md (hub) + armaraos/docs/graph-memory.md (daemon drain + env **`AINL_EXTRACTOR_ENABLED`** / **`AINL_TAGGER_ENABLED`** / **`AINL_PERSONA_EVOLUTION`** in **armaraos** `crates/openfang-runtime/README.md`); demos demo/procedural_roundtrip_demo.py, demo/ainl_graph_memory_demo.py; tests test_semantic_edges.py, armaraos/bridge/tests/test_ainl_memory_sync.py
+ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch; EdgeType epistemic edges; persona.update → persona_update; **`boot()`** reads **`AINL_BUNDLE_PATH`** for scheduled **`ainl run`**; **`ainl_memory_sync`** → **`ainl_graph_memory_inbox.json`** when **`ARMARAOS_AGENT_ID`**); Rust auto-refresh writes per-agent **`{agent}_graph_export.json`** under **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** (directory) or **`…/agents/<id>/ainl_graph_memory_export.json`** when unset — Python resolves directory vs **`.json`** file + auto-fallback (`docs/adapters/AINL_GRAPH_MEMORY.md`); see also armaraos/docs/graph-memory-sync.md (hub) + armaraos/docs/graph-memory.md (daemon drain + env **`AINL_EXTRACTOR_ENABLED`** / **`AINL_TAGGER_ENABLED`** / **`AINL_PERSONA_EVOLUTION`** in **armaraos** `crates/openfang-runtime/README.md`); demos demo/procedural_roundtrip_demo.py, demo/ainl_graph_memory_demo.py; tests test_semantic_edges.py, test_armaraos_graph_snapshot_import.py, armaraos/bridge/tests/test_ainl_memory_sync.py
 cache      — Cache get/set
 queue      — Message queue put/get (use R queue Put "name" val ->_)
 svc        — Service control (STATUS, RESTART, CADDY, NGINX, HEALTH)

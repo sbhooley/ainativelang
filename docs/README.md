@@ -56,7 +56,7 @@ Supporting detail:
 ## Notes
 
 - **What is AINL?** **[`WHAT_IS_AINL.md`](WHAT_IS_AINL.md)** — canonical primer (narrative + v1.2+ capabilities). Repository root [`../WHAT_IS_AINL.md`](../WHAT_IS_AINL.md) is a short stub that points here.
-- **Long-form architecture / economics:** **[`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md)** (repo root) — through **v1.6.0** (native Solana + OpenClaw intelligence ops, token caps, Hermes Agent, ArmaraOS host pack, graph-memory IR + **`.ainlbundle`**, `ainl install openclaw`, `ainl status`).
+- **Long-form architecture / economics:** **[`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md)** (repo root) — through **v1.6.0** (native Solana + OpenClaw intelligence ops, token caps, Hermes Agent, ArmaraOS host pack, graph-memory IR + **`.ainlbundle`**, `ainl install openclaw`, `ainl status`). **Graph-as-memory (public narrative):** [ainativelang.com blog](https://ainativelang.com/blog/graph-as-memory-architecture-ainl); **verified timeline:** [`PRIOR_ART.md`](../PRIOR_ART.md).
 - **Reactive production workflows:** [`reactive/REACTIVE_EVENTS.md`](reactive/REACTIVE_EVENTS.md) + durability scale guidance [`reactive/ADVANCED_DURABILITY.md`](reactive/ADVANCED_DURABILITY.md) + ready-to-adopt starters in [`../templates/production/`](../templates/production/).
 - **Graph diagrams (Mermaid/images):** root `README.md` → *Visualize your workflow*; details in [`architecture/GRAPH_INTROSPECTION.md`](architecture/GRAPH_INTROSPECTION.md) §7 (`ainl visualize`, `ainl-visualize`, `--png`, `--svg`).
 - **Starter include demos:** `examples/timeout_demo.ainl` (minimal timeout include) and `examples/timeout_memory_prune_demo.ainl` (timeout + memory put/list/prune, used for PNG export docs).

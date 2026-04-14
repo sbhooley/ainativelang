@@ -17,6 +17,7 @@ This document establishes the chronological record of graph-as-memory architectu
 | **April 11–13, 2026** | AINL unified graph-memory + persona bundle | **Implementation** | AINL repo commits + LATE_NIGHT_CONVO_WITH_AI.md |
 | **April 12, 2026 03:13 AM MDT** | ArmaraOS ainl-memory / ainl-runtime v0.1.1-alpha | **Implementation** | crates.io |
 | **April 12–13, 2026** | ArmaraOS graph-memory integration | Development | ArmaraOS repo commits, ARCHITECTURE.md, docs/graph-memory.md |
+| **April 13, 2026** | Public narrative: graph-as-memory blog (ainativelang.com) | Communications | [Graph-as-memory architecture](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) |
 
 **Prior Art Timeline Summary:**
 - **Working implementation (Feb 22)** predates Google ADK 2.0 by **24 days**
@@ -297,6 +298,22 @@ Google ADK 2.0 uses graphs for **workflow execution** (similar to AINL) but trea
 
 ---
 
+### 8. Public narrative — graph-as-memory blog (April 13, 2026)
+
+**Publication:** Marketing / technical narrative on ainativelang.com  
+**URL:** https://ainativelang.com/blog/graph-as-memory-architecture-ainl  
+**Repository:** `sbhooley/ainativelangweb` (site source; blog MDX committed to `main`)
+
+**What it documents (non-normative summary):**
+- Plain-language explanation of intrinsic graph-as-memory (execution, episodic, semantic, procedural, and persona subgraphs on one substrate).
+- Placement next to MAGMA (external multi-graph memory) and Google ADK 2.0 (graph workflows + external MemoryService).
+- Pointers to PyPI (`ainativelang`), Rust crates (`ainl-memory`, `ainl-runtime`, `ainl-persona`, `ainl-semantic-tagger`, `ainl-graph-extractor`), and ArmaraOS integration.
+
+**Prior art significance:**
+- Does not change implementation dates; it **discloses** the same architecture to a general technical audience and cross-links the Python + Rust + Agent OS story after the April 11–13 implementation window.
+
+---
+
 ## Interpretation: Development Timeline
 
 The **verified timeline** shows:
@@ -310,6 +327,7 @@ The **verified timeline** shows:
 7. **Unified graph-memory + persona bundle (April 11–13, 2026):** Explicit design doc (`LATE_NIGHT_CONVO_WITH_AI.md`) plus Python implementation of AINLBundle, GraphPatch, graph memory ops, and persona subgraphs.
 8. **ArmaraOS ainl-memory / ainl-runtime (April 12, 2026):** First standalone Rust crates implementing unified graph memory.
 9. **ArmaraOS graph-memory integration (April 12–13, 2026):** Agent OS embedding of unified graph-memory substrate with per-agent stores, bundle round-trip, and persona prompt hooks.
+10. **Public narrative blog (April 13, 2026):** [Graph-as-memory architecture](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) on ainativelang.com summarizes the unified stack for builders and links reference material (PyPI, docs.rs, lib.rs crates).
 
 **Key observations:**
 
@@ -419,6 +437,13 @@ This combination establishes prior art not just for the **concept** of unified g
 - **Representative commit:** `50508ee` (April 12, 2026) – “feat: AINL graph-as-memory substrate (ainl-memory v0.1.1-alpha)”
 - **Docs:** `ARCHITECTURE.md`, `docs/graph-memory.md`, `CLAUDE.md`, `docs/ainl-first-language.md`, `docs/scheduled-ainl.md`
 
+### Public blog (graph-as-memory narrative)
+
+- **Title:** When Your AI Agent Actually Remembers: Introducing AINL’s Graph-as-Memory Architecture
+- **URL:** https://ainativelang.com/blog/graph-as-memory-architecture-ainl
+- **Site repository:** https://github.com/sbhooley/ainativelangweb
+- **Date:** April 13, 2026 (content publish; not a substitute for implementation timestamps above)
+
 ---
 
 ## Usage and Attribution
@@ -446,6 +471,9 @@ When citing graph-as-memory architecture, the appropriate attribution depends on
 **For ecosystem convergence:**
 > “Independent convergence on graph-based agent memory from MAGMA (Jan 2026), AINL (Feb 2026), Google ADK 2.0 (Mar 2026), and the dual Python+Rust AINL/ArmaraOS stack (April 2026) suggests this is an emergent architectural pattern for agent memory systems.”
 
+**For public narrative (April 2026):**
+> “AINL and ArmaraOS graph-as-memory overview for practitioners: [When Your AI Agent Actually Remembers](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) (April 13, 2026).”
+
 ---
 
 ## Maintenance
@@ -458,4 +486,4 @@ This document will be updated as:
 
 **Last updated:** April 13, 2026  
 **Maintainer:** ArmaraOS project  
-**Related documents:** `ARCHITECTURE.md` (ArmaraOS), `WHITEPAPERDRAFT.md`, `LATE_NIGHT_CONVO_WITH_AI.md`, `AINL_SPEC.md` (AINL repo)
+**Related documents:** `ARCHITECTURE.md` (ArmaraOS), `WHITEPAPERDRAFT.md`, `LATE_NIGHT_CONVO_WITH_AI.md`, `AINL_SPEC.md` (AINL repo); public overview [graph-as-memory blog](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) (ainativelang.com)

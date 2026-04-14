@@ -3,9 +3,15 @@ AINLBundle — unified single-artifact serialization for AINL agents.
 
 An AINLBundle is a single JSON-serializable dict containing:
   - workflow: the compiled AINL IR (from AICodeCompiler.compile())
-  - memory:   snapshot of all MemoryNode / EpisodeNode / SemanticNode objects
-  - persona:  snapshot of all PersonaNode objects
+  - memory:   snapshot of non-persona graph nodes from ``export_graph()``
+              (``AINLBundleBuilder._snapshot_memory`` excludes ``node_type == "persona"``)
+  - persona:  snapshot of persona traits (``persona_load`` / trait dicts)
   - tools:    list of R-op tool names extracted from the compiled IR
+
+**Scheduled ``ainl run`` (ArmaraOS):** when ``AINL_BUNDLE_PATH`` is set,
+``AINLGraphMemoryBridge.boot()`` in ``armaraos/bridge/ainl_graph_memory.py``
+replays ``persona`` then ``memory`` into the live JSON ``GraphStore`` (skip
+existing ids; non-fatal malformed rows). See ``docs/adapters/AINL_GRAPH_MEMORY.md``.
 
 This is the "one file, four dimensions" artifact described in the AINL
 whitepaper and arXiv preprint.

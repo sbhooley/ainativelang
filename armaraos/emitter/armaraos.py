@@ -1,5 +1,8 @@
 """
-ArmaraOS emitter: generates HAND.toml manifest + pre-compiled AINL IR for ArmaraOS Hands.
+ArmaraOS emitter: generates HAND.toml manifest + pre-compiled AINL IR for ArmaraOS Hands
+(openfang-hands). Writes matching schema_version on [hand], the emitted IR JSON (shallow
+copy; caller dict unchanged), and security.json. See docs/ARMARAOS_INTEGRATION.md
+(Emit a Hand package).
 """
 
 from __future__ import annotations

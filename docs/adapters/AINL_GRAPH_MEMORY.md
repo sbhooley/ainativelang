@@ -2,6 +2,11 @@
 
 JSON-backed **node/edge graph memory** for the **ArmaraOS ↔ AINL bridge**: episodic, semantic, procedural, and persona-shaped nodes with typed edges. This is **not** the SQLite **`memory`** adapter ([`MEMORY_CONTRACT.md`](MEMORY_CONTRACT.md)); it is a separate adapter name and persistence format used when graphs need a lightweight, file-local knowledge graph.
 
+## Further reading
+
+- **Narrative (ecosystem):** [When Your AI Agent Actually Remembers: Introducing AINL’s Graph-as-Memory Architecture](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) — public overview of unified graph-as-memory in Python (AINL) and Rust (`ainl-*`, ArmaraOS).
+- **Chronology and prior-art framing:** [`PRIOR_ART.md`](../../PRIOR_ART.md) in this repository (timeline table + citations).
+
 ## Layout and persistence
 
 | Item | Detail |
@@ -14,18 +19,28 @@ JSON-backed **node/edge graph memory** for the **ArmaraOS ↔ AINL bridge**: epi
 
 ### Reading the authoritative Rust store (ArmaraOS)
 
-Dashboard chat persists graph memory to **SQLite** at `~/.armaraos/agents/{uuid}/ainl_memory.db` via Rust `GraphMemoryWriter`. The Python `GraphStore` can **hydrate from a JSON export of that DB** so `ainl run` graphs see the same nodes without a second writer:
+Dashboard chat persists graph memory to **SQLite** at `~/.armaraos/agents/{uuid}/ainl_memory.db` (or under **`ARMARAOS_HOME`** / **`OPENFANG_HOME`**) via Rust **`GraphMemoryWriter`**. The Python **`GraphStore`** can **hydrate from a JSON export of that DB** so **`ainl run`** graphs see the same nodes without a second writer.
 
-1. Export (host): `openfang memory graph-export <agent-uuid> --output /path/to/snapshot.json` (uses `GraphMemoryWriter::export_graph_json_for_agent`; same shape as `AgentGraphSnapshot`).
-2. Point Python at the file: set **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** to that path before constructing `GraphStore` / booting **`AINLGraphMemoryBridge`**. On load, the snapshot is merged **before** the JSON file at `AINL_GRAPH_MEMORY_PATH` (same node `id` in the JSON file overwrites the export copy).
+**Manual export (one-off / CI):** `openfang memory graph-export <agent-uuid> --output /path/to/snapshot.json` (uses **`GraphMemoryWriter::export_graph_json_for_agent`**; same shape as **`AgentGraphSnapshot`**). Point Python at that file with **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** set to the **`.json` file path** (see *Resolution rules* below), or copy the file and pass a path that ends in **`.json`**.
+
+**Merge order:** on construction, **`GraphStore._load`** merges the resolved ArmaraOS snapshot **first**, then overlays the JSON file at **`AINL_GRAPH_MEMORY_PATH`** (same node **`id`** in the JSON file overwrites the export copy).
 
 Correlation fields on exported nodes include **`agent_id`** on every row; orchestration **`trace_id`** is attached on episodic **`trace_event`** JSON and as semantic fact tags (`trace_id:…`) when the turn had an orchestration context.
 
 **Rust-written `tags` on episodes:** the ArmaraOS daemon may also populate episodic **`tags`** (and extend semantic **`tags`**) with deterministic **`ainl-semantic-tagger`** strings when the binary is built with **`ainl-tagger`** and the process sets **`AINL_TAGGER_ENABLED=1`** (exactly that literal). Export / Python hydration then sees the same `tags` arrays as on inbox-imported nodes. See **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md) (*Optional extraction and tagging*).
 
-**Auto-refresh (ArmaraOS):** when **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** is set to a writable path, **openfang-runtime** rewrites that file with a fresh `export_graph_json_for_agent` snapshot after each chat turn’s persona evolution pass completes, so long-lived Python processes can re-read the file without running `openfang memory graph-export` manually (Python still treats the file as read-only input unless it writes the JSON store separately).
+#### Env: **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** + **`ARMARAOS_AGENT_ID`**
 
-`GraphStore` loads the file at construction, prunes TTL-expired nodes, and writes atomically via a `.tmp` file + `os.replace`.
+| Layer | Behavior |
+|-------|------------|
+| **Rust auto-refresh** (**`openfang-runtime`**, post–persona evolution) | If **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** is set to a **non-empty string**, it names a **writable directory only**: the daemon writes **`{dir}/{agent_id}_graph_export.json`** (per chat agent). Parent directories are created as needed. If the variable is **unset**, Rust writes **`{openfang_home_dir()}/agents/{agent_id}/ainl_graph_memory_export.json`** (same home resolution as **`ainl_memory.db`** — **`ARMARAOS_HOME`**, **`OPENFANG_HOME`**, then **`~/.armaraos`** vs **`~/.openfang`**). Resolution helper: **`armaraos_graph_memory_export_json_path`** in **`crates/openfang-runtime/src/graph_memory_writer.rs`**. |
+| **Python cold load** (**`_armaraos_export_snapshot_path`** in this module) | **Directory mode:** path **exists as a directory**, *or* its final component’s name does **not** end with **`.json`** (case-insensitive) → snapshot file is **`{that path}/{ARMARAOS_AGENT_ID}_graph_export.json`**. **`ARMARAOS_AGENT_ID`** is **required** in this mode; if it is missing, the bridge logs a warning and **skips** the snapshot merge. **File mode:** path looks like a single **`.json`** file (per the rule above) and is used **as-is** — backward compatible with older single-agent setups and CLI exports. **No export env:** if **`ARMARAOS_AGENT_ID`** is set, Python also tries **`{openfang_home}/agents/{id}/ainl_graph_memory_export.json`** (same **`_armaraos_openfang_home()`** order as Rust). |
+
+**Operator migration (Rust):** older installs pointed **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** at a **single file**; the daemon now always treats the value as a **directory** and appends **`/{agent_id}_graph_export.json`**. Point the variable at the **parent directory** of the old file (or unset it and rely on the default **`ainl_graph_memory_export.json`** next to SQLite). Python **file mode** still accepts a concrete **`.json`** path for reads.
+
+**Auto-refresh summary:** after each chat turn’s persona evolution pass, **openfang-runtime** rewrites the resolved per-agent JSON path so long-lived Python processes can re-read it without running **`openfang memory graph-export`** manually (Python still treats that JSON as read-only input unless it writes the separate **`AINL_GRAPH_MEMORY_PATH`** store).
+
+`GraphStore` loads the snapshot at construction, prunes TTL-expired nodes, and writes the main graph file atomically via a `.tmp` file + `os.replace`.
 
 **Dry run:** respects `frame["dry_run"]` / truthy variants and `AINL_DRY_RUN` (same convention as other bridge adapters).
 
@@ -70,10 +85,12 @@ When **`AINLGraphMemoryBridge.boot(agent_id=…)`** runs, it sets the active age
 
 | Env | When set | Behavior |
 |-----|----------|----------|
-| **`AINL_BUNDLE_PATH`** | Absolute path to an existing **`.ainlbundle`** file (ArmaraOS sets this on the **`ainl run`** child when `~/.armaraos/agents/<agent_id>/bundle.ainlbundle` exists) | `AINLBundle.load(path)`; for each entry in **`persona`** (list of dicts), call **`persona.update`** so the JSON graph store matches the last saved bundle. Malformed or missing files are ignored (non-fatal). |
+| **`AINL_BUNDLE_PATH`** | Absolute path to an existing **`.ainlbundle`** file (ArmaraOS sets this on the **`ainl run`** child when `~/.armaraos/agents/<agent_id>/bundle.ainlbundle` exists) | `AINLBundle.load(path)` then: (1) **`persona`** — for each dict in **`bundle.persona`**, call **`persona.update`** (per-row errors are skipped). (2) **`memory`** — for each dict in **`bundle.memory`**, normalize to a **`MemoryNode`** and **`write_node`** only when the node **`id` is not already** in the live JSON **`GraphStore`** (episodic, semantic, procedural, **`patch`**; **`persona`** rows in **`memory`** are ignored so **`bundle.persona`** stays the sole persona bootstrap path). Malformed rows, unknown **`node_type`**, or load failures are **non-fatal**. Boot logs counts when the bundle file was read successfully. |
 | **`AINL_AGENT_ID`** | Set with the bundle path by the host | Carried for host/debug alignment; bridge behavior is driven by the **`agent_id`** argument to **`boot`**. |
 
-After a successful scheduled graph, the ArmaraOS kernel runs a **background** Python export that calls **`boot`** again and **`AINLBundleBuilder.build(..., bridge).save(...)`** so the next cron tick sees updated **persona** / memory snapshots in the bundle file. Details: **ArmaraOS** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md) (*AINL bundle + graph memory*), bundle schema: **`runtime/ainl_bundle.py`**.
+**Bundle `memory` rows** are the same shape as **`AINLBundleBuilder._snapshot_memory()`** / **`export_graph()`** node dicts (non-persona only in the snapshot). The live store **wins** on **`id`** collisions: bundle pre-seed is bootstrap state, not authority over runtime writes.
+
+After a successful scheduled graph, the ArmaraOS kernel runs a **background** Python export that calls **`boot`** again and **`AINLBundleBuilder.build(..., bridge).save(...)`** so the next cron tick sees updated **persona** and **memory** snapshots in the bundle file. Details: **ArmaraOS** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md) (*AINL bundle + graph memory*), bundle schema: **`runtime/ainl_bundle.py`**, tests: **`tests/test_ainl_bundle.py`** (`test_bundle_boot_*`, `test_bundle_round_trip_preserves_non_persona_memory`).
 
 **Not the same store:** ArmaraOS dashboard chat uses Rust **`ainl-memory`** SQLite at **`~/.armaraos/agents/<id>/ainl_memory.db`** (**`GraphMemoryWriter`**) to query **Persona** nodes and append **`[Persona traits active: …]`** to the **system prompt** after orchestration context (strength ≥ **0.1**, rolling **90**-day window). That path never reads **`AINL_BUNDLE_PATH`**; it is separate from this JSON **`ainl_graph_memory`** file used inside **`ainl run`**. See **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md).
 
