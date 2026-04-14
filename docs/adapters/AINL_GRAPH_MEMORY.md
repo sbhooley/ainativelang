@@ -1,3 +1,11 @@
+---
+title: AINL graph memory (`ainl_graph_memory`)
+description: >-
+  JSON-backed node/edge graph memory for the ArmaraOS ↔ AINL bridge (episodic,
+  semantic, procedural, persona). Distinct from the SQLite memory adapter; see
+  MEMORY_CONTRACT.md for the memory adapter contract.
+---
+
 # AINL graph memory (`ainl_graph_memory`)
 
 JSON-backed **node/edge graph memory** for the **ArmaraOS ↔ AINL bridge**: episodic, semantic, procedural, and persona-shaped nodes with typed edges. This is **not** the SQLite **`memory`** adapter ([`MEMORY_CONTRACT.md`](MEMORY_CONTRACT.md)); it is a separate adapter name and persistence format used when graphs need a lightweight, file-local knowledge graph.
@@ -5,7 +13,7 @@ JSON-backed **node/edge graph memory** for the **ArmaraOS ↔ AINL bridge**: epi
 ## Further reading
 
 - **Narrative (ecosystem):** [When Your AI Agent Actually Remembers: Introducing AINL’s Graph-as-Memory Architecture](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) — public overview of unified graph-as-memory in Python (AINL) and Rust (`ainl-*`, ArmaraOS).
-- **Chronology and prior-art framing:** [`PRIOR_ART.md`](../../PRIOR_ART.md) in this repository (timeline table + citations).
+- **Chronology and prior-art framing:** [`PRIOR_ART.md`](https://github.com/sbhooley/ainativelang/blob/main/PRIOR_ART.md) in the AINL repository (timeline table + citations). Same document is mirrored under **ArmaraOS** as [`PRIOR_ART.md`](https://github.com/sbhooley/armaraos/blob/main/PRIOR_ART.md).
 
 ## Layout and persistence
 

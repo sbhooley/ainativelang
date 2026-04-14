@@ -4,6 +4,7 @@
 
 <!-- Next release changes go here -->
 
+- **docs**: **`PRIOR_ART.md`** — timeline row + §8 public narrative (April 13, 2026 blog), interpretation bullet, references / attribution / maintenance links to [graph-as-memory architecture](https://ainativelang.com/blog/graph-as-memory-architecture-ainl); **`docs/adapters/AINL_GRAPH_MEMORY.md`** — YAML **`description`** (fixes marketing-site MDX frontmatter inference), **Further reading** (blog + GitHub `PRIOR_ART.md` links); **`docs/adapters/README.md`**, **`docs/README.md`** — cross-links to the same blog and `PRIOR_ART.md`.
 - **feat(emit/armaraos)**: **`armaraos/emitter/armaraos.py`** — **`schema_version = "1"`** on **`HAND.toml`** **`[hand]`** (after **`ainl_ir_version`**), top-level **`schema_version`** on emitted **`<stem>.ainl.json`** (shallow copy of IR so the caller dict is unchanged), and **`schema_version`** as the first key in **`security.json`**; aligns with **openfang-hands** / **`openfang hand validate`**. **`scripts/wrappers/supervisor_fixed.ainl`** — canonical **`R openclaw_memory append_today`** adapter form.
 - **test**: **`tests/test_emit_armaraos_handpack.py`** — asserts **`schema_version`** on **`HAND.toml`**, IR JSON, and **`security.json`**; regression that **`emit_armaraos`** does not mutate the input IR.
 - **docs**: **`docs/ARMARAOS_INTEGRATION.md`**, **`docs/emitters/README.md`**, **`docs/DOCS_INDEX.md`**, **`AGENTS.md`**, **`armaraos/emitter/armaraos.py`** (module docstring) — Hand pack **`schema_version`** contract + cross-links.
