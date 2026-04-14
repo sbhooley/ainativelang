@@ -8,6 +8,49 @@ from pathlib import Path
 import pytest
 
 
+def test_rust_snapshot_schema_version_one_passes_guard_and_merges(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rust ainl-memory uses SNAPSHOT_SCHEMA_VERSION = \"1\"; Python must accept it (not only \"1.0\")."""
+    from armaraos.bridge.ainl_graph_memory import GraphStore, NodeType, _looks_like_armaraos_snapshot
+
+    assert _looks_like_armaraos_snapshot({"schema_version": "1"}) is True
+
+    snap_path = tmp_path / "rust_export_v1.json"
+    snap = {
+        "agent_id": "agent-rust-1",
+        "schema_version": "1",
+        "exported_at": "2026-04-01T00:00:00Z",
+        "nodes": [
+            {
+                "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                "memory_category": "semantic",
+                "importance_score": 0.7,
+                "agent_id": "agent-rust-1",
+                "node_type": {
+                    "type": "semantic",
+                    "fact": "from rust",
+                    "confidence": 0.9,
+                    "source_turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                    "source_episode_id": "",
+                    "tags": [],
+                },
+                "edges": [],
+            }
+        ],
+        "edges": [],
+    }
+    snap_path.write_text(json.dumps(snap), encoding="utf-8")
+    json_path = tmp_path / "overlay.json"
+    json_path.write_text(json.dumps({"nodes": [], "edges": []}), encoding="utf-8")
+    monkeypatch.setenv("AINL_GRAPH_MEMORY_ARMARAOS_EXPORT", str(snap_path))
+    store = GraphStore(path=json_path)
+    node = store.get_node("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    assert node is not None
+    assert node.node_type == NodeType.SEMANTIC.value
+    assert node.payload.get("rust_snapshot", {}).get("node_type", {}).get("fact") == "from rust"
+
+
 def test_graph_store_merges_armaraos_export_then_overlays_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from armaraos.bridge.ainl_graph_memory import GraphStore, NodeType
 

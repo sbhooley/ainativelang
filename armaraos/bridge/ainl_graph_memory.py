@@ -221,7 +221,7 @@ def _armaraos_export_snapshot_path() -> Optional[Path]:
 
 
 def _looks_like_armaraos_snapshot(data: Dict[str, Any]) -> bool:
-    if data.get("schema_version") == "1.0":
+    if data.get("schema_version") in ("1", "1.0"):
         return True
     return bool(
         data.get("exported_at")
@@ -363,7 +363,13 @@ def _dry_run(context: Dict[str, Any]) -> bool:
 
 
 class GraphStore:
-    """JSON file graph: nodes + edges with atomic replace and TTL pruning."""
+    """JSON file graph: nodes + edges with atomic replace and TTL pruning.
+
+    Optional **read-through** from ArmaraOS Rust SQLite: set env
+    ``AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`` to a JSON file produced by
+    ``openfang memory graph-export <agent-uuid> --output snapshot.json`` so this store loads the authoritative
+    ``ainl_memory.db`` subgraph at construction (see ``_armaraos_export_snapshot_path``).
+    """
 
     def __init__(self, path: Optional[Path] = None) -> None:
         self.path = path or _default_graph_path()
