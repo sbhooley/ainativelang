@@ -213,6 +213,7 @@ PYTHONPATH=. uvicorn armaraos.bridge.graph_viz.server:app --reload --port 8765
 
 - [`MEMORY_CONTRACT.md`](MEMORY_CONTRACT.md) — SQLite **`memory`** adapter contract
 - **`armaraos/bridge/ainl_memory_sync.py`** — inbox writer (**`AinlMemorySyncWriter`**, **`push_nodes`** / **`push_patch`**)
+- [`../../armaraos/docs/graph-memory-sync.md`](../../armaraos/docs/graph-memory-sync.md) — inbox triggers, envelope, env (**`ARMARAOS_AGENT_ID`**), tests + CI (vendored copy; upstream **armaraos** keeps the same file under **`docs/`**)
 - **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md) — daemon **`GraphMemoryWriter`**, **`ainl_graph_memory_inbox.json`** drain (**`ARMARAOS_AGENT_ID`**)
 - [`../ARMARAOS_INTEGRATION.md`](../ARMARAOS_INTEGRATION.md) — ArmaraOS host pack + env table (**`openfang_runtime_ainl`** on **`GET /api/status`**)
 - [`../RUNTIME_COMPILER_CONTRACT.md`](../RUNTIME_COMPILER_CONTRACT.md) — runtime vs compiler ownership

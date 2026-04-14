@@ -37,7 +37,7 @@ Each write produces a full JSON document (not JSONL):
 | **`nodes`** | List of **`MemoryNode.to_dict()`** rows (required). |
 | **`edges`** | List of edge dicts; preserved across appends (may be empty). |
 | **`schema_version`** | String **`"1"`**; defaulted on write. JSON Schema: **`armaraos/bridge/ainl_graph_memory_inbox_schema_v1.json`**. |
-| **`source_features`** | String list; every **`push_nodes`** merges **`ainl_graph_memory`** and **`inbox_v1`**. Callers emitting tagger-dependent semantic nodes may add **`requires_ainl_tagger`** (Python constant **`REQUIRES_AINL_TAGGER`** in **`ainl_memory_sync.py`**) per **armaraos** `docs/graph-memory.md`. |
+| **`source_features`** | String list; every **`push_nodes`** merges **`ainl_graph_memory`** and **`inbox_v1`**. Callers emitting tagger-dependent semantic nodes may add **`requires_ainl_tagger`** (Python constant **`REQUIRES_AINL_TAGGER`** in **`ainl_memory_sync.py`**) per **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md). |
 
 Writes use **`*.tmp`** + **`os.replace`**. In-process concurrency is serialized with **`threading.Lock`** on the writer instance.
 
@@ -60,5 +60,6 @@ Writes use **`*.tmp`** + **`os.replace`**. In-process concurrency is serialized 
 
 - **`docs/adapters/AINL_GRAPH_MEMORY.md`** — adapter + runner + read path
 - **`docs/ARMARAOS_INTEGRATION.md`** — env table
-- **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md) — Rust drain + tagger policy
+- **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md) — Rust drain, EndTurn order, tagger policy
+- **armaraos** [`crates/openfang-runtime/README.md`](https://github.com/sbhooley/armaraos/blob/main/crates/openfang-runtime/README.md) — Cargo features and env toggles
 - **armaraos** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md) — bundle + cron
