@@ -12,6 +12,17 @@ JSON-backed **node/edge graph memory** for the **ArmaraOS ↔ AINL bridge**: epi
 | **Logger** | `ainl.graph_memory` (`logging.getLogger("ainl.graph_memory")`) |
 | **On-disk shape** | `{"nodes": [...], "edges": [...]}` — see `MemoryNode` / `MemoryEdge` in the module for fields |
 
+### Reading the authoritative Rust store (ArmaraOS)
+
+Dashboard chat persists graph memory to **SQLite** at `~/.armaraos/agents/{uuid}/ainl_memory.db` via Rust `GraphMemoryWriter`. The Python `GraphStore` can **hydrate from a JSON export of that DB** so `ainl run` graphs see the same nodes without a second writer:
+
+1. Export (host): `openfang memory graph-export <agent-uuid> --output /path/to/snapshot.json` (uses `GraphMemoryWriter::export_graph_json_for_agent`; same shape as `AgentGraphSnapshot`).
+2. Point Python at the file: set **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** to that path before constructing `GraphStore` / booting **`AINLGraphMemoryBridge`**. On load, the snapshot is merged **before** the JSON file at `AINL_GRAPH_MEMORY_PATH` (same node `id` in the JSON file overwrites the export copy).
+
+Correlation fields on exported nodes include **`agent_id`** on every row; orchestration **`trace_id`** is attached on episodic **`trace_event`** JSON and as semantic fact tags (`trace_id:…`) when the turn had an orchestration context.
+
+**Auto-refresh (ArmaraOS):** when **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** is set to a writable path, **openfang-runtime** rewrites that file with a fresh `export_graph_json_for_agent` snapshot after each chat turn’s persona evolution pass completes, so long-lived Python processes can re-read the file without running `openfang memory graph-export` manually (Python still treats the file as read-only input unless it writes the JSON store separately).
+
 `GraphStore` loads the file at construction, prunes TTL-expired nodes, and writes atomically via a `.tmp` file + `os.replace`.
 
 **Dry run:** respects `frame["dry_run"]` / truthy variants and `AINL_DRY_RUN` (same convention as other bridge adapters).
