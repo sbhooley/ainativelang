@@ -47,15 +47,6 @@ _ir_mod = importlib.util.module_from_spec(_ir_spec)
 _ir_spec.loader.exec_module(_ir_mod)
 compile_source_cached = _ir_mod.compile_source_cached
 
-_bspec = importlib.util.spec_from_file_location(
-    "bridge_token_budget_adapter",
-    _BRIDGE_DIR / "bridge_token_budget_adapter.py",
-)
-assert _bspec and _bspec.loader
-_bmod = importlib.util.module_from_spec(_bspec)
-_bspec.loader.exec_module(_bmod)
-BridgeTokenBudgetAdapter = _bmod.BridgeTokenBudgetAdapter
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("ainl.wrapper")
 
@@ -246,19 +237,20 @@ def build_wrapper_registry():
         os.environ["OPENROUTER_API_KEY"] = os.environ.get(
             "AINL_OPENROUTER_PLACEHOLDER_KEY", "unset-openrouter-key-wrapper-registry"
         )
-    # Keep registry construction simple: runtime AdapterRegistry + explicit allow/register.
-    # (armaraos_monitor_registry is a thin helper returning an empty registry.)
+    # armaraos_monitor_registry pre-allows/registers ainl_graph_memory, bridge, cron_drift_check.
     reg: AdapterRegistry = armaraos_monitor_registry()
-    for name in ("armaraos_memory", "ainl_graph_memory", "github", "crm", "armaraos_token_tracker"):
+    for name in ("armaraos_memory", "github", "crm", "armaraos_token_tracker"):
         reg.allow(name)
     reg.register("armaraos_memory", OpenFangMemoryAdapter())
-    _GRAPH_MEMORY_BRIDGE = AINLGraphMemoryBridge()
-    reg.register(AINLGraphMemoryBridge.NAME, _GRAPH_MEMORY_BRIDGE)
+    existing_gm = reg._adapters.get(AINLGraphMemoryBridge.NAME)
+    if isinstance(existing_gm, AINLGraphMemoryBridge):
+        _GRAPH_MEMORY_BRIDGE = existing_gm
+    else:
+        _GRAPH_MEMORY_BRIDGE = AINLGraphMemoryBridge()
+        reg.register(AINLGraphMemoryBridge.NAME, _GRAPH_MEMORY_BRIDGE)
     reg.register("github", GitHubAdapter())
     reg.register("crm", CrmAdapter())
     reg.register("armaraos_token_tracker", OpenFangTokenTrackerAdapter())
-    reg.allow("bridge")
-    reg.register("bridge", BridgeTokenBudgetAdapter())
     _GRAPH_MEMORY_BRIDGE.boot(agent_id="armaraos")
     return _GraphToolInboxAdapterRegistry(reg)
 

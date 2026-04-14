@@ -33,6 +33,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from runtime.adapters.base import AdapterError, RuntimeAdapter
+
 _CRON_LINE = re.compile(r'^\s*S\s+core\s+cron\s+"([^"]+)"\s*$', re.MULTILINE)
 
 # armaraos/bridge/ -> armaraos/ -> repo root
@@ -285,6 +287,18 @@ def run_report() -> Dict[str, Any]:
         "jobs": rows,
         "issues": issues,
     }
+
+
+class CronDriftCheckAdapter(RuntimeAdapter):
+    """Expose :func:`run_report` to AINL as ``R cron_drift_check …`` (read-only)."""
+
+    NAME = "cron_drift_check"
+
+    def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
+        t = (target or "").strip().lower()
+        if t in ("", "report", "run_report", "check"):
+            return run_report()
+        raise AdapterError(f"cron_drift_check: unsupported target {target!r}")
 
 
 def main() -> None:

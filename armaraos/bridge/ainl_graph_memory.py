@@ -867,7 +867,11 @@ def _coerce_call_kwargs(args: Any) -> Dict[str, Any]:
 
 
 class AINLGraphMemoryBridge(RuntimeAdapter):
-    """AINL adapter + typed hooks for ArmaraOS runtime events."""
+    """AINL adapter + typed hooks for ArmaraOS runtime events.
+
+    Registered under :attr:`NAME` by ``adapters.armaraos_integration.armaraos_monitor_registry``
+    (ArmaraOS bridge / monitor); hosts call :meth:`boot` once per run.
+    """
 
     NAME = "ainl_graph_memory"
 
