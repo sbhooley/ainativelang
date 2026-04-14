@@ -123,6 +123,55 @@ if _missing:
     sys.exit(1)
 
 
+class _GraphToolInboxAdapterRegistry(AdapterRegistry):
+    """Wraps the bridge registry to record non-core adapter calls as graph nodes and inbox-sync them."""
+
+    def __init__(self, inner: AdapterRegistry) -> None:
+        super().__init__(allowed=None)
+        self._allowed = set(inner._allowed)
+        self._adapters = inner._adapters
+
+    def _trace_tool_to_inbox(
+        self,
+        adapter_name: str,
+        target: str,
+        args: list,
+        result: Any,
+        context: dict,
+    ) -> None:
+        bridge = _GRAPH_MEMORY_BRIDGE
+        if bridge is None:
+            return
+        if not isinstance(context, dict):
+            return
+        if context.get("dry_run"):
+            return
+        if (os.environ.get("AINL_DRY_RUN") or "").strip().lower() in ("1", "true", "yes", "on"):
+            return
+        if adapter_name in ("core", "ainl_graph_memory", "bridge"):
+            return
+        aid = str(context.get("agent_id") or os.environ.get("ARMARAOS_AGENT_ID") or "armaraos")
+        tool = f"{adapter_name}.{target}" if target else adapter_name
+        try:
+            nid = bridge.on_tool_execution(tool, args, result, aid, None)
+            node = bridge._store.get_node(nid)
+            if node is not None and bridge._sync.is_available():
+                sr = bridge._sync.push_nodes([node])
+                logger.info("graph memory inbox sync (tool): %s", sr)
+        except Exception:
+            logger.debug("graph memory tool inbox sync skipped", exc_info=True)
+
+    def call(self, adapter_name: str, target: str, args: list, context: dict) -> Any:
+        out = super().call(adapter_name, target, args, context)
+        self._trace_tool_to_inbox(adapter_name, target, args, out, context)
+        return out
+
+    async def call_async(self, adapter_name: str, target: str, args: list, context: dict) -> Any:
+        out = await super().call_async(adapter_name, target, args, context)
+        self._trace_tool_to_inbox(adapter_name, target, args, out, context)
+        return out
+
+
 def _read_monitor_budget() -> dict:
     """Best-effort read of rolling budget from MONITOR_CACHE_JSON.
 
@@ -211,7 +260,7 @@ def build_wrapper_registry():
     reg.allow("bridge")
     reg.register("bridge", BridgeTokenBudgetAdapter())
     _GRAPH_MEMORY_BRIDGE.boot(agent_id="armaraos")
-    return reg
+    return _GraphToolInboxAdapterRegistry(reg)
 
 
 def main() -> None:

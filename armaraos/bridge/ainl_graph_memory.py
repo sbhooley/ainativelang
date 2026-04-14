@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
 
+from armaraos.bridge.ainl_memory_sync import AinlMemorySyncWriter
+
 logger = logging.getLogger("ainl.graph_memory")
 
 
@@ -872,6 +874,15 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
     def __init__(self, store: Optional[GraphStore] = None) -> None:
         self._store = store or GraphStore()
         self._agent_id: str = "armaraos"
+        self.__dict__["_ainl_graph_memory_sync"] = None  # lazy :class:`AinlMemorySyncWriter`
+
+    @property
+    def _sync(self) -> AinlMemorySyncWriter:
+        impl = self.__dict__.get("_ainl_graph_memory_sync")
+        if impl is None:
+            impl = AinlMemorySyncWriter()
+            self.__dict__["_ainl_graph_memory_sync"] = impl
+        return impl
 
     def _preseed_memory_nodes_from_bundle(
         self, bundle: Any, *, agent_id: str, dry_run: bool
@@ -960,6 +971,9 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
         )
         self._store.add_node(node, persist=True, dry_run=dry)
         logger.info("graph memory boot node %s (agent_id=%s)", nid, agent_id)
+        if not dry:
+            sync_res = self._sync.push_nodes([node])
+            logger.info("graph memory inbox sync (boot): %s", sync_res)
         return nid
 
     def call(self, target: str, args: Any, context: Dict[str, Any]) -> Any:
@@ -1134,6 +1148,9 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
             ttl=None,
         )
         self._store.write_node(node, persist=True, dry_run=dry_run)
+        if not dry_run:
+            sync_res = self._sync.push_nodes([node])
+            logger.info("graph memory inbox sync (persona): %s", sync_res)
         return {"ok": True, "node_id": nid, **persona.to_payload()}
 
     def persona_get(self, params: Dict[str, Any], *, agent_id: str) -> Dict[str, Any]:
@@ -1352,6 +1369,8 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
         # Flush to disk
         if not dry_run:
             self._store.flush()
+            sync_res = self._sync.push_patch(patch_rec, agent_id)
+            logger.info("graph memory inbox sync (patch): %s", sync_res)
 
         # 7. Return
         return {
