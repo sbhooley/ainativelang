@@ -14,6 +14,9 @@ Ship tag for everything **after `v1.6.0` (`7b78f18`)** through **Gap K** vitals 
 - **feat(ainl_graph_memory)**: read **`AgentGraphSnapshot`** via export env (**`f2e6372`**); **`.ainlbundle`** boot **pre-seed** for non-persona graph nodes (**`1e86f14`**); **`feat(runtime+bundle)`** pre-seed graph store on **`ainl run`** + persona hook (**`eece265`**).
 - **fix(bridge)**: ArmaraOS **per-agent** export paths aligned (**`5a88026`**).
 - **feat(gap-k)**: **CognitiveVitals** on episodic **`MemoryNode`**, inbox schema, **`tests/test_vitals_bridge.py`** (**`3af546c`**).
+- **integration(armaraos-rust-crates)**: clarify production convergence across **`ainl-runtime`**, **`openfang-runtime`**, **`openfang-kernel`**, and **`openfang-types`** (optional **`ainl-runtime-engine`** turn routing, depth guards, shared graph-memory semantics) to reflect the shipped ArmaraOS bridge path.
+- **integration(graphpatch/registry)**: document cross-runtime GraphPatch alignment — Python **`memory.patch`** remains the rich executor while Rust-side **`PatchAdapter`** / **`AdapterRegistry`** + **`GraphPatchAdapter`** host dispatch form the stable patch-registry contract.
+- **integration(persona/extractor/tagger)**: align release notes with ArmaraOS runtime feature stack (**`ainl-persona-evolution`**, **`ainl-extractor`**, **`ainl-tagger`**) and runtime gates (**`AINL_PERSONA_EVOLUTION`**, **`AINL_EXTRACTOR_ENABLED`**, **`AINL_TAGGER_ENABLED`**) used for persona evolution, extraction reporting, and semantic tagging.
 - **fix(openclaw)**: **`token_aware_startup_context`** includes + **`fs` read** (**`6a3b35b`**).
 - **docs / chore**: PRIOR_ART + graph-memory blog + inbox/bridge hub sync + bundle boot + OpenClaw cron graphs + **`supervisor_fixed.ainl`**; demo **`test_openspace_mcp`** HTTP MCP (**`c0a87c4`**); post-evolution **ARMARAOS** export refresh (**`c03d897`**); **`docs(release): v1.6.0`** follow-up (**`8dcf043`**).
 
@@ -50,6 +53,7 @@ Ship tag for the GraphPatch line; full conventional list under **v1.6.0** below.
 - **Guards / strictness**: **`OverwriteGuardError`** on compiled-label collision; **`StrictModeError`** for invalid **`memory.patch`** literals when **`strict_literals`** is enabled.
 - **Fitness + boot**: fitness **EMA** on patched-label exit (including early **`J`**); **`_reinstall_patches`** reapplies active patches after engine boot when the graph-memory bridge is present.
 - **Dispatch**: **`R memory.patch`** is routed through the same **engine `memory` adapter dispatch** path as other **`memory.*`** verbs (not a special-case bypass).
+- **Foundation for unified graph execution**: this release locked in canonical Python GraphPatch semantics and dataflow guarantees that the ArmaraOS Rust integration extends in **v1.7.0** via patch-registry dispatch and graph-memory convergence.
 
 ## v1.6.0 (April 12, 2026) — GraphPatch (memory.patch), strict dataflow, bridge graph_patch
 

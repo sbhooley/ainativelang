@@ -101,6 +101,9 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 ## New in v1.7.0
 
 - **Cognitive vitals (Python graph bridge):** episodic **`MemoryNode`** fields **`vitals_gate`**, **`vitals_phase`**, **`vitals_trust`**; Rust snapshot import; inbox schema + **`tests/test_vitals_bridge.py`** — keeps Python graph store / inbox aligned with ArmaraOS Rust **`EpisodeNode`** vitals (pair with current ArmaraOS for **`patch`** inbox drain on the Rust side).
+- **ArmaraOS Rust crate convergence (`ainl-*` + OpenFang):** integration contracts and docs now explicitly track the `ainl-runtime`/`openfang-runtime`/`openfang-kernel`/`openfang-types` path used in production ArmaraOS builds, including optional **`ainl-runtime-engine`** turn routing, internal delegation-depth guards, and shared graph-memory session semantics for mixed Python/Rust deployments.
+- **Patch registry + GraphPatch adapter path:** ArmaraOS-side **`PatchAdapter`** / **`AdapterRegistry`** dispatch with **`GraphPatchAdapter`** host forwarding is now documented alongside Python GraphPatch so label-keyed procedural patches can converge on a single cross-runtime contract while Python remains the rich `memory.patch` executor.
+- **Persona evolution / extractor / semantic tagger alignment:** release docs and bridge wiring now call out the default ArmaraOS feature stack (**`ainl-persona-evolution`**, **`ainl-extractor`**, **`ainl-tagger`**) and runtime gates (**`AINL_PERSONA_EVOLUTION`**, **`AINL_EXTRACTOR_ENABLED`**, **`AINL_TAGGER_ENABLED`**) that back `ExtractionReport` phase warnings and graph-memory enrichment across the Rust and Python boundary.
 - **Hand pack `schema_version`:** **`ainl emit --target armaraos`** writes **`schema_version`** on **`HAND.toml`**, IR JSON, and **`security.json`** — **`tests/test_emit_armaraos_handpack.py`**.
 - **Monitor registry bootstrap:** **`build_armaraos_monitor_registry`**, **`boot_armaraos_graph_memory`**, **`CronDriftCheckAdapter`**, **`tests/test_armaraos_monitor_registry.py`**.
 - **Runtime:** public **`AdapterRegistry.get`**; graph-patch uses **`adapters.get("ainl_graph_memory")`**.
@@ -109,6 +112,7 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 ## New in v1.6.0
 
 - **GraphPatch:** runtime **`R memory.patch`** (and graph **`memory.patch`**) installs procedural label bodies from the JSON graph store via **`ainl_graph_memory.graph_patch`**, with compile-time strict literal checks, runtime dataflow validation (**`_analyze_step_rw`**), overwrite protection for compiled labels, boot-time **`_reinstall_patches`**, and per-label fitness EMA (including early **`J`** exits). Tests: **`tests/test_graph_patch_op.py`**.
+- **Foundation for unified graph execution:** v1.6.0 established the canonical Python GraphPatch semantics while the ArmaraOS Rust stack formalized adapter-based patch dispatch (`PatchAdapter` registry + `GraphPatchAdapter` fallback), creating a stable integration seam that v1.7.0 extends through vitals, extractor, persona, and semantic-tagging convergence.
 - **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine, and **`ADAPTER_REGISTRY.json`** / **`docs/reference/ADAPTER_REGISTRY.md`** aligned to **1.6.0**.
 
 ## New in v1.5.2
