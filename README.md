@@ -115,6 +115,14 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 - **Foundation for unified graph execution:** v1.6.0 established the canonical Python GraphPatch semantics while the ArmaraOS Rust stack formalized adapter-based patch dispatch (`PatchAdapter` registry + `GraphPatchAdapter` fallback), creating a stable integration seam that v1.7.0 extends through vitals, extractor, persona, and semantic-tagging convergence.
 - **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine, and **`ADAPTER_REGISTRY.json`** / **`docs/reference/ADAPTER_REGISTRY.md`** aligned to **1.6.0**.
 
+## Unified graph execution engine vision (1.6.0 → 1.7.0)
+
+- **Single typed substrate:** the same graph artifact carries executable workflow structure plus memory layers (episodic, semantic, procedural, persona), rather than splitting execution and memory into separate systems.
+- **Memory as compiled knowledge:** GraphPatch (`memory.patch`) promotes proven behavior into reusable procedural graph structure under strict dataflow and overwrite guards.
+- **Cross-runtime convergence:** Python AINL runtime semantics and ArmaraOS Rust patch-dispatch contracts (`PatchAdapter` / `GraphPatchAdapter`) are intentionally aligned to support one portable graph-memory model across both stacks.
+- **Persona/tooling in graph form:** persona evolution, semantic extraction/tagging, and adapter-driven tooling are treated as graph-native concerns, not bolt-on prompt metadata.
+- **Primary references:** [`LATE_NIGHT_CONVO_WITH_AI.md`](LATE_NIGHT_CONVO_WITH_AI.md), [`WHITEPAPERDRAFT.md`](WHITEPAPERDRAFT.md), and ArmaraOS prior-art lineage in [`sbhooley/armaraos/PRIOR_ART.md`](https://github.com/sbhooley/armaraos/blob/main/PRIOR_ART.md).
+
 ## New in v1.5.2
 
 - **Graph memory IR closure:** optional **`memory_type`** on compiled **`R`** steps; typed **`emit_edges`** + **`tooling/graph_api`** helpers (**`emit_edges`**, **`data_flow_edges`**, **`memory_nodes`**); **`memory.pattern_recall`** + **`__last_pattern__`** for procedural **`memory.merge`** round-trips — **`docs/architecture/GRAPH_INTROSPECTION.md`**, **`docs/adapters/AINL_GRAPH_MEMORY.md`**.
