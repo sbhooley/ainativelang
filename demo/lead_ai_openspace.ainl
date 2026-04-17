@@ -1,141 +1,36 @@
-# lead_ai_openspace.ainl
-# Lead enrichment using OpenSpace evolved skills
-#
-# This wrapper demonstrates how to delegate complex analysis to OpenSpace
-# while keeping orchestration in AINL. OpenSpace will search its skill library,
-# execute the analysis, and optionally evolve new reusable skills.
+# Lead AI - OpenSpace
+# This workflow processes leads from OpenSpace and enriches them with web data
 
-S services lead.F IMPORT lead_reports.export
+# Load leads from CSV
+R fs.Read "leads/openspace_leads.csv" -> leads
 
-# Configuration
-X BATCH_SIZE (os.getenv("BATCH_SIZE", "25"))
-X MAX_LEADS (BATCH_SIZE)
+# If no leads found, exit
+R core.IF leads == null -> exit
 
-# Fetch leads needing AI analysis (no recent report)
-R lead.F leads_without_recent_ai
-  where "!hasRecentAi" AND "status == 'active'"
-  limit MAX_LEADS
-->L_process
+# Process each lead
+R core.MAP leads -> lead {
+  # Enrich with web data
+  R http.Get "https://api.openspacedata.com/lead/" + lead.id -> lead_data
+  
+  # Extract key info
+  R core.ASSIGN lead.website = lead_data.website
+  R core.ASSIGN lead.phone = lead_data.phone
+  R core.ASSIGN lead.industry = lead_data.industry
+  
+  # Score the lead
+  R core.ASSIGN lead.score = core.IF lead.industry == "tech" -> 90, 70
+  R core.RETURN lead
+}
 
-L_process:
-  # Delegate each lead to OpenSpace for deep analysis
-  Filter leads_collection ->lead
-    X result (execute_openspace_task(lead))
-    X success (result.status == "success")
-    ->
-      L_ok
-    else
-      L_err
-  ->L_finish
+# Save enriched leads
+R fs.Write "leads/enriched_openspace_leads.csv" leads
 
-L_ok:
-  # Parse OpenSpace analysis
-  X analysis (result.response)
-  X score (extract_score(analysis))
-  X pain_points (extract_pain_points(analysis))
-  X outreach (extract_outreach(analysis))
+# Generate summary report
+R core.ASSIGN summary = {
+  "totalLeads": core.LENGTH leads,
+  "techLeads": core.LENGTH core.FILTER leads -> l: l.industry == "tech",
+  "averageScore": core.MEAN core.MAP leads -> l: l.score
+}
 
-  # Store AI report
-  R lead.F set_ai_report
-    lead_id=lead.id
-    analysis=analysis
-    score=score
-    pain_points=json.dumps(pain_points)
-    outreach_draft=outreach
-    model_used="openspace"
-  ->L_store
-
-L_store:
-  R lead_reports.export write_ai_report
-    lead_id=lead.id
-    report_type="openspace_analysis"
-    content=analysis
-    score=score
-  ->L_next
-
-L_err:
-  # Log error, continue with next lead
-  R cache log error "OpenSpace failed for lead #{lead.id}: {result.response}"
-  ->L_next
-
-L_next:
-  J L_process
-  ->L_finish
-
-L_finish:
-  Ret {processed: count, errors: error_count}
-
-# ----------------------------------------------------------------------
-# Helper: Delegate lead analysis to OpenSpace via MCP tool
-# ----------------------------------------------------------------------
-X def execute_openspace_task(lead):
-  # Calls the OpenSpace `execute_task` tool via MCP bridge.
-  # Returns dict with keys: status, response, evolved_skills.
-  website = lead.website or ""
-  business = lead.business_name or lead.vertical or "Local business"
-  location = lead.city or lead.state or ""
-
-  # Build the task prompt without multi-line triple-quoted strings for AINL compatibility
-  task = (
-      "Analyze this business for revenue automation opportunities and cold outreach angles.\n\n"
-      f"Business: {business}\n"
-      f"Location: {location}\n"
-      f"Website: {website}\n\n"
-      "Perform a two-pass analysis:\n\n"
-      "Pass 1 (Forensic Website Signal Extraction):\n"
-      "- Extract observable signals only from the website content (if available)\n"
-      "- Identify: business name, industry, location, primary services, target customers, CTAs\n"
-      "- Lead capture methods: contact forms, chat widgets, phone prominence, booking systems\n"
-      "- Conversion funnel signals: lead magnets, newsletter, consultation offers, pricing visibility, testimonials, case results\n\n"
-      "Pass 2 (Revenue Automation Scoring):\n"
-      "- Assign an automation opportunity score (0-10) based on:\n"
-      "    * Manual processes visible (appointment scheduling, invoicing, follow-up)\n"
-      "    * Volume indicators (many services, high ticket services, repeat customers)\n"
-      "    * Technical debt signals (old website, no chat, no booking)\n"
-      "    * Growth signals (recent updates, active blog, social links)\n"
-      "- Identify 3-5 concrete pain points where AI/automation would help\n"
-      "- Draft a personalized cold outreach email (under 200 words) that references specific observations\n\n"
-      "Return strict JSON with schema:\n"
-      "{\n"
-      '    "business_name": "...",\n'
-      '    "industry_guess": "...",\n'
-      '    "location_signals": [...],\n'
-      '    "primary_services": [...],\n'
-      '    "target_customers": [...],\n'
-      '    "lead_capture_methods": { ... },\n'
-      '    "conversion_funnel_signals": { ... },\n'
-      '    "automation_score": 7,\n'
-      '    "pain_points": ["...", "..."],\n'
-      '    "outreach_draft": "Subject: Quick question about {business}...\\n\\n..."\n'
-      "}\n"
-  )
-
-  # MCP tool call to OpenSpace
-  R mcp.openspace.execute_task
-    task=task
-    search_scope="local"
-    max_iterations=15
-  ->_mcp_result
-
-  return _mcp_result
-
-X def extract_score(analysis):
-  try:
-    data = json.loads(analysis) if isinstance(analysis, str) else analysis
-    return data.get("automation_score", 0)
-  except Exception:
-    return 0
-
-X def extract_pain_points(analysis):
-  try:
-    data = json.loads(analysis) if isinstance(analysis, str) else analysis
-    return data.get("pain_points", [])
-  except Exception:
-    return []
-
-X def extract_outreach(analysis):
-  try:
-    data = json.loads(analysis) if isinstance(analysis, str) else analysis
-    return data.get("outreach_draft", "")
-  except Exception:
-    return ""
+# Return results
+R core.RETURN summary
