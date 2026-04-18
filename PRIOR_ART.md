@@ -18,6 +18,7 @@ This document establishes the chronological record of graph-as-memory architectu
 | **April 12, 2026 03:13 AM MDT** | ArmaraOS ainl-memory / ainl-runtime v0.1.1-alpha | **Implementation** | crates.io |
 | **April 12–13, 2026** | ArmaraOS graph-memory integration | Development | ArmaraOS repo commits, ARCHITECTURE.md, docs/graph-memory.md |
 | **April 13, 2026** | Public narrative: graph-as-memory blog (ainativelang.com) | Communications | [Graph-as-memory architecture](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) |
+| **April 18, 2026** | `ainl-inference-server` semantic control plane + bounded planner protocol (AgentSnapshot / DeterministicPlan) shipped end-to-end with ArmaraOS | **Implementation** | `armaraos` + `ainl-inference-server` repos; `ainl-agent-snapshot`, `NativeInferDriver`, `PlanExecutor` |
 
 **Prior Art Timeline Summary:**
 - **Working implementation (Feb 22)** predates Google ADK 2.0 by **24 days**
@@ -314,6 +315,37 @@ Google ADK 2.0 uses graphs for **workflow execution** (similar to AINL) but trea
 
 ---
 
+### 9. Semantic inference control plane and bounded deterministic planner (April 2026)
+
+**Type:** Cross-repo implementation (ArmaraOS kernel/runtime + `ainl-inference-server` + shared Rust contracts)  
+**Status:** End-to-end protocol implemented (engineering plan sync, April 18, 2026)
+
+**Repositories and artifacts:**
+- **ArmaraOS** (`openfang-runtime`): `NativeInferDriver` targeting `POST /armara/v1/infer`; `PlanExecutor` (ready-queue dispatch, template resolution for `${outputs.<step_id>.…}`, scoped reasoning re-entry, orchestration trace events); planner branch in `agent_loop` when `planner_mode` resolves enabled; `apply_graph_writes` after successful plans. `ainl-runtime`: `TurnHooksAsync::on_plan_step_execute` seam for embedders; `GraphPatch` JSON envelope extended with optional `graph_writes` (backward compatible).
+- **`ainl-inference-server`:** Semantic orchestrator in front of llama.cpp / vLLM backends—not a tensor runtime. `armara-provider-api` `InferRequest` carries optional `agent_snapshot` and `repair_context`; `armara-infer-core` injects typed snapshot context, forces `DeterministicPlan` JSON Schema when planner mode is active, validates plan steps against tool contracts and `PolicyCaps::deny_tools`, bounded repair path for invalid outputs; `ARMARA_AGENT_SNAPSHOT_ENABLED=1` gates server-side snapshot handling.
+- **`ainl-agent-snapshot`:** Shared types (`AgentSnapshot`, `DeterministicPlan`, `PlanStep`, `PolicyCaps`, `GraphWrite`, `RepairContext`, `OnErrorPolicy`); `build_snapshot()` uses bounded `GraphMemory` queries (not unbounded full `export_graph()` on the hot path); `apply_graph_writes()` maps writes to `AinlMemoryNode` for semantic / persona / new procedural creation (episodic recording and patch fitness paths remain separate).
+
+**Design points:**
+- **Inference-time graph:** Extends “the graph is the agent” from bundle export and SQLite storage to **request-time**: a typed, capped view of episodic / semantic / procedural / persona nodes plus tool allowlist and policy caps is serialized for the model; the model emits a **validated** `DeterministicPlan` instead of ad hoc tool calls when planner mode is on.
+- **Escalation:** Three-tier step errors—`RetryOnce`, `LocalPatch` (narrow replan via `RepairContext`), `Abort`—plus invalid-plan fallback to the legacy `CompletionRequest` tool loop for that turn (`structured.kind` discriminator, e.g. `planner_invalid_plan`).
+- **Tiering:** Default `planner_mode` auto behavior favors planner for small-model tiers via `ModelCatalog`; large models can stay on the classic loop unless opted in—reduces latency where free-form tool loops are already reliable.
+
+**Prior art significance:** Positions the AINL + ArmaraOS stack alongside industry and academic moves toward **structured planner/executor** architectures and **schema-constrained** model outputs, while preserving the distinctive property that **authoritative graph state lives in the same typed store** the agent executes against—not only in an external retrieval system.
+
+---
+
+### 10. Research and industry context (April 2026)
+
+**Survey and formalization:** Work such as “From Agent Loops to Structured Graphs” (arXiv:2604.11378, April 2026) surveys widespread naive agent loops and formalizes plan / execute / recover layering—consistent with bounded plans, explicit fallback, and traceability in the Armara integration.
+
+**Small-model executors:** The Memory Intelligence Agent line of work (arXiv:2604.04503, April 2026) reports large reliability gains on small models using typed plans and compressed memory trajectories. A key architectural difference in this stack is use of the **agent’s existing graph memory** as the structured context signal rather than requiring a separate frozen “manager” model.
+
+**Scoped reasoning:** Task-decomposed and similar frameworks motivate **minimal** context for subtasks; the `PlanExecutor` implements scoped re-entry for `reasoning_required_at` step IDs instead of replaying full conversation history—reducing tokens and attention dilution on small models.
+
+**External graph memory systems (Neo4j Labs patterns, GraphRAG, Mem0, etc.):** Typically treat memory as a **separate** database the LLM queries. The intrinsic AINL + ArmaraOS design keeps execution and memory on one substrate; the April 2026 inference layer adds a **protocol-level** path for the model to consume **bounded snapshots** and return **machine-validated plans**—orthogonal to whether additional retrieval systems exist elsewhere in a deployment.
+
+---
+
 ## Interpretation: Development Timeline
 
 The **verified timeline** shows:
@@ -328,6 +360,7 @@ The **verified timeline** shows:
 8. **ArmaraOS ainl-memory / ainl-runtime (April 12, 2026):** First standalone Rust crates implementing unified graph memory.
 9. **ArmaraOS graph-memory integration (April 12–13, 2026):** Agent OS embedding of unified graph-memory substrate with per-agent stores, bundle round-trip, and persona prompt hooks.
 10. **Public narrative blog (April 13, 2026):** [Graph-as-memory architecture](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) on ainativelang.com summarizes the unified stack for builders and links reference material (PyPI, docs.rs, lib.rs crates).
+11. **Semantic inference control plane + bounded planner (April 18, 2026):** `ainl-inference-server` exposes a first-class Armara infer API; ArmaraOS attaches bounded `AgentSnapshot` to `InferRequest`, validates `DeterministicPlan` output, and executes plans in `PlanExecutor` with graph write-back and orchestration traces—extending graph-as-memory from storage and bundles to **inference-protocol** semantics.
 
 **Key observations:**
 
@@ -437,6 +470,12 @@ This combination establishes prior art not just for the **concept** of unified g
 - **Representative commit:** `50508ee` (April 12, 2026) – “feat: AINL graph-as-memory substrate (ainl-memory v0.1.1-alpha)”
 - **Docs:** `ARCHITECTURE.md`, `docs/graph-memory.md`, `CLAUDE.md`, `docs/ainl-first-language.md`, `docs/scheduled-ainl.md`
 
+### Semantic inference server and planner protocol (April 2026)
+
+- **Workspace:** `ainl-inference-server` — Rust semantic control plane (e.g. `POST /armara/v1/infer`), backend adapters (llama.cpp, vLLM), JSON Schema / tool-contract validation, bounded repair, optional WASM plugins; OpenAI-compatible shim as adapter layer only.
+- **ArmaraOS integration:** `NativeInferDriver`, `PlanExecutor`, `ainl-agent-snapshot` types; `InferRequest.agent_snapshot` / `repair_context`; orchestration traces for planner turns.
+- **Research (independent):** arXiv:2604.11378 (structured graphs / agent-loop survey, April 2026); arXiv:2604.04503 (MIA, small-model typed plans, April 2026).
+
 ### Public blog (graph-as-memory narrative)
 
 - **Title:** When Your AI Agent Actually Remembers: Introducing AINL’s Graph-as-Memory Architecture
@@ -474,6 +513,9 @@ When citing graph-as-memory architecture, the appropriate attribution depends on
 **For public narrative (April 2026):**
 > “AINL and ArmaraOS graph-as-memory overview for practitioners: [When Your AI Agent Actually Remembers](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) (April 13, 2026).”
 
+**For semantic infer + bounded planner (April 2026):**
+> “ArmaraOS may route LLM calls through `ainl-inference-server` for schema-validated outputs; optional planner mode supplies a bounded `AgentSnapshot` from `ainl-memory` and executes a validated `DeterministicPlan` via `PlanExecutor`, with tool execution remaining on the host.”
+
 ---
 
 ## Maintenance
@@ -484,6 +526,6 @@ This document will be updated as:
 - Git archaeology reveals earlier commits
 - Academic papers formally publish
 
-**Last updated:** April 13, 2026  
-**Maintainer:** ArmaraOS project  
-**Related documents:** `ARCHITECTURE.md` (ArmaraOS), `WHITEPAPERDRAFT.md`, `LATE_NIGHT_CONVO_WITH_AI.md`, `AINL_SPEC.md` (AINL repo); public overview [graph-as-memory blog](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) (ainativelang.com)
+**Last updated:** April 18, 2026  
+**Maintainer:** AI Native Lang project (prior-art timeline); ArmaraOS for kernel-specific claims  
+**Related documents:** `WHITEPAPERDRAFT.md`, `AINL_SPEC.md`; informal supplementary notes in `LATE_NIGHT_CONVO_WITH_AI.md` (not normative); `ARCHITECTURE.md` / `docs/graph-memory.md` (ArmaraOS); public overview [graph-as-memory blog](https://ainativelang.com/blog/graph-as-memory-architecture-ainl) (ainativelang.com); `ainl-inference-server` (semantic infer API); engineering architecture plans as referenced in repo docs

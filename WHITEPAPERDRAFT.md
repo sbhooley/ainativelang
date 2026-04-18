@@ -7,7 +7,7 @@ Graph-based agent orchestration, canonical IR, and compile-once / run-many execu
 **Primary implementation:** `compiler_v2.py`, `runtime/engine.py`, `cli/main.py` (including **`ainl serve`** REST: validate / compile / run / health), optional FastAPI runner (`scripts/runtime_runner_service.py` for richer operator endpoints)
 **Reference ecosystem:** OpenClaw / NemoClaw / Hermes Agent / ArmaraOS host integrations, canonical strict validation (**`tooling/artifact_profiles.json`** → **`strict-valid`** CI set), **MCP (`ainl-mcp`)** + **CLI** curated preset importers (Clawflows / Agency-Agents / Markdown → `.ainl`), optional **LSP** (`langserver.py`), multi-target emitters (including Solana clients and Hermes skill bundles), sandboxed operator deployments
 
-**Companion narrative (informal):** [`LATE_NIGHT_CONVO_WITH_AI.md`](https://github.com/sbhooley/ainativelang/blob/main/LATE_NIGHT_CONVO_WITH_AI.md) — conversational discussion of graph memory, ecosystem convergence (for example “LLM wiki” patterns), and ArmaraOS-class hosts in relation to this draft; also available in the repository beside this file as `./LATE_NIGHT_CONVO_WITH_AI.md`. Not normative specification text.
+**Supplementary note (informal, non-normative):** [`LATE_NIGHT_CONVO_WITH_AI.md`](./LATE_NIGHT_CONVO_WITH_AI.md) in this repository expands informally on graph-memory themes and industry convergence; it does not define language or runtime semantics. For **prior-art timeline** and **April 2026** inference/planner integration, see **`PRIOR_ART.md`** (this repo) and **`PRIOR_ART.md`** in the ArmaraOS repository.
 
 ---
 
@@ -21,7 +21,9 @@ The surface language ships **two equivalent syntaxes**—compact (Python-like, r
 
 The language has been exercised in production-style OpenClaw workflows involving email, calendar, social monitoring, database access, infrastructure checks, queues, WebAssembly modules, cache, memory, and autonomous operational monitors. This whitepaper describes AINL's architecture, semantics, strict-mode guarantees, operational role, benchmark posture, and relevance to AI-native systems design.
 
-For informal narrative context on graph-first memory, industry convergence, and reference hosts, see **[`LATE_NIGHT_CONVO_WITH_AI.md`](https://github.com/sbhooley/ainativelang/blob/main/LATE_NIGHT_CONVO_WITH_AI.md)** (repository root; cross-linked from the header metadata above).
+### Positioning note (Armara ecosystem, April 2026): semantic inference and bounded planner
+
+The Armara stack adds an optional **semantic control plane** (`ainl-inference-server`): a Rust service in front of llama.cpp / vLLM that owns schema- and contract-shaped requests, bounded repair loops, policy, and telemetry—not a custom model runtime. ArmaraOS may send a **bounded `AgentSnapshot`** (typed episodic / semantic / procedural / persona nodes under `SnapshotPolicy` caps, not unbounded full-graph export) on `InferRequest` and receive a **validated `DeterministicPlan`** for execution by `PlanExecutor` (sequential dispatch, scoped reasoning re-entry for designated steps, graph write-back). Tool execution and approvals remain **host-local**. This complements AINL’s canonical IR and graph-memory substrate: the same typed store can feed inference-time planning for small models while large models can stay on classic tool loops. See **§21.8** and **Appendix A.10**.
 
 ### Positioning note (v1.2.6): portable authoring layer
 
@@ -1173,6 +1175,7 @@ The following capabilities were listed as future work in earlier drafts and have
 - **External executor bridge (HTTP)** — documented contract in `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` for calling non-MCP workers via `http.Post` (and optional host-mapped **`bridge`** adapter for executor keys → URLs). **MCP (`ainl-mcp`) remains primary** for OpenClaw/NemoClaw; the HTTP bridge is the secondary pattern for generic gateways and plugins.
 - **Reproducible benchmark suite** — `tiktoken` **cl100k_base** default sizing with **`BENCHMARK.md`** transparency (viable subset, legacy-inclusive tables, **minimal_emit fallback stub**, Mar 2026 **prisma/react_ts** compaction notes), **Compile ms (mean×3)** in size tables, runtime benchmark (latency/RSS, optional reliability and scalability probe), shared **economics** helpers (`tooling/bench_metrics.py`), handwritten **baseline** comparison, **CI regression** gating (`scripts/compare_benchmark_json.py`, `make benchmark` / `make benchmark-ci`, workflow `benchmark-regression` — **preferring committed `*_ci.json` baselines on the baseline git SHA when present**), hub **`docs/benchmarks.md`**, and **`ainl-ollama-benchmark --cloud-model`** for an optional **Anthropic Claude** baseline (`temperature=0`, graceful skip without key/SDK).
 - **OpenClaw intelligence + ops (v1.2.8–v1.7.0)** — **`scripts/run_intelligence.py`** with rolling **budget hydrate**; graph-safe intelligence and **`modules/common/generic_memory.ainl`**; **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`** and **`OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context, **`payload.summary`** for summarizer indexing, **startup token** env clamps; **`scripts/auto_tune_ainl_caps.py`** / **`run_intelligence.py auto_tune_ainl_caps`**; **v1.3.0+** one-command **`ainl install openclaw`**, unified **`ainl status`**, and **`ainl doctor --ainl`**.
+- **Armara ecosystem (April 2026, cross-repo)** — documented integration of **`ainl-inference-server`** (semantic infer API, conformance baselines) with ArmaraOS (**`NativeInferDriver`**, **`PlanExecutor`**, **`ainl-agent-snapshot`**, planner metadata / env rollout). Captures the same **graph-as-substrate** thesis at the **inference-protocol** layer; see **§21.8**, **`PRIOR_ART.md`**, Appendix **A.10**.
 
 ### 20.2 Remaining Future Work
 
@@ -1187,6 +1190,7 @@ Promising future work includes:
   MCP server) as standards and host ecosystems stabilize
 - Continued small-model alignment and constrained decoding work
 - Deeper AI-agent onboarding and continuity tooling
+- **Token-delta streaming for `POST /armara/v1/infer/stream`:** progressive upstream chunks with documented partial vs terminal events and parity across backends (Armara inference roadmap item; initial pipelines may assemble full text before validation)
 
 ---
 
@@ -1334,6 +1338,20 @@ It is best understood as:
 
 ---
 
+### 21.8 Semantic inference control plane and bounded planner execution (Armara ecosystem)
+
+Agent frameworks increasingly adopt **planner / executor** splits and **schema-constrained** model outputs; surveys and recent papers (for example on structured agent graphs and small-model “executor” reliability) document the same trend. The Armara ecosystem implements this pattern **without** moving tool execution off the host:
+
+- **`ainl-inference-server`** exposes a first-class internal API (e.g. `POST /armara/v1/infer`) with backends (llama.cpp baseline for conformance CI, vLLM for throughput), JSON Schema / tool-contract validation, bounded repair, optional WASM plugin hooks, and explicit bypass / telemetry policy for direct-to-provider fallbacks.
+- **`AgentSnapshot` + `DeterministicPlan`** (shared `ainl-agent-snapshot` types): the kernel builds a **capped** view of graph memory for the model; the model returns a machine-validated plan (`InferOutput.structured` discriminator, e.g. `deterministic_plan`), not a prose tool chain. Step errors escalate along **RetryOnce → LocalPatch (narrow `RepairContext` replan) → Abort**; invalid plans can fall back to the legacy tool loop for that turn.
+- **`PlanExecutor`** (ArmaraOS `openfang-runtime`) runs steps sequentially, resolves `${outputs.<step_id>.…}` templates, performs **scoped** re-entry for reasoning steps (minimal messages, not full chat history), records episodes, and applies `graph_writes`—aligned with **compile-once / run-many** and **tiered state** themes in this document.
+
+AINL remains the **authoring IR and Python runtime** for graph programs; the inference server is the **optional** semantic layer for deployments that want centralized constraints and planner-mode ergonomics on small models. **Differentiator:** graph memory is not only an external database the model queries—it is the **same** typed SQLite substrate the agent already uses, with **inference-time** snapshots as a first-class protocol feature.
+
+**Operational implications:** A unified typed graph supports **portable** agent state (export/import), **auditability** of what changed and when (structured writes vs opaque logs), **selective** updates for policy and compliance, and **surgical** reuse of proven procedural subgraphs across agents—without conflating those concerns with the language’s compile/run semantics.
+
+---
+
 ## 22. Conclusion
 
 AINL represents a distinct position in AI systems design.
@@ -1349,6 +1367,8 @@ Its value is especially clear in recurring, stateful, branching, and operational
 Stated economically, AINL turns recurring AI operations from a **pay-per-run orchestration** model into a **pay-once pattern design + deterministic execution** model, often with bounded or near-zero recurring inference in stable paths.
 
 AINL is designed to fit inside agent platforms and orchestrators — OpenClaw, NemoClaw, Hermes Agent, ArmaraOS, and custom hosts — as the structured workflow execution layer. It does not replace these platforms; it sits inside them and makes agent workflows reproducible, inspectable, and controllable.
+
+Where ArmaraOS is paired with **`ainl-inference-server`**, operators gain an additional **semantic** boundary: schema-validated outputs, optional **bounded planner** execution over the same graph-memory store, and host-local tool policy unchanged—extending the economic and reliability story without altering AINL’s core language semantics.
 
 ---
 
@@ -1613,20 +1633,14 @@ Any Rust agent framework can now adopt graph-as-memory with a single line. The r
 
 ### A.7 Future Work (Post-Implementation)
 
-**Near-term (Weeks 2-4, April 2026):**
-- Full kernel integration (remove `OnceLock` workaround)
-- Retrieval at agent loop start (inject graph context into system prompt)
-- Semantic fact extraction (parse assistant responses → Semantic nodes)
+**Completed or in progress (April 2026):** Kernel-side graph context for chat, extraction/tagging pipelines, orchestration traces, and **semantic inference integration** — bounded **`AgentSnapshot`** on infer requests, **`DeterministicPlan`** validation and **`PlanExecutor`** dispatch, **`apply_graph_writes`** write-back, planner fallback to legacy tool loop (see **A.10**).
 
-**Medium-term (Months 2-3, May-June 2026):**
-- Procedural pattern learning (detect repeated tool sequences → compile to Procedural nodes)
-- Persona trait inference (aggregate user preferences → Persona nodes)
-- A/B testing: graph retrieval vs. traditional semantic search
-
-**Long-term (2026 H2):**
-- Multi-agent memory sharing (Agent A's Episode visible to Agent B)
-- Distributed graph memory (consensus protocols for multi-node deployments)
-- Cross-framework interop (AINL graph ↔ LangGraph state machines)
+**Remaining / optional:**
+- Broader A/B harnesses: planner vs legacy tool loop under fixed workloads
+- Multi-agent memory sharing with explicit policy (Agent A’s episodic/semantic visibility to Agent B)
+- Distributed / federated graph memory for multi-node deployments
+- Cross-framework interop (AINL graph ↔ external state machines) where operators need hybrid stacks
+- **Streaming:** token-delta `infer/stream` with parity gates across backends (roadmap; validation may remain post-assemble)
 
 ### A.8 Architectural Provenance
 
@@ -1657,6 +1671,18 @@ The ArmaraOS implementation deliberately keeps AINL memory **standalone** (zero 
 
 **Timestamp:** This addendum was added April 12, 2026, after the initial whitepaper publication (v1.0–v1.7.0) to document the working implementation and independent validation from Google, Karpathy, and MAGMA researchers.
 
+### A.10 Semantic inference control plane and bounded deterministic planner (April 2026)
+
+**Addendum status:** Documents cross-repo behavior aligned with ArmaraOS + `ainl-inference-server` engineering architecture (not part of the core Python `ainl` package release cadence).
+
+**Problem addressed:** Prompt-only tool loops scale poorly on small models; industry-wide shift toward **structured plans** and **schema-validated** outputs. External memory graphs (RAG, Mem0, Neo4j-style agent memory) still introduce a **retrieval boundary** between store and executor.
+
+**Approach:** A **Rust semantic control plane** (`ainl-inference-server`) fronts llama.cpp / vLLM. It does **not** execute tools; ArmaraOS remains authoritative for capabilities and approvals. Optional **planner mode** supplies a **bounded** `AgentSnapshot` built from `GraphMemory` queries under `SnapshotPolicy` (avoiding unbounded `export_graph()` on the hot path). The model returns a **`DeterministicPlan`** in `InferOutput.structured` (discriminator key such as `deterministic_plan`). **`PlanExecutor`** runs steps in dependency order, supports **scoped** re-entry for reasoning steps, **LocalPatch** replan via `RepairContext`, `PolicyCaps` budgets (`max_wall_ms`, `max_replan_calls`), and **graph_writes** for new semantic/persona/procedural nodes (distinct from episodic recording and patch fitness paths). **Invalid** plans trigger a **single-turn** fallback to the legacy chat tool loop so UX stays resilient.
+
+**Relation to AINL:** Language IR, **`ainl_graph_memory`**, **GraphPatch**, and **AINLBundle** remain the canonical authoring and portability layer; the inference server is the **deployment** semantic layer for constrained decoding and plan validation—**orthogonal** to whether a workflow was authored in Python AINL or emitted from Rust Hands.
+
+**Research context (independent):** Surveys of agent-loop vs structured graphs (e.g. arXiv:2604.11378, April 2026) and small-model executor work (e.g. arXiv:2604.04503, April 2026) align with the same design pressures; this stack uses the **agent’s existing typed graph** as the manager signal instead of requiring a separate large “manager” model.
+
 ---
 
 ## Appendix B: Suggested Short Positioning Statement
@@ -1682,3 +1708,6 @@ The ArmaraOS implementation deliberately keeps AINL memory **standalone** (zero 
 - structured audit logging for AI agents
 - adapter privilege tier metadata
 - restrictive-only security model
+- semantic inference control plane (Armara)
+- bounded deterministic planner execution
+- graph-memory inference snapshots
