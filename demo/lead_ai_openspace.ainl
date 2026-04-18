@@ -2,35 +2,65 @@
 # This workflow processes leads from OpenSpace and enriches them with web data
 
 # Load leads from CSV
-R fs.Read "leads/openspace_leads.csv" -> leads
+R fs.Read "leads/lead_output.csv" -> leads
 
 # If no leads found, exit
-R core.IF leads == null -> exit
+R core.EQ leads null -> exit
 
 # Process each lead
 R core.MAP leads -> lead {
   # Enrich with web data
-  R http.Get "https://api.openspacedata.com/lead/" + lead.id -> lead_data
+  R http.Get "https://api.openspacedata.com/lead/" + lead.PlaceID -> lead_data
   
-  # Extract key info
-  R core.ASSIGN lead.website = lead_data.website
-  R core.ASSIGN lead.phone = lead_data.phone
-  R core.ASSIGN lead.industry = lead_data.industry
-  
-  # Score the lead
-  R core.ASSIGN lead.score = core.IF lead.industry == "tech" -> 90, 70
-  R core.RETURN lead
+  # Extract key info - create updated lead object
+  {
+    "PlaceID": lead.PlaceID,
+    "Name": lead.Name,
+    "Phone": lead_data.Phone,
+    "Website": lead_data.Website,
+    "Rating": lead.Rating,
+    "Reviews": lead.Reviews,
+    "Address": lead.Address,
+    "City": lead.City,
+    "State": lead.State,
+    "Service": lead.Service,
+    "BusinessStatus": lead.BusinessStatus,
+    "Types": lead.Types,
+    "OpenNow": lead.OpenNow,
+    "HasOpeningHours": lead.HasOpeningHours,
+    "HasPhotos": lead.HasPhotos,
+    "PhotoCount": lead.PhotoCount,
+    "HasRecentReview": lead.HasRecentReview,
+    "RecentReviewDays": lead.RecentReviewDays,
+    "GoogleMapsURL": lead.GoogleMapsURL,
+    "NoSite": lead.NoSite,
+    "OldSite": lead.OldSite,
+    "HighReviews": lead.HighReviews,
+    "GoodRating": lead.GoodRating,
+    "MissedCallsKW": lead.MissedCallsKW,
+    "Score": lead.Score,
+    "Priority": lead.Priority,
+    "ScoreV2": lead.ScoreV2,
+    "PriorityV2": lead.PriorityV2,
+    "Vertical": lead.Vertical,
+    "Segment": lead.Segment,
+    # Override with enriched data
+    "website": lead_data.website,
+    "phone": lead_data.phone,
+    "industry": lead_data.industry,
+    "score": core.IF lead_data.industry == "tech" -> 90, 70
+  } -> lead
 }
 
 # Save enriched leads
 R fs.Write "leads/enriched_openspace_leads.csv" leads
 
 # Generate summary report
-R core.ASSIGN summary = {
+{
   "totalLeads": core.LENGTH leads,
   "techLeads": core.LENGTH core.FILTER leads -> l: l.industry == "tech",
   "averageScore": core.MEAN core.MAP leads -> l: l.score
-}
+} -> summary
 
 # Return results
-R core.RETURN summary
+summary

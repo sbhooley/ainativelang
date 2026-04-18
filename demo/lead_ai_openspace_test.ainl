@@ -1,7 +1,4 @@
 arch.LeadAI_OpenSpace:
-# Lead AI - OpenSpace
-# This workflow processes leads from OpenSpace and enriches them with web data
-
 # Load leads from CSV
 R fs.Read "leads/openspace_leads.csv" -> leads
 
