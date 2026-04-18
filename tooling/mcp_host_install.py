@@ -319,6 +319,53 @@ def _parse_toml_env_array_value(rhs: str) -> Optional[List[str]]:
     return None
 
 
+def _bracket_depth_delta(s: str) -> int:
+    """Count ``[`` / ``]`` for TOML env var name lists (no brackets inside quoted names)."""
+    return s.count("[") - s.count("]")
+
+
+def _env_array_balanced_line_end(segment_body: List[str], env_idx: int) -> int:
+    """First line index after the ``env = [ ... ]`` value where ``[``/``]`` brackets balance."""
+    first = segment_body[env_idx]
+    rhs = first.split("=", 1)[1] if "=" in first else ""
+    depth = _bracket_depth_delta(rhs)
+    end = env_idx + 1
+    while depth > 0 and end < len(segment_body):
+        depth += _bracket_depth_delta(segment_body[end])
+        end += 1
+    return end
+
+
+def _skip_duplicate_env_tail_lines(segment_body: List[str], balanced_end: int) -> int:
+    """
+    Drop lines left behind when an older merge replaced only the first ``env`` line.
+
+    Typical garbage: a stray ``]`` and/or quoted strings that belonged to the old multiline
+    array body.
+    """
+    end = balanced_end
+    while end < len(segment_body):
+        s = segment_body[end].strip()
+        if not s:
+            end += 1
+            continue
+        if s == "]":
+            end += 1
+            continue
+        if s.startswith('"') and (s.endswith(",") or s.endswith('"')):
+            end += 1
+            continue
+        break
+    return end
+
+
+def _env_assignment_rhs_for_parse(segment_body: List[str], env_idx: int, balanced_end: int) -> str:
+    """RHS of ``env = ...`` spanning ``[env_idx, balanced_end)`` (pretty-printed TOML safe)."""
+    chunk = "".join(segment_body[env_idx:balanced_end])
+    rhs = chunk.split("=", 1)[1].strip() if "=" in chunk else ""
+    return rhs
+
+
 def _merge_env_into_mcp_segment(
     segment_body: List[str],
     required: List[str],
@@ -331,20 +378,22 @@ def _merge_env_into_mcp_segment(
             env_idx = i
             break
     if env_idx is not None:
-        rhs = segment_body[env_idx].split("=", 1)[1].strip()
+        balanced_end = _env_array_balanced_line_end(segment_body, env_idx)
+        rhs = _env_assignment_rhs_for_parse(segment_body, env_idx, balanced_end)
         cur = _parse_toml_env_array_value(rhs) or []
         union = sorted(set(cur) | req)
-        if union == sorted(cur):
+        remove_end = _skip_duplicate_env_tail_lines(segment_body, balanced_end)
+        if union == sorted(cur) and remove_end == balanced_end:
             return segment_body, False
-        old = segment_body[env_idx]
+        old_first = segment_body[env_idx]
         body = f"env = {json.dumps(union)}"
-        if old.endswith("\r\n"):
+        if old_first.endswith("\r\n"):
             new_line = body + "\r\n"
-        elif old.endswith("\n"):
+        elif old_first.endswith("\n"):
             new_line = body + "\n"
         else:
             new_line = body
-        out = segment_body[:env_idx] + [new_line] + segment_body[env_idx + 1 :]
+        out = segment_body[:env_idx] + [new_line] + segment_body[remove_end:]
         return out, True
 
     insert_at = 0

@@ -89,6 +89,58 @@ args = []
     assert again == new_t
 
 
+def test_merge_mcp_env_multiline_array_roundtrip() -> None:
+    """Pretty-printed multiline ``env`` must merge without leaving a broken tail."""
+    src = """[[mcp_servers]]
+name = "ainl"
+timeout_secs = 30
+env = [
+    "AINL_MCP_EXPOSURE_PROFILE",
+    "AINL_MCP_RESOURCES",
+]
+
+[mcp_servers.transport]
+type = "stdio"
+command = "/usr/bin/ainl-mcp"
+args = []
+"""
+    new_t, did = _merge_mcp_env_pass_through_into_toml_text(
+        src, "ainl", ARMARAOS_MCP_ENV
+    )
+    assert did is True
+    assert 'env = [\n    "AINL_MCP_EXPOSURE_PROFILE"' not in new_t
+    assert "env = " in new_t
+    for name in ARMARAOS_MCP_ENV:
+        assert name in new_t
+    assert new_t.count("[[mcp_servers]]") == 1
+
+
+def test_merge_mcp_env_repairs_duplicate_tail_from_old_merge_bug() -> None:
+    """Simulates half-updated multiline env (stray lines after a one-line ``env``)."""
+    src = """[[mcp_servers]]
+name = "ainl"
+timeout_secs = 30
+env = ["AINL_MCP_EXPOSURE_PROFILE", "AINL_MCP_RESOURCES", "AINL_MCP_RESOURCES_EXCLUDE", "AINL_MCP_TOOLS", "AINL_MCP_TOOLS_EXCLUDE"]
+    "AINL_MCP_EXPOSURE_PROFILE",
+    "AINL_MCP_RESOURCES",
+    "AINL_MCP_RESOURCES_EXCLUDE",
+    "AINL_MCP_TOOLS",
+    "AINL_MCP_TOOLS_EXCLUDE",
+]
+
+[mcp_servers.transport]
+type = "stdio"
+command = "/x/ainl-mcp"
+args = []
+"""
+    new_t, did = _merge_mcp_env_pass_through_into_toml_text(
+        src, "ainl", ARMARAOS_MCP_ENV
+    )
+    assert did is True
+    assert new_t.count('"AINL_MCP_EXPOSURE_PROFILE"') == 1
+    assert "\n]" not in new_t.split("env = ", 1)[1].split("[mcp_servers.transport]", 1)[0]
+
+
 def test_merge_mcp_env_inserts_when_env_line_missing() -> None:
     src = """[[mcp_servers]]
 name = "ainl"

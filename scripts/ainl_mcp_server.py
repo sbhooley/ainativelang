@@ -758,12 +758,21 @@ def _register_resource(uri: str):
     return decorator
 
 
+def _resolve_code_arg(code: Optional[str], ainl: Optional[str] = None) -> str:
+    """Accept `code` (canonical) and legacy alias `ainl`."""
+    if isinstance(code, str) and code.strip():
+        return code
+    if isinstance(ainl, str) and ainl.strip():
+        return ainl
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # MCP Tools
 # ---------------------------------------------------------------------------
 
 @_register_tool
-def ainl_validate(code: str, strict: bool = True) -> dict:
+def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optional[str] = None) -> dict:
     """Validate AINL source code without executing it.
 
     Returns whether the code compiles successfully, along with any errors
@@ -777,10 +786,13 @@ def ainl_validate(code: str, strict: bool = True) -> dict:
     ``recommended_resources`` may list ``ainl://authoring-cheatsheet``) filtered
     by MCP exposure.
     """
-    ir = _compile(code, strict=strict)
+    source = _resolve_code_arg(code, ainl)
+    if not source:
+        return {"ok": False, "errors": ["missing required argument: code"]}
+    ir = _compile(source, strict=strict)
     fb = _enriched_compile_feedback(ir)
     ok = len(fb["errors"]) == 0
-    _on_validate_finished(ok, code)
+    _on_validate_finished(ok, source)
     out: Dict[str, Any] = {
         "ok": ok,
         "errors": fb["errors"],
@@ -802,7 +814,7 @@ def ainl_validate(code: str, strict: bool = True) -> dict:
 
 
 @_register_tool
-def ainl_compile(code: str, strict: bool = True) -> dict:
+def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional[str] = None) -> dict:
     """Compile AINL source code to canonical graph IR.
 
     Returns the full IR JSON on success, plus a ``frame_hints`` list that
@@ -820,11 +832,14 @@ def ainl_compile(code: str, strict: bool = True) -> dict:
     Success and failure responses include ``recommended_next_tools`` (and
     failure may add ``recommended_resources``) like ``ainl_validate``.
     """
-    ir = _compile(code, strict=strict)
+    source = _resolve_code_arg(code, ainl)
+    if not source:
+        return {"ok": False, "errors": ["missing required argument: code"]}
+    ir = _compile(source, strict=strict)
     errors = ir.get("errors") or []
     if errors:
         fb = _enriched_compile_feedback(ir)
-        _on_compile_finished(False, code)
+        _on_compile_finished(False, source)
         out: Dict[str, Any] = {"ok": False, "errors": fb["errors"], "warnings": fb["warnings"]}
         out["diagnostics"] = fb["diagnostics"]
         out["primary_diagnostic"] = fb["primary_diagnostic"]
@@ -836,8 +851,8 @@ def ainl_compile(code: str, strict: bool = True) -> dict:
         )
         _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
         return out
-    _on_compile_finished(True, code)
-    frame_hints = _extract_frame_hints(code, ir)
+    _on_compile_finished(True, source)
+    frame_hints = _extract_frame_hints(source, ir)
     out_ok: Dict[str, Any] = {"ok": True, "ir": ir, "frame_hints": frame_hints}
     _add_recommended_next_steps(out_ok, "compile_ok")
     return out_ok
@@ -856,13 +871,16 @@ def ainl_capabilities() -> dict:
 
 
 @_register_tool
-def ainl_security_report(code: str) -> dict:
+def ainl_security_report(code: Optional[str] = None, ainl: Optional[str] = None) -> dict:
     """Generate a security/privilege map for an AINL workflow.
 
     Shows which adapters, verbs, and privilege tiers the workflow uses,
     broken down per label and in aggregate.  No execution, no side effects.
     """
-    ir = _compile(code, strict=False)
+    source = _resolve_code_arg(code, ainl)
+    if not source:
+        return {"ok": False, "errors": ["missing required argument: code"]}
+    ir = _compile(source, strict=False)
     errors = ir.get("errors") or []
     if errors:
         return {"ok": False, "errors": errors}
@@ -872,13 +890,14 @@ def ainl_security_report(code: str) -> dict:
 
 @_register_tool
 def ainl_run(
-    code: str,
+    code: Optional[str] = None,
     strict: bool = True,
     policy: Optional[dict] = None,
     limits: Optional[dict] = None,
     frame: Optional[dict] = None,
     label: Optional[str] = None,
     adapters: Optional[dict] = None,
+    ainl: Optional[str] = None,
 ) -> dict:
     """Compile, validate policy, and execute an AINL workflow.
 
@@ -936,10 +955,13 @@ def ainl_run(
     error on failure.
     """
     trace_id = str(uuid.uuid4())
-    _on_run_started(code)
+    source = _resolve_code_arg(code, ainl)
+    if not source:
+        return {"ok": False, "error": "missing required argument: code"}
+    _on_run_started(source)
     run_warnings: List[str] = []
 
-    ir = _compile(code, strict=strict)
+    ir = _compile(source, strict=strict)
     errors = ir.get("errors") or []
     if errors:
         fb = _enriched_compile_feedback(ir)
