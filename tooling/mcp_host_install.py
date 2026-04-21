@@ -1,4 +1,10 @@
-"""Shared MCP host bootstrap for OpenClaw, ZeroClaw, Hermes Agent, and future stacks (pip, MCP config, ainl-run, PATH)."""
+"""Shared MCP host bootstrap for OpenClaw, ZeroClaw, Hermes Agent, and future stacks (pip, MCP config, ainl-run, PATH).
+
+For ArmaraOS (`toml_mcp_servers_array`), writes to ~/.armaraos/config.toml are followed by a
+best-effort TOML parse check (`tomllib` on Python 3.11+) so invalid merges fail loudly instead
+of breaking the daemon. The ArmaraOS kernel also repairs stale ``env = [...]`` fragments on load
+and in API partial-rewrite paths (see armaraos docs/configuration.md).
+"""
 
 from __future__ import annotations
 
@@ -12,9 +18,25 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, List, Optional
 
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    tomllib = None  # type: ignore[assignment]
+
 PIP_SPEC = "ainativelang[mcp]"
 MCP_SERVER_KEY = "ainl"
 _WRAPPER_NAME = "ainl-run"
+
+
+def _assert_valid_toml_file(path: Path) -> None:
+    """Fail loudly if we wrote invalid TOML (protects ~/.armaraos/config.toml partial merges)."""
+    if tomllib is None:
+        return
+    raw = path.read_text(encoding="utf-8")
+    try:
+        tomllib.loads(raw)
+    except Exception as e:
+        raise RuntimeError(f"Wrote invalid TOML to {path}: {e}") from e
 
 
 @dataclass(frozen=True)
@@ -345,7 +367,7 @@ def _skip_duplicate_env_tail_lines(segment_body: List[str], balanced_end: int) -
     """
     end = balanced_end
     while end < len(segment_body):
-        s = segment_body[end].strip()
+        s = segment_body[end].strip().strip("\r")
         if not s:
             end += 1
             continue
@@ -359,6 +381,60 @@ def _skip_duplicate_env_tail_lines(segment_body: List[str], balanced_end: int) -
     return end
 
 
+def _is_stale_env_array_continuation_line(line: str) -> bool:
+    """
+    True for lines that are junk left after a completed ``env = [ ... ]`` on a prior line.
+
+    Example (invalid TOML)::
+
+        env = ["A", "B"]
+            "A",
+            "B",
+        ]
+    """
+    s = line.strip().strip("\r")
+    if not s:
+        return False
+    if s == "]":
+        return True
+    # Quoted env var token, optional comma (legacy multiline array body)
+    if len(s) >= 2 and s[0] == '"':
+        if s.endswith(","):
+            return True
+        if s.endswith('"') and s.count('"') >= 2:
+            return True
+    return False
+
+
+def _repair_stale_env_continuation_lines(segment_body: List[str]) -> List[str]:
+    """
+    Remove orphan lines after a **fully closed** ``env = [ ... ]`` assignment.
+
+    Older merges (or hand-edits) sometimes left quoted rows / a stray ``]`` after collapsing
+    ``env`` to a single line, which breaks TOML parsing and breaks ArmaraOS ``provider_urls`` saves.
+    """
+    env_idx: Optional[int] = None
+    for i, line in enumerate(segment_body):
+        if line.strip().startswith("env = "):
+            env_idx = i
+            break
+    if env_idx is None:
+        return segment_body
+
+    balanced_end = _env_array_balanced_line_end(segment_body, env_idx)
+    rhs = _env_assignment_rhs_for_parse(segment_body, env_idx, balanced_end)
+    # Only strip when the env value parses as a closed array (brackets balanced).
+    if _parse_toml_env_array_value(rhs) is None:
+        return segment_body
+
+    j = balanced_end
+    while j < len(segment_body) and _is_stale_env_array_continuation_line(segment_body[j]):
+        j += 1
+    if j == balanced_end:
+        return segment_body
+    return segment_body[:balanced_end] + segment_body[j:]
+
+
 def _env_assignment_rhs_for_parse(segment_body: List[str], env_idx: int, balanced_end: int) -> str:
     """RHS of ``env = ...`` spanning ``[env_idx, balanced_end)`` (pretty-printed TOML safe)."""
     chunk = "".join(segment_body[env_idx:balanced_end])
@@ -366,11 +442,39 @@ def _env_assignment_rhs_for_parse(segment_body: List[str], env_idx: int, balance
     return rhs
 
 
+def _repair_armaraos_mcp_config_toml_text(text: str) -> str:
+    """
+    Best-effort cleanup for ~/.armaraos/config.toml before merge/append.
+
+    Fixes the common corruption where ``env = ["a", ...]`` is followed by duplicate quoted
+    lines (and sometimes a stray ``]``) from an older multiline representation.
+    """
+    lines = text.splitlines(keepends=True)
+    out: List[str] = []
+    idx = 0
+    while idx < len(lines):
+        if lines[idx].strip() != "[[mcp_servers]]":
+            out.append(lines[idx])
+            idx += 1
+            continue
+        header = lines[idx]
+        idx += 1
+        segment_body: List[str] = []
+        while idx < len(lines) and lines[idx].strip() != "[[mcp_servers]]":
+            segment_body.append(lines[idx])
+            idx += 1
+        segment_body = _repair_stale_env_continuation_lines(segment_body)
+        out.append(header)
+        out.extend(segment_body)
+    return "".join(out)
+
+
 def _merge_env_into_mcp_segment(
     segment_body: List[str],
     required: List[str],
 ) -> tuple[List[str], bool]:
     """Merge ``required`` env var names into the ``env =`` line of one ``[[mcp_servers]]`` body."""
+    segment_body = _repair_stale_env_continuation_lines(segment_body)
     req = set(required)
     env_idx: Optional[int] = None
     for i, line in enumerate(segment_body):
@@ -492,9 +596,20 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
             return
         cfg_path.parent.mkdir(parents=True, exist_ok=True)
         cfg_path.write_text(desired_block, encoding="utf-8")
+        _assert_valid_toml_file(cfg_path)
         return
 
     text = cfg_path.read_text(encoding="utf-8", errors="replace")
+    repaired = _repair_armaraos_mcp_config_toml_text(text)
+    if repaired != text:
+        if dry_run:
+            print(f"[dry-run] would repair stale env= array fragments in {cfg_path}")
+            _log(verbose, repaired)
+        else:
+            cfg_path.write_text(repaired, encoding="utf-8")
+            _assert_valid_toml_file(cfg_path)
+            _log(verbose, f"MCP: repaired stale env= array fragments in {cfg_path}")
+    text = repaired
     # Idempotency: accept either name-only legacy blocks or the transport-style blocks.
     needle = f"name = \"{server_key}\""
     if needle in text:
@@ -510,6 +625,7 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
                     _log(verbose, new_text)
                     return
                 cfg_path.write_text(new_text, encoding="utf-8")
+                _assert_valid_toml_file(cfg_path)
                 _log(
                     verbose,
                     f"MCP: merged env pass-through for {server_key!r} in {cfg_path}",
@@ -534,6 +650,7 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
         return
 
     cfg_path.write_text(new_text, encoding="utf-8")
+    _assert_valid_toml_file(cfg_path)
 
 
 def _ensure_mcp_registration_json_under_mcp(
