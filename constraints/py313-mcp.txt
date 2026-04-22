@@ -10,7 +10,7 @@ httpx-sse==0.4.3
 jsonschema==4.26.0
 pydantic==2.12.5
 pydantic-settings==2.13.1
-python-multipart==0.0.22
+python-multipart==0.0.26
 sse-starlette==3.3.3
 starlette==1.0.0
 typer==0.24.1
