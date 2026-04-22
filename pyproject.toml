@@ -119,6 +119,14 @@ where = ["."]
 # OpenClaw bridge modules must be included for `ainl install openclaw` to work.
 include = ["cli*", "scripts*", "tooling", "tooling.*", "adapters", "adapters.*", "runtime", "runtime.*", "intelligence", "intelligence.*", "hermes", "hermes.*", "openclaw", "openclaw.*", "armaraos", "armaraos.*"]
 
+[tool.uv]
+# Block any package version published within the last 7 days.
+# Malicious takeover versions are almost always caught and yanked within hours;
+# this sliding window stops short-lived compromise installs without requiring
+# manual version pinning. Override for a single install:
+#   uv add <pkg> --exclude-newer "0 days"
+exclude-newer = "7 days"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -m 'not integration and not emits and not lsp' --snapshot-dirname=../snapshots/conformance"
