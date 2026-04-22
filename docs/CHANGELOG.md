@@ -5,6 +5,7 @@
 <!-- Next release changes go here -->
 
 - **docs**: clarify **v1.7.0** ship-window PyPI/runtime lines vs **latest** **v1.7.1** in **`README.md`**, **`docs/RELEASE_NOTES.md`**, and the **v1.7.0** changelog release bullet (no runtime change).
+- **test**: refresh **`test_patch_a_valid_artifacts_fingerprint_lock`** golden hashes for opcode **`S core web`** fixtures (`labels_sha256`, **`emit_ir_json_sha256`**) after compiler IR shape drift — restores **`parser-compat`** / **`core-pr`** CI (open Dependabot PRs were failing the same gate).
 
 ## v1.7.1 (April 22, 2026) — A2A (Agent-to-Agent) adapter
 
