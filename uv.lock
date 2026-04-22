@@ -2,6 +2,10 @@ version = 1
 revision = 3
 requires-python = ">=3.10"
 
+[options]
+exclude-newer = "2026-04-15T20:32:18.855157Z"
+exclude-newer-span = "P7D"
+
 [[package]]
 name = "ainativelang"
 version = "1.7.1"

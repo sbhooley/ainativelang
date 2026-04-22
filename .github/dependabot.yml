@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Python – uv
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      # Mirrors [tool.uv] exclude-newer = "7 days" in pyproject.toml.
+      # Prevents Dependabot from opening PRs for versions that would be blocked
+      # by the package manager policy (PRs that would immediately fail the
+      # lockfile step). Security advisories bypass the cooldown automatically.
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
+
+  # pip fallback (requirements.txt / requirements-dev.txt)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
