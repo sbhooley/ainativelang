@@ -1,0 +1,8 @@
+# Test OpenSpace MCP
+# Quick test that OpenSpace MCP tools are callable via HTTP
+
+S core noop
+
+L_test:
+  R http.POST "http://localhost:8080/mcp/execute_task" {"task": "Say hello and confirm you are working from OpenSpace MCP."} ->mcp_result
+  J mcp_result

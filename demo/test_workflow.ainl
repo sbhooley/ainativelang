@@ -1,0 +1,4 @@
+# module: core
+
+# Simple test workflow
+R core.PRINT "Hello, world!"

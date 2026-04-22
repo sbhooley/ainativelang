@@ -1,0 +1,7 @@
+test test_openspace_mcp_minimal.ainl
+
+S core noop
+
+L_test:
+  R http.POST "http://localhost:8080/mcp/execute_task" {"task": "Say hello and confirm you are working from OpenSpace MCP."} ->mcp_result
+  J mcp_result

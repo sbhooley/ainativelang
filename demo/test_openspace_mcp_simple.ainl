@@ -1,0 +1,5 @@
+# test_openspace_mcp_simple.ainl
+# Simple test to check if OpenSpace MCP server is running
+
+R http.GET "http://localhost:8080/mcp/status" ->status
+R core.print message:"OpenSpace MCP status: {{status}}"

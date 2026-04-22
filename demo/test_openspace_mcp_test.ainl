@@ -1,0 +1,7 @@
+test test_openspace_mcp_test.ainl
+
+S core noop
+
+L_test:
+  R http.GET "http://localhost:8080/mcp/execute_task" ->mcp_result
+  J mcp_result

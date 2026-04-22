@@ -1,0 +1,6 @@
+# module: core
+
+# Simple test workflow
+R core.GET "https://jsonplaceholder.typicode.com/todos/1" -> response
+
+response

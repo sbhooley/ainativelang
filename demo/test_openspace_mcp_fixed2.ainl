@@ -1,0 +1,28 @@
+#!/usr/bin/env ainl
+
+# Test OpenSpace MCP integration
+# This workflow tests the OpenSpace MCP server connection and basic functionality
+
+# Set up frame with test parameters
+R core.ECHO "Setting up test parameters"
+R core.SET frame test_name "OpenSpace MCP Test"
+R core.SET frame test_id "openspace-test-001"
+R core.SET frame expected_result "success"
+
+# Log start of test
+R core.ECHO "Starting OpenSpace MCP test"
+
+# Test OpenSpace MCP connection
+R http.GET "http://localhost:11111/health" "" -\u003etest_response
+
+# Check if connection was successful
+R core.IF test_response.status_code == 200 "Connection successful" "Connection failed"
+
+# Log the result
+R core.ECHO "OpenSpace MCP health check: " test_response.status_code
+
+# Verify expected result
+R core.IF test_response.status_code == 200 "Test passed" "Test failed"
+
+# Return final result
+R core.RETURN "Test completed" test_response.status_code

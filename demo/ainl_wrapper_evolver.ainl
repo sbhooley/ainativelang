@@ -1,4 +1,5 @@
-# ainl_wrapper_evolver.ainl
+S ainl_wrapper_evolver
+
 # Continuous improvement for AINL wrappers using OpenSpace
 #
 # This module monitors recent AINL cron job failures, uses OpenSpace to diagnose
