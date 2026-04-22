@@ -126,6 +126,10 @@ ALL_RESOURCE_URIS: List[str] = [
     "ainl://adapter-manifest",
     "ainl://security-profiles",
     "ainl://authoring-cheatsheet",
+    "ainl://impact-checklist",
+    "ainl://adapter-risk-matrix",
+    "ainl://run-readiness",
+    "ainl://policy-contract",
 ]
 
 # Short MCP-facing authoring guide (mirrors AGENTS.md highlights for agent loops).
@@ -145,6 +149,51 @@ _AUTHORING_CHEATSHEET_MARKDOWN: str = """# AINL authoring — MCP cheatsheet
 
 Ground truth in-repo: **AGENTS.md** (HTTP adapter, queue, strict-valid examples).
 """
+
+_IMPACT_CHECKLIST_MARKDOWN: str = """# Impact-first checklist (GitNexus-style alignment)
+
+1. `ainl_validate` (`strict=true`) after every edit.
+2. `ainl_compile` for canonical IR.
+3. `ainl_ir_diff` when comparing to a prior IR file (blast-radius on graph delta).
+4. `ainl_run` only with explicit `adapters` for http/fs/cache/sqlite as needed.
+
+If a **repo-intelligence MCP** (e.g. GitNexus) is available in your host, prefer its `impact` / `context` tools before broad filesystem edits.
+"""
+
+_ADAPTER_RISK_MATRIX_MARKDOWN: str = """# Adapter risk matrix (summary)
+
+| Area | Notes |
+|------|------|
+| `http` / `web` | Network egress; use host allowlists (`ainl_capabilities` + grants). |
+| `fs` | Sandboxed paths; never assume repo-wide read without policy. |
+| `llm` | May require `AINL_CONFIG` / MCP LLM enablement. |
+
+Full manifest: resource `ainl://adapter-manifest`, privileges: `ainl://security-profiles`.
+"""
+
+_RUN_READINESS_MARKDOWN: str = """# Run readiness
+
+- **Context freshness** (contract): often `unknown` in MCP-only hosts — ArmaraOS may supply `fresh`/`stale` via integrations.
+- **Recommended chain**: see `ainl://policy-contract` and `recommended_next_tools` on validate/compile responses.
+- **Telemetry names** (stable): `capability_profile_state`, `freshness_state_at_decision`, `impact_checked_before_write` (see policy contract JSON).
+"""
+
+
+def _load_policy_contract_json() -> Dict[str, Any]:
+    """Mirror of `tooling/ainl_policy_contract.json` for MCP clients."""
+    p = _TOOLING_DIR / "ainl_policy_contract.json"
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"schema_version": 1, "error": "missing_or_invalid_ainl_policy_contract.json"}
+
+
+def _impact_first_mode() -> bool:
+    """Impact-first recommended steps when profile or env requests it."""
+    if env_truthy(os.environ.get("AINL_MCP_IMPACT_FIRST")):
+        return True
+    prof = (os.environ.get("AINL_MCP_EXPOSURE_PROFILE") or "").strip()
+    return prof == "design_impact_first"
 
 
 def _csv_set(val: Optional[str]) -> Set[str]:
@@ -307,6 +356,17 @@ def _failure_tags_from_diagnostics(
     return tags
 
 
+def _attach_policy_contract_hints(out: Dict[str, Any]) -> None:
+    """Attach cross-runtime policy hints (JSON-serializable; aligns with ainl-contracts)."""
+    pc = _load_policy_contract_json()
+    out["policy_contract"] = {
+        "schema_version": pc.get("schema_version", 1),
+        "context_freshness": "unknown",
+        "telemetry_field_names": pc.get("telemetry_field_names", {}),
+        "golden_recommended_next_tools_chain": pc.get("golden_recommended_next_tools_chain", []),
+    }
+
+
 def _add_recommended_next_steps(
     out: Dict[str, Any],
     kind: str,
@@ -322,8 +382,18 @@ def _add_recommended_next_steps(
     """
     tools: List[str] = []
     resources: List[str] = []
+    if_ = _impact_first_mode()
     if kind == "validate_ok":
-        tools = ["ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run"]
+        if if_:
+            tools = [
+                "ainl_compile",
+                "ainl_ir_diff",
+                "ainl_capabilities",
+                "ainl_security_report",
+                "ainl_run",
+            ]
+        else:
+            tools = ["ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run"]
     elif kind in ("validate_fail", "compile_fail"):
         tags = failure_tags or set()
         adapter = "adapter_or_verb" in tags
@@ -341,7 +411,10 @@ def _add_recommended_next_steps(
             tools = ["ainl_validate", "ainl_capabilities"]
             resources = ["ainl://authoring-cheatsheet"]
     elif kind == "compile_ok":
-        tools = ["ainl_run", "ainl_security_report", "ainl_validate"]
+        if if_:
+            tools = ["ainl_ir_diff", "ainl_run", "ainl_validate", "ainl_security_report"]
+        else:
+            tools = ["ainl_run", "ainl_security_report", "ainl_validate"]
     else:
         return
     tools_f = [t for t in tools if t in _ALLOWED_TOOLS]
@@ -349,6 +422,7 @@ def _add_recommended_next_steps(
     out["recommended_next_tools"] = tools_f
     if res_f:
         out["recommended_resources"] = res_f
+    _attach_policy_contract_hints(out)
 
 
 def _mcp_bare_floor() -> Dict[str, Any]:
@@ -1496,6 +1570,30 @@ def security_profiles_resource() -> str:
 def authoring_cheatsheet_resource() -> str:
     """Concise AINL authoring rules: validate-first, HTTP R-lines, adapters, frame dicts."""
     return _AUTHORING_CHEATSHEET_MARKDOWN
+
+
+@_register_resource("ainl://impact-checklist")
+def impact_checklist_resource() -> str:
+    """Impact-first editing checklist aligned with ainl-impact-policy golden chain."""
+    return _IMPACT_CHECKLIST_MARKDOWN
+
+
+@_register_resource("ainl://adapter-risk-matrix")
+def adapter_risk_matrix_resource() -> str:
+    """Short adapter risk summary; full data in adapter-manifest + security-profiles."""
+    return _ADAPTER_RISK_MATRIX_MARKDOWN
+
+
+@_register_resource("ainl://run-readiness")
+def run_readiness_resource() -> str:
+    """Context freshness and telemetry field names for operator dashboards."""
+    return _RUN_READINESS_MARKDOWN
+
+
+@_register_resource("ainl://policy-contract")
+def policy_contract_resource() -> str:
+    """Serialized `tooling/ainl_policy_contract.json` (cross-runtime contract with Rust ainl-contracts)."""
+    return json.dumps(_load_policy_contract_json(), indent=2)
 
 
 # ---------------------------------------------------------------------------

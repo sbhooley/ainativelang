@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "description": "Cross-runtime contract aligned with armaraos crates ainl-contracts, ainl-repo-intel, ainl-context-freshness, ainl-impact-policy.",
+  "context_freshness": ["fresh", "stale", "unknown"],
+  "repo_intel_capability_state": ["ready", "degraded", "absent"],
+  "telemetry_field_names": {
+    "capability_profile_state": "capability_profile_state",
+    "freshness_state_at_decision": "freshness_state_at_decision",
+    "impact_checked_before_write": "impact_checked_before_write"
+  },
+  "golden_recommended_next_tools_chain": [
+    "ainl_validate",
+    "ainl_compile",
+    "ainl_ir_diff",
+    "ainl_run"
+  ],
+  "notes": [
+    "AINL MCP does not compute repo git-HEAD staleness; it emits context_freshness=unknown unless ARMARAOS/AINL extensions provide signals in the future.",
+    "Repo-intelligence tools (GitNexus-class) live in external MCP hosts; this contract names enums only."
+  ]
+}
