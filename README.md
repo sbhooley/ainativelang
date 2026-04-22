@@ -116,7 +116,7 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 - **Hand pack `schema_version`:** **`ainl emit --target armaraos`** writes **`schema_version`** on **`HAND.toml`**, IR JSON, and **`security.json`** — **`tests/test_emit_armaraos_handpack.py`**.
 - **Monitor registry bootstrap:** **`build_armaraos_monitor_registry`**, **`boot_armaraos_graph_memory`**, **`CronDriftCheckAdapter`**, **`tests/test_armaraos_monitor_registry.py`**.
 - **Runtime:** public **`AdapterRegistry.get`**; graph-patch uses **`adapters.get("ainl_graph_memory")`**.
-- **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine aligned to **1.7.0**.
+- **Release hygiene (v1.7.0 line):** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine bumped to **1.7.0** for that tag's PyPI publish (**latest PyPI** is **v1.7.1** — see **New in v1.7.1** above).
 
 ## New in v1.6.0
 

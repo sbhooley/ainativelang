@@ -17,7 +17,9 @@ Conventional list: [`docs/CHANGELOG.md`](CHANGELOG.md) § **v1.7.1 (April 22, 20
 
 ## AINL v1.7.0 — Cognitive vitals on Python graph bridge + Hand schema_version (2026-04-14)
 
-**PyPI / runtime:** **`ainativelang` 1.7.0** — **`RUNTIME_VERSION` `1.7.0`**.
+**PyPI / runtime (this line's upload window):** **`ainativelang` 1.7.0** — **`RUNTIME_VERSION` `1.7.0`**.
+
+**Superseded on PyPI by:** **`ainativelang` 1.7.1** — see **AINL v1.7.1** above (A2A adapter).
 
 This release documents **every commit on `main` after Git tag `v1.6.0` (`7b78f18`)** through **`3af546c`**. Use it with **ArmaraOS** builds that include the matching **Rust** inbox / vitals / patch-drain work for end-to-end parity.
 

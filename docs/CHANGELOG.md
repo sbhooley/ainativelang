@@ -4,6 +4,8 @@
 
 <!-- Next release changes go here -->
 
+- **docs**: clarify **v1.7.0** ship-window PyPI/runtime lines vs **latest** **v1.7.1** in **`README.md`**, **`docs/RELEASE_NOTES.md`**, and the **v1.7.0** changelog release bullet (no runtime change).
+
 ## v1.7.1 (April 22, 2026) — A2A (Agent-to-Agent) adapter
 
 - **feat(adapter / a2a)**: opt-in **`runtime/adapters/a2a.py`** — **wire profile 1.0**: **`GET …/.well-known/agent.json`**, JSON-RPC **`tasks/send`** / **`tasks/get`**; host allowlist (**`allow_hosts`**, empty list denies all), **`allow_insecure_local`**, optional **`strict_ssrf`** (DNS + block private/loopback/link-local unless local allowed), **`follow_redirects`** default **off** (on: re-check URL per hop). CLI: **`--a2a-allow-hosts`**, **`--a2a-allow-insecure-local`**, **`--a2a-strict-ssrf`**, **`--a2a-follow-redirects`**, **`--a2a-default-timeout`**, **`--enable-adapter a2a`**. Env: **`AINL_A2A_*`**, **`AINL_ADAPTERS`**. MCP / runner: **`adapters.enable`** + **`adapters.a2a`**; exposure profiles do not enable **a2a** by themselves — see **`tooling/mcp_exposure_profiles.json`**. Effect analysis: strict **`a2a.*`** in **`tooling/effect_analysis.py`**. Tests: **`tests/test_a2a_adapter.py`**, **`tests/test_a2a_adapter_integration.py`** (local **HTTPServer**; skips if bind fails). Example: **`examples/compact/a2a_delegate.ainl`**. Docs: **`docs/integrations/A2A_ADAPTER.md`**, **`ADAPTER_REGISTRY.json`**, registry/reference docs, **`SECURITY.md`**.
@@ -34,7 +36,7 @@ Ship tag for everything **after `v1.6.0` (`7b78f18`)** through **Gap K** vitals 
 
 All items below are commits on **`main`** since Git tag **`v1.6.0`** (**`7b78f18`** — *release: v1.6.0 — GraphPatch notes, version surfaces, adapter registry*), through **`3af546c`**, unless noted.
 
-- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.7.0** (mirrored **`tests/emits/server/runtime/engine.py`**); docs hub / skills / operations “current PyPI” pointers aligned (**MINOR** — bridge + inbox + vitals + emit surface).
+- **release**: bump **`pyproject.toml`** / **`RUNTIME_VERSION`** / **`CITATION.cff`** / **`tooling/bot_bootstrap.json`** to **1.7.0** (mirrored **`tests/emits/server/runtime/engine.py`**); docs hub / skills / operations PyPI + docs pointers aligned for the **v1.7.0** line (**MINOR** — bridge + inbox + vitals + emit surface).
 - **feat(runtime+bundle)** (`eece265`): pre-seed **graph store** on **`ainl run`** when a bundle / graph-memory path is active; **persona** hook wiring in the agent loop path (bundle + graph continuity).
 - **docs** (`e3449fa`, `8492a8a`): **ArmaraOS** bundle env (**`AINL_BUNDLE_PATH`**, **`AINL_AGENT_ID`**), boot **pre-seed**, and **chat persona vs JSON graph** cross-links.
 - **docs(release)** (`8dcf043`): **v1.6.0** GraphPatch release doc pass (changelog / release notes alignment — landed immediately after the **`v1.6.0`** tag; included here for a complete **post-tag** audit trail).
