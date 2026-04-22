@@ -3,7 +3,7 @@
 #   python -m pip install --constraint constraints/py313-mcp.txt "ainativelang[mcp]"
 #
 # These pins are validated in CI install smoke/wheel jobs.
-mcp==1.26.0
+mcp==1.27.0
 anyio==4.12.1
 httpx==0.28.1
 httpx-sse==0.4.3
