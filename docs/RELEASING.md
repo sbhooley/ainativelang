@@ -2,7 +2,14 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.7.0** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.7.1** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+
+### Manual smoke: A2A adapter (before tagging)
+
+Run once against a **real** Armara (or other) A2A endpoint, or a **local mock** (see **`tests/test_a2a_adapter_integration.py`** for a pattern):
+
+1. **Minimal allowlist:** `ainl run examples/compact/a2a_delegate.ainl --json --enable-adapter a2a --a2a-allow-hosts 'YOUR_HOST'` (plus frame/config your program needs; see **`docs/integrations/A2A_ADAPTER.md`**).
+2. **Strict + local (as documented there):** repeat with **`--a2a-strict-ssrf`**, and only if intended **`--a2a-allow-insecure-local`** for loopback — confirm behavior matches the threat model in **`A2A_ADAPTER`**.
 
 ## Public API surface (for downstream apps)
 
@@ -90,6 +97,8 @@ git push origin vX.Y.Z
 ```
 
 Tags should match **`pyproject.toml`** `version` (with or without `v` prefix — pick one convention and stick to it).
+
+**Parity before you tag (1.7.x+):** after any **`pyproject.toml`** version change, run **`uv lock`** so **`uv.lock`** lists the editable **`ainativelang`** at the same version. Keep **`CITATION.cff`** **`version`** and **`date-released`** aligned with the release you are cutting, together with **`RUNTIME_VERSION`**, **`tooling/bot_bootstrap.json`**, and any **OpenClaw** lock files (e.g. **`aiNativeLang.yml`**) that record a project **version** field.
 
 ### GitHub Release → PyPI (OIDC)
 

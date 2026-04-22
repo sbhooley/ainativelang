@@ -98,6 +98,15 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 > Full boundary details: [`docs/OPEN_CORE_DECISION_SHEET.md`](docs/OPEN_CORE_DECISION_SHEET.md)
 
+## Security
+
+Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, secrets): see **[SECURITY.md](SECURITY.md)**. A2A-specific policy and wire contract: **[docs/integrations/A2A_ADAPTER.md](docs/integrations/A2A_ADAPTER.md)**.
+
+## New in v1.7.1
+
+- **A2A (Agent-to-Agent) adapter (opt-in):** **`a2a`** — wire profile **1.0** (`GET …/.well-known/agent.json`, **`tasks/send`** / **`tasks/get`**); **`allow_hosts`** / optional **`strict_ssrf`** / **redirects off by default**; enable via **`--enable-adapter a2a`** and **`--a2a-allow-hosts`**, or **`adapters` + `adapters.a2a`**. MCP **exposure profiles** do not enable **a2a** without **`adapters`** (see **`tooling/mcp_exposure_profiles.json`** + **`docs/integrations/A2A_ADAPTER.md`**). Tests: **`tests/test_a2a_adapter.py`**, **`tests/test_a2a_adapter_integration.py`**; example: **`examples/compact/a2a_delegate.ainl`**.
+- **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine aligned to **1.7.1** (see **`docs/CHANGELOG.md`** § **[1.7.1]**, **`docs/RELEASE_NOTES.md`**, **Known limitations** in both point at **`A2A_ADAPTER`**: TOCTOU, empty allowlist, IDNA).
+
 ## New in v1.7.0
 
 - **Cognitive vitals (Python graph bridge):** episodic **`MemoryNode`** fields **`vitals_gate`**, **`vitals_phase`**, **`vitals_trust`**; Rust snapshot import; inbox schema + **`tests/test_vitals_bridge.py`** — keeps Python graph store / inbox aligned with ArmaraOS Rust **`EpisodeNode`** vitals (pair with current ArmaraOS for **`patch`** inbox drain on the Rust side).
@@ -112,10 +121,10 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 ## New in v1.6.0
 
 - **GraphPatch:** runtime **`R memory.patch`** (and graph **`memory.patch`**) installs procedural label bodies from the JSON graph store via **`ainl_graph_memory.graph_patch`**, with compile-time strict literal checks, runtime dataflow validation (**`_analyze_step_rw`**), overwrite protection for compiled labels, boot-time **`_reinstall_patches`**, and per-label fitness EMA (including early **`J`** exits). Tests: **`tests/test_graph_patch_op.py`**.
-- **Foundation for unified graph execution:** v1.6.0 established the canonical Python GraphPatch semantics while the ArmaraOS Rust stack formalized adapter-based patch dispatch (`PatchAdapter` registry + `GraphPatchAdapter` fallback), creating a stable integration seam that v1.7.0 extends through vitals, extractor, persona, and semantic-tagging convergence.
+- **Foundation for unified graph execution:** v1.6.0 established the canonical Python GraphPatch semantics while the ArmaraOS Rust stack formalized adapter-based patch dispatch (`PatchAdapter` registry + `GraphPatchAdapter` fallback), creating a stable integration seam that **v1.7.0** extended through vitals, extractor, persona, and semantic-tagging convergence, and that **v1.7.1** extends with the opt-in **a2a** (Agent-to-Agent) network adapter.
 - **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine, and **`ADAPTER_REGISTRY.json`** / **`docs/reference/ADAPTER_REGISTRY.md`** aligned to **1.6.0**.
 
-## Unified graph execution engine vision (1.6.0 → 1.7.0)
+## Unified graph execution engine vision (1.6.0 → 1.7.1)
 
 - **Single typed substrate:** the same graph artifact carries executable workflow structure plus memory layers (episodic, semantic, procedural, persona), rather than splitting execution and memory into separate systems.
 - **Memory as compiled knowledge:** GraphPatch (`memory.patch`) promotes proven behavior into reusable procedural graph structure under strict dataflow and overwrite guards.
@@ -919,7 +928,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.7.0**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.7.1**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
@@ -976,7 +985,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.7.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.7.1** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

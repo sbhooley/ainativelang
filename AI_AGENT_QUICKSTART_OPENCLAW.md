@@ -44,7 +44,7 @@ Read in order:
 7. `agent_reports/README.md` — indexed **field reports** from agents running AINL in production (continuity narratives)
 8. `docs/INTELLIGENCE_PROGRAMS.md` — `intelligence/*.lang` monitors + `scripts/run_intelligence.py` runner
 9. `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` — required before coding (steps + output structure)
-10. `docs/ainl_openclaw_unified_integration.md` — unified integration (current **v1.3.3**; includes v1.3.0/v1.2.8): token-aware startup, bridge, cron, and gold-standard deployment
+10. `docs/ainl_openclaw_unified_integration.md` — unified integration (current **v1.7.1**; includes v1.3.0/v1.2.8): token-aware startup, bridge, cron, and gold-standard deployment
 
 **Key concepts to internalize:**
 - Canonical IR = nodes/edges (graph-first)
@@ -237,7 +237,7 @@ This ensures smooth continuity.
 | `examples/openclaw/` | Reference examples (daily_digest, lead_enrichment, infrastructure_watchdog, webhook_handler) |
 | `ADAPTER_REGISTRY.json` | Machine-readable adapter catalog |
 | `corpus/curated/` | Evaluation reports and trends |
-| `docs/ainl_openclaw_unified_integration.md` | Unified integration guide (current **v1.3.3**; token optimizations, bridge setup) |
+| `docs/ainl_openclaw_unified_integration.md` | Unified integration guide (current **v1.7.1**; token optimizations, bridge setup) |
 
 ---
 

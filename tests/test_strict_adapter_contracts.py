@@ -17,6 +17,8 @@ def test_strict_allows_explicit_runtime_supported_adapter_verbs():
         'L1: R db.G User "1" ->out J out\n',
         'L1: R api.POST /x "{}" ->out J out\n',
         'L1: R http.GET "https://example.com" ->out J out\n',
+        'L1: R a2a.DISCOVER "https://a.example.com" ->out J out\n',
+        'L1: R a2a.SEND "https://a.example.com/a2a" "msg" ->out J out\n',
         'L1: R sqlite.QUERY "SELECT 1" ->out J out\n',
         'L1: R postgres.QUERY "SELECT 1" ->out J out\n',
         'L1: R postgres.EXECUTE "UPDATE x SET y = 1" ->out J out\n',

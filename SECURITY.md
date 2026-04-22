@@ -1,99 +1,25 @@
-# Security Policy
+# Security
 
-Thank you for helping keep AI Native Lang (AINL) and its ecosystem safe.
+## Reporting a vulnerability
 
-## Supported Versions
+If you believe you have found a **security issue** in AI_Native_Lang (including the `a2a` adapter, runtime, compiler, or packaged tooling), please report it **privately** so we can address it before public disclosure.
 
-Security fixes are generally prioritized for:
+**Preferred:** For **`github.com/sbhooley/ainativelang`**, open a **[private security advisory](https://github.com/sbhooley/ainativelang/security/advisories/new)** (repository **Security** tab → **Report a vulnerability**). Advantages: coordinated disclosure, private thread with maintainers, optional CVE / GitHub advisory once fixed. You need a **GitHub account**; the form accepts description, impact, and repro details.
 
-- The latest released version
-- The current development branch, where applicable
+**Include (when possible):**
 
-Older versions may receive fixes at maintainer discretion depending on severity, impact, and available bandwidth.
+- A short description of the issue and its impact
+- Steps to reproduce or a proof-of-concept
+- Affected version / commit, if known
 
-## Scope
+**Please do not** file public issues for **undisclosed** security bugs until a fix and coordinated disclosure window exist.
 
-Security issues may include vulnerabilities affecting:
+## Security-sensitive areas
 
-- The AINL compiler, interpreter, or runtime
-- Core language tooling and adapters
-- Packaging or dependency integrity
-- Generated artifacts or execution surfaces created by official tooling
-- Training, evaluation, or orchestration components that could introduce meaningful security risk
-- Official project infrastructure, release pipelines, or distribution mechanisms
+- **SSRF and outbound HTTP** — HTTP and A2A adapters perform outbound requests; use host allowlists and optional strict DNS checks. See [docs/integrations/A2A_ADAPTER.md](docs/integrations/A2A_ADAPTER.md) for the `a2a` adapter.
+- **Untrusted code and prompts** — Treat LLM- or user-supplied URLs and graph inputs with the same care as in any other automation that can reach the network or filesystem.
+- **Secrets** — Do not commit API keys, tokens, or private keys. Prefer environment variables and your platform’s secret stores.
 
-## Out of Scope
+## Supported versions
 
-The following are usually **not** treated as security vulnerabilities by themselves, unless they create a concrete exploit path or materially increase security risk:
-
-- Feature requests
-- Performance issues
-- Pure correctness bugs without security impact
-- Unsafe deployment choices made outside official project defaults
-- Risks caused solely by third-party infrastructure not maintained by the project
-- Hypothetical issues without a reproducible scenario or clear impact
-
-## Reporting a Vulnerability
-
-Please report suspected vulnerabilities **privately**.
-
-Preferred channel:
-
-- GitHub Security Advisories ("Report a vulnerability" in the Security tab), when enabled for this repository.
-
-If private vulnerability reporting is not available in the repository UI:
-
-- Open a minimal public issue requesting a private security contact channel.
-- Do not include exploit details, proof-of-concept payloads, or sensitive data in that public issue.
-
-Please do **not** post full technical details publicly before coordinated triage.
-
-## What to Include
-
-When reporting, please include as much of the following as practical:
-
-- Affected component, module, file, or release
-- Description of the issue
-- Reproduction steps or proof of concept
-- Expected impact and severity estimate
-- Environment details:
-  - OS
-  - language/runtime version
-  - dependency versions
-  - container/runtime details if relevant
-- Any suggested mitigations or patches, if available
-
-## Response Expectations
-
-Targets, not guarantees:
-
-- Initial acknowledgment: within **72 hours**
-- Triage and severity assessment: after the issue is reproducible and understood
-- Fix and disclosure timing: coordinated based on severity, exploitability, and user impact
-
-## Disclosure Process
-
-If a report is accepted as a vulnerability, maintainers will generally aim to:
-
-1. Confirm and reproduce the issue
-2. Assess severity and affected scope
-3. Develop and validate a fix or mitigation
-4. Coordinate release timing
-5. Publish an advisory or release note when appropriate
-
-We ask reporters to avoid public disclosure until maintainers have had a reasonable opportunity to investigate and ship a fix or mitigation.
-
-## Hardening Guidance
-
-Users deploying AINL in real systems should consider the following baseline practices:
-
-- Run with least-privilege credentials
-- Prefer sandboxed or isolated execution where practical
-- Keep dependencies pinned and reviewed in CI/CD environments
-- Review generated server, infrastructure, or deployment artifacts before production use
-- Restrict secrets exposure in prompts, pipelines, adapters, and logs
-- Apply standard supply-chain and artifact integrity controls for production environments
-
-## No Warranty
-
-Security review and remediation are provided on a best-effort basis unless separately agreed in writing.
+Security fixes are applied to maintained branches as described in project release policy. For production, run a **current** release and follow the changelog when upgrading.

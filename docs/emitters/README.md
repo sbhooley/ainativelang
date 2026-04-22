@@ -29,7 +29,7 @@ python3 scripts/validate_ainl.py path/to/workflow.ainl --strict --emit hyperspac
 
 ## Solana client emitter (`solana-client` / `blockchain-client`)
 
-**v1.3.3 Solana onboarding — fastest start is [docs/solana_quickstart.md](../solana_quickstart.md) + [examples/prediction_market_demo.ainl](../../examples/prediction_market_demo.ainl).**
+**v1.7.1 / latest Solana onboarding — fastest start is [docs/solana_quickstart.md](../solana_quickstart.md) + [examples/prediction_market_demo.ainl](../../examples/prediction_market_demo.ainl).**
 
 Emit a **single-file Python runner** that embeds the compiled IR (base64) and registers **`core`**, **`vector_memory`**, **`tool_registry`**, and **`solana`** (`adapters/solana.SolanaAdapter`), same structural pattern as the Hyperspace emitter but **without** `hyperspace_sdk`.
 

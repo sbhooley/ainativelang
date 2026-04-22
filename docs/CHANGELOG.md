@@ -4,6 +4,16 @@
 
 <!-- Next release changes go here -->
 
+## v1.7.1 (April 22, 2026) — A2A (Agent-to-Agent) adapter
+
+- **feat(adapter / a2a)**: opt-in **`runtime/adapters/a2a.py`** — **wire profile 1.0**: **`GET …/.well-known/agent.json`**, JSON-RPC **`tasks/send`** / **`tasks/get`**; host allowlist (**`allow_hosts`**, empty list denies all), **`allow_insecure_local`**, optional **`strict_ssrf`** (DNS + block private/loopback/link-local unless local allowed), **`follow_redirects`** default **off** (on: re-check URL per hop). CLI: **`--a2a-allow-hosts`**, **`--a2a-allow-insecure-local`**, **`--a2a-strict-ssrf`**, **`--a2a-follow-redirects`**, **`--a2a-default-timeout`**, **`--enable-adapter a2a`**. Env: **`AINL_A2A_*`**, **`AINL_ADAPTERS`**. MCP / runner: **`adapters.enable`** + **`adapters.a2a`**; exposure profiles do not enable **a2a** by themselves — see **`tooling/mcp_exposure_profiles.json`**. Effect analysis: strict **`a2a.*`** in **`tooling/effect_analysis.py`**. Tests: **`tests/test_a2a_adapter.py`**, **`tests/test_a2a_adapter_integration.py`** (local **HTTPServer**; skips if bind fails). Example: **`examples/compact/a2a_delegate.ainl`**. Docs: **`docs/integrations/A2A_ADAPTER.md`**, **`ADAPTER_REGISTRY.json`**, registry/reference docs, **`SECURITY.md`**.
+
+### Known limitations (triage; full detail in A2A_ADAPTER)
+
+- **TOCTOU** — allowlist and DNS checks apply per request; targets can change between metadata fetch and work requests in adversarial conditions.
+- **Empty allowlist** — outbound **a2a** calls are denied; operators must set hosts explicitly.
+- **IDNA / Unicode hosts** — punycode and homoglyph risk; prefer explicit allowlisted hostnames.
+
 ## [1.7.0] — ArmaraOS graph bridge + cognitive vitals (2026-04-14)
 
 Ship tag for everything **after `v1.6.0` (`7b78f18`)** through **Gap K** vitals parity: graph-memory **inbox** + **monitor registry**, **Hand `schema_version`**, **Rust snapshot / export** alignment, **bundle pre-seed**, **OpenClaw** wrapper fixes, and **PRIOR_ART** / blog operator docs. Full conventional list under **v1.7.0** below.

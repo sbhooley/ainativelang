@@ -26,7 +26,7 @@ You need to ensure processing is idempotent: processing the same event twice has
 
 ## Implementation
 
-### Real AINL Syntax (v1.3.3 — this compiles)
+### Real AINL Syntax (v1.7.1 — this compiles)
 
 ```ainl
 # webhook_processor.ainl — Idempotent webhook handler

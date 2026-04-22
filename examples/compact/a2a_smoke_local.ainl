@@ -1,0 +1,14 @@
+# Local A2A smoke — ArmaraOS openfang-api (loopback). Uses frame vars so `->` parses correctly.
+# Run: ainl run examples/compact/a2a_smoke_local.ainl --json --enable-adapter a2a \
+#   --a2a-allow-host 127.0.0.1 --a2a-allow-insecure-local --a2a-timeout-s 120
+# Or: A2A_SMOKE_BASE=http://127.0.0.1:PORT ./scripts/run_a2a_smoke_armaraos.sh
+#
+# Note: `S name "value"` registers a service under ir.services, not a frame var — use
+# literals + tight `->out` (no space) for R args, or see a2a_delegate.ainl for names.
+
+S app core noop
+
+L_main:
+  R a2a.discover "http://127.0.0.1:57219" ->card
+  R a2a.send "http://127.0.0.1:57219/a2a/tasks/send" "A2A smoke: reply SMOKE_OK" ->task_out
+  J task_out

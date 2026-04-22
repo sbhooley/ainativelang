@@ -27,7 +27,7 @@ python scripts/validate_ainl.py examples/hello.ainl --strict
 python scripts/validate_ainl.py examples/blog.lang
 ```
 
-**Solana (`R solana.*`):** For `DERIVE_PDA`, pass `seeds_json` as **single-quoted JSON** (recommended), e.g. `'["market","ID"]'`, so inner `"` characters stay inside one token. You can also use one double-quoted string with escaped inner quotes — see `adapters/solana.py` module docstring. **v1.3.3 onboarding:** `docs/solana_quickstart.md` (env vars, dry-run, emit flags, prediction-market patterns) and `examples/prediction_market_demo.ainl`.
+**Solana (`R solana.*`):** For `DERIVE_PDA`, pass `seeds_json` as **single-quoted JSON** (recommended), e.g. `'["market","ID"]'`, so inner `"` characters stay inside one token. You can also use one double-quoted string with escaped inner quotes — see `adapters/solana.py` module docstring. **v1.7.1+ onboarding (Solana):** `docs/solana_quickstart.md` (env vars, dry-run, emit flags, prediction-market patterns) and `examples/prediction_market_demo.ainl`.
 
 Canonical strict-valid examples:
 

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "description": "Named MCP exposure profiles control which tools and resources the AINL MCP server registers at startup. They scope what MCP hosts can discover and call. They do NOT replace security profiles (runtime adapter restrictions) or capability grants (execution authorization).",
+  "description": "Named MCP exposure profiles control which tools and resources the AINL MCP server registers at startup. They scope what MCP hosts can discover and call. They do NOT replace security profiles (runtime adapter restrictions) or capability grants (execution authorization). The optional a2a (Agent-to-Agent) network adapter is not enabled by exposure profile alone: turn it on under server/MCP config adapters (adapters.enable + adapters.a2a); see docs/integrations/A2A_ADAPTER.md.",
   "profiles": {
     "validate_only": {
       "description": "Read-only validation and compilation; no execution, security-report, or resources. Recommended for ultra-narrow validation-only usage (e.g. desktop-bound or Cowork/Dispatch-style agents).",

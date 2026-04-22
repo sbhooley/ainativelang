@@ -1,0 +1,25 @@
+# A2A delegate sketch — call an ArmaraOS-shaped A2A agent
+# Security, wire profile, env: docs/integrations/A2A_ADAPTER.md
+#
+# Note: In compact syntax, `S name "value"` registers **services** in `ir.services`
+# (not top-level `frame` keys). `R a2a.* name ->out` will not resolve the URL from `S`
+# unless your compiler/runtime flattens those into the frame — prefer **literals** on
+# the `R` line and a tight `->out` (no space), or see `a2a_smoke_local.ainl`.
+#
+# Prerequisites:
+#   ainl run examples/compact/a2a_delegate.ainl --enable-adapter a2a \
+#     --a2a-allow-host YOUR_AGENT_HOST
+#   For same-host (127.0.0.1) also pass: --a2a-allow-insecure-local
+#
+# Replace placeholder hosts with a real agent, or the graph will fail at network time.
+# Discover uses: GET {a2a_base}/.well-known/agent.json
+# Set `a2a_rpc` to the `url` field from the returned card if it differs from this template.
+
+S app core noop
+S a2a_base "https://my-agent.example.com"
+S a2a_rpc "https://my-agent.example.com/a2a"
+S user_msg "Summarize: what tools do you expose?"
+
+L_main:
+  R a2a.discover a2a_base ->card
+  R a2a.send a2a_rpc user_msg ->task_out

@@ -62,6 +62,10 @@ jobs:
       - name: Run core profile
         run: python scripts/run_test_profiles.py --profile core
 
+      # Named gate: a2a unit tests + local threaded HTTPServer integration (skips bind in strict sandboxes).
+      - name: A2A adapter (tests.test_a2a_adapter + tests.test_a2a_adapter_integration)
+        run: python -m pytest -q tests/test_a2a_adapter.py tests/test_a2a_adapter_integration.py
+
       # Explicit gate: compile → RuntimeEngine → SolanaAdapter (includes dry-run mutating verbs).
       # Core profile already runs this file; this step names the contract in CI logs.
       - name: Solana prediction-market E2E (dry-run runtime)
@@ -115,6 +119,26 @@ jobs:
             --config examples/wishlist/fixtures/llm_offline.yaml \
             --frame-json '{"user_query":"ci rust smoke"}' 2>/dev/null \
             | python -c "import sys,json; d=json.load(sys.stdin); assert d.get('ok') is True, d; assert 'OFFLINE_LLM' in str(d.get('result')), d"
+
+  # No outbound network required: a2a unit tests only (integration may skip in stricter sandboxes; core-pr also runs both).
+  a2a-adapter-unit:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+
+      - name: A2A adapter unit tests only
+        run: python -m pytest -q tests/test_a2a_adapter.py
 
   conformance-matrix:
     if: github.event_name != 'schedule'

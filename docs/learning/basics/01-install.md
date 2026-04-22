@@ -18,7 +18,7 @@ Verify installation:
 
 ```bash
 ainl --version
-# Expected output: ainl 1.3.3
+# Expected output: ainl 1.7.1
 ```
 
 ### Platform-Specific Notes

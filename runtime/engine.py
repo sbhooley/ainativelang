@@ -75,7 +75,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.7.0"
+RUNTIME_VERSION = "1.7.1"
 
 _LOG = logging.getLogger(__name__)
 
@@ -368,6 +368,10 @@ class RuntimeEngine:
                 from armaraos.bridge.ainl_graph_memory import AINLGraphMemoryBridge
 
                 reg.register("ainl_graph_memory", AINLGraphMemoryBridge())
+            if "a2a" in need and "a2a" not in reg:
+                from runtime.adapters.a2a import a2a_from_env
+
+                reg.register("a2a", a2a_from_env())
         except Exception:
             pass
 

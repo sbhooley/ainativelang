@@ -20,6 +20,7 @@ from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
 from runtime.adapters.executor_bridge import ExecutorBridgeAdapter
 from runtime.adapters.fs import SandboxedFileSystemAdapter
+from runtime.adapters.a2a import A2aAdapter
 from runtime.adapters.http import SimpleHttpAdapter
 from runtime.adapters.replay import RecordingAdapterRegistry, ReplayAdapterRegistry
 from runtime.adapters.sqlite import SimpleSqliteAdapter
@@ -98,6 +99,7 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "fanout",
         "web",
         "tiktok",
+        "a2a",
     ]
     if args.replay_adapters:
         data = json.loads(Path(args.replay_adapters).read_text(encoding="utf-8"))
@@ -183,6 +185,24 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
                 default_timeout_s=args.http_timeout_s,
                 max_response_bytes=args.http_max_response_bytes,
                 allow_hosts=args.http_allow_host or [],
+            ),
+        )
+    if "a2a" in enabled:
+        hosts = list(getattr(args, "a2a_allow_host", None) or [])
+        allow_loc = bool(getattr(args, "a2a_allow_insecure_local", False))
+        if not hosts and not allow_loc:
+            raise SystemExit(
+                "--enable-adapter a2a requires at least one --a2a-allow-host or --a2a-allow-insecure-local"
+            )
+        reg.register(
+            "a2a",
+            A2aAdapter(
+                allow_hosts=hosts,
+                allow_insecure_local=allow_loc,
+                default_timeout_s=float(getattr(args, "a2a_timeout_s", 30.0)),
+                max_response_bytes=int(getattr(args, "a2a_max_response_bytes", 1_000_000)),
+                strict_ssrf=bool(getattr(args, "a2a_strict_ssrf", False)),
+                follow_redirects=bool(getattr(args, "a2a_follow_redirects", False)),
             ),
         )
     if "bridge" in enabled:
@@ -2290,8 +2310,42 @@ def main() -> None:
             "ptc_runner",
             "llm_query",
             "audit_trail",
+            "a2a",
         ],
         default=[],
+    )
+    runp.add_argument(
+        "--a2a-allow-host",
+        action="append",
+        default=[],
+        help="With --enable-adapter a2a: allowlisted hostnames/IPs (repeatable).",
+    )
+    runp.add_argument(
+        "--a2a-allow-insecure-local",
+        action="store_true",
+        help="With --enable-adapter a2a: allow loopback/private/link-local targets (e.g. same-host Armara).",
+    )
+    runp.add_argument(
+        "--a2a-timeout-s",
+        type=float,
+        default=30.0,
+        help="A2A adapter HTTP timeout in seconds (discover, send, get_task).",
+    )
+    runp.add_argument(
+        "--a2a-max-response-bytes",
+        type=int,
+        default=1_000_000,
+        help="Maximum response body size for a2a adapter calls.",
+    )
+    runp.add_argument(
+        "--a2a-strict-ssrf",
+        action="store_true",
+        help="With --enable-adapter a2a: resolve DNS and reject hostnames that resolve to private/loopback unless --a2a-allow-insecure-local (see docs/integrations/A2A_ADAPTER.md).",
+    )
+    runp.add_argument(
+        "--a2a-follow-redirects",
+        action="store_true",
+        help="With --enable-adapter a2a: follow HTTP 3xx; each hop is re-checked (default: do not follow redirects).",
     )
     runp.add_argument(
         "--audit-sink",

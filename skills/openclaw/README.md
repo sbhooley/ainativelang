@@ -2,7 +2,7 @@
 
 Deterministic compiled graphs for [OpenClaw](https://openclaw.ai/): **importer**, **CLI**, **`ainl-mcp`** merged into **`~/.openclaw/openclaw.json`**, and a **`~/.openclaw/bin/ainl-run`** compile-then-run wrapper after bootstrap. **Operator quickstart:** [`docs/QUICKSTART_OPENCLAW.md`](../../docs/QUICKSTART_OPENCLAW.md) (`ainl install openclaw`, `ainl status`, `ainl doctor --ainl`). **Rolling budget / storage:** [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](../../docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
-**PyPI:** `ainativelang` **v1.7.0** (optional extras: `[mcp]`, `[solana]`).
+**PyPI:** `ainativelang` **v1.7.1** (optional extras: `[mcp]`, `[solana]`).
 
 OpenClaw is normally installed with **npm** and **`openclaw onboard`**. This skill adds the **Python** **`ainl`** toolchain and wires **MCP** + **`ainl-run`** for OpenClaw’s config layout.
 

@@ -115,6 +115,34 @@ The adapter also includes a **small built-in retry/backoff** layer:
 
 ---
 
+## 2.3.1 A2A adapter – `a2a` (optional)
+
+- **name**: `a2a`
+- **targets**: `discover`, `send`, `get_task` (aligned with ArmaraOS `A2aClient` JSON-RPC and Agent Card fetch)
+- **network**: host allowlist and optional `allow_insecure_local` for same-host / private lab peers
+
+### 2.3.1.1 Slot schema (AINL `R` surface)
+
+```text
+R a2a.discover base_url ->card
+R a2a.send a2a_endpoint_url message [session_id] [timeout_s] ->task
+R a2a.get_task a2a_endpoint_url task_id [timeout_s] ->task
+```
+
+- `base_url`: scheme + host (and optional port); the adapter requests `{base}/.well-known/agent.json`.
+- `a2a_endpoint_url`: full URL of the A2A JSON-RPC endpoint (typically the `url` field from the agent card).
+- `discover` returns the parsed **Agent Card** (object). `send` and `get_task` return the JSON-RPC **result** object (the task) on success.
+
+### 2.3.1.2 Enablement
+
+- **CLI**: `ainl run program.ainl --enable-adapter a2a --a2a-allow-host my.agent.example` (repeatable), optional `--a2a-allow-insecure-local`, `--a2a-strict-ssrf`, `--a2a-follow-redirects`
+- **Runner / MCP** `ainl_run`: `adapters: { "enable": ["a2a"], "a2a": { "allow_hosts": ["127.0.0.1"], "allow_insecure_local": true, "strict_ssrf": true, "follow_redirects": false, "timeout_s": 30.0 } }`
+- **Engine lazy registration** (e.g. `ainl serve`): set `AINL_A2A_ALLOW_HOSTS` (comma-separated) and optional `AINL_A2A_ALLOW_INSECURE_LOCAL=1`, `AINL_A2A_STRICT_SSRF=1` (DNS checks), `AINL_A2A_FOLLOW_REDIRECTS=1` (each hop re-checked), `AINL_A2A_TIMEOUT_S`, `AINL_A2A_MAX_BYTES`
+- **Full security + wire contract:** [docs/integrations/A2A_ADAPTER.md](../integrations/A2A_ADAPTER.md) (A2A profile 1.0) and [SECURITY.md](../../SECURITY.md) for reporting issues
+- **Empty `allow_hosts`:** public internet hostnames are still allowed (literals in private/loopback ranges are blocked unless `allow_insecure_local`). Use explicit allowlists in production; enable `strict_ssrf` to reject hostnames that resolve to non-public addresses unless `allow_insecure_local` is on.
+
+---
+
 ## 2.4 Executor bridge adapter – `bridge` (optional)
 
 - **name**: `bridge`

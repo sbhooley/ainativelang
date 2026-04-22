@@ -1,5 +1,20 @@
 # Release notes
 
+## AINL v1.7.1 — A2A (Agent-to-Agent) adapter, wire profile 1.0 (2026-04-22)
+
+**PyPI / runtime:** **`ainativelang` 1.7.1** — **`RUNTIME_VERSION` `1.7.1`**.
+
+- **A2A adapter (opt-in):** **`a2a`** — ArmaraOS-style **Agent Card** discovery and JSON-RPC task send/get; **wire profile 1.0**; **`allow_hosts`** / **`allow_insecure_local`** / optional **`strict_ssrf`**; **redirects off by default**. Enable with **`--enable-adapter a2a`** and **`--a2a-allow-hosts`**, or **`adapters` + `adapters.a2a`** in MCP / runner config. **MCP exposure profiles** do **not** turn on **a2a** by themselves — you must allow it under **`adapters`**.
+- **Docs / reporting:** [`docs/integrations/A2A_ADAPTER.md`](integrations/A2A_ADAPTER.md) (threat model, env/CLI). Vulnerability reporting: [`SECURITY.md`](../SECURITY.md) (private **GitHub** advisory on **`sbhooley/ainativelang`**).
+
+### Known limitations (same as A2A_ADAPTER; predictable triage)
+
+- **TOCTOU** between metadata fetches and task calls under adversarial timing.
+- **Empty `allow_hosts`** — all **a2a** outbound use is denied until configured.
+- **IDNA / punycode / homoglyph** — treat allowlisted hostnames as security-sensitive; prefer explicit ASCII host entries where possible.
+
+Conventional list: [`docs/CHANGELOG.md`](CHANGELOG.md) § **v1.7.1 (April 22, 2026)**.
+
 ## AINL v1.7.0 — Cognitive vitals on Python graph bridge + Hand schema_version (2026-04-14)
 
 **PyPI / runtime:** **`ainativelang` 1.7.0** — **`RUNTIME_VERSION` `1.7.0`**.

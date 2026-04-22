@@ -79,7 +79,7 @@ ArmaraOS can attach **Styxx-style** logprob-derived **cognitive vitals** to **ep
 |---------|--------|
 | **Python model** | **`MemoryNode`** in **`armaraos/bridge/ainl_graph_memory.py`** — **`from_dict` / `to_dict`** include the three fields when present. |
 | **Inbox schema** | **`armaraos/bridge/ainl_graph_memory_inbox_schema_v1.json`** — optional keys on episodic node objects (validated in CI). |
-| **Rust parity** | **`EpisodeNode`** vitals in **ArmaraOS** `openfang-runtime` / extractor path; pair **AINL** **v1.7.0** with an ArmaraOS build that includes **patch** inbox drain + vitals ingest if you rely on **`node_type: patch`** from inbox. |
+| **Rust parity** | **`EpisodeNode`** vitals in **ArmaraOS** `openfang-runtime` / extractor path; pair **AINL** **v1.7.1** with an ArmaraOS build that includes **patch** inbox drain + vitals ingest if you rely on **`node_type: patch`** from inbox. |
 | **Tests** | **`tests/test_vitals_bridge.py`** — snapshot import + dict round-trip. |
 
 ## Runtime adapter: `AINLGraphMemoryBridge`

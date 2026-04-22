@@ -2,7 +2,7 @@
 
 **Temporal** gives you **durable execution**, retries, and worker infrastructure. **AINL** gives you a **compact authoring surface**, **strict validation**, and **canonical graph IR** that compiles once and runs many times without the LLM re-deriving control flow on every run.
 
-You do not have to pick one: from **v1.2.5**, validate can emit Temporal-shaped Python modules from the same IR that powers the core runtime (**current release: v1.3.3**).
+You do not have to pick one: from **v1.2.5**, validate can emit Temporal-shaped Python modules from the same IR that powers the core runtime (**current release: v1.7.1**).
 
 ## How it fits
 

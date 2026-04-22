@@ -234,6 +234,57 @@
         "Does not retry 4xx client errors; those fail immediately with a status error."
       ]
     },
+    "a2a": {
+      "description": "Agent-to-Agent (A2A) client — Agent Card discovery and JSON-RPC tasks/send, tasks/get (ArmaraOS-compatible wire)",
+      "privilege_tier": "network",
+      "network_facing": true,
+      "targets": {
+        "discover": {
+          "args": [
+            "base_url"
+          ],
+          "returns": "object",
+          "network": true,
+          "notes": "GET {base}/.well-known/agent.json"
+        },
+        "send": {
+          "args": [
+            "a2a_endpoint_url",
+            "message",
+            "session_id?",
+            "timeout_s?"
+          ],
+          "returns": "object",
+          "network": true,
+          "notes": "JSON-RPC tasks/send; session_id optional; timeout_s overrides default"
+        },
+        "get_task": {
+          "args": [
+            "a2a_endpoint_url",
+            "task_id",
+            "timeout_s?"
+          ],
+          "returns": "object",
+          "network": true,
+          "notes": "JSON-RPC tasks/get"
+        }
+      },
+      "config": {
+        "default_timeout_s": 30.0,
+        "max_response_bytes": 1000000,
+        "allow_hosts": [],
+        "allow_insecure_local": false,
+        "strict_ssrf": false,
+        "follow_redirects": false
+      },
+      "a2a_wire_profile": "1.0",
+      "notes": [
+        "Block loopback and private host literals unless allow_insecure_local is set.",
+        "When allow_hosts is non-empty, hostname must be listed before outbound calls.",
+        "strict_ssrf: resolve DNS; reject if any address is private/loopback unless allow_insecure_local (see docs/integrations/A2A_ADAPTER.md).",
+        "follow_redirects false by default; when true each redirect is re-validated."
+      ]
+    },
     "sqlite": {
       "description": "SQLite database access with optional table allowlist",
       "targets": {

@@ -1,6 +1,6 @@
 # AINL Adapter Catalog
 
-Complete reference for all 42 adapters available in AI_Native_Lang.
+Complete reference for all 43 adapters available in AI_Native_Lang.
 
 ## Core Adapters (4)
 
@@ -44,13 +44,20 @@ Complete reference for all 42 adapters available in AI_Native_Lang.
 - **Targets:** read_stdin, write_stdout, read_file, write_file
 - **Network:** No | **Side Effects:** I/O operations
 
-## Network & APIs (7)
+## Network & APIs (8)
 
 ### http
 **HTTP client** - GET, POST, PUT, DELETE requests
 - **Targets:** get, post, put, delete, request
 - **Example:** `examples/http_example.ainl`
 - **Network:** Yes | **Side Effects:** External HTTP calls
+
+### a2a
+**A2A (Agent-to-Agent) client** - Agent Card discovery, JSON-RPC `tasks/send` and `tasks/get` (ArmaraOS wire)
+- **Targets:** discover, send, get_task
+- **Example:** `examples/compact/a2a_delegate.ainl`
+- **Config:** `ainl run` uses `--a2a-allow-host`, `--a2a-allow-insecure-local`, `--a2a-strict-ssrf`, `--a2a-follow-redirects`; or env `AINL_A2A_*` (see [docs/integrations/A2A_ADAPTER.md](docs/integrations/A2A_ADAPTER.md))
+- **Network:** Yes | **Side Effects:** Outbound HTTP only
 
 ### api
 **Generic REST API wrapper** - Configurable HTTP with auth

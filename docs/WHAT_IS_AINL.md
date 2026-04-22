@@ -197,7 +197,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 - **Compiler / IR:** `compiler_v2.py` → canonical **`labels`** graph (`nodes`, `edges`, `entry`, `exits`), strict-mode validation, include merge.
 - **Structured diagnostics:** native **`Diagnostic`** records (lineno, spans, kinds, suggested fixes) via **`CompilerContext`**; **`ainl-validate`** and **`ainl visualize`** support **`--diagnostics-format`** (`auto` / `plain` / `rich` / `json`) and optional **rich** UI with **`pip install -e ".[dev]"`**. See `docs/INSTALL.md`, `compiler_diagnostics.py`.
 - **Graph visualizer CLI:** **`ainl visualize`** / **`ainl-visualize`** / `scripts/visualize_ainl.py` emit **Mermaid** (`graph TD`, subgraph **clusters** per include alias, synthetic **`Call →` entry** edges with a `%%` comment). Paste into [mermaid.live](https://mermaid.live). Flags: `--no-clusters`, `--labels-only`, `-o -`. Details: root **`README.md`** (*Visualize your workflow*), `docs/architecture/GRAPH_INTROSPECTION.md` §7.
-- **Runtime:** `ainl run`, runner service, MCP server, record/replay adapters — see `docs/getting_started/README.md`. **Graph + includes:** bare child label targets in merged IR are qualified with the current **`alias/`** stack frame when needed (`runtime/engine.py`). See `docs/RUNTIME_COMPILER_CONTRACT.md`, **`docs/RELEASE_NOTES.md`** (**current: v1.3.3**; access-aware memory module notes under **v1.2.4** in that file).
+- **Runtime:** `ainl run`, runner service, MCP server, record/replay adapters — see `docs/getting_started/README.md`. **Graph + includes:** bare child label targets in merged IR are qualified with the current **`alias/`** stack frame when needed (`runtime/engine.py`). See `docs/RUNTIME_COMPILER_CONTRACT.md`, **`docs/RELEASE_NOTES.md`** (**current: v1.7.1**; access-aware memory module notes under **v1.2.4** in that file).
 - **Memory helpers (opt-in):** `modules/common/access_aware_memory.ainl` — **`LACCESS_READ`**, **`LACCESS_WRITE`**, **`LACCESS_LIST`**, **`LACCESS_LIST_SAFE`** for optional **`last_accessed` / `access_count`** metadata on **`memory`**; use **`LACCESS_LIST_SAFE`** for graph-reliable list touches. Index: `modules/common/README.md`.
 - **Guard / budget / reflect includes:** `modules/common/guard.ainl`, `session_budget.ainl`, `reflect.ainl` — strict-safe ceilings, spend accounting, and reflect gates (`modules/common/README.md`).
 - **Trajectory logging (CLI):** optional **`<stem>.trajectory.jsonl`** next to the `.ainl` source (`ainl run --log-trajectory` or **`AINL_LOG_TRAJECTORY`**). Doc: `docs/trajectory.md`.
@@ -205,7 +205,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 - **Optional tiered code context:** **`code_context`** indexes a repo to JSON and serves ctxzip-style tiers (TF–IDF summaries by default), plus **import-graph dependencies**, **reverse impact** (transitive importers + PageRank), and **`COMPRESS_CONTEXT`** (greedy token-budget packing of ranked chunks); enable with **`--enable-adapter code_context`** on **`ainl run`**. Guide: **`docs/adapters/CODE_CONTEXT.md`**.
 - **Hyperspace emitter:** **`--emit hyperspace`** on validate emits a standalone Python agent with embedded IR — `docs/emitters/README.md`, `examples/hyperspace_demo.ainl`, root `README.md`.
 - **HTTP executor bridge (AINL → external workers):** small JSON **request envelope** for `http.Post` / optional `bridge.Post` (`docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` §3); machine-readable **`schemas/executor_bridge_request.schema.json`**; Python **`schemas/executor_bridge_validate.py`**; reusable include **`modules/common/executor_bridge_request.ainl`**. **MCP (`ainl-mcp`) first** for OpenClaw / NemoClaw / ZeroClaw; HTTP bridge is secondary.
-- **OpenClaw operations (current v1.3.3):** **`scripts/run_intelligence.py`** (startup context, summarizer, consolidation, optional **`auto_tune_ainl_caps`**) with rolling **budget hydrate**; pinned env **`tooling/openclaw_workspace_env.example.sh`**, profiles **`tooling/ainl_profiles.json`**; operator playbooks **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**, **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context and caps (**`docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`**, **`TOKEN_CAPS_STAGING.md`**); weekly cap tuner **`scripts/auto_tune_ainl_caps.py`**. Graph-safe patterns for intelligence: **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**.
+- **OpenClaw operations (current v1.7.1):** **`scripts/run_intelligence.py`** (startup context, summarizer, consolidation, optional **`auto_tune_ainl_caps`**) with rolling **budget hydrate**; pinned env **`tooling/openclaw_workspace_env.example.sh`**, profiles **`tooling/ainl_profiles.json`**; operator playbooks **`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`**, **`docs/operations/OPENCLAW_HOST_AINL_1_2_8.md`**; optional **embedding-backed** startup context and caps (**`docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`**, **`TOKEN_CAPS_STAGING.md`**); weekly cap tuner **`scripts/auto_tune_ainl_caps.py`**. Graph-safe patterns for intelligence: **`docs/RUNTIME_COMPILER_CONTRACT.md`**, **`docs/INTELLIGENCE_PROGRAMS.md`**.
 
 ---
 
@@ -216,7 +216,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 | Install & CLI flags | `docs/INSTALL.md` |
 | Graph / IR introspection | `docs/architecture/GRAPH_INTROSPECTION.md` |
 | Strict / conformance | `docs/CONFORMANCE.md` |
-| OpenClaw gold standard + host briefing (v1.3.3) | `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`, `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` |
+| OpenClaw gold standard + host briefing (v1.7.1) | `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`, `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` |
 | Integration paths | `docs/getting_started/README.md`, `docs/INTEGRATION_STORY.md` |
 | HTTP executor bridge (envelope + schema + include) | `docs/integrations/EXTERNAL_EXECUTOR_BRIDGE.md` §3; `schemas/executor_bridge_request.schema.json`; `modules/common/executor_bridge_request.ainl` |
 | Trajectory JSONL / Hyperspace emit | `docs/trajectory.md`; `docs/emitters/README.md` |
@@ -228,7 +228,7 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 
 Reproducible **size** tables (**tiktoken cl100k_base**, viable subset vs legacy-inclusive transparency): [`BENCHMARK.md`](../BENCHMARK.md). Hub (commands, CI, runtime + LLM eval pointers): [`docs/benchmarks.md`](benchmarks.md).
 
-Long-form architecture: [`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md) (repository root) — **v1.3.3** positioning: OpenClaw intelligence, token caps, embedding pilot, graph-runtime pitfalls, weekly cap auto-tuner, and native Solana + prediction-market workflows (**`docs/solana_quickstart.md`**).
+Long-form architecture: [`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md) (repository root) — **v1.7.1** positioning: OpenClaw intelligence, token caps, embedding pilot, graph-runtime pitfalls, weekly cap auto-tuner, and native Solana + prediction-market workflows (**`docs/solana_quickstart.md`**).
 
 ## Why now
 

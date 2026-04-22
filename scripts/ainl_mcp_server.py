@@ -61,6 +61,7 @@ from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
 from runtime.adapters.builtins import CoreBuiltinAdapter
 from runtime.adapters.fs import SandboxedFileSystemAdapter
+from runtime.adapters.a2a import A2aAdapter
 from runtime.adapters.http import SimpleHttpAdapter
 from runtime.adapters.sqlite import SimpleSqliteAdapter
 from runtime.sandbox_shim import SandboxClient
@@ -1004,7 +1005,7 @@ def ainl_run(
     a live ``records`` variable.  The ``ainl_compile`` tool returns a
     ``frame_hints`` list that documents variables expected via ``frame``.
 
-    Example — workflow that does HTTP + file I/O + caching::
+    Example — workflow that does HTTP + file I/O + caching, or A2A to a remote agent card::
 
         adapters={
           "enable": ["http", "fs", "cache"],
@@ -1020,6 +1021,21 @@ def ainl_run(
             "path": "/Users/me/.armaraos/workspaces/MyProject/cache.json"
           }
         }
+
+    A2A (Agent-to-Agent) to an ArmaraOS-shaped peer — enable ``a2a`` and scope hosts::
+
+        adapters={
+          "enable": ["a2a"],
+          "a2a": {
+            "allow_hosts": ["agent.example.com", "127.0.0.1"],
+            "allow_insecure_local": true,
+            "strict_ssrf": true,
+            "follow_redirects": false,
+            "timeout_s": 30.0
+          }
+        }
+
+    See ``docs/integrations/A2A_ADAPTER.md`` for threat model, wire profile, and **SECURITY** reporting.
 
     Resource limits enforce a safety floor. The caller may supply additional
     policy restrictions and tighter limits but cannot widen beyond the merged
@@ -1163,6 +1179,35 @@ def ainl_run(
                     allow_write=bool(s.get("allow_write")),
                     allow_tables=s.get("allow_tables") or [],
                     timeout_s=float(s.get("timeout_s", 5.0)),
+                ),
+            )
+        if "a2a" in enabled:
+            a2 = adapters.get("a2a") or {}
+            allow_hosts = a2.get("allow_hosts") or []
+            allow_insecure = bool(a2.get("allow_insecure_local", False))
+            if not allow_hosts and not allow_insecure:
+                return {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": "adapter_config_error",
+                    "details": "a2a adapter: set adapters.a2a.allow_hosts and/or allow_insecure_local",
+                }
+            if not isinstance(allow_hosts, list):
+                return {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": "adapter_config_error",
+                    "details": "a2a: adapters.a2a.allow_hosts must be a list when set",
+                }
+            reg.register(
+                "a2a",
+                A2aAdapter(
+                    allow_hosts=[str(x) for x in allow_hosts],
+                    allow_insecure_local=allow_insecure,
+                    default_timeout_s=float(a2.get("timeout_s", 30.0)),
+                    max_response_bytes=int(a2.get("max_response_bytes", 1_000_000)),
+                    strict_ssrf=bool(a2.get("strict_ssrf", False)),
+                    follow_redirects=bool(a2.get("follow_redirects", False)),
                 ),
             )
     # Item 10: Auto-register cache adapter when a cache.json exists in the workspace.

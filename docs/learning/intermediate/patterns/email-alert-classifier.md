@@ -40,7 +40,7 @@ graph TD
 
 ## 🏗️ Implementation
 
-### Real AINL Syntax (v1.3.3 — this compiles)
+### Real AINL Syntax (v1.7.1 — this compiles)
 
 ```ainl
 # alert_classifier.ainl — Route alerts by severity

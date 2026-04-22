@@ -324,6 +324,22 @@
         "notes": "Monitoring-oriented HTTP result envelope (descriptive only; runtime behavior unchanged)."
       }
     },
+    "a2a": {
+      "support_tier": "core",
+      "strict_contract": true,
+      "recommended_lane": "canonical",
+      "verbs": [
+        "discover",
+        "send",
+        "get_task"
+      ],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "A2A (Agent-to-Agent) client: Agent Card and JSON-RPC tasks; ArmaraOS-compatible."
+    },
     "bridge": {
       "support_tier": "compatibility",
       "strict_contract": true,

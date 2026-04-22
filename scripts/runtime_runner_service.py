@@ -29,6 +29,7 @@ from fastapi import FastAPI, HTTPException
 from runtime.adapters.base import AdapterRegistry, RuntimeAdapter
 from runtime.adapters.executor_bridge import ExecutorBridgeAdapter
 from runtime.adapters.fs import SandboxedFileSystemAdapter
+from runtime.adapters.a2a import A2aAdapter
 from runtime.adapters.http import SimpleHttpAdapter
 from runtime.adapters.replay import RecordingAdapterRegistry, ReplayAdapterRegistry
 from runtime.adapters.sqlite import SimpleSqliteAdapter
@@ -270,6 +271,25 @@ def _build_registry(req: Dict[str, Any]) -> AdapterRegistry:
                 default_timeout_s=float(h.get("timeout_s", 5.0)),
                 max_response_bytes=int(h.get("max_response_bytes", 1_000_000)),
                 allow_hosts=h.get("allow_hosts") or [],
+            ),
+        )
+    if "a2a" in enabled:
+        a2 = cfg.get("a2a") or {}
+        allow_hosts = a2.get("allow_hosts") or []
+        allow_insecure = bool(a2.get("allow_insecure_local", False))
+        if not allow_hosts and not allow_insecure:
+            raise ValueError("a2a adapter: set adapters.a2a.allow_hosts and/or allow_insecure_local")
+        if not isinstance(allow_hosts, list):
+            raise ValueError("a2a adapter: allow_hosts must be a list of strings when set")
+        reg.register(
+            "a2a",
+            A2aAdapter(
+                allow_hosts=[str(x) for x in allow_hosts],
+                allow_insecure_local=allow_insecure,
+                default_timeout_s=float(a2.get("timeout_s", 30.0)),
+                max_response_bytes=int(a2.get("max_response_bytes", 1_000_000)),
+                strict_ssrf=bool(a2.get("strict_ssrf", False)),
+                follow_redirects=bool(a2.get("follow_redirects", False)),
             ),
         )
     if "bridge" in enabled:
