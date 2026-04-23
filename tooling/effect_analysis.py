@@ -112,8 +112,6 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "a2a.DISCOVER": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
     "a2a.SEND": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "a2a.GET_TASK": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
-    "a2a.GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
-    "a2a.TASK_GET": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
     # Config-mapped POST to external executor URLs (optional adapter; same network tier as http.Post).
     "bridge.POST": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "sqlite.QUERY": (EFFECT_TIER_IO_READ, EFFECT_KIND_SQLITE),

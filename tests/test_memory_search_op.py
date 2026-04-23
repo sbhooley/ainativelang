@@ -145,6 +145,7 @@ def test_memory_search_missing_adapter_raises_descriptive(tmp_path: Path):
         step_fallback=False,
         execution_mode="steps-only",
         unknown_op_policy="error",
+        host_adapter_denylist=["ainl_graph_memory"],
     )
     with pytest.raises(AinlRuntimeError) as ei:
         eng.run_label("0", {})

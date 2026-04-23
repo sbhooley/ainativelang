@@ -6,6 +6,7 @@
 
 - **docs**: clarify **v1.7.0** ship-window PyPI/runtime lines vs **latest** **v1.7.1** in **`README.md`**, **`docs/RELEASE_NOTES.md`**, and the **v1.7.0** changelog release bullet (no runtime change).
 - **test**: refresh **`test_patch_a_valid_artifacts_fingerprint_lock`** golden hashes for opcode **`S core web`** fixtures (`labels_sha256`, **`emit_ir_json_sha256`**) after compiler IR shape drift — restores **`parser-compat`** / **`core-pr`** CI (open Dependabot PRs were failing the same gate).
+- **test / tooling**: drop duplicate **`a2a.GET`** / **`a2a.TASK_GET`** entries from **`ADAPTER_EFFECT`** (manifest verbs are **`discover`**, **`send`**, **`get_task`** only); align **`safe_workflow`** / **`full`** MCP exposure resources with **`ALL_RESOURCE_URIS`**; register **16** new **`examples/**`** paths in **`tooling/artifact_profiles.json`** (**`non-strict-only`** / **`legacy-compat`** so canonical curriculum stays unchanged); **`test_memory_search_missing_adapter_raises_descriptive`** uses **`host_adapter_denylist`** so auto **`AINLGraphMemoryBridge`** registration does not mask the missing-adapter path.
 
 ## v1.7.1 (April 22, 2026) — A2A (Agent-to-Agent) adapter
 
