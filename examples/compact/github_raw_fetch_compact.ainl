@@ -1,0 +1,25 @@
+# GitHub raw-file fetch (compact syntax).
+#
+# Pattern for ArmaraOS agents that have `http` (and shell_exec / web) but no
+# dedicated `github` adapter: pull a single file from a public repo by URL.
+# For private repos, supply a token via the headers dict argument:
+#   {Authorization: "Bearer <PAT>"}
+#
+# This is the "download a piece" half of "analyze a GitHub repo locally".
+# To pull a whole repo, agents typically shell out:
+#   R shell_exec.RUN "git clone --depth 1 https://github.com/<owner>/<repo>.git" ->_
+# then call file_list / file_read inside the agent workspace.
+#
+# Validate: ainl validate examples/compact/github_raw_fetch_compact.ainl --strict
+# Run:      ainl run examples/compact/github_raw_fetch_compact.ainl
+
+github_raw_fetch:
+  in: owner repo branch path
+  base = core.CONCAT "https://raw.githubusercontent.com/" owner
+  with_repo = core.CONCAT base "/" repo
+  with_branch = core.CONCAT with_repo "/" branch
+  url = core.CONCAT with_branch "/" path
+  res = http.GET url {} 15
+  status = core.GET res "status"
+  body = core.GET res "body"
+  out {url: url, status: status, bytes: body}

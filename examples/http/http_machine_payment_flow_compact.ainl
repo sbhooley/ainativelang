@@ -1,0 +1,41 @@
+# HTTP machine payments (x402 / MPP) — graph shape + frame contract.
+#
+# Opcode form: compact ``if http_err == "payment_required":`` currently emits a
+# broken ``Set`` for the predicate in graph mode; use ``R core.EQ`` + ``If`` until fixed.
+#
+# Requires ``http`` with ``payment_profile`` not ``none`` for real 402 probes.
+# One-shot local demo (402 + proof round-trip, no external paywall):
+#   python scripts/run_http_machine_payment_roundtrip_demo.py
+#
+# Validate:  ainl validate examples/http/http_machine_payment_flow_compact.ainl --strict
+# Run (plain):  ainl run examples/http/http_machine_payment_flow_compact.ainl
+# Run (402-capable adapter + frame url):
+#   ainl run examples/http/http_machine_payment_flow_compact.ainl \
+#     --enable-adapter http --http-allow-host 127.0.0.1 --http-payment-profile auto \
+#     --frame-json '{"url":"http://127.0.0.1:PORT/"}'
+#
+# MCP / ArmaraOS: adapters.http.payment_profile + allow_hosts; proofs via frame:
+#   frame["http_payment"] = {"x402": {"payment_signature": "..."}}
+#
+# Hub: docs/integrations/README.md · contract: docs/integrations/HTTP_MACHINE_PAYMENTS.md
+#
+# frame: url: string
+# frame: http_payment: dict (optional; merged on outbound http GET)
+
+S app core noop
+
+L_entry:
+  Set url $url
+  Set http_payment $http_payment
+  R http.GET url {} 15 ->res
+  R core.GET res "error" ->http_err
+  R core.EQ http_err "payment_required" ->pay_hit
+  If pay_hit ->L_need ->L_ok
+
+L_need:
+  Set _out "payment_required"
+  J _out
+
+L_ok:
+  R core.GET res "status" ->st
+  J st
