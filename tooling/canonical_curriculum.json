@@ -313,6 +313,12 @@
       "path": "examples/browser/browser_visit_minimal.ainl",
       "primary_pattern": "browser_navigate",
       "secondary_pattern": "adapter_browser"
+    },
+    {
+      "order": 53,
+      "path": "examples/http/http_machine_payment_flow_compact.ainl",
+      "primary_pattern": "http_machine_payment_flow",
+      "secondary_pattern": "http_payment_frame"
     }
   ]
 }

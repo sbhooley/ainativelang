@@ -10,22 +10,74 @@
     "inspect_only": {
       "description": "Read-only inspection: validation, compilation, capabilities, and security reports; no execution. Recommended default for desktop-bound, Cowork/Dispatch-style, and read-only inspection-first environments.",
       "tools": ["ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report"],
-      "resources": ["ainl://adapter-manifest", "ainl://security-profiles", "ainl://authoring-cheatsheet"]
+      "resources": [
+        "ainl://adapter-manifest",
+        "ainl://security-profiles",
+        "ainl://authoring-cheatsheet",
+        "ainl://integrations-hub",
+        "ainl://integrations-http-machine-payments",
+        "ainl://integrations-agentic-protocols-readiness",
+        "ainl://integrations-agtp",
+        "ainl://integrations-a2a",
+        "ainl://examples-http-machine-payment-flow"
+      ]
     },
     "design_impact_first": {
       "description": "Impact-first authoring: validate → compile → IR diff before run. Includes read-only tools plus ainl_ir_diff; execution (ainl_run) remains available when explicitly exposed. Aligns with ainl-impact-policy golden chain. Set AINL_MCP_EXPOSURE_PROFILE=design_impact_first.",
       "tools": ["ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_ir_diff", "ainl_fitness_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem"],
-      "resources": ["ainl://adapter-manifest", "ainl://security-profiles", "ainl://authoring-cheatsheet", "ainl://impact-checklist", "ainl://adapter-risk-matrix", "ainl://run-readiness", "ainl://policy-contract"]
+      "resources": [
+        "ainl://adapter-manifest",
+        "ainl://security-profiles",
+        "ainl://authoring-cheatsheet",
+        "ainl://impact-checklist",
+        "ainl://adapter-risk-matrix",
+        "ainl://run-readiness",
+        "ainl://policy-contract",
+        "ainl://integrations-hub",
+        "ainl://integrations-http-machine-payments",
+        "ainl://integrations-agentic-protocols-readiness",
+        "ainl://integrations-agtp",
+        "ainl://integrations-a2a",
+        "ainl://examples-http-machine-payment-flow"
+      ]
     },
     "safe_workflow": {
       "description": "Full read-only tooling plus safe-default execution. All resources exposed. Use only after explicit operator review of grants, policies, limits, and adapter exposure.",
       "tools": ["ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_fitness_report", "ainl_ir_diff", "ainl_ptc_signature_check", "ainl_trace_export", "ainl_ptc_run", "ainl_ptc_health_check"],
-      "resources": ["ainl://adapter-manifest", "ainl://security-profiles", "ainl://authoring-cheatsheet", "ainl://impact-checklist", "ainl://adapter-risk-matrix", "ainl://run-readiness", "ainl://policy-contract"]
+      "resources": [
+        "ainl://adapter-manifest",
+        "ainl://security-profiles",
+        "ainl://authoring-cheatsheet",
+        "ainl://impact-checklist",
+        "ainl://adapter-risk-matrix",
+        "ainl://run-readiness",
+        "ainl://policy-contract",
+        "ainl://integrations-hub",
+        "ainl://integrations-http-machine-payments",
+        "ainl://integrations-agentic-protocols-readiness",
+        "ainl://integrations-agtp",
+        "ainl://integrations-a2a",
+        "ainl://examples-http-machine-payment-flow"
+      ]
     },
     "full": {
       "description": "All tools and resources. Equivalent to no exposure restriction.",
       "tools": ["ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_fitness_report", "ainl_ir_diff", "ainl_ptc_signature_check", "ainl_trace_export", "ainl_ptc_run", "ainl_ptc_health_check"],
-      "resources": ["ainl://adapter-manifest", "ainl://security-profiles", "ainl://authoring-cheatsheet", "ainl://impact-checklist", "ainl://adapter-risk-matrix", "ainl://run-readiness", "ainl://policy-contract"]
+      "resources": [
+        "ainl://adapter-manifest",
+        "ainl://security-profiles",
+        "ainl://authoring-cheatsheet",
+        "ainl://impact-checklist",
+        "ainl://adapter-risk-matrix",
+        "ainl://run-readiness",
+        "ainl://policy-contract",
+        "ainl://integrations-hub",
+        "ainl://integrations-http-machine-payments",
+        "ainl://integrations-agentic-protocols-readiness",
+        "ainl://integrations-agtp",
+        "ainl://integrations-a2a",
+        "ainl://examples-http-machine-payment-flow"
+      ]
     }
   }
 }

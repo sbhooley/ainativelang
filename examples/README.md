@@ -13,7 +13,7 @@ Not every file under `examples/` is a safe template. **CI enforces** that every 
 1. **Prefer `strict-valid` entries** when teaching or generating new AINL. Those paths are checked with `ainl validate <path> --strict` in tests. The full list is in **`tooling/artifact_profiles.json`** → **`examples`** → **`strict-valid`**.
 2. **Ground-truth language and adapter rules** live in **`AGENTS.md`** at the repo root (HTTP adapter, `Do NOT`, queue syntax, etc.). Read it before inventing adapters (e.g. there is **no** `regex_find` in this repo).
 3. **Classification and tables**: **`docs/EXAMPLE_SUPPORT_MATRIX.md`** explains canonical vs compatibility examples and points to the same JSON files.
-4. **Agentic payments & commerce (x402, MPP, AP2, ACP, AGTP):** hub **`docs/integrations/README.md`** — HTTP-402 profiles on **`http`** (**`HTTP_MACHINE_PAYMENTS.md`**), what is realistic in graphs today (**`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`**), and **AGTP** integration paths (**`AGTP.md`**). (Strict-valid paywalled examples are backlog **G1** in the readiness doc.)
+4. **Agentic payments & commerce (x402, MPP, AP2, ACP, AGTP):** hub **`docs/integrations/README.md`** — HTTP-402 profiles on **`http`** (**`HTTP_MACHINE_PAYMENTS.md`**), what is realistic in graphs today (**`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`**), and **AGTP** integration paths (**`AGTP.md`**). **Strict-valid graph + local demo:** **`examples/http/http_machine_payment_flow_compact.ainl`** + **`python scripts/run_http_machine_payment_roundtrip_demo.py`** (stdlib 402 server, two-step frame); MCP resource **`ainl://examples-http-machine-payment-flow`**.
 4. **`demo/`** is excluded from this contract by design — demos may use experimental syntax; do not treat them as strict references (see **`AGENTS.md`** App Store section).
 
 The machine-readable source of truth is:
@@ -33,7 +33,7 @@ python scripts/validate_ainl.py examples/blog.lang
 Canonical strict-valid examples:
 
 - `examples/hello.ainl` — canonical single-label compute + return (`R core.ADD` + `J`).
-- `examples/http_get_minimal.ainl` — minimal **`R http.GET`** with URL-only positional args (no `params=` / `timeout=` on the `R` line); see `AGENTS.md` HTTP adapter section. For **HTTP 402 / x402 / MPP** (`payment_profile`, `http_payment` frame key), see **`docs/integrations/HTTP_MACHINE_PAYMENTS.md`**.
+- `examples/http_get_minimal.ainl` — minimal **`R http.GET`** with URL-only positional args (no `params=` / `timeout=` on the `R` line); see `AGENTS.md` HTTP adapter section. For **HTTP 402 / x402 / MPP** (`payment_profile`, `http_payment` frame key), see **`docs/integrations/HTTP_MACHINE_PAYMENTS.md`**, template **`examples/http/http_machine_payment_flow_compact.ainl`**, and **`python scripts/run_http_machine_payment_roundtrip_demo.py`** for a self-contained local round-trip.
 - `examples/web/basic_web_api.ainl` — canonical web endpoint flow (`S core web`, `E`, label body).
 - `examples/crud_api.ainl` — canonical `Set` + `If` branch routing and explicit string literals.
 - `examples/scraper/basic_scraper.ainl` — canonical scraper+cron intent (`Sc` + `Cr`) with runtime label flow.
@@ -46,6 +46,7 @@ Canonical strict-valid examples:
 - `examples/rag/cache-warmer.ainl` — `vector_memory` UPSERT/SEARCH with ops budget gate; run with `--enable-adapter vector_memory`.
 - `examples/crm/simple-lead-router.ainl` — `crm_db.P` audit rows + score branch + route budget gate; run with `--enable-adapter crm_db` (`CRM_DB_PATH` optional).
 - `examples/status_branching.ainl` — canonical status-branching example (`Set` + `If` -> `ok/alerted`).
+- `examples/compact/github_raw_fetch_compact.ainl` — compact `R http.GET` against `raw.githubusercontent.com` (URL + headers dict + timeout). Pattern for ArmaraOS agents that have `http`/`web`/`shell_exec` but no dedicated `github` adapter — supply `{Authorization: "Bearer <PAT>"}` for private repos. To pull a whole repo agents typically pair this with `R shell_exec.RUN "git clone --depth 1 …" ->_` then `file_list` / `file_read` inside the workspace.
 
 Canonical language scope reference:
 
