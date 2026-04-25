@@ -18,3 +18,5 @@ Outbound **`http`** and **`a2a`** are network-capable surfaces. Start at **[`../
 ## Examples
 
 Strict vs non-strict example policy: **`examples/README.md`**, **`docs/EXAMPLE_SUPPORT_MATRIX.md`**, and **`tooling/artifact_profiles.json`**.
+
+**Local machine-payment demo (no external paywall):** from the repo root, run **`python scripts/run_http_machine_payment_roundtrip_demo.py`** (uses **`examples/http/http_machine_payment_flow_compact.ainl`**).

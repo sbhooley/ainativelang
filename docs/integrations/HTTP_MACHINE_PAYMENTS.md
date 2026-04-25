@@ -152,6 +152,8 @@ Typical graph pattern:
 2. Use an external signer/facilitator (not built into AINL) to mint the proof.
 3. Second `ainl run` step (or a new label) with `http_payment` populated → `R http.GET url ->res2`.
 
+**Runnable strict-valid template (opcode graph):** [`examples/http/http_machine_payment_flow_compact.ainl`](../../examples/http/http_machine_payment_flow_compact.ainl) — validates under `ainl validate … --strict`. **No external paywall:** from repo root run **`python scripts/run_http_machine_payment_roundtrip_demo.py`** (starts a local stdlib 402 server, runs step 1 then step 2 with `frame.http_payment`). When using the AINL MCP server, fetch **`ainl://examples-http-machine-payment-flow`** for the same source.
+
 AINL **does not** ship wallet private keys, chain clients, or facilitator SDKs; it only performs **HTTP I/O + safe header merging + structured 402 reporting**.
 
 ## Successful responses with settlement headers

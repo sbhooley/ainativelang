@@ -10,7 +10,7 @@ which ones are preserved mainly for compatibility.
 2. **Language and adapter ground truth** is **`AGENTS.md`** (HTTP positional args, no invented adapters such as `regex_find`, queue/http forms).
 3. **Human-oriented index:** `examples/README.md` (recommended learning order, strict vs non-strict explanation).
 4. **`demo/`** is outside this contract unless explicitly added to profiles — see **`AGENTS.md`** (App Store / demos).
-5. **Agentic payments & commerce:** `docs/integrations/README.md` (x402/MPP on `http`, AP2/ACP via generic REST, AGTP gateway/MCP paths) and **`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`** (strict-valid example backlog **G1** for paywalled HTTP demos).
+5. **Agentic payments & commerce:** `docs/integrations/README.md` (x402/MPP on `http`, AP2/ACP via generic REST, AGTP gateway/MCP paths) and **`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`**. **Strict-valid template + local demo:** **`examples/http/http_machine_payment_flow_compact.ainl`** + **`python scripts/run_http_machine_payment_roundtrip_demo.py`**; MCP **`ainl://examples-http-machine-payment-flow`**. Paywalled **live** hosts for CI remain backlog **G1** in the readiness doc.
 
 Primary machine-readable sources:
 - `tooling/support_matrix.json`
@@ -45,6 +45,7 @@ strict-valid.
 |---------|---------|----------------|---------------------------|
 | `examples/hello.ainl` | `strict-valid` | Smallest compute-and-return example | — |
 | `examples/http_get_minimal.ainl` | `strict-valid` | Minimal **`R http.GET`** (positional URL / headers / timeout); see **`AGENTS.md`** HTTP section | Outbound HTTP |
+| `examples/http/http_machine_payment_flow_compact.ainl` | `strict-valid` | **402 / x402 / MPP** graph: `http.GET` + `core.EQ`/`If` + `http_payment` frame; local round-trip **`scripts/run_http_machine_payment_roundtrip_demo.py`** (`docs/integrations/HTTP_MACHINE_PAYMENTS.md`) | Outbound HTTP + machine payments |
 | `examples/crud_api.ainl` | `strict-valid` | Clear `Set` + `If` branch behavior | Branching/control flow |
 | `examples/rag_pipeline.ainl` | `strict-valid` | Explicit `Call ... ->out` return binding | Workflow composition |
 | `examples/retry_error_resilience.ainl` | `strict-valid` | Canonical retry and failure routing | Resilience/remediation pattern |
