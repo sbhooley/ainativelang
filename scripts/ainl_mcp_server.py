@@ -87,7 +87,89 @@ from tooling.graph_diff import graph_diff
 from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
 from intelligence.trace_export_ptc_jsonl import export_file as export_ptc_trace_file
 from adapters.local_cache import LocalFileCacheAdapter
-_TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_TOOLING_DIR = _REPO_ROOT / "tooling"
+_INTEGRATIONS_DOCS_DIR = _REPO_ROOT / "docs" / "integrations"
+# Filenames allowed for MCP resources under docs/integrations (path traversal safe).
+_INTEGRATION_DOC_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "README.md",
+        "HTTP_MACHINE_PAYMENTS.md",
+        "AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md",
+        "AGTP.md",
+        "A2A_ADAPTER.md",
+    }
+)
+
+
+def _read_integration_doc(filename: str) -> str:
+    """Return UTF-8 text for a hub doc, or a short error markdown."""
+    if filename not in _INTEGRATION_DOC_ALLOWLIST:
+        return f"# Error\nunknown integration doc `{filename}`.\n"
+    path = _INTEGRATIONS_DOCS_DIR / filename
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return f"# Error\nfailed to read `{filename}`: {exc}\n"
+
+
+# Repo-relative paths allowed as MCP resources (must stay under ``_REPO_ROOT``).
+_MCP_SNIPPET_RESOURCE_PATHS: frozenset[str] = frozenset(
+    {
+        "examples/http/http_machine_payment_flow_compact.ainl",
+    }
+)
+
+
+def _read_allowlisted_repo_subpath(rel: str) -> str:
+    """Return UTF-8 text for a allowlisted repo file (examples, etc.)."""
+    if rel not in _MCP_SNIPPET_RESOURCE_PATHS:
+        return f"# Error\nunknown MCP snippet path `{rel}`.\n"
+    root = _REPO_ROOT.resolve()
+    target = (root / rel).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return "# Error\npath escapes repo root.\n"
+    try:
+        return target.read_text(encoding="utf-8")
+    except OSError as exc:
+        return f"# Error\nfailed to read `{rel}`: {exc}\n"
+
+
+# Catalog entries for ainl_capabilities (filtered by current MCP resource exposure).
+_MCP_INTEGRATION_RESOURCE_CATALOG: List[Dict[str, str]] = [
+    {
+        "uri": "ainl://integrations-hub",
+        "title": "Integrations hub",
+        "summary": "Index of integrations docs (HTTP machine payments, A2A, AGTP, readiness).",
+    },
+    {
+        "uri": "ainl://integrations-http-machine-payments",
+        "title": "HTTP machine payments (x402 / MPP)",
+        "summary": "payment_profile, 402 handling, http_payment frame merges, settlement metadata.",
+    },
+    {
+        "uri": "ainl://integrations-agentic-protocols-readiness",
+        "title": "Agentic protocols — practitioner readiness",
+        "summary": "Operator checklist and cross-links for agentic HTTP payment flows.",
+    },
+    {
+        "uri": "ainl://integrations-agtp",
+        "title": "AGTP (Agentic Gateway Transport Protocol)",
+        "summary": "AGTP overview and how it relates to AINL HTTP integration.",
+    },
+    {
+        "uri": "ainl://integrations-a2a",
+        "title": "A2A adapter",
+        "summary": "Agent-to-Agent adapter threat model, wire profile, and security reporting.",
+    },
+    {
+        "uri": "ainl://examples-http-machine-payment-flow",
+        "title": "Example: HTTP machine payment flow (strict-valid)",
+        "summary": "Opcode graph for 402/payment_required + frame.http_payment; run python scripts/run_http_machine_payment_roundtrip_demo.py for a local stdlib round-trip.",
+    },
+]
 
 # Resource floor aligned with ``scripts/runtime_runner_service._SERVER_DEFAULT_LIMITS``.
 # max_depth raised from 20 to 500: tail-recursive loops over real data sets (e.g.
@@ -131,6 +213,12 @@ ALL_RESOURCE_URIS: List[str] = [
     "ainl://adapter-risk-matrix",
     "ainl://run-readiness",
     "ainl://policy-contract",
+    "ainl://integrations-hub",
+    "ainl://integrations-http-machine-payments",
+    "ainl://integrations-agentic-protocols-readiness",
+    "ainl://integrations-agtp",
+    "ainl://integrations-a2a",
+    "ainl://examples-http-machine-payment-flow",
 ]
 
 # Short MCP-facing authoring guide (mirrors AGENTS.md highlights for agent loops).
@@ -149,6 +237,13 @@ _AUTHORING_CHEATSHEET_MARKDOWN: str = """# AINL authoring — MCP cheatsheet
 - `core.GET`: first positional arg is the container (dict/list), second is the key/index string.
 
 Ground truth in-repo: **AGENTS.md** (HTTP adapter, queue, strict-valid examples).
+
+## HTTP machine payments (x402 / MPP)
+
+- Full contract + examples: MCP resource **`ainl://integrations-http-machine-payments`** (also `docs/integrations/HTTP_MACHINE_PAYMENTS.md`).
+- **`ainl_run`** → `adapters.http`: optional **`payment_profile`** (`none`, `auto`, `mpp`, `x402`) and **`max_payment_rounds`** (int, default 2). On **402** / payment-required flows, merge retry material from the prior result into **`frame.http_payment`** (see hub doc).
+- Readiness / vocabulary: **`ainl://integrations-agentic-protocols-readiness`**, **`ainl://integrations-agtp`**, hub **`ainl://integrations-hub`**.
+- Strict-valid graph template: **`ainl://examples-http-machine-payment-flow`** (opcode `http.GET` + `payment_required` branch + `http_payment` frame); local demo: **`python scripts/run_http_machine_payment_roundtrip_demo.py`**.
 """
 
 _IMPACT_CHECKLIST_MARKDOWN: str = """# Impact-first checklist (GitNexus-style alignment)
@@ -165,7 +260,7 @@ _ADAPTER_RISK_MATRIX_MARKDOWN: str = """# Adapter risk matrix (summary)
 
 | Area | Notes |
 |------|------|
-| `http` / `web` | Network egress; use host allowlists (`ainl_capabilities` + grants). |
+| `http` / `web` | Network egress; use host allowlists (`ainl_capabilities` + grants). Paid / **402** flows: see `ainl://integrations-http-machine-payments`. |
 | `fs` | Sandboxed paths; never assume repo-wide read without policy. |
 | `llm` | May require `AINL_CONFIG` / MCP LLM enablement. |
 
@@ -474,8 +569,9 @@ if _HAS_MCP:
             "ainl_import_clawflow, ainl_import_agency_agent, and ainl_import_markdown "
             "fetch Markdown and return deterministic .ainl source (network). "
             "MCP resource ainl://authoring-cheatsheet summarizes HTTP R-lines and adapters; "
+            "ainl://integrations-* resources ship docs/integrations (machine payments, AGTP, A2A). "
             "validate/compile responses include recommended_next_tools. "
-            "ainl_capabilities returns mcp_telemetry (call counters for this server process)."
+            "ainl_capabilities returns mcp_telemetry (call counters) and mcp_resources (integration URIs)."
         ),
     )
 
@@ -785,12 +881,18 @@ def _load_capabilities() -> Dict[str, Any]:
             "network_facing": info.get("network_facing"),
             "sandbox_safe": info.get("sandbox_safe"),
         }
+    catalog = [
+        dict(entry)
+        for entry in _MCP_INTEGRATION_RESOURCE_CATALOG
+        if entry.get("uri") in _ALLOWED_RESOURCES
+    ]
     return {
         "schema_version": "1.1",
         "runtime_version": RUNTIME_VERSION,
         "policy_support": True,
         "adapters": adapters,
         "mcp_telemetry": _telemetry_snapshot(),
+        "mcp_resources": catalog,
     }
 
 
@@ -939,7 +1041,8 @@ def ainl_capabilities() -> dict:
 
     Returns available adapters with their verbs, support tiers, effect
     defaults, recommended lanes, and privilege tiers.  Also includes
-    ``mcp_telemetry`` (per-process counters for validate/compile/run).  No side
+    ``mcp_telemetry`` (per-process counters for validate/compile/run) and
+    ``mcp_resources`` (integration doc URIs exposed for this process).  No side
     effects beyond bump-free read of those counters.
     """
     return _load_capabilities()
@@ -982,6 +1085,9 @@ def ainl_run(
 
     IMPORTANT — adapter registration is opt-in per-run:
       - ``http``  → requires ``allow_hosts`` (list of hostnames, e.g. ["example.com"])
+      - ``http`` optional: ``payment_profile`` (``none`` / ``auto`` / ``mpp`` / ``x402``) and
+        ``max_payment_rounds`` (int, default 2) for machine-payment retries; see MCP resource
+        ``ainl://integrations-http-machine-payments`` for ``frame.http_payment`` merges.
       - ``fs``    → requires ``root`` (absolute path to sandbox directory)
       - ``cache`` → requires ``path`` (absolute path to cache JSON file)
       - ``sqlite``→ requires ``db_path``
@@ -1011,7 +1117,9 @@ def ainl_run(
           "enable": ["http", "fs", "cache"],
           "http": {
             "allow_hosts": ["ohwarren.fidlar.com", "auditor.warrencountyohio.gov"],
-            "timeout_s": 15.0
+            "timeout_s": 15.0,
+            "payment_profile": "none",
+            "max_payment_rounds": 2
           },
           "fs": {
             "root": "/Users/me/.armaraos/workspaces/MyProject",
@@ -1641,6 +1749,42 @@ def run_readiness_resource() -> str:
 def policy_contract_resource() -> str:
     """Serialized `tooling/ainl_policy_contract.json` (cross-runtime contract with Rust ainl-contracts)."""
     return json.dumps(_load_policy_contract_json(), indent=2)
+
+
+@_register_resource("ainl://integrations-hub")
+def integrations_hub_resource() -> str:
+    """Integrations documentation index (docs/integrations/README.md)."""
+    return _read_integration_doc("README.md")
+
+
+@_register_resource("ainl://integrations-http-machine-payments")
+def integrations_http_machine_payments_resource() -> str:
+    """HTTP adapter machine payments: x402, MPP, payment_profile, http_payment frame (full doc)."""
+    return _read_integration_doc("HTTP_MACHINE_PAYMENTS.md")
+
+
+@_register_resource("ainl://integrations-agentic-protocols-readiness")
+def integrations_agentic_protocols_readiness_resource() -> str:
+    """Practitioner readiness checklist for agentic HTTP / payment flows."""
+    return _read_integration_doc("AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md")
+
+
+@_register_resource("ainl://integrations-agtp")
+def integrations_agtp_resource() -> str:
+    """AGTP (Agentic Gateway Transport Protocol) integration notes."""
+    return _read_integration_doc("AGTP.md")
+
+
+@_register_resource("ainl://integrations-a2a")
+def integrations_a2a_resource() -> str:
+    """A2A adapter threat model and wire profile (docs/integrations/A2A_ADAPTER.md)."""
+    return _read_integration_doc("A2A_ADAPTER.md")
+
+
+@_register_resource("ainl://examples-http-machine-payment-flow")
+def examples_http_machine_payment_flow_resource() -> str:
+    """Strict-valid compact example: HTTP GET + payment_required branch (examples/http/...)."""
+    return _read_allowlisted_repo_subpath("examples/http/http_machine_payment_flow_compact.ainl")
 
 
 # ---------------------------------------------------------------------------

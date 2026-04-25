@@ -32,6 +32,7 @@ from scripts.ainl_mcp_server import (
     _load_json,
     _merge_policy,
     _merge_limits,
+    _read_integration_doc,
 )
 
 
@@ -158,6 +159,22 @@ class TestCapabilities:
         caps = ainl_capabilities()
         for name, info in caps["adapters"].items():
             assert "privilege_tier" in info, f"{name} missing privilege_tier"
+
+    def test_capabilities_includes_mcp_resources_catalog(self):
+        caps = ainl_capabilities()
+        assert "mcp_resources" in caps
+        rows = caps["mcp_resources"]
+        assert isinstance(rows, list)
+        uris = {r["uri"] for r in rows}
+        assert "ainl://integrations-http-machine-payments" in uris
+        assert "ainl://examples-http-machine-payment-flow" in uris
+        for r in rows:
+            assert set(r.keys()) == {"uri", "title", "summary"}
+
+    def test_read_integration_doc_http_machine_payments_nonempty(self):
+        text = _read_integration_doc("HTTP_MACHINE_PAYMENTS.md")
+        assert len(text) > 500
+        assert "payment_profile" in text or "402" in text
 
 
 # ---------------------------------------------------------------------------
