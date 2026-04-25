@@ -307,6 +307,12 @@
       "path": "examples/compact/openclaw_learning_handoff.ainl",
       "primary_pattern": "openclaw_learning_handoff",
       "secondary_pattern": "learning_digest"
+    },
+    {
+      "order": 52,
+      "path": "examples/browser/browser_visit_minimal.ainl",
+      "primary_pattern": "browser_navigate",
+      "secondary_pattern": "adapter_browser"
     }
   ]
 }

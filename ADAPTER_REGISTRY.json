@@ -267,6 +267,25 @@
           "returns": "object",
           "network": true,
           "notes": "JSON-RPC tasks/get"
+        },
+        "discover_hermes": {
+          "args": [
+            "hermes_root?"
+          ],
+          "returns": "object",
+          "network": true,
+          "notes": "Reads HERMES_HOME or ~/.hermes/a2a.json for base_url, then GET {base}/.well-known/agent.json. Uses relaxed local URL checks for the operator-controlled file."
+        },
+        "send_hermes": {
+          "args": [
+            "message",
+            "session_id?",
+            "timeout_s?",
+            "hermes_root?"
+          ],
+          "returns": "object",
+          "network": true,
+          "notes": "Loads Hermes a2a.json (base_url + optional send_binding: auto | armaraos_jsonrpc | a2a_http). Tries ArmaraOS JSON-RPC tasks/send when card.url matches base_url origin, then Linux Foundation HTTP POST …/message:send (and supportedInterfaces[].url/message:send)."
         }
       },
       "config": {

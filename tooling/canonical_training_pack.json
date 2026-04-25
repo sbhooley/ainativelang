@@ -820,6 +820,22 @@
         "onboarding": true
       },
       "source": "# OpenClaw \u2194 AINL pipeline handoff (template).\n# ClawHub skills capture into ~/.openclaw/workspace/.learnings/; export script\n# promotes a digest into memory/. This graph is the slot where a host passes\n# promoted text or JSON into AINL as inputs \u2014 replace with real ops as needed.\n\nopenclaw_handoff:\n  in: digest_summary\n  merged = core.CONCAT \"openclaw_stage=ainl_ingest \" digest_summary\n  out merged\n"
+    },
+    {
+      "id": "examples__browser__browser_visit_minimal_ainl",
+      "order": 52,
+      "path": "examples/browser/browser_visit_minimal.ainl",
+      "primary_pattern": "browser_navigate",
+      "secondary_pattern": "adapter_browser",
+      "strict_valid": true,
+      "public_safe": true,
+      "suitable_for": {
+        "finetuning": true,
+        "few_shot": true,
+        "eval": true,
+        "onboarding": true
+      },
+      "source": "# examples/browser/browser_visit_minimal.ainl\n#\n# Drive a real Chrome/Chromium browser via the ArmaraOS daemon (CDP under the hood).\n# The `browser` adapter is a thin proxy to ArmaraOS's `browser_*` tools \u2014 see\n# adapters/browser.py and AGENTS.md \u2192 \"Available Adapters\".\n#\n# Modes (second arg to NAVIGATE / SESSION_START):\n#   \"headless\" \u2014 default; no visible window (fastest)\n#   \"headed\"   \u2014 visible window; use when sites detect headless or you want to watch\n#   \"attach\"   \u2014 connect to a Chrome the user launched with\n#                  `--remote-debugging-port=9222` (uses real cookies/profile)\n#\n# Validate: ainl validate examples/browser/browser_visit_minimal.ainl --strict\n# Run (requires ArmaraOS daemon on http://127.0.0.1:4200; set ARMARAOS_API_KEY if needed):\n#   ainl run examples/browser/browser_visit_minimal.ainl\n#\n# Optional env:\n#   ARMARAOS_API_BASE       (default: http://127.0.0.1:4200)\n#   ARMARAOS_API_KEY        (bearer token if the daemon enforces auth)\n#   AINL_BROWSER_AGENT_ID   (session tag; default: ainl-default)\n#   AINL_BROWSER_TIMEOUT_S  (per-request timeout; default: 60)\n\nS app browser noop\n\nL_main:\n  R browser.NAVIGATE \"https://example.com\" \"headless\" ->page\n  R browser.WAIT \"h1\" 5000 ->visible\n  R browser.RUN_JS \"document.title\" ->title\n  J title\n"
     }
   ]
 }

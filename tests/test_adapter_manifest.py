@@ -23,7 +23,7 @@ def test_adapter_manifest_basic_shape():
         assert isinstance(cfg.get("verbs"), list) and cfg["verbs"]
         assert cfg.get("effect_default") in {"pure", "io", "meta"}
         tier = cfg.get("support_tier")
-        assert tier in {"core", "extension_openclaw", "compatibility"}
+        assert tier in {"core", "extension_openclaw", "extension_armaraos", "compatibility"}
         strict = cfg.get("strict_contract")
         assert isinstance(strict, bool)
         lane = cfg.get("recommended_lane")

@@ -185,6 +185,8 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
                 default_timeout_s=args.http_timeout_s,
                 max_response_bytes=args.http_max_response_bytes,
                 allow_hosts=args.http_allow_host or [],
+                payment_profile=str(getattr(args, "http_payment_profile", "none") or "none"),
+                max_payment_rounds=int(getattr(args, "http_max_payment_rounds", 2) or 2),
             ),
         )
     if "a2a" in enabled:
@@ -391,6 +393,9 @@ def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -
     reg.register("web", WebAdapter())
     reg.register("tiktok", TiktokAdapter())
     reg.register("queue", NotificationQueueAdapter())
+    from adapters.browser import BrowserAdapter
+
+    reg.register("browser", BrowserAdapter())
     if "vector_memory" in enabled:
         from adapters.vector_memory import VectorMemoryAdapter
 
@@ -519,6 +524,8 @@ def cmd_run_hybrid_ptc(args: argparse.Namespace) -> int:
         http_allow_host=["localhost"],
         http_timeout_s=5.0,
         http_max_response_bytes=1_000_000,
+        http_payment_profile="none",
+        http_max_payment_rounds=2,
         sqlite_db="",
         sqlite_allow_write=False,
         sqlite_allow_table=[],
@@ -1221,6 +1228,8 @@ def cmd_serve(args: argparse.Namespace) -> int:
         http_allow_host=["localhost"],
         http_timeout_s=5.0,
         http_max_response_bytes=1_000_000,
+        http_payment_profile="none",
+        http_max_payment_rounds=2,
         record_adapters="",
         replay_adapters="",
         memory_db="",
@@ -2373,6 +2382,21 @@ def main() -> None:
         help="Per-request timeout for http + bridge adapters (seconds). Use 60–120+ for LLM-backed bridge routes.",
     )
     runp.add_argument("--http-max-response-bytes", type=int, default=1_000_000)
+    runp.add_argument(
+        "--http-payment-profile",
+        default="none",
+        choices=["none", "auto", "mpp", "x402"],
+        help=(
+            "HTTP machine payments: none (402 is a hard error), auto (detect x402 vs MPP from headers), "
+            "or force mpp/x402 challenge parsing. See docs/integrations/HTTP_MACHINE_PAYMENTS.md."
+        ),
+    )
+    runp.add_argument(
+        "--http-max-payment-rounds",
+        type=int,
+        default=2,
+        help="Reserved for multi-hop / facilitator payment retries (currently stored on the adapter for forward compatibility).",
+    )
     runp.add_argument("--sqlite-db", default="")
     runp.add_argument("--sqlite-allow-write", action="store_true")
     runp.add_argument("--sqlite-allow-table", action="append", default=[])

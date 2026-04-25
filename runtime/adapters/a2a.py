@@ -17,6 +17,7 @@ import os
 import socket
 import ssl
 import time
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
@@ -133,6 +134,25 @@ def _a2a_url_full_check(
 
 def _user_agent() -> str:
     return "AINL/1.0 A2A"
+
+
+def _hermes_assert_rpc_matches_base(base: str, rpc: str) -> None:
+    """Require Agent Card JSON-RPC URL to be same-origin with Hermes ``base_url``."""
+    b = urlparse(base.strip().rstrip("/"))
+    r = urlparse(str(rpc).strip())
+    if (b.scheme or "").lower() not in ("http", "https") or (r.scheme or "").lower() not in (
+        "http",
+        "https",
+    ):
+        raise AdapterError("a2a send_hermes: invalid url scheme")
+    if (b.hostname or "").lower() != (r.hostname or "").lower():
+        raise AdapterError(
+            f"a2a send_hermes: agent card url host {r.hostname!r} must match base_url host {b.hostname!r}"
+        )
+    bp = b.port if b.port is not None else (443 if b.scheme == "https" else 80)
+    rp = r.port if r.port is not None else (443 if r.scheme == "https" else 80)
+    if bp != rp:
+        raise AdapterError("a2a send_hermes: agent card url port must match base_url port")
 
 
 def _read_json_or_text(resp_headers: Dict[str, str], body: bytes, max_bytes: int) -> Any:
@@ -329,11 +349,98 @@ class A2aAdapter(HttpAdapter):
                 },
                 timeout,
             )
-        raise AdapterError(f"unknown a2a target: {target!r} (use discover, send, get_task)")
+        if t == "discover_hermes":
+            from hermes.hermes_adapter import load_hermes_a2a_base_url
 
-    def _do_discover(self, base: str) -> Any:
+            root = Path(str(args[0])) if args and str(args[0]).strip() else None
+            try:
+                base, _cfg = load_hermes_a2a_base_url(hermes_root=root)
+            except (OSError, ValueError, json.JSONDecodeError) as e:
+                raise AdapterError(str(e)) from e
+            return self._do_discover(base, relax_url_check=True)
+        if t == "send_hermes":
+            from hermes.hermes_adapter import load_hermes_a2a_config, message_send_endpoints
+
+            if not args:
+                raise AdapterError("a2a send_hermes requires message")
+            message = str(args[0])
+            session: Optional[str] = None
+            if len(args) > 1 and args[1] is not None and str(args[1]).strip() != "":
+                session = str(args[1])
+            timeout = float(args[2]) if len(args) > 2 else self.default_timeout_s
+            root = Path(str(args[3])) if len(args) > 3 and str(args[3]).strip() else None
+            try:
+                hcfg = load_hermes_a2a_config(hermes_root=root)
+            except (OSError, ValueError, json.JSONDecodeError) as e:
+                raise AdapterError(str(e)) from e
+            base = hcfg.base_url
+            binding = hcfg.send_binding
+            card = self._do_discover(base, relax_url_check=True)
+            if not isinstance(card, dict):
+                raise AdapterError("a2a send_hermes: discover returned non-object")
+            last_err = ""
+
+            if binding in ("auto", "armaraos_jsonrpc"):
+                rpc = card.get("url")
+                if not isinstance(rpc, str) or not str(rpc).strip():
+                    if binding == "armaraos_jsonrpc":
+                        raise AdapterError("a2a send_hermes: agent card missing url")
+                else:
+                    rpc_s = str(rpc).strip()
+                    try:
+                        _hermes_assert_rpc_matches_base(base, rpc_s)
+                    except AdapterError:
+                        if binding == "armaraos_jsonrpc":
+                            raise
+                    else:
+                        try:
+                            return self._do_jsonrpc(
+                                rpc_s,
+                                {
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "method": "tasks/send",
+                                    "params": {
+                                        "message": {
+                                            "role": "user",
+                                            "parts": [{"type": "text", "text": message}],
+                                        },
+                                        "sessionId": session,
+                                    },
+                                },
+                                timeout,
+                                relax_url_check=True,
+                            )
+                        except AdapterError as e:
+                            if binding == "armaraos_jsonrpc":
+                                raise
+                            last_err = str(e)
+
+            if binding in ("auto", "a2a_http"):
+                for ep in message_send_endpoints(base, card):
+                    try:
+                        return self._post_message_send_a2a_http(ep, message, timeout)
+                    except AdapterError as e:
+                        last_err = str(e)
+            raise AdapterError(
+                last_err
+                or "a2a send_hermes: no working path (set send_binding or fix peer)"
+            )
+        raise AdapterError(
+            f"unknown a2a target: {target!r} (use discover, send, get_task, discover_hermes, send_hermes)"
+        )
+
+    def _do_discover(self, base: str, *, relax_url_check: bool = False) -> Any:
         url = f"{base}/.well-known/agent.json"
-        self._check_url(url)
+        if relax_url_check:
+            _a2a_url_full_check(
+                url,
+                allow_hosts=set(),
+                allow_insecure_local=True,
+                strict_ssrf=False,
+            )
+        else:
+            self._check_url(url)
         req = Request(
             url=url,
             headers={"User-Agent": _user_agent(), "Accept": "application/json"},
@@ -353,7 +460,65 @@ class A2aAdapter(HttpAdapter):
                 raise AdapterError(f"a2a discover: invalid json: {e}") from e
         return body
 
-    def _do_jsonrpc(self, url: str, payload: Dict[str, Any], timeout_s: float) -> Any:
+    def _post_message_send_a2a_http(
+        self, endpoint: str, user_message: str, timeout_s: float
+    ) -> Any:
+        """Linux Foundation A2A HTTP binding: ``POST …/message:send``."""
+        _a2a_url_full_check(
+            endpoint,
+            allow_hosts=set(),
+            allow_insecure_local=True,
+            strict_ssrf=False,
+        )
+        payload = json.dumps(
+            {
+                "message": {
+                    "role": "ROLE_USER",
+                    "parts": [{"text": user_message}],
+                },
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+        req = Request(
+            endpoint,
+            data=payload,
+            headers={
+                "User-Agent": _user_agent(),
+                "Content-Type": "application/a2a+json",
+                "Accept": "application/json",
+                "A2A-Version": "0.3",
+            },
+            method="POST",
+        )
+        r = _urlopen_with_retries(req, timeout_s, self.max_response_bytes, adapter=self)
+        st = r["status"]
+        raw = r["body"]
+        if len(raw) > self.max_response_bytes:
+            raise AdapterError("a2a message:send response too large")
+        if not (200 <= st < 300):
+            raise AdapterError(f"a2a message:send failed: HTTP {st} {raw[:400]!r}")
+        try:
+            return json.loads(raw.decode("utf-8")) if raw else {}
+        except Exception as e:
+            raise AdapterError(f"a2a message:send invalid json: {e}") from e
+
+    def _do_jsonrpc(
+        self,
+        url: str,
+        payload: Dict[str, Any],
+        timeout_s: float,
+        *,
+        relax_url_check: bool = False,
+    ) -> Any:
+        if relax_url_check:
+            _a2a_url_full_check(
+                url,
+                allow_hosts=set(),
+                allow_insecure_local=True,
+                strict_ssrf=False,
+            )
+        else:
+            self._check_url(url)
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req = Request(
             url=url,

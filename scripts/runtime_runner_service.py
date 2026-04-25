@@ -271,6 +271,8 @@ def _build_registry(req: Dict[str, Any]) -> AdapterRegistry:
                 default_timeout_s=float(h.get("timeout_s", 5.0)),
                 max_response_bytes=int(h.get("max_response_bytes", 1_000_000)),
                 allow_hosts=h.get("allow_hosts") or [],
+                payment_profile=str(h.get("payment_profile", "none") or "none"),
+                max_payment_rounds=int(h.get("max_payment_rounds", 2) or 2),
             ),
         )
     if "a2a" in enabled:

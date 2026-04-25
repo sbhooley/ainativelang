@@ -1,3 +1,5 @@
+import email
+import io
 import json
 import os
 import socketserver
@@ -199,6 +201,93 @@ def test_http_adapter_does_not_retry_on_4xx(monkeypatch):
         assert "status error" in str(e)
         # Only one attempt for 4xx.
         assert calls["n"] == 1
+
+
+def test_http_adapter_402_raises_when_payment_disabled(monkeypatch):
+    hdr = email.message_from_string("PAYMENT-REQUIRED: e30=\r\n")
+    fp = io.BytesIO(b"{}")
+
+    def _fail_402(req, timeout=None, **kwargs):
+        raise HTTPError("https://example.com", 402, "payment", hdr, fp)
+
+    monkeypatch.setattr("runtime.adapters.http.urlopen", _fail_402)
+    adp = SimpleHttpAdapter(default_timeout_s=1.0, payment_profile="none")
+    try:
+        adp.call("get", ["https://example.com"], {})
+        assert False, "expected 402 error"
+    except Exception as e:
+        assert isinstance(e, AdapterError)
+
+
+def test_http_adapter_402_returns_envelope_when_payment_auto(monkeypatch):
+    hdr = email.message_from_string("PAYMENT-REQUIRED: e30=\r\n")
+    fp = io.BytesIO(b"{}")
+
+    def _fail_402(req, timeout=None, **kwargs):
+        raise HTTPError("https://example.com/r", 402, "payment", hdr, fp)
+
+    monkeypatch.setattr("runtime.adapters.http.urlopen", _fail_402)
+    adp = SimpleHttpAdapter(default_timeout_s=1.0, payment_profile="auto")
+    res = adp.call("get", ["https://example.com/r"], {})
+    assert res["ok"] is False
+    assert res["status"] == 402
+    assert res["error"] == "payment_required"
+    assert res["payment"]["profile"] == "x402"
+
+
+def test_http_adapter_merges_http_payment_headers(monkeypatch):
+    seen: dict[str, str] = {}
+
+    class _FakeResp:
+        def __init__(self):
+            self.status = 200
+            self.headers = {"Content-Type": "application/json"}
+
+        def read(self, n: int) -> bytes:
+            return b'{"ok": true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def _cap(req, timeout=None, **kwargs):
+        seen.update({k: v for k, v in req.header_items()})
+        return _FakeResp()
+
+    monkeypatch.setattr("runtime.adapters.http.urlopen", _cap)
+    adp = SimpleHttpAdapter(default_timeout_s=1.0)
+    res = adp.call(
+        "get",
+        ["https://example.com"],
+        {"http_payment": {"x402": {"payment_signature": "sig"}}},
+    )
+    assert res["ok"] is True
+    assert seen.get("Payment-signature") == "sig"
+
+
+def test_http_adapter_success_includes_payment_response_meta(monkeypatch):
+    class _FakeResp:
+        def __init__(self):
+            self.status = 200
+            self.headers = {"Payment-Response": "abc"}
+
+        def read(self, n: int) -> bytes:
+            return b'{"ok": true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr("runtime.adapters.http.urlopen", lambda *a, **k: _FakeResp())
+    adp = SimpleHttpAdapter(default_timeout_s=1.0, payment_profile="auto")
+    res = adp.call("get", ["https://example.com"], {})
+    assert res["ok"] is True
+    assert res["payment"]["profile"] == "x402"
+    assert res["payment"]["payment_response_header"] == "abc"
 
 
 def test_http_adapter_retries_on_5xx_then_fails(monkeypatch):

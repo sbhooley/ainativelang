@@ -10,6 +10,7 @@ which ones are preserved mainly for compatibility.
 2. **Language and adapter ground truth** is **`AGENTS.md`** (HTTP positional args, no invented adapters such as `regex_find`, queue/http forms).
 3. **Human-oriented index:** `examples/README.md` (recommended learning order, strict vs non-strict explanation).
 4. **`demo/`** is outside this contract unless explicitly added to profiles — see **`AGENTS.md`** (App Store / demos).
+5. **Agentic payments & commerce:** `docs/integrations/README.md` (x402/MPP on `http`, AP2/ACP via generic REST, AGTP gateway/MCP paths) and **`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`** (strict-valid example backlog **G1** for paywalled HTTP demos).
 
 Primary machine-readable sources:
 - `tooling/support_matrix.json`

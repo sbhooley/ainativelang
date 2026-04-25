@@ -656,7 +656,18 @@ def openclaw_monitor_registry(ir_types: Optional[Dict] = None):
 
     # HTTP adapter for LLM calls and general HTTP
     from runtime.adapters.http import SimpleHttpAdapter
-    reg.register('http', SimpleHttpAdapter())
+
+    _pp = str(os.environ.get("AINL_HTTP_PAYMENT_PROFILE") or "none").strip().lower()
+    if _pp not in {"none", "auto", "mpp", "x402"}:
+        _pp = "none"
+    try:
+        _mpr = int(str(os.environ.get("AINL_HTTP_MAX_PAYMENT_ROUNDS") or "2").strip() or "2")
+    except Exception:
+        _mpr = 2
+    reg.register(
+        "http",
+        SimpleHttpAdapter(payment_profile=_pp, max_payment_rounds=max(1, _mpr)),
+    )
 
     # MCP adapter for calling external MCP servers (e.g., OpenSpace)
     try:

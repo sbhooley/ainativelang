@@ -1,0 +1,29 @@
+# examples/browser/browser_visit_minimal.ainl
+#
+# Drive a real Chrome/Chromium browser via the ArmaraOS daemon (CDP under the hood).
+# The `browser` adapter is a thin proxy to ArmaraOS's `browser_*` tools — see
+# adapters/browser.py and AGENTS.md → "Available Adapters".
+#
+# Modes (second arg to NAVIGATE / SESSION_START):
+#   "headless" — default; no visible window (fastest)
+#   "headed"   — visible window; use when sites detect headless or you want to watch
+#   "attach"   — connect to a Chrome the user launched with
+#                  `--remote-debugging-port=9222` (uses real cookies/profile)
+#
+# Validate: ainl validate examples/browser/browser_visit_minimal.ainl --strict
+# Run (requires ArmaraOS daemon on http://127.0.0.1:4200; set ARMARAOS_API_KEY if needed):
+#   ainl run examples/browser/browser_visit_minimal.ainl
+#
+# Optional env:
+#   ARMARAOS_API_BASE       (default: http://127.0.0.1:4200)
+#   ARMARAOS_API_KEY        (bearer token if the daemon enforces auth)
+#   AINL_BROWSER_AGENT_ID   (session tag; default: ainl-default)
+#   AINL_BROWSER_TIMEOUT_S  (per-request timeout; default: 60)
+
+S app browser noop
+
+L_main:
+  R browser.NAVIGATE "https://example.com" "headless" ->page
+  R browser.WAIT "h1" 5000 ->visible
+  R browser.RUN_JS "document.title" ->title
+  J title

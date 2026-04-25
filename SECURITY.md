@@ -17,6 +17,7 @@ If you believe you have found a **security issue** in AI_Native_Lang (including 
 ## Security-sensitive areas
 
 - **SSRF and outbound HTTP** — HTTP and A2A adapters perform outbound requests; use host allowlists and optional strict DNS checks. See [docs/integrations/A2A_ADAPTER.md](docs/integrations/A2A_ADAPTER.md) for the `a2a` adapter.
+- **HTTP machine payments (`payment_profile`, `http_payment`)** — `402` responses may carry payment challenges; **never** log or persist **`http_payment`** / proof headers from the runtime **frame**; treat them like bearer tokens. See [docs/integrations/HTTP_MACHINE_PAYMENTS.md](docs/integrations/HTTP_MACHINE_PAYMENTS.md) and [docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md](docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md).
 - **Untrusted code and prompts** — Treat LLM- or user-supplied URLs and graph inputs with the same care as in any other automation that can reach the network or filesystem.
 - **Secrets** — Do not commit API keys, tokens, or private keys. Prefer environment variables and your platform’s secret stores.
 

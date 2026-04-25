@@ -102,6 +102,8 @@ AINL is a compact, graph-canonical AI workflow language. You write programs in `
 
 Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, secrets): see **[SECURITY.md](SECURITY.md)**. A2A-specific policy and wire contract: **[docs/integrations/A2A_ADAPTER.md](docs/integrations/A2A_ADAPTER.md)**.
 
+**Agentic HTTP payments & commerce (x402, MPP, AP2, ACP, AGTP):** integration hub **[docs/integrations/README.md](docs/integrations/README.md)** — HTTP-402 rails on the **`http`** adapter (**[HTTP_MACHINE_PAYMENTS.md](docs/integrations/HTTP_MACHINE_PAYMENTS.md)**), practitioner readiness (**[AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md](docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md)**), and **AGTP** options (**[AGTP.md](docs/integrations/AGTP.md)**).
+
 ## New in v1.7.1
 
 - **A2A (Agent-to-Agent) adapter (opt-in):** **`a2a`** — wire profile **1.0** (`GET …/.well-known/agent.json`, **`tasks/send`** / **`tasks/get`**); **`allow_hosts`** / optional **`strict_ssrf`** / **redirects off by default**; enable via **`--enable-adapter a2a`** and **`--a2a-allow-hosts`**, or **`adapters` + `adapters.a2a`**. MCP **exposure profiles** do not enable **a2a** without **`adapters`** (see **`tooling/mcp_exposure_profiles.json`** + **`docs/integrations/A2A_ADAPTER.md`**). Tests: **`tests/test_a2a_adapter.py`**, **`tests/test_a2a_adapter_integration.py`**; example: **`examples/compact/a2a_delegate.ainl`**.

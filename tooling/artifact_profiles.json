@@ -25,6 +25,7 @@
     "strict-valid": [
       "examples/hello.ainl",
       "examples/http_get_minimal.ainl",
+      "examples/browser/browser_visit_minimal.ainl",
       "examples/compact/hello_compact.ainl",
       "examples/compact/classifier_compact.ainl",
       "examples/compact/cache_lookup_compact.ainl",

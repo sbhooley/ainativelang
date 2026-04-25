@@ -311,7 +311,7 @@
       "destructive": true,
       "network_facing": true,
       "sandbox_safe": false,
-      "notes": "Runtime HTTP adapter namespace.",
+      "notes": "Runtime HTTP adapter namespace. Native payment_profile covers HTTP-402 dialects (x402, MPP); AP2/ACP commerce/AGTP integration patterns live in docs/integrations/HTTP_MACHINE_PAYMENTS.md.",
       "result_envelope": {
         "fields": {
           "ok": "bool",
@@ -319,9 +319,10 @@
           "error": "str|null",
           "body": "any",
           "headers": "dict|none",
-          "url": "str"
+          "url": "str",
+          "payment": "dict|none"
         },
-        "notes": "Monitoring-oriented HTTP result envelope (descriptive only; runtime behavior unchanged)."
+        "notes": "Monitoring-oriented HTTP result envelope. When payment_profile is enabled, HTTP 402 returns ok=false with error=payment_required and a payment challenge block; successful x402/MPP settlements may attach payment metadata on 200."
       }
     },
     "a2a": {
@@ -1033,6 +1034,43 @@
       "network_facing": true,
       "sandbox_safe": false,
       "notes": "Web search and fetch adapter. Used in intelligence programs for news retrieval and general HTTP access. Requires the web adapter to be registered in the runtime."
+    },
+    "browser": {
+      "support_tier": "extension_armaraos",
+      "strict_contract": false,
+      "recommended_lane": "noncanonical",
+      "verbs": [
+        "NAVIGATE",
+        "CLICK",
+        "TYPE",
+        "SCREENSHOT",
+        "READ_PAGE",
+        "SCROLL",
+        "WAIT",
+        "RUN_JS",
+        "BACK",
+        "CLOSE",
+        "SESSION_START",
+        "SESSION_STATUS",
+        "navigate",
+        "click",
+        "type",
+        "screenshot",
+        "read_page",
+        "scroll",
+        "wait",
+        "run_js",
+        "back",
+        "close",
+        "session_start",
+        "session_status"
+      ],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": false,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "notes": "Real Chrome/Chromium browser control via the ArmaraOS daemon (CDP). Verbs proxy to ArmaraOS browser_* tools (POST /mcp). Modes: 'headless' (default), 'headed' (visible window), 'attach' (drive a user-launched Chrome with --remote-debugging-port). Set ARMARAOS_API_BASE / ARMARAOS_API_KEY / AINL_BROWSER_AGENT_ID to configure."
     }
   }
 }

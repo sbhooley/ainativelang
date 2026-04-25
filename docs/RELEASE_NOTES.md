@@ -6,6 +6,7 @@
 
 - **A2A adapter (opt-in):** **`a2a`** — ArmaraOS-style **Agent Card** discovery and JSON-RPC task send/get; **wire profile 1.0**; **`allow_hosts`** / **`allow_insecure_local`** / optional **`strict_ssrf`**; **redirects off by default**. Enable with **`--enable-adapter a2a`** and **`--a2a-allow-hosts`**, or **`adapters` + `adapters.a2a`** in MCP / runner config. **MCP exposure profiles** do **not** turn on **a2a** by themselves — you must allow it under **`adapters`**.
 - **Docs / reporting:** [`docs/integrations/A2A_ADAPTER.md`](integrations/A2A_ADAPTER.md) (threat model, env/CLI). Vulnerability reporting: [`SECURITY.md`](../SECURITY.md) (private **GitHub** advisory on **`sbhooley/ainativelang`**).
+- **Docs (rolling / `main`):** agentic **HTTP** payments & commerce hub — [`docs/integrations/README.md`](integrations/README.md) (index), [`HTTP_MACHINE_PAYMENTS.md`](integrations/HTTP_MACHINE_PAYMENTS.md) (**x402** / **MPP** `payment_profile` + **AP2** / **ACP** / **AGTP** placement), [`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`](integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md) (capability matrix + backlog), [`AGTP.md`](integrations/AGTP.md) (gateway / MCP / adapter options). See [`docs/CHANGELOG.md`](CHANGELOG.md) *Unreleased* for the matching **`http`** adapter surface.
 
 ### Known limitations (same as A2A_ADAPTER; predictable triage)
 

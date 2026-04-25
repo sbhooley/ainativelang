@@ -1129,6 +1129,8 @@ def ainl_run(
                     default_timeout_s=float(h.get("timeout_s", 5.0)),
                     max_response_bytes=int(h.get("max_response_bytes", 1_000_000)),
                     allow_hosts=[str(x) for x in allow_hosts],
+                    payment_profile=str(h.get("payment_profile", "none") or "none"),
+                    max_payment_rounds=int(h.get("max_payment_rounds", 2) or 2),
                 ),
             )
         if "fs" in enabled:

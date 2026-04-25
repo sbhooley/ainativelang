@@ -81,6 +81,19 @@ Do **not** let end-users paste raw URLs into tools without allowlists in untrust
 
 ---
 
+## Hermes local `a2a.json`
+
+When a Hermes-compatible host publishes **`HERMES_HOME/a2a.json`** (default **`~/.hermes/a2a.json`**) with `{"base_url":"http://127.0.0.1:<port>"}` (HTTP **origin** only) and optional **`send_binding`** (`auto` \| `armaraos_jsonrpc` \| `a2a_http`), AINL can call:
+
+- **`R a2a.discover_hermes ->card`** — optional first arg: Hermes root directory string
+- **`R a2a.send_hermes message [session] [timeout_s] [hermes_root] ->task`**
+
+**`send_hermes`** tries **ArmaraOS JSON-RPC** `tasks/send` to **`AgentCard.url`** when same-origin with `base_url`, then **Linux Foundation HTTP** `POST …/message:send` (see `skills/hermes/a2a.example.json`). These targets relax literal loopback/private URL checks for URLs implied by that **operator-controlled** file for discovery and HTTP sends.
+
+**Nous Hermes Agent** (`hermes-agent` on GitHub): A2A server mode is **not shipped yet** (open issue **#514**). Stock Hermes will not answer `a2a.json` until upstream implements A2A or you point `base_url` at a bridge. ArmaraOS built-ins: **`hermes_a2a_status`**, **`a2a_discover_hermes`**, **`a2a_send_hermes`**.
+
+---
+
 ## Summary
 
 | Audience | Use this doc for |

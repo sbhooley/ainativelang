@@ -372,6 +372,10 @@ class RuntimeEngine:
                 from runtime.adapters.a2a import a2a_from_env
 
                 reg.register("a2a", a2a_from_env())
+            if "browser" in need and "browser" not in reg:
+                from adapters.browser import BrowserAdapter
+
+                reg.register("browser", BrowserAdapter())
         except Exception:
             pass
 

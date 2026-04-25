@@ -194,6 +194,7 @@ supabase   — Supabase client
 airtable   — Airtable API
 http       — HTTP requests
 web        — Web search/fetch (SEARCH, FETCH, SCRAPE, GET)
+browser    — Real Chrome/Chromium control via the ArmaraOS daemon's CDP stack (`adapters/browser.py` proxies `R browser.*` → `POST /mcp` `tools/call`). Verbs: NAVIGATE, CLICK, TYPE, SCREENSHOT, READ_PAGE, SCROLL, WAIT, RUN_JS, BACK, CLOSE, SESSION_START, SESSION_STATUS. Modes (second arg to NAVIGATE / SESSION_START): `"headless"` (default), `"headed"` (visible window), `"attach"` (drive a user-launched Chrome on `--remote-debugging-port`). Env: `ARMARAOS_API_BASE`, `ARMARAOS_API_KEY`, `AINL_BROWSER_AGENT_ID`, `AINL_BROWSER_TIMEOUT_S`. Requires the ArmaraOS daemon (`openfang start`) — see **`armaraos/docs/browser-control.md`** and `examples/browser/browser_visit_minimal.ainl`.
 tiktok     — TikTok data (RECENT, SEARCH, PROFILE, STATS, TRENDING)
 memory     — Key-value SQLite store + procedural patterns (`store_pattern`/`recall_pattern`, table `ainl_memory_patterns`); IR label steps `memory.merge` / `MemoryMerge` re-inject stored `labels` as live IR (`docs/adapters/MEMORY_CONTRACT.md` §3.7; tests/test_memory_merge.py)
 ainl_graph_memory — ArmaraOS bridge JSON graph (file-backed nodes/edges; IR ops MemoryRecall/MemorySearch; EdgeType epistemic edges; persona.update → persona_update; **`boot()`** reads **`AINL_BUNDLE_PATH`** for scheduled **`ainl run`**; **`ainl_memory_sync`** → **`ainl_graph_memory_inbox.json`** when **`ARMARAOS_AGENT_ID`**); Rust auto-refresh writes per-agent **`{agent}_graph_export.json`** under **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** (directory) or **`…/agents/<id>/ainl_graph_memory_export.json`** when unset — Python resolves directory vs **`.json`** file + auto-fallback (`docs/adapters/AINL_GRAPH_MEMORY.md`); see also armaraos/docs/graph-memory-sync.md (hub) + armaraos/docs/graph-memory.md (daemon drain + env **`AINL_EXTRACTOR_ENABLED`** / **`AINL_TAGGER_ENABLED`** / **`AINL_PERSONA_EVOLUTION`** in **armaraos** `crates/openfang-runtime/README.md`); demos demo/procedural_roundtrip_demo.py, demo/ainl_graph_memory_demo.py; tests test_semantic_edges.py, test_armaraos_graph_snapshot_import.py, armaraos/bridge/tests/test_ainl_memory_sync.py
@@ -254,6 +255,8 @@ QueuePut channel_name payload
 
 Ground truth implementation: `runtime/adapters/http.py` (`SimpleHttpAdapter`).
 
+**Machine payments & agentic commerce (HTTP):** Native `payment_profile` parsing covers **HTTP 402** dialects used by **x402** and **MPP** (structured `payment_required` envelope + `http_payment` header merges). **AP2** (intent/authorization), **ACP** (*Agentic Commerce Protocol* checkout — not IBM ACP messaging), and **AGTP** (IETF agent transfer drafts) are mapped in `docs/integrations/HTTP_MACHINE_PAYMENTS.md`: use **generic `http` JSON/REST** where the wire is not x402/MPP 402 headers, or non-HTTP adapters for non-HTTP transports. **Practitioner readiness (what works end-to-end today vs gaps):** `docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`. **AGTP (not plain `http`):** `docs/integrations/AGTP.md`. CLI: `--http-payment-profile`; MCP/runner: `adapters.http.payment_profile`; monitor registry env: `AINL_HTTP_PAYMENT_PROFILE`.
+
 **GET positional arguments (no named `params=` / `timeout=` on the `R` line):**
 
 1. URL string (required). Put query parameters **in the URL** (e.g. `https://host/path?ParcelNumber=123&TaxYearId=uuid`).
@@ -302,7 +305,7 @@ R http.GET "https://example.com/api?x=1" {} 15 ->res
 ```json
 {
   "enable": ["http", "fs", "cache"],
-  "http":  { "allow_hosts": ["ohwarren.fidlar.com", "auditor.warrencountyohio.gov"], "timeout_s": 15 },
+  "http":  { "allow_hosts": ["ohwarren.fidlar.com", "auditor.warrencountyohio.gov"], "timeout_s": 15, "payment_profile": "none" },
   "fs":    { "root": "/Users/clawdbot/.armaraos/workspaces/Lien Scraper", "allow_extensions": [".json", ".csv"] },
   "cache": { "path": "/Users/clawdbot/.armaraos/workspaces/Lien Scraper/cache.json" }
 }

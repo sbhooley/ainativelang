@@ -24,6 +24,17 @@ ainl install-mcp --host hermes
 
 Hermes should discover the **AINL MCP server** and the installed **AINL skill pack** under `~/.hermes/skills/`.
 
+## ArmaraOS A2A bridge (optional)
+
+To expose an **ArmaraOS-compatible A2A** listener under `~/.hermes` (Agent Card + `tasks/send` + HTTP `message:send`), run:
+
+```bash
+chmod +x install_armaraos_a2a_bridge.sh
+./install_armaraos_a2a_bridge.sh
+```
+
+Then start `~/.hermes/skills/ainl/armaraos-a2a-bridge/run-bridge.sh` and point ArmaraOS at `~/.hermes/a2a.json` (written by the installer). See `armaraos-a2a-bridge/README.md`.
+
 ## What this pack installs
 
 - A Hermes skill folder under `~/.hermes/skills/ainl/` containing:
