@@ -91,3 +91,14 @@ S app core noop
 ```
 
 These are picked up by `ainl_compile` and returned in `frame_hints` so agents can auto-construct the `frame` argument before calling `ainl_run`.
+
+## Authoring wizard, strict-valid family index, and contract alignment (v1.7.x)
+
+The MCP server also ships:
+
+- **`ainl_get_started`** — pass **`wizard_state_json`** to continue a wizard session; returns checkpoints and `wizard_state` for hosts that persist digests to graph memory.
+- **`ainl_step_examples`** — strict-valid **snippets** and optional corpus paths by topic, without advancing wizard state; includes `schema_version` in the response.
+- **`ainl://strict-valid-families`** — JSON mined into **`corpus/strict_valid_family_index.json`** (regenerate with **`tooling/corpus_mining.py`**).
+- On successful **`ainl_validate`** / **`ainl_compile`**: **`contract_validation_status`** and **`contract_alignment`**, with **`mismatched_calls`** listing adapter/verb rows that do not match the get-started `ADAPTER_CONTRACTS` bundle (non-fatal warnings; see source for exact schema).
+
+**Full reference:** **[`MCP_AINL_WIZARD_AND_CORPUS.md`](MCP_AINL_WIZARD_AND_CORPUS.md)**. **ArmaraOS** prompt and graph tags: **`armaraos/docs/mcp-a2a.md`**.

@@ -14,7 +14,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 
 - **Bot onboarding:** `docs/BOT_ONBOARDING.md` — where to start, which docs matter first, and that the implementation preflight is required before coding.
 - **Implementation preflight:** `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` — required steps and output structure before selecting or implementing work (reduces duplicate work, stale assumptions, and adapter misuse).
-- **Machine-readable bootstrap:** `tooling/bot_bootstrap.json` — pointers to onboarding doc, preflight doc, safe-default docs, advanced docs, required steps, and **`openclaw_commands`** (v1.7.1 `bot_bootstrap.json` **`version`**; OpenClaw CLI commands since v1.3.0: `ainl_install_openclaw`, `ainl_status`, `ainl_doctor_ainl`, `ainl_install_mcp`).
+- **Machine-readable bootstrap:** `tooling/bot_bootstrap.json` — pointers to onboarding doc, preflight doc, safe-default docs, advanced docs, required steps, and **`openclaw_commands`** (v1.8.0 `bot_bootstrap.json` **`version`**; OpenClaw CLI commands since v1.3.0: `ainl_install_openclaw`, `ainl_status`, `ainl_doctor_ainl`, `ainl_install_mcp`).
 
 ### Core / safe-default docs
 
@@ -29,7 +29,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
 - **OpenClaw quickstart (5 min: ainl install openclaw, ainl status, ainl doctor --ainl):** `docs/QUICKSTART_OPENCLAW.md` — `tooling/bot_bootstrap.json` → **`openclaw_quickstart`**
 - **OpenClaw + AINL gold standard (install / upgrade, agent checklist):** `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md` — also `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`**
-- **OpenClaw host briefing — AINL v1.2.8–v1.7.1 (what ships vs host obligations; current PyPI v1.7.1):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
+- **OpenClaw host briefing — AINL v1.2.8–v1.8.0 (what ships vs host obligations; current PyPI v1.8.0):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
 - **Token / usage observability (gateway, markdown, rolling budget, caps, embedding pilot):** `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
 - **Token caps (staging order, intelligence hydrate env):** `docs/operations/TOKEN_CAPS_STAGING.md`
 - **Embedding retrieval pilot:** `docs/operations/EMBEDDING_RETRIEVAL_PILOT.md`
@@ -39,10 +39,10 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Workspace isolation (paths per tenant/user):** `docs/operations/WORKSPACE_ISOLATION.md` — shell pin: `tooling/openclaw_workspace_env.example.sh`
 - **OpenClaw host pack (checklist bundle):** `docs/operations/HOST_PACK_OPENCLAW.md`
 - **Agent + AINL operating model (roles, loop, checklist):** `docs/operations/AGENT_AINL_OPERATING_MODEL.md`
-- Contributor entrypoint: `CONTRIBUTING.md` (canonical) · docs hub: `docs/CONTRIBUTING.md` (v1.7.1 pointers)
+- Contributor entrypoint: `CONTRIBUTING.md` (canonical) · docs hub: `docs/CONTRIBUTING.md` (v1.8.0 pointers)
 - Audience quickstart: `docs/AUDIENCE_GUIDE.md`
 - What is AINL (canonical primer + v1.2+ snapshot): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- **Whitepaper draft (long-form architecture, OpenClaw + token economics through v1.7.1, including native Solana):** **`WHITEPAPERDRAFT.md`** (repository root)
+- **Whitepaper draft (long-form architecture, OpenClaw + token economics through v1.8.0, including native Solana):** **`WHITEPAPERDRAFT.md`** (repository root)
 - Install and environment setup: `docs/INSTALL.md` (includes `ainl-validate` strict / `--json-diagnostics` / optional **rich**)
 - **Strict vs non-strict (opt-in strict):** `docs/getting_started/STRICT_AND_NON_STRICT.md` — default permissive compile; `--strict` / `strict_mode=True` for stronger static checks; how that relates to `demo/` and `examples/`
 - Compiler structured diagnostics module: `compiler_diagnostics.py` (used by `compiler_v2.py`, `langserver.py`, `scripts/validate_ainl.py`; tests in `tests/test_diagnostics.py`)
@@ -67,6 +67,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Capability grant model: `docs/operations/CAPABILITY_GRANT_MODEL.md`
 - MCP agent tool contracts (`ainl_compile` **`frame_hints`**, `ainl_run` workspace limits + auto-cache): `docs/operations/MCP_RESEARCH_CONTRACT.md` · tests `tests/test_mcp_frame_hints.py`, `tests/test_mcp_workspace_limits.py`, `tests/test_mcp_auto_cache_adapter.py`
+- **MCP authoring wizard, `ainl://strict-valid-families`, contract alignment (`contract_validation_status` / `mismatched_calls`):** `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md` · Python `tooling/ainl_get_started.py`, `tooling/corpus_mining.py`, `scripts/ainl_mcp_server.py` · ArmaraOS `mcp_ainl_wizard_state_hint` / `mcp:ainl:wizard_state` — `armaraos/docs/mcp-a2a.md`
 - Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
 - **CLI trajectory JSONL** (`ainl run --log-trajectory`, `AINL_LOG_TRAJECTORY`): `docs/trajectory.md` (per-step trace beside the `.ainl` source; not runner HTTP audit)
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
@@ -157,7 +158,7 @@ entry point for new users or unsupervised agents.
 - Standardized health envelope (monitor payloads): `docs/operations/STANDARDIZED_HEALTH_ENVELOPE.md`
 - Memory contract and v1 adapter: `docs/adapters/MEMORY_CONTRACT.md`
   - v1.1 additive RFC (deterministic metadata/filtering only): `docs/adapters/MEMORY_CONTRACT_V1_1_RFC.md`
-  - Opt-in **`last_accessed` / `access_count`** helpers (include module; graph-safe list path **`LACCESS_LIST_SAFE`**): `modules/common/access_aware_memory.ainl`, `modules/common/README.md`, `docs/RELEASE_NOTES.md` (**shipped v1.2.4**; **latest release v1.7.1**)
+  - Opt-in **`last_accessed` / `access_count`** helpers (include module; graph-safe list path **`LACCESS_LIST_SAFE`**): `modules/common/access_aware_memory.ainl`, `modules/common/README.md`, `docs/RELEASE_NOTES.md` (**shipped v1.2.4**; **latest release v1.8.0**)
   - Memory v1 bridge and CLI tools (JSON/JSONL): `tooling/memory_bridge.py`, `scripts/export_memory_records.py`, `scripts/import_memory_records.py`
   - One-way markdown daily-log export (human-facing): `tooling/memory_markdown_bridge.py`, `scripts/export_memory_daily_log_markdown.py`
   - Curated markdown import (long-term facts/preferences): `tooling/memory_markdown_import.py`, `scripts/import_memory_markdown.py`

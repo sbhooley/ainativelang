@@ -44,7 +44,7 @@ graph TD
 
 ## 🏗️ Implementation
 
-### Real AINL Syntax (v1.7.1 — this compiles)
+### Real AINL Syntax (v1.8.0 — this compiles)
 
 ```ainl
 # retry_api.ainl — Retry HTTP call with backoff

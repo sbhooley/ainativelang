@@ -1,0 +1,2870 @@
+{
+  "schema_version": "1.0",
+  "generated_from": "artifact_profiles.json",
+  "total_examples": 59,
+  "families": {
+    "core": [
+      {
+        "path": "examples/hello.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "ADD"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 26,
+        "complexity_tier": "intermediate",
+        "family": "core",
+        "description": "examples/hello.ainl"
+      },
+      {
+        "path": "examples/compact/hello_compact.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "ADD"
+          ]
+        },
+        "graph_name": "adder",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 7,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "examples/compact/hello_compact.ainl"
+      },
+      {
+        "path": "examples/compact/classifier_compact.ainl",
+        "adapters": [],
+        "adapter_verbs": {},
+        "graph_name": "classifier",
+        "inputs": [
+          "level",
+          "message"
+        ],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 14,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "examples/compact/classifier_compact.ainl"
+      },
+      {
+        "path": "examples/compact/openclaw_learning_handoff.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "CONCAT"
+          ]
+        },
+        "graph_name": "openclaw_handoff",
+        "inputs": [
+          "digest_summary"
+        ],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 9,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "OpenClaw \u2194 AINL pipeline handoff (template)."
+      },
+      {
+        "path": "examples/crud_api.ainl",
+        "adapters": [],
+        "adapter_verbs": {},
+        "graph_name": "",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 3,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/web/basic_web_api.ainl",
+        "adapters": [
+          "db"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 6,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/retry_error_resilience.ainl",
+        "adapters": [
+          "ext"
+        ],
+        "adapter_verbs": {
+          "ext": [
+            "OP"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": true,
+        "line_count": 8,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/if_call_workflow.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "CONCAT"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 15,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/status_branching.ainl",
+        "adapters": [],
+        "adapter_verbs": {},
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 9,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/enterprise/audit-log-demo.ainl",
+        "adapters": [],
+        "adapter_verbs": {},
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": true,
+        "line_count": 51,
+        "complexity_tier": "intermediate",
+        "family": "core",
+        "description": "examples/enterprise/audit-log-demo.ainl"
+      },
+      {
+        "path": "examples/timeout_demo.ainl",
+        "adapters": [],
+        "adapter_verbs": {},
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 8,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "timeout_demo.ainl"
+      },
+      {
+        "path": "examples/timeout_memory_prune_demo.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "parse"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 16,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "examples/timeout_memory_prune_demo.ainl"
+      },
+      {
+        "path": "examples/hybrid/langchain_tool_demo.ainl",
+        "adapters": [
+          "langchain_tool"
+        ],
+        "adapter_verbs": {
+          "langchain_tool": [
+            "my_search_tool"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 20,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "examples/hybrid/langchain_tool_demo.ainl"
+      },
+      {
+        "path": "examples/hyperspace_demo.ainl",
+        "adapters": [
+          "core",
+          "tool_registry",
+          "vector_memory"
+        ],
+        "adapter_verbs": {
+          "vector_memory": [
+            "SEARCH",
+            "UPSERT"
+          ],
+          "tool_registry": [
+            "DISCOVER",
+            "LIST",
+            "REGISTER"
+          ],
+          "core": [
+            "STRINGIFY",
+            "concat"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 45,
+        "complexity_tier": "intermediate",
+        "family": "core",
+        "description": "examples/hyperspace_demo.ainl"
+      },
+      {
+        "path": "examples/code_context_demo.ainl",
+        "adapters": [
+          "code_context"
+        ],
+        "adapter_verbs": {
+          "code_context": [
+            "COMPRESS_CONTEXT",
+            "GET_DEPENDENCIES",
+            "GET_IMPACT",
+            "GET_SKELETON",
+            "INDEX",
+            "QUERY_CONTEXT",
+            "STATS"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 31,
+        "complexity_tier": "intermediate",
+        "family": "core",
+        "description": "examples/code_context_demo.ainl"
+      },
+      {
+        "path": "examples/test_adapters_full.ainl",
+        "adapters": [
+          "core",
+          "tool_registry",
+          "vector_memory"
+        ],
+        "adapter_verbs": {
+          "vector_memory": [
+            "SEARCH",
+            "UPSERT"
+          ],
+          "tool_registry": [
+            "DISCOVER",
+            "GET",
+            "LIST",
+            "REGISTER"
+          ],
+          "core": [
+            "STRINGIFY",
+            "concat"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 31,
+        "complexity_tier": "intermediate",
+        "family": "core",
+        "description": "examples/test_adapters_full.ainl"
+      },
+      {
+        "path": "examples/test_nested.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "mul"
+          ]
+        },
+        "graph_name": "",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 1,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/test_phase2_common_modules.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "ECHO"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 51,
+        "complexity_tier": "intermediate",
+        "family": "core",
+        "description": "examples/test_phase2_common_modules.ainl"
+      },
+      {
+        "path": "examples/wishlist/02_vector_semantic_search.ainl",
+        "adapters": [
+          "core",
+          "vector_memory"
+        ],
+        "adapter_verbs": {
+          "vector_memory": [
+            "SEARCH",
+            "UPSERT"
+          ],
+          "core": [
+            "filter_high_score"
+          ]
+        },
+        "graph_name": "wishlist_02_vector_semantic_search",
+        "inputs": [
+          "namespace",
+          "doc_id",
+          "text",
+          "query"
+        ],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 16,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "2) Semantic-ish retrieval via vector_memory (keyword overlap scoring in core repo)."
+      },
+      {
+        "path": "examples/wishlist/03_parallel_fanout.ainl",
+        "adapters": [
+          "fanout"
+        ],
+        "adapter_verbs": {
+          "fanout": [
+            "ALL"
+          ]
+        },
+        "graph_name": "wishlist_03_parallel_fanout",
+        "inputs": [
+          "fan_json"
+        ],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 12,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "3) Parallel tool execution \u2014 fanout.ALL over adapter plans (thread pool)."
+      },
+      {
+        "path": "examples/wishlist/04_validate_with_ext.ainl",
+        "adapters": [
+          "ext"
+        ],
+        "adapter_verbs": {
+          "ext": [
+            "EXEC"
+          ]
+        },
+        "graph_name": "wishlist_04_validate_with_ext",
+        "inputs": [
+          "py_file"
+        ],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 14,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "4) Automated validation \u2014 ext.EXEC runs a subprocess (e.g. py_compile)."
+      },
+      {
+        "path": "examples/wishlist/08_code_review_context.ainl",
+        "adapters": [
+          "code_context",
+          "core"
+        ],
+        "adapter_verbs": {
+          "code_context": [
+            "COMPRESS_CONTEXT",
+            "INDEX",
+            "QUERY_CONTEXT"
+          ],
+          "core": [
+            "concat"
+          ]
+        },
+        "graph_name": "wishlist_08_code_review_context",
+        "inputs": [
+          "R",
+          "code_context.INDEX",
+          "\"examples/wishlist\"",
+          "->_idx"
+        ],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 17,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "8) Code-review style context pack \u2014 INDEX then QUERY + COMPRESS (sequential; code_context is not fanout-safe)."
+      },
+      {
+        "path": "examples/api_only.lang",
+        "adapters": [
+          "db"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F",
+            "P"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 19,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "API-only: no frontend, core service and types"
+      },
+      {
+        "path": "examples/blog.lang",
+        "adapters": [
+          "db"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F",
+            "P"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 42,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "Blog: posts and comments, full stack"
+      },
+      {
+        "path": "examples/ecom.lang",
+        "adapters": [
+          "db"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 42,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "Ecom dashboard + Stripe pay (explicit E binding + routes, layout, forms, tables, events)"
+      },
+      {
+        "path": "examples/internal_tool.lang",
+        "adapters": [
+          "db"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F",
+            "P"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 37,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "Internal tool: tasks and users (API + minimal frontend)"
+      },
+      {
+        "path": "examples/ticketing.lang",
+        "adapters": [
+          "db"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F",
+            "P"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 48,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "Ticketing: events and tickets"
+      },
+      {
+        "path": "examples/openclaw/daily_lead_summary.lang",
+        "adapters": [],
+        "adapter_verbs": {},
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 18,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": "Daily Lead Summary (simplified)"
+      },
+      {
+        "path": "examples/test_if_var.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "sub"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 11,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/test_mul.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "mul",
+            "sub"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 6,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "examples/test_X_sub.ainl",
+        "adapters": [],
+        "adapter_verbs": {},
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 6,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      },
+      {
+        "path": "corpus/example_basic_web_api/program.ainl",
+        "adapters": [
+          "db"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 6,
+        "complexity_tier": "minimal",
+        "family": "core",
+        "description": ""
+      }
+    ],
+    "http": [
+      {
+        "path": "examples/http_get_minimal.ainl",
+        "adapters": [
+          "core",
+          "http"
+        ],
+        "adapter_verbs": {
+          "http": [
+            "GET"
+          ],
+          "core": [
+            "GET"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 15,
+        "complexity_tier": "minimal",
+        "family": "http",
+        "description": "Minimal strict-valid HTTP GET (opcode style)."
+      },
+      {
+        "path": "examples/compact/cache_lookup_compact.ainl",
+        "adapters": [
+          "cache",
+          "http"
+        ],
+        "adapter_verbs": {
+          "cache": [
+            "get",
+            "set"
+          ],
+          "http": [
+            "GET"
+          ]
+        },
+        "graph_name": "cached_fetch",
+        "inputs": [
+          "url"
+        ],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 13,
+        "complexity_tier": "intermediate",
+        "family": "http",
+        "description": "examples/compact/cache_lookup_compact.ainl"
+      },
+      {
+        "path": "examples/compact/github_raw_fetch_compact.ainl",
+        "adapters": [
+          "core",
+          "http",
+          "shell_exec"
+        ],
+        "adapter_verbs": {
+          "shell_exec": [
+            "RUN"
+          ],
+          "core": [
+            "CONCAT",
+            "GET"
+          ],
+          "http": [
+            "GET"
+          ]
+        },
+        "graph_name": "github_raw_fetch",
+        "inputs": [
+          "owner",
+          "repo",
+          "branch",
+          "path"
+        ],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 25,
+        "complexity_tier": "intermediate",
+        "family": "http",
+        "description": "GitHub raw-file fetch (compact syntax)."
+      },
+      {
+        "path": "examples/scraper/basic_scraper.ainl",
+        "adapters": [
+          "db",
+          "http"
+        ],
+        "adapter_verbs": {
+          "http": [
+            "GET"
+          ],
+          "db": [
+            "C"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 8,
+        "complexity_tier": "minimal",
+        "family": "http",
+        "description": ""
+      },
+      {
+        "path": "examples/webhook_automation.ainl",
+        "adapters": [
+          "http"
+        ],
+        "adapter_verbs": {
+          "http": [
+            "POST"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 10,
+        "complexity_tier": "minimal",
+        "family": "http",
+        "description": ""
+      },
+      {
+        "path": "examples/cron/monitor_and_alert.ainl",
+        "adapters": [
+          "db",
+          "http"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F"
+          ],
+          "http": [
+            "Post"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 13,
+        "complexity_tier": "intermediate",
+        "family": "http",
+        "description": ""
+      },
+      {
+        "path": "examples/wishlist/07_parallel_http.ainl",
+        "adapters": [
+          "fanout"
+        ],
+        "adapter_verbs": {
+          "fanout": [
+            "ALL"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 15,
+        "complexity_tier": "minimal",
+        "family": "http",
+        "description": "7) Real-time data enrichment \u2014 parallel HTTP GET via fanout (independent I/O)."
+      },
+      {
+        "path": "examples/openclaw_full_unification.ainl",
+        "adapters": [
+          "core",
+          "http",
+          "memory"
+        ],
+        "adapter_verbs": {
+          "http": [
+            "GET"
+          ],
+          "core": [
+            "concat"
+          ],
+          "memory": [
+            "put"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 9,
+        "complexity_tier": "minimal",
+        "family": "http",
+        "description": "Meta-supervisor sample \u2014 polls health endpoint and writes a status log entry."
+      },
+      {
+        "path": "corpus/example_scraper_daily/program.ainl",
+        "adapters": [
+          "db",
+          "http"
+        ],
+        "adapter_verbs": {
+          "http": [
+            "Get"
+          ],
+          "db": [
+            "C"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 7,
+        "complexity_tier": "minimal",
+        "family": "http",
+        "description": ""
+      },
+      {
+        "path": "corpus/example_monitor_alert/corrected_program.ainl",
+        "adapters": [
+          "db",
+          "http"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F"
+          ],
+          "http": [
+            "Post"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 13,
+        "complexity_tier": "intermediate",
+        "family": "http",
+        "description": ""
+      },
+      {
+        "path": "corpus/example_monitor_alert/program.ainl",
+        "adapters": [
+          "db",
+          "http"
+        ],
+        "adapter_verbs": {
+          "db": [
+            "F"
+          ],
+          "http": [
+            "Post"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 13,
+        "complexity_tier": "intermediate",
+        "family": "http",
+        "description": ""
+      }
+    ],
+    "http_payment": [
+      {
+        "path": "examples/http/http_machine_payment_flow_compact.ainl",
+        "adapters": [
+          "core",
+          "http"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "EQ",
+            "GET"
+          ],
+          "http": [
+            "GET"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 41,
+        "complexity_tier": "intermediate",
+        "family": "http_payment",
+        "description": "HTTP machine payments (x402 / MPP) \u2014 graph shape + frame contract."
+      }
+    ],
+    "browser": [
+      {
+        "path": "examples/browser/browser_visit_minimal.ainl",
+        "adapters": [
+          "browser"
+        ],
+        "adapter_verbs": {
+          "browser": [
+            "NAVIGATE",
+            "RUN_JS",
+            "WAIT"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 29,
+        "complexity_tier": "intermediate",
+        "family": "browser",
+        "description": "examples/browser/browser_visit_minimal.ainl"
+      }
+    ],
+    "filesystem": [
+      {
+        "path": "examples/compact/fs_write_compact.ainl",
+        "adapters": [
+          "core",
+          "fs"
+        ],
+        "adapter_verbs": {
+          "fs": [
+            "write"
+          ],
+          "core": [
+            "CONCAT",
+            "GET"
+          ]
+        },
+        "graph_name": "fs_writer",
+        "inputs": [
+          "output_path",
+          "content"
+        ],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 20,
+        "complexity_tier": "minimal",
+        "family": "filesystem",
+        "description": "examples/compact/fs_write_compact.ainl"
+      }
+    ],
+    "rag": [
+      {
+        "path": "examples/rag_pipeline.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "ADD"
+          ]
+        },
+        "graph_name": "L9",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 4,
+        "complexity_tier": "minimal",
+        "family": "rag",
+        "description": ""
+      },
+      {
+        "path": "examples/rag/cache-warmer.ainl",
+        "adapters": [
+          "vector_memory"
+        ],
+        "adapter_verbs": {
+          "vector_memory": [
+            "SEARCH",
+            "UPSERT"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 27,
+        "complexity_tier": "intermediate",
+        "family": "rag",
+        "description": "examples/rag/cache-warmer.ainl"
+      }
+    ],
+    "crm": [
+      {
+        "path": "examples/crm/simple-lead-router.ainl",
+        "adapters": [
+          "crm_db"
+        ],
+        "adapter_verbs": {
+          "crm_db": [
+            "P"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 36,
+        "complexity_tier": "intermediate",
+        "family": "crm",
+        "description": "examples/crm/simple-lead-router.ainl"
+      }
+    ],
+    "monitoring": [
+      {
+        "path": "examples/monitor_escalation.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "MAX"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 12,
+        "complexity_tier": "minimal",
+        "family": "monitoring",
+        "description": ""
+      },
+      {
+        "path": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "stringify",
+            "sub"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 10,
+        "complexity_tier": "minimal",
+        "family": "monitoring",
+        "description": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl"
+      },
+      {
+        "path": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+        "adapters": [
+          "core"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "stringify",
+            "sub"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 10,
+        "complexity_tier": "minimal",
+        "family": "monitoring",
+        "description": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl"
+      }
+    ],
+    "blockchain": [
+      {
+        "path": "examples/monitoring/solana-balance.ainl",
+        "adapters": [
+          "solana"
+        ],
+        "adapter_verbs": {
+          "solana": [
+            "GET_BALANCE"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 27,
+        "complexity_tier": "intermediate",
+        "family": "blockchain",
+        "description": "examples/monitoring/solana-balance.ainl"
+      },
+      {
+        "path": "examples/solana_demo.ainl",
+        "adapters": [
+          "core",
+          "solana"
+        ],
+        "adapter_verbs": {
+          "solana": [
+            "GET_ACCOUNT",
+            "GET_BALANCE",
+            "GET_LATEST_BLOCKHASH",
+            "GET_SIGNATURES_FOR_ADDRESS",
+            "SIMULATE_EVENTS",
+            "VERB"
+          ],
+          "core": [
+            "STRINGIFY"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 23,
+        "complexity_tier": "intermediate",
+        "family": "blockchain",
+        "description": "examples/solana_demo.ainl"
+      },
+      {
+        "path": "examples/prediction_market_demo.ainl",
+        "adapters": [
+          "core",
+          "solana"
+        ],
+        "adapter_verbs": {
+          "solana": [
+            "DERIVE_PDA",
+            "GET_LATEST_BLOCKHASH",
+            "GET_MARKET_STATE",
+            "GET_PYTH_PRICE",
+            "HERMES_FALLBACK",
+            "INVOKE"
+          ],
+          "core": [
+            "STRINGIFY"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 38,
+        "complexity_tier": "intermediate",
+        "family": "blockchain",
+        "description": "examples/prediction_market_demo.ainl"
+      }
+    ],
+    "cache": [
+      {
+        "path": "examples/wishlist/01_cache_and_memory.ainl",
+        "adapters": [
+          "cache",
+          "core",
+          "memory"
+        ],
+        "adapter_verbs": {
+          "cache": [
+            "GET",
+            "SET"
+          ],
+          "core": [
+            "concat",
+            "parse"
+          ],
+          "memory": [
+            "PUT"
+          ]
+        },
+        "graph_name": "wishlist_01_cache_and_memory",
+        "inputs": [
+          "session_key",
+          "note"
+        ],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 21,
+        "complexity_tier": "intermediate",
+        "family": "cache",
+        "description": "1) Knowledge caching + structured memory (AINL: cache + memory adapters)."
+      }
+    ],
+    "llm": [
+      {
+        "path": "examples/wishlist/05_route_then_llm_mock.ainl",
+        "adapters": [
+          "core",
+          "llm_query"
+        ],
+        "adapter_verbs": {
+          "llm_query": [
+            "QUERY"
+          ],
+          "core": [
+            "contains"
+          ]
+        },
+        "graph_name": "wishlist_05_route_then_llm_mock",
+        "inputs": [
+          "user_query"
+        ],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 20,
+        "complexity_tier": "intermediate",
+        "family": "llm",
+        "description": "5) Multi-model orchestration \u2014 route by keyword, then llm_query (mock or real bridge)."
+      },
+      {
+        "path": "examples/wishlist/05b_unified_llm_offline_config.ainl",
+        "adapters": [
+          "core",
+          "llm"
+        ],
+        "adapter_verbs": {
+          "llm": [
+            "COMPLETION"
+          ],
+          "core": [
+            "GET",
+            "contains"
+          ]
+        },
+        "graph_name": "wishlist_05b_unified_llm_offline_config",
+        "inputs": [
+          "user_query"
+        ],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 22,
+        "complexity_tier": "intermediate",
+        "family": "llm",
+        "description": "5b) Same routing as 05 \u2014 unified `llm` adapter + config.yaml (see docs/LLM_ADAPTER_USAGE.md)."
+      }
+    ],
+    "memory": [
+      {
+        "path": "examples/wishlist/06_feedback_memory.ainl",
+        "adapters": [
+          "core",
+          "memory"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "concat",
+            "parse"
+          ],
+          "memory": [
+            "APPEND",
+            "GET"
+          ]
+        },
+        "graph_name": "wishlist_06_feedback_memory",
+        "inputs": [
+          "session_id",
+          "correction"
+        ],
+        "has_branching": false,
+        "has_loop": true,
+        "has_error_handling": false,
+        "line_count": 17,
+        "complexity_tier": "intermediate",
+        "family": "memory",
+        "description": "6) Persistent learning loop \u2014 memory.APPEND for corrections; memory.GET reads prior turn payload."
+      }
+    ]
+  },
+  "by_adapter": {
+    "core": [
+      "examples/hello.ainl",
+      "examples/http_get_minimal.ainl",
+      "examples/http/http_machine_payment_flow_compact.ainl",
+      "examples/compact/hello_compact.ainl",
+      "examples/compact/openclaw_learning_handoff.ainl",
+      "examples/compact/github_raw_fetch_compact.ainl",
+      "examples/compact/fs_write_compact.ainl",
+      "examples/rag_pipeline.ainl",
+      "examples/if_call_workflow.ainl",
+      "examples/monitor_escalation.ainl",
+      "examples/timeout_memory_prune_demo.ainl",
+      "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+      "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+      "examples/hyperspace_demo.ainl",
+      "examples/solana_demo.ainl",
+      "examples/prediction_market_demo.ainl",
+      "examples/test_adapters_full.ainl",
+      "examples/test_nested.ainl",
+      "examples/test_phase2_common_modules.ainl",
+      "examples/wishlist/01_cache_and_memory.ainl",
+      "examples/wishlist/02_vector_semantic_search.ainl",
+      "examples/wishlist/05_route_then_llm_mock.ainl",
+      "examples/wishlist/05b_unified_llm_offline_config.ainl",
+      "examples/wishlist/06_feedback_memory.ainl",
+      "examples/wishlist/08_code_review_context.ainl",
+      "examples/openclaw_full_unification.ainl",
+      "examples/test_if_var.ainl",
+      "examples/test_mul.ainl"
+    ],
+    "http": [
+      "examples/http_get_minimal.ainl",
+      "examples/http/http_machine_payment_flow_compact.ainl",
+      "examples/compact/cache_lookup_compact.ainl",
+      "examples/compact/github_raw_fetch_compact.ainl",
+      "examples/scraper/basic_scraper.ainl",
+      "examples/webhook_automation.ainl",
+      "examples/cron/monitor_and_alert.ainl",
+      "examples/openclaw_full_unification.ainl",
+      "corpus/example_scraper_daily/program.ainl",
+      "corpus/example_monitor_alert/corrected_program.ainl",
+      "corpus/example_monitor_alert/program.ainl"
+    ],
+    "browser": [
+      "examples/browser/browser_visit_minimal.ainl"
+    ],
+    "cache": [
+      "examples/compact/cache_lookup_compact.ainl",
+      "examples/wishlist/01_cache_and_memory.ainl"
+    ],
+    "shell_exec": [
+      "examples/compact/github_raw_fetch_compact.ainl"
+    ],
+    "fs": [
+      "examples/compact/fs_write_compact.ainl"
+    ],
+    "vector_memory": [
+      "examples/rag/cache-warmer.ainl",
+      "examples/hyperspace_demo.ainl",
+      "examples/test_adapters_full.ainl",
+      "examples/wishlist/02_vector_semantic_search.ainl"
+    ],
+    "crm_db": [
+      "examples/crm/simple-lead-router.ainl"
+    ],
+    "db": [
+      "examples/scraper/basic_scraper.ainl",
+      "examples/web/basic_web_api.ainl",
+      "examples/cron/monitor_and_alert.ainl",
+      "examples/api_only.lang",
+      "examples/blog.lang",
+      "examples/ecom.lang",
+      "examples/internal_tool.lang",
+      "examples/ticketing.lang",
+      "corpus/example_basic_web_api/program.ainl",
+      "corpus/example_scraper_daily/program.ainl",
+      "corpus/example_monitor_alert/corrected_program.ainl",
+      "corpus/example_monitor_alert/program.ainl"
+    ],
+    "ext": [
+      "examples/retry_error_resilience.ainl",
+      "examples/wishlist/04_validate_with_ext.ainl"
+    ],
+    "solana": [
+      "examples/monitoring/solana-balance.ainl",
+      "examples/solana_demo.ainl",
+      "examples/prediction_market_demo.ainl"
+    ],
+    "langchain_tool": [
+      "examples/hybrid/langchain_tool_demo.ainl"
+    ],
+    "tool_registry": [
+      "examples/hyperspace_demo.ainl",
+      "examples/test_adapters_full.ainl"
+    ],
+    "code_context": [
+      "examples/code_context_demo.ainl",
+      "examples/wishlist/08_code_review_context.ainl"
+    ],
+    "memory": [
+      "examples/wishlist/01_cache_and_memory.ainl",
+      "examples/wishlist/06_feedback_memory.ainl",
+      "examples/openclaw_full_unification.ainl"
+    ],
+    "fanout": [
+      "examples/wishlist/03_parallel_fanout.ainl",
+      "examples/wishlist/07_parallel_http.ainl"
+    ],
+    "llm_query": [
+      "examples/wishlist/05_route_then_llm_mock.ainl"
+    ],
+    "llm": [
+      "examples/wishlist/05b_unified_llm_offline_config.ainl"
+    ]
+  },
+  "by_complexity": {
+    "intermediate": [
+      "examples/hello.ainl",
+      "examples/http/http_machine_payment_flow_compact.ainl",
+      "examples/browser/browser_visit_minimal.ainl",
+      "examples/compact/cache_lookup_compact.ainl",
+      "examples/compact/github_raw_fetch_compact.ainl",
+      "examples/rag/cache-warmer.ainl",
+      "examples/crm/simple-lead-router.ainl",
+      "examples/monitoring/solana-balance.ainl",
+      "examples/cron/monitor_and_alert.ainl",
+      "examples/enterprise/audit-log-demo.ainl",
+      "examples/hyperspace_demo.ainl",
+      "examples/solana_demo.ainl",
+      "examples/prediction_market_demo.ainl",
+      "examples/code_context_demo.ainl",
+      "examples/test_adapters_full.ainl",
+      "examples/test_phase2_common_modules.ainl",
+      "examples/wishlist/01_cache_and_memory.ainl",
+      "examples/wishlist/05_route_then_llm_mock.ainl",
+      "examples/wishlist/05b_unified_llm_offline_config.ainl",
+      "examples/wishlist/06_feedback_memory.ainl",
+      "corpus/example_monitor_alert/corrected_program.ainl",
+      "corpus/example_monitor_alert/program.ainl"
+    ],
+    "minimal": [
+      "examples/http_get_minimal.ainl",
+      "examples/compact/hello_compact.ainl",
+      "examples/compact/classifier_compact.ainl",
+      "examples/compact/openclaw_learning_handoff.ainl",
+      "examples/compact/fs_write_compact.ainl",
+      "examples/rag_pipeline.ainl",
+      "examples/crud_api.ainl",
+      "examples/scraper/basic_scraper.ainl",
+      "examples/web/basic_web_api.ainl",
+      "examples/retry_error_resilience.ainl",
+      "examples/if_call_workflow.ainl",
+      "examples/webhook_automation.ainl",
+      "examples/monitor_escalation.ainl",
+      "examples/status_branching.ainl",
+      "examples/timeout_demo.ainl",
+      "examples/timeout_memory_prune_demo.ainl",
+      "examples/hybrid/langchain_tool_demo.ainl",
+      "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+      "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+      "examples/test_nested.ainl",
+      "examples/wishlist/02_vector_semantic_search.ainl",
+      "examples/wishlist/03_parallel_fanout.ainl",
+      "examples/wishlist/04_validate_with_ext.ainl",
+      "examples/wishlist/07_parallel_http.ainl",
+      "examples/wishlist/08_code_review_context.ainl",
+      "examples/api_only.lang",
+      "examples/blog.lang",
+      "examples/ecom.lang",
+      "examples/internal_tool.lang",
+      "examples/ticketing.lang",
+      "examples/openclaw/daily_lead_summary.lang",
+      "examples/openclaw_full_unification.ainl",
+      "examples/test_if_var.ainl",
+      "examples/test_mul.ainl",
+      "examples/test_X_sub.ainl",
+      "corpus/example_basic_web_api/program.ainl",
+      "corpus/example_scraper_daily/program.ainl"
+    ]
+  },
+  "all_examples": [
+    {
+      "path": "examples/hello.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "ADD"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 26,
+      "complexity_tier": "intermediate",
+      "family": "core",
+      "description": "examples/hello.ainl"
+    },
+    {
+      "path": "examples/http_get_minimal.ainl",
+      "adapters": [
+        "core",
+        "http"
+      ],
+      "adapter_verbs": {
+        "http": [
+          "GET"
+        ],
+        "core": [
+          "GET"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 15,
+      "complexity_tier": "minimal",
+      "family": "http",
+      "description": "Minimal strict-valid HTTP GET (opcode style)."
+    },
+    {
+      "path": "examples/http/http_machine_payment_flow_compact.ainl",
+      "adapters": [
+        "core",
+        "http"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "EQ",
+          "GET"
+        ],
+        "http": [
+          "GET"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 41,
+      "complexity_tier": "intermediate",
+      "family": "http_payment",
+      "description": "HTTP machine payments (x402 / MPP) \u2014 graph shape + frame contract."
+    },
+    {
+      "path": "examples/browser/browser_visit_minimal.ainl",
+      "adapters": [
+        "browser"
+      ],
+      "adapter_verbs": {
+        "browser": [
+          "NAVIGATE",
+          "RUN_JS",
+          "WAIT"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 29,
+      "complexity_tier": "intermediate",
+      "family": "browser",
+      "description": "examples/browser/browser_visit_minimal.ainl"
+    },
+    {
+      "path": "examples/compact/hello_compact.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "ADD"
+        ]
+      },
+      "graph_name": "adder",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 7,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "examples/compact/hello_compact.ainl"
+    },
+    {
+      "path": "examples/compact/classifier_compact.ainl",
+      "adapters": [],
+      "adapter_verbs": {},
+      "graph_name": "classifier",
+      "inputs": [
+        "level",
+        "message"
+      ],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 14,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "examples/compact/classifier_compact.ainl"
+    },
+    {
+      "path": "examples/compact/cache_lookup_compact.ainl",
+      "adapters": [
+        "cache",
+        "http"
+      ],
+      "adapter_verbs": {
+        "cache": [
+          "get",
+          "set"
+        ],
+        "http": [
+          "GET"
+        ]
+      },
+      "graph_name": "cached_fetch",
+      "inputs": [
+        "url"
+      ],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 13,
+      "complexity_tier": "intermediate",
+      "family": "http",
+      "description": "examples/compact/cache_lookup_compact.ainl"
+    },
+    {
+      "path": "examples/compact/openclaw_learning_handoff.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "CONCAT"
+        ]
+      },
+      "graph_name": "openclaw_handoff",
+      "inputs": [
+        "digest_summary"
+      ],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 9,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "OpenClaw \u2194 AINL pipeline handoff (template)."
+    },
+    {
+      "path": "examples/compact/github_raw_fetch_compact.ainl",
+      "adapters": [
+        "core",
+        "http",
+        "shell_exec"
+      ],
+      "adapter_verbs": {
+        "shell_exec": [
+          "RUN"
+        ],
+        "core": [
+          "CONCAT",
+          "GET"
+        ],
+        "http": [
+          "GET"
+        ]
+      },
+      "graph_name": "github_raw_fetch",
+      "inputs": [
+        "owner",
+        "repo",
+        "branch",
+        "path"
+      ],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 25,
+      "complexity_tier": "intermediate",
+      "family": "http",
+      "description": "GitHub raw-file fetch (compact syntax)."
+    },
+    {
+      "path": "examples/compact/fs_write_compact.ainl",
+      "adapters": [
+        "core",
+        "fs"
+      ],
+      "adapter_verbs": {
+        "fs": [
+          "write"
+        ],
+        "core": [
+          "CONCAT",
+          "GET"
+        ]
+      },
+      "graph_name": "fs_writer",
+      "inputs": [
+        "output_path",
+        "content"
+      ],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 20,
+      "complexity_tier": "minimal",
+      "family": "filesystem",
+      "description": "examples/compact/fs_write_compact.ainl"
+    },
+    {
+      "path": "examples/rag_pipeline.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "ADD"
+        ]
+      },
+      "graph_name": "L9",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 4,
+      "complexity_tier": "minimal",
+      "family": "rag",
+      "description": ""
+    },
+    {
+      "path": "examples/rag/cache-warmer.ainl",
+      "adapters": [
+        "vector_memory"
+      ],
+      "adapter_verbs": {
+        "vector_memory": [
+          "SEARCH",
+          "UPSERT"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 27,
+      "complexity_tier": "intermediate",
+      "family": "rag",
+      "description": "examples/rag/cache-warmer.ainl"
+    },
+    {
+      "path": "examples/crud_api.ainl",
+      "adapters": [],
+      "adapter_verbs": {},
+      "graph_name": "",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 3,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/crm/simple-lead-router.ainl",
+      "adapters": [
+        "crm_db"
+      ],
+      "adapter_verbs": {
+        "crm_db": [
+          "P"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 36,
+      "complexity_tier": "intermediate",
+      "family": "crm",
+      "description": "examples/crm/simple-lead-router.ainl"
+    },
+    {
+      "path": "examples/scraper/basic_scraper.ainl",
+      "adapters": [
+        "db",
+        "http"
+      ],
+      "adapter_verbs": {
+        "http": [
+          "GET"
+        ],
+        "db": [
+          "C"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 8,
+      "complexity_tier": "minimal",
+      "family": "http",
+      "description": ""
+    },
+    {
+      "path": "examples/web/basic_web_api.ainl",
+      "adapters": [
+        "db"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 6,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/retry_error_resilience.ainl",
+      "adapters": [
+        "ext"
+      ],
+      "adapter_verbs": {
+        "ext": [
+          "OP"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": true,
+      "line_count": 8,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/if_call_workflow.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "CONCAT"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 15,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/webhook_automation.ainl",
+      "adapters": [
+        "http"
+      ],
+      "adapter_verbs": {
+        "http": [
+          "POST"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 10,
+      "complexity_tier": "minimal",
+      "family": "http",
+      "description": ""
+    },
+    {
+      "path": "examples/monitor_escalation.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "MAX"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 12,
+      "complexity_tier": "minimal",
+      "family": "monitoring",
+      "description": ""
+    },
+    {
+      "path": "examples/monitoring/solana-balance.ainl",
+      "adapters": [
+        "solana"
+      ],
+      "adapter_verbs": {
+        "solana": [
+          "GET_BALANCE"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 27,
+      "complexity_tier": "intermediate",
+      "family": "blockchain",
+      "description": "examples/monitoring/solana-balance.ainl"
+    },
+    {
+      "path": "examples/cron/monitor_and_alert.ainl",
+      "adapters": [
+        "db",
+        "http"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F"
+        ],
+        "http": [
+          "Post"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 13,
+      "complexity_tier": "intermediate",
+      "family": "http",
+      "description": ""
+    },
+    {
+      "path": "examples/status_branching.ainl",
+      "adapters": [],
+      "adapter_verbs": {},
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 9,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/enterprise/audit-log-demo.ainl",
+      "adapters": [],
+      "adapter_verbs": {},
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": true,
+      "line_count": 51,
+      "complexity_tier": "intermediate",
+      "family": "core",
+      "description": "examples/enterprise/audit-log-demo.ainl"
+    },
+    {
+      "path": "examples/timeout_demo.ainl",
+      "adapters": [],
+      "adapter_verbs": {},
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 8,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "timeout_demo.ainl"
+    },
+    {
+      "path": "examples/timeout_memory_prune_demo.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "parse"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 16,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "examples/timeout_memory_prune_demo.ainl"
+    },
+    {
+      "path": "examples/hybrid/langchain_tool_demo.ainl",
+      "adapters": [
+        "langchain_tool"
+      ],
+      "adapter_verbs": {
+        "langchain_tool": [
+          "my_search_tool"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 20,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "examples/hybrid/langchain_tool_demo.ainl"
+    },
+    {
+      "path": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "stringify",
+          "sub"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 10,
+      "complexity_tier": "minimal",
+      "family": "monitoring",
+      "description": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl"
+    },
+    {
+      "path": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "stringify",
+          "sub"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 10,
+      "complexity_tier": "minimal",
+      "family": "monitoring",
+      "description": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl"
+    },
+    {
+      "path": "examples/hyperspace_demo.ainl",
+      "adapters": [
+        "core",
+        "tool_registry",
+        "vector_memory"
+      ],
+      "adapter_verbs": {
+        "vector_memory": [
+          "SEARCH",
+          "UPSERT"
+        ],
+        "tool_registry": [
+          "DISCOVER",
+          "LIST",
+          "REGISTER"
+        ],
+        "core": [
+          "STRINGIFY",
+          "concat"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 45,
+      "complexity_tier": "intermediate",
+      "family": "core",
+      "description": "examples/hyperspace_demo.ainl"
+    },
+    {
+      "path": "examples/solana_demo.ainl",
+      "adapters": [
+        "core",
+        "solana"
+      ],
+      "adapter_verbs": {
+        "solana": [
+          "GET_ACCOUNT",
+          "GET_BALANCE",
+          "GET_LATEST_BLOCKHASH",
+          "GET_SIGNATURES_FOR_ADDRESS",
+          "SIMULATE_EVENTS",
+          "VERB"
+        ],
+        "core": [
+          "STRINGIFY"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 23,
+      "complexity_tier": "intermediate",
+      "family": "blockchain",
+      "description": "examples/solana_demo.ainl"
+    },
+    {
+      "path": "examples/prediction_market_demo.ainl",
+      "adapters": [
+        "core",
+        "solana"
+      ],
+      "adapter_verbs": {
+        "solana": [
+          "DERIVE_PDA",
+          "GET_LATEST_BLOCKHASH",
+          "GET_MARKET_STATE",
+          "GET_PYTH_PRICE",
+          "HERMES_FALLBACK",
+          "INVOKE"
+        ],
+        "core": [
+          "STRINGIFY"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 38,
+      "complexity_tier": "intermediate",
+      "family": "blockchain",
+      "description": "examples/prediction_market_demo.ainl"
+    },
+    {
+      "path": "examples/code_context_demo.ainl",
+      "adapters": [
+        "code_context"
+      ],
+      "adapter_verbs": {
+        "code_context": [
+          "COMPRESS_CONTEXT",
+          "GET_DEPENDENCIES",
+          "GET_IMPACT",
+          "GET_SKELETON",
+          "INDEX",
+          "QUERY_CONTEXT",
+          "STATS"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 31,
+      "complexity_tier": "intermediate",
+      "family": "core",
+      "description": "examples/code_context_demo.ainl"
+    },
+    {
+      "path": "examples/test_adapters_full.ainl",
+      "adapters": [
+        "core",
+        "tool_registry",
+        "vector_memory"
+      ],
+      "adapter_verbs": {
+        "vector_memory": [
+          "SEARCH",
+          "UPSERT"
+        ],
+        "tool_registry": [
+          "DISCOVER",
+          "GET",
+          "LIST",
+          "REGISTER"
+        ],
+        "core": [
+          "STRINGIFY",
+          "concat"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 31,
+      "complexity_tier": "intermediate",
+      "family": "core",
+      "description": "examples/test_adapters_full.ainl"
+    },
+    {
+      "path": "examples/test_nested.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "mul"
+        ]
+      },
+      "graph_name": "",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 1,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/test_phase2_common_modules.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "ECHO"
+        ]
+      },
+      "graph_name": "L1",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 51,
+      "complexity_tier": "intermediate",
+      "family": "core",
+      "description": "examples/test_phase2_common_modules.ainl"
+    },
+    {
+      "path": "examples/wishlist/01_cache_and_memory.ainl",
+      "adapters": [
+        "cache",
+        "core",
+        "memory"
+      ],
+      "adapter_verbs": {
+        "cache": [
+          "GET",
+          "SET"
+        ],
+        "core": [
+          "concat",
+          "parse"
+        ],
+        "memory": [
+          "PUT"
+        ]
+      },
+      "graph_name": "wishlist_01_cache_and_memory",
+      "inputs": [
+        "session_key",
+        "note"
+      ],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 21,
+      "complexity_tier": "intermediate",
+      "family": "cache",
+      "description": "1) Knowledge caching + structured memory (AINL: cache + memory adapters)."
+    },
+    {
+      "path": "examples/wishlist/02_vector_semantic_search.ainl",
+      "adapters": [
+        "core",
+        "vector_memory"
+      ],
+      "adapter_verbs": {
+        "vector_memory": [
+          "SEARCH",
+          "UPSERT"
+        ],
+        "core": [
+          "filter_high_score"
+        ]
+      },
+      "graph_name": "wishlist_02_vector_semantic_search",
+      "inputs": [
+        "namespace",
+        "doc_id",
+        "text",
+        "query"
+      ],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 16,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "2) Semantic-ish retrieval via vector_memory (keyword overlap scoring in core repo)."
+    },
+    {
+      "path": "examples/wishlist/03_parallel_fanout.ainl",
+      "adapters": [
+        "fanout"
+      ],
+      "adapter_verbs": {
+        "fanout": [
+          "ALL"
+        ]
+      },
+      "graph_name": "wishlist_03_parallel_fanout",
+      "inputs": [
+        "fan_json"
+      ],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 12,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "3) Parallel tool execution \u2014 fanout.ALL over adapter plans (thread pool)."
+    },
+    {
+      "path": "examples/wishlist/04_validate_with_ext.ainl",
+      "adapters": [
+        "ext"
+      ],
+      "adapter_verbs": {
+        "ext": [
+          "EXEC"
+        ]
+      },
+      "graph_name": "wishlist_04_validate_with_ext",
+      "inputs": [
+        "py_file"
+      ],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 14,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "4) Automated validation \u2014 ext.EXEC runs a subprocess (e.g. py_compile)."
+    },
+    {
+      "path": "examples/wishlist/05_route_then_llm_mock.ainl",
+      "adapters": [
+        "core",
+        "llm_query"
+      ],
+      "adapter_verbs": {
+        "llm_query": [
+          "QUERY"
+        ],
+        "core": [
+          "contains"
+        ]
+      },
+      "graph_name": "wishlist_05_route_then_llm_mock",
+      "inputs": [
+        "user_query"
+      ],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 20,
+      "complexity_tier": "intermediate",
+      "family": "llm",
+      "description": "5) Multi-model orchestration \u2014 route by keyword, then llm_query (mock or real bridge)."
+    },
+    {
+      "path": "examples/wishlist/05b_unified_llm_offline_config.ainl",
+      "adapters": [
+        "core",
+        "llm"
+      ],
+      "adapter_verbs": {
+        "llm": [
+          "COMPLETION"
+        ],
+        "core": [
+          "GET",
+          "contains"
+        ]
+      },
+      "graph_name": "wishlist_05b_unified_llm_offline_config",
+      "inputs": [
+        "user_query"
+      ],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 22,
+      "complexity_tier": "intermediate",
+      "family": "llm",
+      "description": "5b) Same routing as 05 \u2014 unified `llm` adapter + config.yaml (see docs/LLM_ADAPTER_USAGE.md)."
+    },
+    {
+      "path": "examples/wishlist/06_feedback_memory.ainl",
+      "adapters": [
+        "core",
+        "memory"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "concat",
+          "parse"
+        ],
+        "memory": [
+          "APPEND",
+          "GET"
+        ]
+      },
+      "graph_name": "wishlist_06_feedback_memory",
+      "inputs": [
+        "session_id",
+        "correction"
+      ],
+      "has_branching": false,
+      "has_loop": true,
+      "has_error_handling": false,
+      "line_count": 17,
+      "complexity_tier": "intermediate",
+      "family": "memory",
+      "description": "6) Persistent learning loop \u2014 memory.APPEND for corrections; memory.GET reads prior turn payload."
+    },
+    {
+      "path": "examples/wishlist/07_parallel_http.ainl",
+      "adapters": [
+        "fanout"
+      ],
+      "adapter_verbs": {
+        "fanout": [
+          "ALL"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 15,
+      "complexity_tier": "minimal",
+      "family": "http",
+      "description": "7) Real-time data enrichment \u2014 parallel HTTP GET via fanout (independent I/O)."
+    },
+    {
+      "path": "examples/wishlist/08_code_review_context.ainl",
+      "adapters": [
+        "code_context",
+        "core"
+      ],
+      "adapter_verbs": {
+        "code_context": [
+          "COMPRESS_CONTEXT",
+          "INDEX",
+          "QUERY_CONTEXT"
+        ],
+        "core": [
+          "concat"
+        ]
+      },
+      "graph_name": "wishlist_08_code_review_context",
+      "inputs": [
+        "R",
+        "code_context.INDEX",
+        "\"examples/wishlist\"",
+        "->_idx"
+      ],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 17,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "8) Code-review style context pack \u2014 INDEX then QUERY + COMPRESS (sequential; code_context is not fanout-safe)."
+    },
+    {
+      "path": "examples/api_only.lang",
+      "adapters": [
+        "db"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F",
+          "P"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 19,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "API-only: no frontend, core service and types"
+    },
+    {
+      "path": "examples/blog.lang",
+      "adapters": [
+        "db"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F",
+          "P"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 42,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "Blog: posts and comments, full stack"
+    },
+    {
+      "path": "examples/ecom.lang",
+      "adapters": [
+        "db"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 42,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "Ecom dashboard + Stripe pay (explicit E binding + routes, layout, forms, tables, events)"
+    },
+    {
+      "path": "examples/internal_tool.lang",
+      "adapters": [
+        "db"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F",
+          "P"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 37,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "Internal tool: tasks and users (API + minimal frontend)"
+    },
+    {
+      "path": "examples/ticketing.lang",
+      "adapters": [
+        "db"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F",
+          "P"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 48,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "Ticketing: events and tickets"
+    },
+    {
+      "path": "examples/openclaw/daily_lead_summary.lang",
+      "adapters": [],
+      "adapter_verbs": {},
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 18,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": "Daily Lead Summary (simplified)"
+    },
+    {
+      "path": "examples/openclaw_full_unification.ainl",
+      "adapters": [
+        "core",
+        "http",
+        "memory"
+      ],
+      "adapter_verbs": {
+        "http": [
+          "GET"
+        ],
+        "core": [
+          "concat"
+        ],
+        "memory": [
+          "put"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 9,
+      "complexity_tier": "minimal",
+      "family": "http",
+      "description": "Meta-supervisor sample \u2014 polls health endpoint and writes a status log entry."
+    },
+    {
+      "path": "examples/test_if_var.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "sub"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 11,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/test_mul.ainl",
+      "adapters": [
+        "core"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "mul",
+          "sub"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 6,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "examples/test_X_sub.ainl",
+      "adapters": [],
+      "adapter_verbs": {},
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 6,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "corpus/example_basic_web_api/program.ainl",
+      "adapters": [
+        "db"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 6,
+      "complexity_tier": "minimal",
+      "family": "core",
+      "description": ""
+    },
+    {
+      "path": "corpus/example_scraper_daily/program.ainl",
+      "adapters": [
+        "db",
+        "http"
+      ],
+      "adapter_verbs": {
+        "http": [
+          "Get"
+        ],
+        "db": [
+          "C"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 7,
+      "complexity_tier": "minimal",
+      "family": "http",
+      "description": ""
+    },
+    {
+      "path": "corpus/example_monitor_alert/corrected_program.ainl",
+      "adapters": [
+        "db",
+        "http"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F"
+        ],
+        "http": [
+          "Post"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 13,
+      "complexity_tier": "intermediate",
+      "family": "http",
+      "description": ""
+    },
+    {
+      "path": "corpus/example_monitor_alert/program.ainl",
+      "adapters": [
+        "db",
+        "http"
+      ],
+      "adapter_verbs": {
+        "db": [
+          "F"
+        ],
+        "http": [
+          "Post"
+        ]
+      },
+      "graph_name": "core",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 13,
+      "complexity_tier": "intermediate",
+      "family": "http",
+      "description": ""
+    }
+  ]
+}

@@ -3,12 +3,12 @@ revision = 3
 requires-python = ">=3.10"
 
 [options]
-exclude-newer = "2026-04-16T01:04:29.449542Z"
+exclude-newer = "2026-04-19T07:03:32.004082Z"
 exclude-newer-span = "P7D"
 
 [[package]]
 name = "ainativelang"
-version = "1.7.1"
+version = "1.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

@@ -93,6 +93,8 @@ from tooling.ainl_get_started import (
     reverse_engineer_corpus as reverse_engineer_ainl_corpus,
     reverse_engineer_source as reverse_engineer_ainl_source,
     step_examples as ainl_get_started_step_examples,
+    WizardState,
+    wizard_state_from_tool_result,
 )
 from tooling.graph_diff import graph_diff
 from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
@@ -148,6 +150,33 @@ def _read_allowlisted_repo_subpath(rel: str) -> str:
         return f"# Error\nfailed to read `{rel}`: {exc}\n"
 
 
+def _augment_with_wizard_state(
+    result: Dict[str, Any],
+    tool_name: str,
+    wizard_state_json: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Augment a tool result with updated wizard state if provided.
+
+    If ``wizard_state_json`` is provided, updates the wizard state based on
+    the tool result and includes the updated state in the response.
+    """
+    if wizard_state_json is None:
+        return result
+    try:
+        state = WizardState.from_dict(wizard_state_json)
+        state = wizard_state_from_tool_result(state, tool_name, result)
+        result["wizard_state_json"] = state.to_dict()
+        result["wizard_stage"] = state.stage.value
+        result["wizard_checkpoints_complete"] = [
+            k for k, v in state.checkpoints.items()
+            if v.status.value == "complete"
+        ]
+        result["wizard_blocking_checkpoints"] = state.blocking_checkpoints
+    except Exception:
+        pass
+    return result
+
+
 # Catalog entries for ainl_capabilities (filtered by current MCP resource exposure).
 _MCP_INTEGRATION_RESOURCE_CATALOG: List[Dict[str, str]] = [
     {
@@ -191,6 +220,11 @@ _MCP_INTEGRATION_RESOURCE_CATALOG: List[Dict[str, str]] = [
         "summary": "JSON list of repo paths from tooling/artifact_profiles.json strict-valid; safe templates for --strict CI.",
     },
     {
+        "uri": "ainl://strict-valid-families",
+        "title": "Strict-valid family index (mined)",
+        "summary": "JSON from corpus/strict_valid_family_index.json — adapter families, by_adapter paths, generated via tooling/corpus_mining.py.",
+    },
+    {
         "uri": "ainl://adapter-contracts",
         "title": "Adapter contracts bundle",
         "summary": "JSON bundle of deterministic ainl_adapter_contract payloads (http, fs, browser, …).",
@@ -216,6 +250,7 @@ _DEFAULT_LIMITS: Dict[str, Any] = dict(_MCP_DEFAULT_LIMITS)
 # NOTE: These lists are part of the testing contract for exposure scoping.
 ALL_TOOL_NAMES: List[str] = [
     "ainl_get_started",
+    "ainl_step_examples",
     "ainl_adapter_contract",
     "ainl_validate",
     "ainl_compile",
@@ -239,6 +274,7 @@ ALL_RESOURCE_URIS: List[str] = [
     "ainl://authoring-cheatsheet",
     "ainl://strict-authoring-cheatsheet",
     "ainl://strict-valid-examples",
+    "ainl://strict-valid-families",
     "ainl://adapter-contracts",
     "ainl://impact-checklist",
     "ainl://adapter-risk-matrix",
@@ -1297,8 +1333,52 @@ def _runtime_readiness_from_ir(ir: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-# Lightweight contract check (Track 1.2): compare IR `R` lines for http/fs to `tooling/ainl_get_started` ADAPTER_CONTRACTS.
-_CONTRACT_CHECK_ADAPTERS: Set[str] = {"http", "fs"}
+# Lightweight contract check (Track 1.2): compare IR `R` lines to `tooling/ainl_get_started` ADAPTER_CONTRACTS.
+_CONTRACT_CHECK_ADAPTERS: Set[str] = {"http", "fs", "cache", "browser", "queue", "memory"}
+
+
+class ContractValidationStatus:
+    """Explicit contract verification statuses for validate/compile responses."""
+
+    SYNTAX_VALID_CONTRACT_VERIFIED = "syntax_valid_contract_verified"
+    SYNTAX_VALID_CONTRACT_UNKNOWN = "syntax_valid_contract_unknown"
+    SYNTAX_VALID_CONTRACT_MISMATCH = "syntax_valid_contract_mismatch"
+
+
+def _determine_contract_validation_status(
+    ir: Dict[str, Any],
+    contract_items: List[Dict[str, Any]],
+) -> Tuple[str, List[str], List[str]]:
+    """Determine the contract validation status from IR analysis.
+
+    Returns:
+        (status, verified_adapters, unknown_adapters)
+    """
+    from tooling.ainl_get_started import ADAPTER_CONTRACTS
+
+    adapters_used: Set[str] = set()
+    for _lbl, body in (ir.get("labels") or {}).items():
+        if not isinstance(body, dict):
+            continue
+        for node in body.get("nodes") or []:
+            if not isinstance(node, dict) or node.get("op") != "R":
+                continue
+            data = node.get("data")
+            if not isinstance(data, dict):
+                continue
+            src = _r_node_adapter_src(data)
+            if src and src != "core":
+                adapters_used.add(src)
+
+    verified = [a for a in adapters_used if a in ADAPTER_CONTRACTS]
+    unknown = [a for a in adapters_used if a not in ADAPTER_CONTRACTS and a not in _CONTRACT_CHECK_ADAPTERS]
+
+    if contract_items:
+        return ContractValidationStatus.SYNTAX_VALID_CONTRACT_MISMATCH, verified, unknown
+    elif unknown:
+        return ContractValidationStatus.SYNTAX_VALID_CONTRACT_UNKNOWN, verified, unknown
+    else:
+        return ContractValidationStatus.SYNTAX_VALID_CONTRACT_VERIFIED, verified, unknown
 
 
 def _r_node_adapter_src(data: Dict[str, Any]) -> str:
@@ -1391,15 +1471,22 @@ def _merge_contract_alignment_into_output(out: Dict[str, Any], ir: Dict[str, Any
     if not ok_graph:
         return
     w, items = _contract_alignment_hints_from_ir(ir)
-    if not w:
-        return
-    ow = [str(x) for x in (out.get("warnings") or []) if isinstance(x, str)]
-    out["warnings"] = ow + w
+    status, verified, unknown = _determine_contract_validation_status(ir, items)
+
+    out["contract_validation_status"] = status
+
+    if w:
+        ow = [str(x) for x in (out.get("warnings") or []) if isinstance(x, str)]
+        out["warnings"] = ow + w
+
     out["contract_alignment"] = {
-        "schema_version": "1.0.0",
-        "severity": "warning",
+        "schema_version": "1.1.0",
+        "status": status,
+        "severity": "warning" if items else "info",
+        "verified_adapters": verified,
+        "unknown_adapters": unknown,
         "adapters_checked": sorted(_CONTRACT_CHECK_ADAPTERS),
-        "items": items,
+        "mismatched_calls": items,
         "source_of_truth": (
             "Authoritative full verb sets: `tooling/adapter_manifest.json` (strict_summary, ainl_capabilities) "
             "and runtime adapters; this check uses `ADAPTER_CONTRACTS` in `tooling/ainl_get_started.py` (MCP contract bundle)."
@@ -1573,6 +1660,7 @@ def ainl_get_started(
     diagnostics: Optional[dict] = None,
     capabilities_snapshot: Optional[dict] = None,
     adapter_contracts_snapshot: Optional[dict] = None,
+    wizard_state_json: Optional[dict] = None,
     reverse_source: Optional[str] = None,
     reverse_path: Optional[str] = None,
     reverse_paths: Optional[List[str]] = None,
@@ -1589,6 +1677,10 @@ def ainl_get_started(
     (how ArmaraOS / inference ``deterministic_plan`` + ``follow_ups`` relates to MCP
     authoring). It can also return step-local examples without advancing the wizard,
     or reverse-engineer existing AINL source into human-like goals for fixture/corpus building.
+
+    For session continuity, pass the ``wizard_state_json`` from a previous call to
+    resume from the last checkpoint state. The response includes an updated
+    ``wizard_state_json`` that can be passed to subsequent calls.
     """
     if current_step or request_examples_for:
         return ainl_get_started_step_examples(
@@ -1636,6 +1728,7 @@ def ainl_get_started(
         diagnostics=diagnostics,
         capabilities_snapshot=capabilities_snapshot,
         adapter_contracts_snapshot=adapter_contracts_snapshot,
+        wizard_state_json=wizard_state_json,
     )
 
 
@@ -1656,6 +1749,43 @@ def ainl_adapter_contract(adapter: str, detail_level: str = "standard") -> dict:
             "next_step": "Call ainl_adapter_contract with an adapter name, e.g. {'adapter': 'http'} or {'adapter': 'http_or_browser'}.",
         }
     return ainl_adapter_contract_payload(adapter, detail_level=detail_level)
+
+
+@_register_tool
+def ainl_step_examples(
+    current_step: str = "",
+    request_examples_for: Optional[str] = None,
+    example_count: int = 3,
+    include_corpus_references: bool = True,
+) -> dict:
+    """Return code examples for a specific wizard step or adapter topic.
+
+    Use this to get snippet examples for a particular adapter or workflow step
+    without advancing wizard state. Good for incremental authoring when you
+    want examples for a specific topic (fs, browser, http, cache, etc.).
+
+    Args:
+        current_step: Current wizard step name (e.g. "write_output").
+        request_examples_for: Topic to get examples for (e.g. "fs", "browser", "http").
+        example_count: Maximum number of examples to return (default 3).
+        include_corpus_references: Include paths to strict-valid corpus files.
+
+    Returns:
+        Examples with code snippets and optional corpus file references.
+    """
+    result = ainl_get_started_step_examples(
+        current_step=current_step or "",
+        request_examples_for=request_examples_for,
+        example_count=example_count,
+        include_corpus_references=include_corpus_references,
+    )
+    result["ok"] = True
+    result["schema_version"] = "1.0.0"
+    result["recommended_next_tools"] = [
+        t for t in ["ainl_validate", "ainl_compile", "ainl_adapter_contract"]
+        if t in _ALLOWED_TOOLS
+    ]
+    return result
 
 
 @_register_tool
@@ -2539,6 +2669,28 @@ def strict_authoring_cheatsheet_resource() -> str:
 def strict_valid_examples_resource() -> str:
     """JSON index of CI `strict-valid` paths from tooling/artifact_profiles.json."""
     return _strict_valid_examples_json()
+
+
+def _strict_valid_families_json() -> str:
+    """JSON mined index: families, by_adapter, examples (see tooling/corpus_mining.py)."""
+    path = _REPO_ROOT / "corpus" / "strict_valid_family_index.json"
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": str(exc),
+                "hint": "Run: python -m tooling.corpus_mining generate-family-index",
+            },
+            indent=2,
+        )
+
+
+@_register_resource("ainl://strict-valid-families")
+def strict_valid_families_resource() -> str:
+    """Mined strict-valid family index (corpus/strict_valid_family_index.json)."""
+    return _strict_valid_families_json()
 
 
 @_register_resource("ainl://adapter-contracts")

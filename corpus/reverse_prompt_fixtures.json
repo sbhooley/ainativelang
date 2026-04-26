@@ -1,0 +1,1060 @@
+{
+  "schema_version": "1.0",
+  "fixture_count": 59,
+  "fixtures": [
+    {
+      "id": "hello",
+      "path": "examples/hello.ainl",
+      "family": "core",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/hello.ainl",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.ADD"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": ""
+    },
+    {
+      "id": "http_get_minimal",
+      "path": "examples/http_get_minimal.ainl",
+      "family": "http",
+      "complexity": "minimal",
+      "natural_language_goal": "Minimal strict-valid HTTP GET (opcode style).",
+      "expected_adapters": [
+        "core",
+        "http"
+      ],
+      "expected_verbs": [
+        "http.GET",
+        "core.GET"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S app core noop\nL_main:\n  R http.GET \"https://example.com/\" ->res\n  R core.GET [\"status\"] res ->st\n  J st"
+    },
+    {
+      "id": "http_machine_payment_flow_compact",
+      "path": "examples/http/http_machine_payment_flow_compact.ainl",
+      "family": "http_payment",
+      "complexity": "intermediate",
+      "natural_language_goal": "HTTP machine payments (x402 / MPP) \u2014 graph shape + frame contract.",
+      "expected_adapters": [
+        "core",
+        "http"
+      ],
+      "expected_verbs": [
+        "core.EQ",
+        "core.GET",
+        "http.GET"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": ""
+    },
+    {
+      "id": "browser_visit_minimal",
+      "path": "examples/browser/browser_visit_minimal.ainl",
+      "family": "browser",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/browser/browser_visit_minimal.ainl",
+      "expected_adapters": [
+        "browser"
+      ],
+      "expected_verbs": [
+        "browser.NAVIGATE",
+        "browser.RUN_JS",
+        "browser.WAIT"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": ""
+    },
+    {
+      "id": "hello_compact",
+      "path": "examples/compact/hello_compact.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "examples/compact/hello_compact.ainl",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.ADD"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "adder:\n  result = core.ADD 2 3\n  out result"
+    },
+    {
+      "id": "classifier_compact",
+      "path": "examples/compact/classifier_compact.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "examples/compact/classifier_compact.ainl",
+      "expected_adapters": [],
+      "expected_verbs": [],
+      "expected_inputs": [
+        "level",
+        "message"
+      ],
+      "has_branching": true,
+      "source_snippet": "classifier:\n  in: level message\n  if level == \"critical\":\n    out \"ALERT: critical\"\n  if level == \"warning\":\n    out \"WARN: warning\"\n  out \"INFO: logged\""
+    },
+    {
+      "id": "cache_lookup_compact",
+      "path": "examples/compact/cache_lookup_compact.ainl",
+      "family": "http",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/compact/cache_lookup_compact.ainl",
+      "expected_adapters": [
+        "cache",
+        "http"
+      ],
+      "expected_verbs": [
+        "cache.get",
+        "cache.set",
+        "http.GET"
+      ],
+      "expected_inputs": [
+        "url"
+      ],
+      "has_branching": true,
+      "source_snippet": "cached_fetch:\n  in: url\n  cached = cache.get url\n  if cached:\n    out cached\n  fresh = http.GET url\n  cache.set url fresh\n  out fresh"
+    },
+    {
+      "id": "openclaw_learning_handoff",
+      "path": "examples/compact/openclaw_learning_handoff.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "OpenClaw \u2194 AINL pipeline handoff (template).",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.CONCAT"
+      ],
+      "expected_inputs": [
+        "digest_summary"
+      ],
+      "has_branching": false,
+      "source_snippet": "openclaw_handoff:\n  in: digest_summary\n  merged = core.CONCAT \"openclaw_stage=ainl_ingest \" digest_summary\n  out merged"
+    },
+    {
+      "id": "github_raw_fetch_compact",
+      "path": "examples/compact/github_raw_fetch_compact.ainl",
+      "family": "http",
+      "complexity": "intermediate",
+      "natural_language_goal": "GitHub raw-file fetch (compact syntax).",
+      "expected_adapters": [
+        "core",
+        "http",
+        "shell_exec"
+      ],
+      "expected_verbs": [
+        "shell_exec.RUN",
+        "core.CONCAT",
+        "core.GET",
+        "http.GET"
+      ],
+      "expected_inputs": [
+        "owner",
+        "repo",
+        "branch",
+        "path"
+      ],
+      "has_branching": false,
+      "source_snippet": ""
+    },
+    {
+      "id": "fs_write_compact",
+      "path": "examples/compact/fs_write_compact.ainl",
+      "family": "filesystem",
+      "complexity": "minimal",
+      "natural_language_goal": "examples/compact/fs_write_compact.ainl",
+      "expected_adapters": [
+        "core",
+        "fs"
+      ],
+      "expected_verbs": [
+        "fs.write",
+        "core.CONCAT",
+        "core.GET"
+      ],
+      "expected_inputs": [
+        "output_path",
+        "content"
+      ],
+      "has_branching": false,
+      "source_snippet": "fs_writer:\n  in: output_path content\n  result = fs.write output_path content"
+    },
+    {
+      "id": "rag_pipeline",
+      "path": "examples/rag_pipeline.ainl",
+      "family": "rag",
+      "complexity": "minimal",
+      "natural_language_goal": "RAG pipeline: rag pipeline",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.ADD"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "L1: Call L9 ->out J out\nL9:\n  R core.ADD 40 2 ->v\n  J v"
+    },
+    {
+      "id": "cache-warmer",
+      "path": "examples/rag/cache-warmer.ainl",
+      "family": "rag",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/rag/cache-warmer.ainl",
+      "expected_adapters": [
+        "vector_memory"
+      ],
+      "expected_verbs": [
+        "vector_memory.SEARCH",
+        "vector_memory.UPSERT"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S app core noop\nL_start:\n  X ops_budget 100\n  X ops_used 2"
+    },
+    {
+      "id": "crud_api",
+      "path": "examples/crud_api.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: crud api",
+      "expected_adapters": [],
+      "expected_verbs": [],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "L1: Set flag true If flag ->L2 ->L3\nL2: Set out \"ok\" J out\nL3: Set out \"bad\" J out"
+    },
+    {
+      "id": "simple-lead-router",
+      "path": "examples/crm/simple-lead-router.ainl",
+      "family": "crm",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/crm/simple-lead-router.ainl",
+      "expected_adapters": [
+        "crm_db"
+      ],
+      "expected_verbs": [
+        "crm_db.P"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S app core noop\nL_start:\n  X route_budget 100\n  X routes_used 0\n  X policy_ok (core.gt route_budget routes_used)\n  If policy_ok ->L_eval ->L_blocked"
+    },
+    {
+      "id": "basic_scraper",
+      "path": "examples/scraper/basic_scraper.ainl",
+      "family": "http",
+      "complexity": "minimal",
+      "natural_language_goal": "Make HTTP requests: basic scraper",
+      "expected_adapters": [
+        "db",
+        "http"
+      ],
+      "expected_verbs": [
+        "http.GET",
+        "db.C"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core cron\nSc products \"https://example.com/products\" title=.product-title price=.product-price\nCr L_scrape \"0 * * * *\"   # hourly\nL_scrape:\n  R http.GET \"https://example.com/products\" ->resp\n  R db.C Product * ->stored\n  J stored"
+    },
+    {
+      "id": "basic_web_api",
+      "path": "examples/web/basic_web_api.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: basic web api",
+      "expected_adapters": [
+        "db"
+      ],
+      "expected_verbs": [
+        "db.F"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core web /api\nE /users G ->L_users ->users\nL_users:\n  R db.F User * ->users\n  J users"
+    },
+    {
+      "id": "retry_error_resilience",
+      "path": "examples/retry_error_resilience.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: retry error resilience",
+      "expected_adapters": [
+        "ext"
+      ],
+      "expected_verbs": [
+        "ext.OP"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "L1:\n  R ext.OP \"unstable_task\" ->resp\n  Retry @n1 2 0\n  Err @n1 ->L_fail\n  J resp\nL_fail:\n  Set out \"failed_after_retries\"\n  J out"
+    },
+    {
+      "id": "if_call_workflow",
+      "path": "examples/if_call_workflow.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: if call workflow",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.CONCAT"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "L1:\n  Call L8 ->has_payload\n  If has_payload ->L2 ->L3\nL8:\n  Set v true\n  J v\nL2:\n  Call L9 ->out"
+    },
+    {
+      "id": "webhook_automation",
+      "path": "examples/webhook_automation.ainl",
+      "family": "http",
+      "complexity": "minimal",
+      "natural_language_goal": "Make HTTP requests: webhook automation",
+      "expected_adapters": [
+        "http"
+      ],
+      "expected_verbs": [
+        "http.POST"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "L1:\n  Set is_valid true\n  R http.POST \"https://example.com/automation\" \"event_webhook\" ->resp\n  If is_valid ->L2 ->L3\nL2:\n  Set out \"accepted\"\n  J out\nL3:"
+    },
+    {
+      "id": "monitor_escalation",
+      "path": "examples/monitor_escalation.ainl",
+      "family": "monitoring",
+      "complexity": "minimal",
+      "natural_language_goal": "Monitoring/alerting: monitor escalation",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.MAX"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S core cron\nCr L_tick \"*/5 * * * *\"\nL_tick:\n  R core.MAX 7 3 ->metric\n  If metric ->L_escalate ->L_noop\nL_escalate:\n  Set out \"escalate\"\n  J out"
+    },
+    {
+      "id": "solana-balance",
+      "path": "examples/monitoring/solana-balance.ainl",
+      "family": "blockchain",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/monitoring/solana-balance.ainl",
+      "expected_adapters": [
+        "solana"
+      ],
+      "expected_verbs": [
+        "solana.GET_BALANCE"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S app core noop\nL_start:\n  R solana.GET_BALANCE \"11111111111111111111111111111111\" ->bal\n  X lamports get bal lamports"
+    },
+    {
+      "id": "monitor_and_alert",
+      "path": "examples/cron/monitor_and_alert.ainl",
+      "family": "http",
+      "complexity": "intermediate",
+      "natural_language_goal": "Make HTTP requests: monitor and alert",
+      "expected_adapters": [
+        "db",
+        "http"
+      ],
+      "expected_verbs": [
+        "db.F",
+        "http.Post"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S core cron\nCr L_monitor \"*/5 * * * *\"   # every 5 minutes\nL_monitor:\n  R db.F Metric * ->metrics\n  If metrics ->L_alert ->L_ok\nL_alert:\n  R http.Post \"https://hook.example.com/alert\" metrics ->ack\n  J ack"
+    },
+    {
+      "id": "status_branching",
+      "path": "examples/status_branching.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: status branching",
+      "expected_adapters": [],
+      "expected_verbs": [],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "L1:\n  Set status \"ok\"\n  If status=ok ->L2 ->L3\nL2:\n  Set out \"ok\"\n  J out\nL3:\n  Set out \"alerted\""
+    },
+    {
+      "id": "audit-log-demo",
+      "path": "examples/enterprise/audit-log-demo.ainl",
+      "family": "core",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/enterprise/audit-log-demo.ainl",
+      "expected_adapters": [],
+      "expected_verbs": [],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": ""
+    },
+    {
+      "id": "timeout_demo",
+      "path": "examples/timeout_demo.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "timeout_demo.ainl",
+      "expected_adapters": [],
+      "expected_verbs": [],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "include \"modules/common/timeout.ainl\" as timeout\nL1:\n  Call timeout/ENTRY ->out\n  J out"
+    },
+    {
+      "id": "timeout_memory_prune_demo",
+      "path": "examples/timeout_memory_prune_demo.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "examples/timeout_memory_prune_demo.ainl",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.parse"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "include \"modules/common/timeout.ainl\" as timeout\nL1:\n  Call timeout/ENTRY ->out\n  R core.parse \"{\\\"source\\\":\\\"timeout_memory_demo\\\",\\\"confidence\\\":1.0,\\\"tags\\\":[\\\"demo\\\"],\\\"valid_at\\\":\\\"2026-01-01T00:00:00Z\\\"}\" ->memory_meta\n  R core.parse \"{\\\"tags_any\\\":[\\\"demo\\\"],\\\"source\\\":\\\"timeout_memory_demo\\\",\\\"limit\\\":10}\" ->memory_filters\n  R core.parse \"{\\\"step\\\":\\\"timeout_demo\\\"}\" ->record_payload\n  R memory put \"workflow\" \"demo_flow\" \"after_timeout\" record_payload 3600 memory_meta ->_w\n  R memory list \"workflow\" \"demo_flow\" \"after\" \"1970-01-01T00:00:00Z\" memory_filters ->hist"
+    },
+    {
+      "id": "langchain_tool_demo",
+      "path": "examples/hybrid/langchain_tool_demo.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "examples/hybrid/langchain_tool_demo.ainl",
+      "expected_adapters": [
+        "langchain_tool"
+      ],
+      "expected_verbs": [
+        "langchain_tool.my_search_tool"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "L1:"
+    },
+    {
+      "id": "monitoring_escalation",
+      "path": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+      "family": "monitoring",
+      "complexity": "minimal",
+      "natural_language_goal": "examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.stringify",
+        "core.sub"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "L1:\n  Set metric_value 42\n  Set threshold 40\n  R core.sub metric_value threshold ->diff\n  R core.stringify diff ->summary\n  J summary"
+    },
+    {
+      "id": "monitoring_durable",
+      "path": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+      "family": "monitoring",
+      "complexity": "minimal",
+      "natural_language_goal": "examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.stringify",
+        "core.sub"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "L1:\n  Set metric_value 42\n  Set threshold 40\n  R core.sub metric_value threshold ->diff\n  R core.stringify diff ->summary\n  J summary"
+    },
+    {
+      "id": "hyperspace_demo",
+      "path": "examples/hyperspace_demo.ainl",
+      "family": "core",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/hyperspace_demo.ainl",
+      "expected_adapters": [
+        "core",
+        "tool_registry",
+        "vector_memory"
+      ],
+      "expected_verbs": [
+        "vector_memory.SEARCH",
+        "vector_memory.UPSERT",
+        "tool_registry.DISCOVER",
+        "tool_registry.LIST",
+        "tool_registry.REGISTER",
+        "core.STRINGIFY",
+        "core.concat"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "include \"modules/common/guard.ainl\" as guard\ninclude \"modules/common/session_budget.ainl\" as sb\nL1:\n  Set guard_skip false\n  Set guard_tokens_used 0\n  Set guard_max_tokens 500"
+    },
+    {
+      "id": "solana_demo",
+      "path": "examples/solana_demo.ainl",
+      "family": "blockchain",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/solana_demo.ainl",
+      "expected_adapters": [
+        "core",
+        "solana"
+      ],
+      "expected_verbs": [
+        "solana.GET_ACCOUNT",
+        "solana.GET_BALANCE",
+        "solana.GET_LATEST_BLOCKHASH",
+        "solana.GET_SIGNATURES_FOR_ADDRESS",
+        "solana.SIMULATE_EVENTS",
+        "solana.VERB",
+        "core.STRINGIFY"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": ""
+    },
+    {
+      "id": "prediction_market_demo",
+      "path": "examples/prediction_market_demo.ainl",
+      "family": "blockchain",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/prediction_market_demo.ainl",
+      "expected_adapters": [
+        "core",
+        "solana"
+      ],
+      "expected_verbs": [
+        "solana.DERIVE_PDA",
+        "solana.GET_LATEST_BLOCKHASH",
+        "solana.GET_MARKET_STATE",
+        "solana.GET_PYTH_PRICE",
+        "solana.HERMES_FALLBACK",
+        "solana.INVOKE",
+        "core.STRINGIFY"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": ""
+    },
+    {
+      "id": "code_context_demo",
+      "path": "examples/code_context_demo.ainl",
+      "family": "core",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/code_context_demo.ainl",
+      "expected_adapters": [
+        "code_context"
+      ],
+      "expected_verbs": [
+        "code_context.COMPRESS_CONTEXT",
+        "code_context.GET_DEPENDENCIES",
+        "code_context.GET_IMPACT",
+        "code_context.GET_SKELETON",
+        "code_context.INDEX",
+        "code_context.QUERY_CONTEXT",
+        "code_context.STATS"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S app core noop"
+    },
+    {
+      "id": "test_adapters_full",
+      "path": "examples/test_adapters_full.ainl",
+      "family": "core",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/test_adapters_full.ainl",
+      "expected_adapters": [
+        "core",
+        "tool_registry",
+        "vector_memory"
+      ],
+      "expected_verbs": [
+        "vector_memory.SEARCH",
+        "vector_memory.UPSERT",
+        "tool_registry.DISCOVER",
+        "tool_registry.GET",
+        "tool_registry.LIST",
+        "tool_registry.REGISTER",
+        "core.STRINGIFY",
+        "core.concat"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "L1:\n  R vector_memory.UPSERT \"demo_ns\" \"chunk\" \"doc1\" \"hello semantic adapter test\" \"{}\" ->vm_u"
+    },
+    {
+      "id": "test_nested",
+      "path": "examples/test_nested.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: test nested",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.mul"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "L0: R core.mul (core.sub 100 85) 2 ->y J y"
+    },
+    {
+      "id": "test_phase2_common_modules",
+      "path": "examples/test_phase2_common_modules.ainl",
+      "family": "core",
+      "complexity": "intermediate",
+      "natural_language_goal": "examples/test_phase2_common_modules.ainl",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.ECHO"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "include \"modules/common/guard.ainl\" as guard\ninclude \"modules/common/session_budget.ainl\" as sb\ninclude \"modules/common/reflect.ainl\" as reflect\nL1:\n  Set guard_skip false\n  Set guard_tokens_used 5\n  Set guard_max_tokens 100\n  Set guard_elapsed_sec 1"
+    },
+    {
+      "id": "01_cache_and_memory",
+      "path": "examples/wishlist/01_cache_and_memory.ainl",
+      "family": "cache",
+      "complexity": "intermediate",
+      "natural_language_goal": "1) Knowledge caching + structured memory (AINL: cache + memory adapters).",
+      "expected_adapters": [
+        "cache",
+        "core",
+        "memory"
+      ],
+      "expected_verbs": [
+        "cache.GET",
+        "cache.SET",
+        "core.concat",
+        "core.parse",
+        "memory.PUT"
+      ],
+      "expected_inputs": [
+        "session_key",
+        "note"
+      ],
+      "has_branching": true,
+      "source_snippet": "wishlist_01_cache_and_memory:\n  in: session_key note\n  R cache.GET session_key ->cached\n  if cached:\n    out cached"
+    },
+    {
+      "id": "02_vector_semantic_search",
+      "path": "examples/wishlist/02_vector_semantic_search.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "2) Semantic-ish retrieval via vector_memory (keyword overlap scoring in core repo).",
+      "expected_adapters": [
+        "core",
+        "vector_memory"
+      ],
+      "expected_verbs": [
+        "vector_memory.SEARCH",
+        "vector_memory.UPSERT",
+        "core.filter_high_score"
+      ],
+      "expected_inputs": [
+        "namespace",
+        "doc_id",
+        "text",
+        "query"
+      ],
+      "has_branching": false,
+      "source_snippet": "wishlist_02_vector_semantic_search:\n  in: namespace doc_id text query\n  R vector_memory.UPSERT namespace \"chunk\" doc_id text \"{}\" ->_u\n  R vector_memory.SEARCH query 8 0.1 ->raw_hits\n  R core.filter_high_score raw_hits 0.1 ->hits"
+    },
+    {
+      "id": "03_parallel_fanout",
+      "path": "examples/wishlist/03_parallel_fanout.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "3) Parallel tool execution \u2014 fanout.ALL over adapter plans (thread pool).",
+      "expected_adapters": [
+        "fanout"
+      ],
+      "expected_verbs": [
+        "fanout.ALL"
+      ],
+      "expected_inputs": [
+        "fan_json"
+      ],
+      "has_branching": false,
+      "source_snippet": "wishlist_03_parallel_fanout:\n  in: fan_json\n  R fanout.ALL fan_json ->results\n  out results"
+    },
+    {
+      "id": "04_validate_with_ext",
+      "path": "examples/wishlist/04_validate_with_ext.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "4) Automated validation \u2014 ext.EXEC runs a subprocess (e.g. py_compile).",
+      "expected_adapters": [
+        "ext"
+      ],
+      "expected_verbs": [
+        "ext.EXEC"
+      ],
+      "expected_inputs": [
+        "py_file"
+      ],
+      "has_branching": false,
+      "source_snippet": "wishlist_04_validate_with_ext:\n  in: py_file\n  R ext.EXEC python3 -m py_compile py_file ->ex\n  out ex"
+    },
+    {
+      "id": "05_route_then_llm_mock",
+      "path": "examples/wishlist/05_route_then_llm_mock.ainl",
+      "family": "llm",
+      "complexity": "intermediate",
+      "natural_language_goal": "5) Multi-model orchestration \u2014 route by keyword, then llm_query (mock or real bridge).",
+      "expected_adapters": [
+        "core",
+        "llm_query"
+      ],
+      "expected_verbs": [
+        "llm_query.QUERY",
+        "core.contains"
+      ],
+      "expected_inputs": [
+        "user_query"
+      ],
+      "has_branching": true,
+      "source_snippet": "wishlist_05_route_then_llm_mock:\n  in: user_query\n  is_rust = core.contains user_query \"rust\""
+    },
+    {
+      "id": "05b_unified_llm_offline_config",
+      "path": "examples/wishlist/05b_unified_llm_offline_config.ainl",
+      "family": "llm",
+      "complexity": "intermediate",
+      "natural_language_goal": "5b) Same routing as 05 \u2014 unified `llm` adapter + config.yaml (see docs/LLM_ADAPTER_USAGE.md).",
+      "expected_adapters": [
+        "core",
+        "llm"
+      ],
+      "expected_verbs": [
+        "llm.COMPLETION",
+        "core.GET",
+        "core.contains"
+      ],
+      "expected_inputs": [
+        "user_query"
+      ],
+      "has_branching": true,
+      "source_snippet": "wishlist_05b_unified_llm_offline_config:\n  in: user_query\n  is_rust = core.contains user_query \"rust\""
+    },
+    {
+      "id": "06_feedback_memory",
+      "path": "examples/wishlist/06_feedback_memory.ainl",
+      "family": "memory",
+      "complexity": "intermediate",
+      "natural_language_goal": "6) Persistent learning loop \u2014 memory.APPEND for corrections; memory.GET reads prior turn payload.",
+      "expected_adapters": [
+        "core",
+        "memory"
+      ],
+      "expected_verbs": [
+        "core.concat",
+        "core.parse",
+        "memory.APPEND",
+        "memory.GET"
+      ],
+      "expected_inputs": [
+        "session_id",
+        "correction"
+      ],
+      "has_branching": false,
+      "source_snippet": "wishlist_06_feedback_memory:\n  in: session_id correction\n  R core.concat \"{\\\"correction\\\":\\\"\" correction \"\\\"}\" ->blob\n  R core.parse blob ->entry\n  R memory.APPEND \"workflow\" \"feedback\" session_id entry null ->_a"
+    },
+    {
+      "id": "07_parallel_http",
+      "path": "examples/wishlist/07_parallel_http.ainl",
+      "family": "http",
+      "complexity": "minimal",
+      "natural_language_goal": "7) Real-time data enrichment \u2014 parallel HTTP GET via fanout (independent I/O).",
+      "expected_adapters": [
+        "fanout"
+      ],
+      "expected_verbs": [
+        "fanout.ALL"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S app core noop\nL1:\n  X fan_json ctx.fan_json\n  R fanout.ALL fan_json ->bundle\n  J bundle"
+    },
+    {
+      "id": "08_code_review_context",
+      "path": "examples/wishlist/08_code_review_context.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "8) Code-review style context pack \u2014 INDEX then QUERY + COMPRESS (sequential; code_context is not fanout-safe).",
+      "expected_adapters": [
+        "code_context",
+        "core"
+      ],
+      "expected_verbs": [
+        "code_context.COMPRESS_CONTEXT",
+        "code_context.INDEX",
+        "code_context.QUERY_CONTEXT",
+        "core.concat"
+      ],
+      "expected_inputs": [
+        "R",
+        "code_context.INDEX",
+        "\"examples/wishlist\"",
+        "->_idx"
+      ],
+      "has_branching": false,
+      "source_snippet": "wishlist_08_code_review_context:\n  in:\n  R code_context.INDEX \"examples/wishlist\" ->_idx\n  R code_context.QUERY_CONTEXT \"syntax\" 1 6 ->ctx\n  R code_context.COMPRESS_CONTEXT \"syntax\" 1200 ->packed"
+    },
+    {
+      "id": "api_only",
+      "path": "examples/api_only.lang",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "API-only: no frontend, core service and types",
+      "expected_adapters": [
+        "db"
+      ],
+      "expected_verbs": [
+        "db.F",
+        "db.P"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core web /api\nD User id:I name:S email:S\nD Session id:I userId:I token:S expires:D\nE /users G ->L1 ->users\nE /users P ->L2 ->user\nE /sessions G ->L3 ->sessions\nL1:\n  R db.F User * ->users"
+    },
+    {
+      "id": "blog",
+      "path": "examples/blog.lang",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Blog: posts and comments, full stack",
+      "expected_adapters": [
+        "db"
+      ],
+      "expected_verbs": [
+        "db.F",
+        "db.P"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core web /api\nS fe web /\nD Post id:I title:S body:S created:D author:S\nD Comment id:I postId:I body:S author:S created:D\nE /posts G ->L1 ->posts\nE /posts P ->L2 ->post\nE /comments G ->L3 ->comments\nE /comments P ->L4 ->comment"
+    },
+    {
+      "id": "ecom",
+      "path": "examples/ecom.lang",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Ecom dashboard + Stripe pay (explicit E binding + routes, layout, forms, tables, events)",
+      "expected_adapters": [
+        "db"
+      ],
+      "expected_verbs": [
+        "db.F"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core web /api\nS fe web /\nD Product id:I name:S price:F sku:S\nD Order id:I uid:I total:F status:E[Pending,Paid,Shipped]\nE /products G ->L1 ->products\nE /orders G ->L2 ->orders\nE /checkout P ->L3\nRt / Dashboard"
+    },
+    {
+      "id": "internal_tool",
+      "path": "examples/internal_tool.lang",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Internal tool: tasks and users (API + minimal frontend)",
+      "expected_adapters": [
+        "db"
+      ],
+      "expected_verbs": [
+        "db.F",
+        "db.P"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core web /api\nS fe web /\nD Task id:I title:S assignee:I status:E[Todo,InProgress,Done] due:D\nD User id:I name:S email:S role:E[Admin,User]\nE /tasks G ->L1 ->tasks\nE /tasks P ->L2 ->task\nE /users G ->L3 ->users\nRt / TaskBoard"
+    },
+    {
+      "id": "ticketing",
+      "path": "examples/ticketing.lang",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Ticketing: events and tickets",
+      "expected_adapters": [
+        "db"
+      ],
+      "expected_verbs": [
+        "db.F",
+        "db.P"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core web /api\nS fe web /\nA jwt Authorization\nD Event id:I name:S venue:S date:D capacity:I\nD Ticket id:I eventId:I uid:I status:E[Reserved,Paid,Cancelled]\nE /events G ->L1 ->events\nE /events P ->L2 ->event\nE /tickets G ->L3 ->tickets"
+    },
+    {
+      "id": "daily_lead_summary",
+      "path": "examples/openclaw/daily_lead_summary.lang",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Daily Lead Summary (simplified)",
+      "expected_adapters": [],
+      "expected_verbs": [],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core cron \"0 7 * * *\"\nD Config lookback_days:N\nD State last_run:T\nL0:\n    R core now ->ts\n    R cache get \"state\" \"last_run\" ->last_run\n    R core sub ts 86400 ->cutoff\n    R db F ->rows"
+    },
+    {
+      "id": "openclaw_full_unification",
+      "path": "examples/openclaw_full_unification.ainl",
+      "family": "http",
+      "complexity": "minimal",
+      "natural_language_goal": "Meta-supervisor sample \u2014 polls health endpoint and writes a status log entry.",
+      "expected_adapters": [
+        "core",
+        "http",
+        "memory"
+      ],
+      "expected_verbs": [
+        "http.GET",
+        "core.concat",
+        "memory.put"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core cron \"*/15 * * * *\"\nL0:\n  R http.GET \"http://localhost:4200/api/health\" ->st\n  R core.concat \"supervisor status=\" st ->line\n  R memory.put \"ops\" \"supervisor\" \"status\" line 86400 {} ->_\n  J st"
+    },
+    {
+      "id": "test_if_var",
+      "path": "examples/test_if_var.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: test if var",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.sub"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S app core noop\nL0:\n  R core.sub 100 85 ->x\n  If x ->L2 ->L3\nL2:\n  J \"true\"\nL3:\n  J \"false\""
+    },
+    {
+      "id": "test_mul",
+      "path": "examples/test_mul.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: test mul",
+      "expected_adapters": [
+        "core"
+      ],
+      "expected_verbs": [
+        "core.mul",
+        "core.sub"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S app core noop\nL0:\n  R core.sub 100 85 ->x\n  R core.mul x 2 ->y\n  J y"
+    },
+    {
+      "id": "test_X_sub",
+      "path": "examples/test_X_sub.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: test X sub",
+      "expected_adapters": [],
+      "expected_verbs": [],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S app core noop\nL0:\n  X diff (core.sub 100 85)\n  X out (core.mul diff 2)\n  J out"
+    },
+    {
+      "id": "program",
+      "path": "corpus/example_basic_web_api/program.ainl",
+      "family": "core",
+      "complexity": "minimal",
+      "natural_language_goal": "Workflow: program",
+      "expected_adapters": [
+        "db"
+      ],
+      "expected_verbs": [
+        "db.F"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core web /api\nE /users G ->L_users ->users\nL_users:\n  R db.F User * ->users\n  J users"
+    },
+    {
+      "id": "program",
+      "path": "corpus/example_scraper_daily/program.ainl",
+      "family": "http",
+      "complexity": "minimal",
+      "natural_language_goal": "Make HTTP requests: program",
+      "expected_adapters": [
+        "db",
+        "http"
+      ],
+      "expected_verbs": [
+        "http.Get",
+        "db.C"
+      ],
+      "expected_inputs": [],
+      "has_branching": false,
+      "source_snippet": "S core cron\nCr L_scrape \"0 0 * * *\"\nL_scrape:\n  R http.Get \"https://example.com/products\" ->resp\n  R db.C Product * ->stored\n  J stored"
+    },
+    {
+      "id": "corrected_program",
+      "path": "corpus/example_monitor_alert/corrected_program.ainl",
+      "family": "http",
+      "complexity": "intermediate",
+      "natural_language_goal": "Make HTTP requests: corrected program",
+      "expected_adapters": [
+        "db",
+        "http"
+      ],
+      "expected_verbs": [
+        "db.F",
+        "http.Post"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S core cron\nCr L_monitor \"*/5 * * * *\"\nL_monitor:\n  R db.F Metric * ->metrics\n  If metrics ->L_alert ->L_ok\nL_alert:\n  R http.Post \"https://hook.example.com/alert\" metrics ->ack\n  J ack"
+    },
+    {
+      "id": "program",
+      "path": "corpus/example_monitor_alert/program.ainl",
+      "family": "http",
+      "complexity": "intermediate",
+      "natural_language_goal": "Make HTTP requests: program",
+      "expected_adapters": [
+        "db",
+        "http"
+      ],
+      "expected_verbs": [
+        "db.F",
+        "http.Post"
+      ],
+      "expected_inputs": [],
+      "has_branching": true,
+      "source_snippet": "S core cron\nCr L_monitor \"*/5 * * * *\"\nL_monitor:\n  R db.F Metric * ->metrics\n  If metrics ->L_alert ->L_ok\nL_alert:\n  R http.Post \"https://hook.example.com/alert\" metrics ->ack\n  J ack"
+    }
+  ]
+}

@@ -6,7 +6,7 @@ order: 0
 
 **One line:** If you are weighing AINL against LangGraph, Temporal, CrewAI, or prompt-loop orchestration, start here — we separate **reproducible benchmark methodology** from hype, keep **`.ainl`** as the authoring source of truth, and show how **multi-target emit** (including hybrid wrappers) fits into token and runtime economics.
 
-**Current PyPI release:** `ainativelang` **v1.7.1** (guides below reference features introduced in **v1.2.5+**).
+**Current PyPI release:** `ainativelang` **v1.8.0** (guides below reference features introduced in **v1.2.5+**).
 
 Comparative framing and **AINL vs X** materials, grounded in shipped compiler/runtime/emitters and reproducible benchmarks.
 

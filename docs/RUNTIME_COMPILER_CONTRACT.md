@@ -128,7 +128,7 @@ without requiring a global `python` on `PATH`.
 - v1.4.3 **`core.*`** builtins (comparisons, trim/strip, predicates, coercions, dict keys/values): `tests/test_core_builtins_v143.py`
 - Malformed `S`+`cron` schedule lines (IR `services.path` drift): `tests/test_s_cron_schedule_lines.py`
 
-## CI gate behavior note (v1.7.1 / current `main`)
+## CI gate behavior note (v1.8.0 / current `main`)
 
 - The `dev` extra includes runtime-service test imports (`fastapi`, `uvicorn`) so `core-pr` collection succeeds on all CI operating systems.
 - Runtime benchmark JSON comparison remains part of PR visibility, but strict pass/fail enforcement is reserved for non-PR lanes where baseline hardware variance is lower.

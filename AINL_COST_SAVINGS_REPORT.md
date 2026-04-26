@@ -52,7 +52,7 @@ Estimated 2–5× reduction in recurring token spend per workflow, compounding a
 - **MTTR:** ~2 minutes
 - **Deployment friction:** <30 seconds git-to-live
 - **Runtime errors:** 0 (strict compile-time validation catches type errors before execution)
-- **Runtime version (stack snapshot, 2026-03-25):** AINL v1.2.4 — **current PyPI / tree line:** v1.7.1+ (see `pyproject.toml` / `RUNTIME_VERSION`)
+- **Runtime version (stack snapshot, 2026-03-25):** AINL v1.2.4 — **current PyPI / tree line:** v1.8.0+ (see `pyproject.toml` / `RUNTIME_VERSION`)
 
 ### Daily Workflow Baseline (cost reference)
 

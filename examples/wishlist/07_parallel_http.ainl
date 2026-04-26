@@ -10,6 +10,6 @@
 S app core noop
 
 L1:
-  Set fan_json "[[\"http\",\"GET\",\"http://example.com/\"],[\"http\",\"GET\",\"http://example.com/\"]]"
+  X fan_json ctx.fan_json
   R fanout.ALL fan_json ->bundle
   J bundle

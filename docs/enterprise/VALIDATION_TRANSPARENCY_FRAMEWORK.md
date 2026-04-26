@@ -81,7 +81,7 @@ After `ainl validate --json`, output:
 {
   "graph": "monitor",
   "timestamp": "2025-03-30T14:22:15Z",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "phases": [
     {
       "name": "syntax",

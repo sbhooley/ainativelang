@@ -26,7 +26,7 @@ LLM costs add up. Cache responses so subsequent identical queries hit cache inst
 
 ## Implementation
 
-### Real AINL Syntax (v1.7.1 — this compiles)
+### Real AINL Syntax (v1.8.0 — this compiles)
 
 ```ainl
 # cached_qa.ainl — Cache LLM responses to reduce cost

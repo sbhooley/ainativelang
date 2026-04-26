@@ -1,5 +1,14 @@
 # Release notes
 
+## AINL v1.8.0 — MCP authoring wizard, strict-valid families, HTTP machine payments (2026-04-26)
+
+**PyPI / runtime:** **`ainativelang` 1.8.0** — **`RUNTIME_VERSION` `1.8.0`**.
+
+- **MCP authoring:** **`ainl_get_started`** accepts **`wizard_state_json`** for checkpoint continuity; new **`ainl_step_examples`** for strict-valid snippets by topic; resource **`ainl://strict-valid-families`** (mined **`corpus/strict_valid_family_index.json`**); successful **`ainl_validate`** / **`ainl_compile`** responses add **`contract_validation_status`** and **`contract_alignment.mismatched_calls`**. Exposure profiles (**`tooling/mcp_exposure_profiles.json`**) include the wizard tool + family resource on **`design_impact_first`**, **`inspect_only`**, **`safe_workflow`**, and **`full`**. Hub: **`docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`**. ArmaraOS hosts: graph tag **`mcp:ainl:wizard_state`** and prompt **`mcp_ainl_wizard_state_hint`** — **`armaraos/docs/mcp-a2a.md`**, **`armaraos/docs/graph-memory.md`**.
+- **HTTP machine payments:** optional **`payment_profile`** on **`http`** (**`none`/`auto`/`x402`/`mpp`**) with **402** structured envelopes and **`http_payment`** frame merges; CLI and MCP wiring — **`docs/integrations/HTTP_MACHINE_PAYMENTS.md`**, hub **`docs/integrations/README.md`**.
+
+Conventional list: [`docs/CHANGELOG.md`](CHANGELOG.md) § **v1.8.0 (April 26, 2026)**.
+
 ## AINL v1.7.1 — A2A (Agent-to-Agent) adapter, wire profile 1.0 (2026-04-22)
 
 **PyPI / runtime:** **`ainativelang` 1.7.1** — **`RUNTIME_VERSION` `1.7.1`**.
@@ -20,7 +29,7 @@ Conventional list: [`docs/CHANGELOG.md`](CHANGELOG.md) § **v1.7.1 (April 22, 20
 
 **PyPI / runtime (this line's upload window):** **`ainativelang` 1.7.0** — **`RUNTIME_VERSION` `1.7.0`**.
 
-**Superseded on PyPI by:** **`ainativelang` 1.7.1** — see **AINL v1.7.1** above (A2A adapter).
+**Superseded on PyPI by:** **`ainativelang` 1.8.0** — see **AINL v1.8.0** above (MCP authoring + HTTP machine payments); **v1.7.1** remains documented below (A2A adapter).
 
 This release documents **every commit on `main` after Git tag `v1.6.0` (`7b78f18`)** through **`3af546c`**. Use it with **ArmaraOS** builds that include the matching **Rust** inbox / vitals / patch-drain work for end-to-end parity.
 

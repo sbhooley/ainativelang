@@ -20,10 +20,509 @@ workflow gets an intent-to-syntax guide rather than a bare verb list.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
+import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+
+
+# ---------------------------------------------------------------------------
+# Wizard State Machine Types
+# ---------------------------------------------------------------------------
+
+
+class CheckpointStatus(Enum):
+    """Status of a wizard checkpoint."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETE = "complete"
+    BLOCKED = "blocked"
+    SKIPPED = "skipped"
+
+
+class WizardStage(Enum):
+    """Wizard progression stages."""
+
+    CORE_STARTER = "core_starter"
+    CAPABILITY_DISCOVERY = "capability_discovery"
+    CONTRACT_RESOLUTION = "contract_resolution"
+    INCREMENTAL_AUTHORING = "incremental_authoring"
+    RUNTIME_READY = "runtime_ready"
+    VERIFIED = "verified"
+
+
+@dataclass
+class WizardCheckpoint:
+    """Individual checkpoint state."""
+
+    checkpoint_id: str
+    status: CheckpointStatus = CheckpointStatus.PENDING
+    tool_used: Optional[str] = None
+    result_hash: Optional[str] = None
+    note: Optional[str] = None
+
+
+@dataclass
+class WizardState:
+    """Persistent wizard state for session continuity.
+
+    This dataclass tracks progression through mandatory checkpoints and
+    maintains context across multiple tool calls within a session.
+    """
+
+    session_id: str
+    stage: WizardStage = WizardStage.CORE_STARTER
+    goal: str = ""
+    inferred_task_type: str = "core_workflow"
+    subtypes: List[str] = field(default_factory=list)
+    adapters_needed: List[str] = field(default_factory=list)
+    checkpoints: Dict[str, WizardCheckpoint] = field(default_factory=dict)
+    can_author_now: bool = False
+    blocking_checkpoints: List[str] = field(default_factory=list)
+    last_tool_result: Optional[str] = None
+    slices_validated: List[str] = field(default_factory=list)
+    adapters_discovered: List[str] = field(default_factory=list)
+    contracts_loaded: Dict[str, Any] = field(default_factory=dict)
+    run_succeeded: bool = False
+    side_effects_verified: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to JSON-compatible dict."""
+        return {
+            "session_id": self.session_id,
+            "stage": self.stage.value,
+            "goal": self.goal,
+            "inferred_task_type": self.inferred_task_type,
+            "subtypes": self.subtypes,
+            "adapters_needed": self.adapters_needed,
+            "checkpoints": {
+                k: {
+                    "checkpoint_id": v.checkpoint_id,
+                    "status": v.status.value,
+                    "tool_used": v.tool_used,
+                    "result_hash": v.result_hash,
+                    "note": v.note,
+                }
+                for k, v in self.checkpoints.items()
+            },
+            "can_author_now": self.can_author_now,
+            "blocking_checkpoints": self.blocking_checkpoints,
+            "last_tool_result": self.last_tool_result,
+            "slices_validated": self.slices_validated,
+            "adapters_discovered": self.adapters_discovered,
+            "contracts_loaded": self.contracts_loaded,
+            "run_succeeded": self.run_succeeded,
+            "side_effects_verified": self.side_effects_verified,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "WizardState":
+        """Deserialize from JSON-compatible dict."""
+        checkpoints = {}
+        for k, v in data.get("checkpoints", {}).items():
+            checkpoints[k] = WizardCheckpoint(
+                checkpoint_id=v.get("checkpoint_id", k),
+                status=CheckpointStatus(v.get("status", "pending")),
+                tool_used=v.get("tool_used"),
+                result_hash=v.get("result_hash"),
+                note=v.get("note"),
+            )
+        return cls(
+            session_id=data.get("session_id", ""),
+            stage=WizardStage(data.get("stage", "core_starter")),
+            goal=data.get("goal", ""),
+            inferred_task_type=data.get("inferred_task_type", "core_workflow"),
+            subtypes=data.get("subtypes", []),
+            adapters_needed=data.get("adapters_needed", []),
+            checkpoints=checkpoints,
+            can_author_now=data.get("can_author_now", False),
+            blocking_checkpoints=data.get("blocking_checkpoints", []),
+            last_tool_result=data.get("last_tool_result"),
+            slices_validated=data.get("slices_validated", []),
+            adapters_discovered=data.get("adapters_discovered", []),
+            contracts_loaded=data.get("contracts_loaded", {}),
+            run_succeeded=data.get("run_succeeded", False),
+            side_effects_verified=data.get("side_effects_verified", False),
+        )
+
+
+def _generate_session_id(goal: str) -> str:
+    """Generate a deterministic session ID from goal text."""
+    return hashlib.sha256(goal.encode("utf-8")).hexdigest()[:16]
+
+
+def _result_hash(result: Any) -> str:
+    """Hash a tool result for change detection."""
+    return hashlib.sha256(json.dumps(result, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+# Checkpoint definitions with their dependencies
+CHECKPOINT_DEFINITIONS: Dict[str, Dict[str, Any]] = {
+    "goal_classified": {
+        "description": "Goal has been parsed and task type inferred",
+        "requires": [],
+        "tool": None,
+    },
+    "syntax_style_selected": {
+        "description": "Compact syntax selected as default",
+        "requires": ["goal_classified"],
+        "tool": None,
+    },
+    "strict_examples_reviewed": {
+        "description": "Agent has fetched ainl://strict-valid-examples",
+        "requires": ["goal_classified"],
+        "tool": "ainl://strict-valid-examples",
+    },
+    "capabilities_inspected": {
+        "description": "ainl_capabilities called and parsed",
+        "requires": ["goal_classified"],
+        "tool": "ainl_capabilities",
+    },
+    "adapter_contract:http": {
+        "description": "HTTP adapter contract loaded",
+        "requires": ["capabilities_inspected"],
+        "tool": "ainl_adapter_contract",
+    },
+    "adapter_contract:fs": {
+        "description": "Filesystem adapter contract loaded",
+        "requires": ["capabilities_inspected"],
+        "tool": "ainl_adapter_contract",
+    },
+    "adapter_contract:browser": {
+        "description": "Browser adapter contract loaded",
+        "requires": ["capabilities_inspected"],
+        "tool": "ainl_adapter_contract",
+    },
+    "adapter_contract:cache": {
+        "description": "Cache adapter contract loaded",
+        "requires": ["capabilities_inspected"],
+        "tool": "ainl_adapter_contract",
+    },
+    "adapter_contract:llm": {
+        "description": "LLM adapter contract loaded",
+        "requires": ["capabilities_inspected"],
+        "tool": "ainl_adapter_contract",
+    },
+    "first_slice_validated": {
+        "description": "First scaffold slice passed ainl_validate --strict",
+        "requires": [],
+        "tool": "ainl_validate",
+    },
+    "full_source_validated": {
+        "description": "Complete source passed strict validation",
+        "requires": ["first_slice_validated"],
+        "tool": "ainl_validate",
+    },
+    "ir_compiled": {
+        "description": "ainl_compile returned required_adapters and frame_hints",
+        "requires": ["full_source_validated"],
+        "tool": "ainl_compile",
+    },
+    "adapters_configured": {
+        "description": "Agent has built adapters= payload from IR",
+        "requires": ["ir_compiled"],
+        "tool": None,
+    },
+    "run_succeeded": {
+        "description": "ainl_run returned ok: true",
+        "requires": ["adapters_configured"],
+        "tool": "ainl_run",
+    },
+    "side_effects_verified": {
+        "description": "File/log/message side effects confirmed",
+        "requires": ["run_succeeded"],
+        "tool": None,
+    },
+}
+
+
+def initialize_wizard_state(
+    goal: str,
+    task_type: str,
+    subtypes: List[str],
+    adapters: List[str],
+    existing_state: Optional[Dict[str, Any]] = None,
+) -> WizardState:
+    """Initialize or resume a wizard state for a goal.
+
+    Args:
+        goal: Natural language goal from user
+        task_type: Inferred task type (adapter_workflow, core_workflow, etc.)
+        subtypes: Inferred subtypes
+        adapters: Required adapter keys
+        existing_state: Optional serialized state to resume from
+
+    Returns:
+        WizardState instance ready for progression
+    """
+    if existing_state:
+        state = WizardState.from_dict(existing_state)
+        if state.goal == goal:
+            return state
+
+    session_id = _generate_session_id(goal)
+    state = WizardState(
+        session_id=session_id,
+        goal=goal,
+        inferred_task_type=task_type,
+        subtypes=subtypes,
+        adapters_needed=adapters,
+    )
+
+    state.checkpoints["goal_classified"] = WizardCheckpoint(
+        checkpoint_id="goal_classified",
+        status=CheckpointStatus.COMPLETE,
+    )
+    state.checkpoints["syntax_style_selected"] = WizardCheckpoint(
+        checkpoint_id="syntax_style_selected",
+        status=CheckpointStatus.COMPLETE,
+    )
+
+    if adapters:
+        state.checkpoints["capabilities_inspected"] = WizardCheckpoint(
+            checkpoint_id="capabilities_inspected",
+            status=CheckpointStatus.PENDING,
+        )
+        for adapter in adapters:
+            contract_key = f"adapter_contract:{adapter}"
+            if contract_key in CHECKPOINT_DEFINITIONS:
+                state.checkpoints[contract_key] = WizardCheckpoint(
+                    checkpoint_id=contract_key,
+                    status=CheckpointStatus.PENDING,
+                )
+
+    _recalculate_wizard_stage(state)
+    return state
+
+
+def _recalculate_wizard_stage(state: WizardState) -> None:
+    """Recalculate stage and blocking checkpoints from current state."""
+    blocking = []
+    for cp_id, cp in state.checkpoints.items():
+        if cp.status in (CheckpointStatus.PENDING, CheckpointStatus.IN_PROGRESS):
+            deps = CHECKPOINT_DEFINITIONS.get(cp_id, {}).get("requires", [])
+            deps_met = all(
+                state.checkpoints.get(d, WizardCheckpoint(d)).status == CheckpointStatus.COMPLETE
+                for d in deps
+            )
+            if deps_met:
+                blocking.append(cp_id)
+
+    state.blocking_checkpoints = blocking
+
+    if not state.adapters_needed:
+        state.stage = WizardStage.CORE_STARTER
+        state.can_author_now = True
+    elif "capabilities_inspected" in blocking:
+        state.stage = WizardStage.CAPABILITY_DISCOVERY
+        state.can_author_now = False
+    elif any(cp.startswith("adapter_contract:") for cp in blocking):
+        state.stage = WizardStage.CONTRACT_RESOLUTION
+        state.can_author_now = False
+    elif state.run_succeeded and state.side_effects_verified:
+        state.stage = WizardStage.VERIFIED
+        state.can_author_now = True
+    elif state.run_succeeded:
+        state.stage = WizardStage.RUNTIME_READY
+        state.can_author_now = True
+    elif "ir_compiled" in [cp.checkpoint_id for cp in state.checkpoints.values() if cp.status == CheckpointStatus.COMPLETE]:
+        state.stage = WizardStage.RUNTIME_READY
+        state.can_author_now = True
+    else:
+        state.stage = WizardStage.INCREMENTAL_AUTHORING
+        state.can_author_now = True
+
+
+def advance_checkpoint(
+    state: WizardState,
+    checkpoint_id: str,
+    *,
+    status: CheckpointStatus = CheckpointStatus.COMPLETE,
+    tool_used: Optional[str] = None,
+    result: Any = None,
+    note: Optional[str] = None,
+) -> WizardState:
+    """Advance a checkpoint to a new status.
+
+    Args:
+        state: Current wizard state
+        checkpoint_id: Checkpoint to advance
+        status: New status
+        tool_used: Tool that completed this checkpoint
+        result: Tool result for hashing
+        note: Optional note
+
+    Returns:
+        Updated wizard state
+    """
+    if checkpoint_id not in state.checkpoints:
+        state.checkpoints[checkpoint_id] = WizardCheckpoint(checkpoint_id=checkpoint_id)
+
+    cp = state.checkpoints[checkpoint_id]
+    cp.status = status
+    cp.tool_used = tool_used
+    if result is not None:
+        cp.result_hash = _result_hash(result)
+    cp.note = note
+
+    _recalculate_wizard_stage(state)
+    return state
+
+
+def wizard_state_from_tool_result(
+    state: WizardState,
+    tool_name: str,
+    result: Dict[str, Any],
+) -> WizardState:
+    """Update wizard state based on a tool result.
+
+    Args:
+        state: Current wizard state
+        tool_name: Name of the tool that produced the result
+        result: Tool result dict
+
+    Returns:
+        Updated wizard state
+    """
+    state.last_tool_result = tool_name
+
+    if tool_name == "ainl_capabilities":
+        state = advance_checkpoint(
+            state,
+            "capabilities_inspected",
+            tool_used=tool_name,
+            result=result,
+        )
+        adapters = result.get("adapters", [])
+        if isinstance(adapters, list):
+            state.adapters_discovered = adapters
+
+    elif tool_name == "ainl_adapter_contract":
+        adapter = result.get("adapter")
+        if adapter:
+            contract_key = f"adapter_contract:{adapter}"
+            state = advance_checkpoint(
+                state,
+                contract_key,
+                tool_used=tool_name,
+                result=result,
+            )
+            state.contracts_loaded[adapter] = result
+
+    elif tool_name == "ainl_validate":
+        ok = result.get("ok", False)
+        strict = result.get("strict", False)
+        if ok and strict:
+            if not state.slices_validated:
+                state = advance_checkpoint(
+                    state,
+                    "first_slice_validated",
+                    tool_used=tool_name,
+                    result=result,
+                )
+            state.slices_validated.append(_result_hash(result))
+            if len(state.slices_validated) >= 1:
+                state = advance_checkpoint(
+                    state,
+                    "full_source_validated",
+                    tool_used=tool_name,
+                    result=result,
+                )
+
+    elif tool_name == "ainl_compile":
+        ok = result.get("ok", True)
+        if ok and "labels" in result:
+            state = advance_checkpoint(
+                state,
+                "ir_compiled",
+                tool_used=tool_name,
+                result=result,
+            )
+            state = advance_checkpoint(
+                state,
+                "adapters_configured",
+                status=CheckpointStatus.IN_PROGRESS,
+            )
+
+    elif tool_name == "ainl_run":
+        ok = result.get("ok", False)
+        if ok:
+            state.run_succeeded = True
+            state = advance_checkpoint(
+                state,
+                "run_succeeded",
+                tool_used=tool_name,
+                result=result,
+            )
+
+    _recalculate_wizard_stage(state)
+    return state
+
+
+def get_next_wizard_action(state: WizardState) -> Dict[str, Any]:
+    """Determine the next action based on wizard state.
+
+    Returns:
+        Dict with 'tool', 'args', and 'reason' for the next recommended action
+    """
+    if state.stage == WizardStage.CORE_STARTER:
+        return {
+            "tool": "ainl_validate",
+            "args": {"code": f"{state.goal or 'hello'}:\n  out \"Hello from AINL\"\n", "strict": True},
+            "reason": "Core-only workflow ready for validation",
+        }
+
+    if state.stage == WizardStage.CAPABILITY_DISCOVERY:
+        return {
+            "tool": "ainl_capabilities",
+            "args": {},
+            "reason": "Discover available adapters before writing adapter-specific code",
+        }
+
+    if state.stage == WizardStage.CONTRACT_RESOLUTION:
+        for cp_id in state.blocking_checkpoints:
+            if cp_id.startswith("adapter_contract:"):
+                adapter = cp_id.replace("adapter_contract:", "")
+                return {
+                    "tool": "ainl_adapter_contract",
+                    "args": {"adapter": adapter},
+                    "reason": f"Load {adapter} adapter contract before using its verbs",
+                }
+
+    if state.stage == WizardStage.INCREMENTAL_AUTHORING:
+        if "full_source_validated" not in [cp.checkpoint_id for cp in state.checkpoints.values() if cp.status == CheckpointStatus.COMPLETE]:
+            return {
+                "tool": "ainl_validate",
+                "args": {"strict": True},
+                "reason": "Validate the current source slice with strict mode",
+            }
+        return {
+            "tool": "ainl_compile",
+            "args": {},
+            "reason": "Compile to check required_adapters and frame_hints",
+        }
+
+    if state.stage == WizardStage.RUNTIME_READY:
+        if not state.run_succeeded:
+            return {
+                "tool": "ainl_run",
+                "args": {},
+                "reason": "Execute the compiled workflow with configured adapters",
+            }
+        return {
+            "tool": None,
+            "args": {},
+            "reason": "Verify side effects (files, logs, messages) to complete the workflow",
+        }
+
+    return {
+        "tool": None,
+        "args": {},
+        "reason": "Workflow verified and complete",
+    }
 
 
 DETAIL_LEVELS = {"brief", "standard", "full"}
@@ -438,7 +937,99 @@ ADAPTER_CONTRACTS: Dict[str, Dict[str, Any]] = {
             "Use core.CONCAT/core.STRINGIFY instead of invented formatting verbs.",
         ],
     },
+    "queue": {
+        "adapter": "queue",
+        "status": "known",
+        "summary": "Message queue adapter for inter-process or cross-service communication.",
+        "runtime_registration": {
+            "enable": ["queue"],
+        },
+        "verbs": {
+            "Put": {
+                "args": ["channel: string", "payload: any"],
+                "example": 'queued = queue.Put "notifications" msg',
+                "returns": ["null"],
+            },
+            "get": {
+                "args": ["channel: string"],
+                "example": 'next = queue.get "notifications"',
+                "returns": ["message or null"],
+            },
+        },
+        "pitfalls": [
+            "Use R queue Put 'channel' payload ->_ not QueuePut.",
+            "Queue adapter must be enabled at runtime.",
+        ],
+    },
+    "memory": {
+        "adapter": "memory",
+        "status": "known",
+        "summary": "Key-value SQLite store with procedural pattern storage and recall.",
+        "runtime_registration": {
+            "enable": ["memory"],
+        },
+        "verbs": {
+            "store": {
+                "args": ["key: string", "value: any"],
+                "example": "stored = memory.store session_key data",
+                "returns": ["null"],
+            },
+            "recall": {
+                "args": ["key: string"],
+                "example": "prev = memory.recall session_key",
+                "returns": ["stored value or null"],
+            },
+            "store_pattern": {
+                "args": ["pattern_text: string", "tags?: list"],
+                "example": 'memory.store_pattern "When X then Y"',
+                "returns": ["pattern id"],
+            },
+            "recall_pattern": {
+                "args": ["query: string", "limit?: int"],
+                "example": 'patterns = memory.recall_pattern "error handling" 5',
+                "returns": ["list of matching patterns"],
+            },
+        },
+        "pitfalls": [
+            "memory is for agent-level state; use cache for simple k/v.",
+            "Pattern storage is for procedural learning, not user data.",
+        ],
+    },
 }
+
+
+def _parse_verb_arity(args_list: List[str]) -> Tuple[int, int]:
+    """Parse arg spec to (required_count, max_count).
+
+    Args format: 'name: type' (required) or 'name?: type' (optional)
+    """
+    if not args_list:
+        return (0, 0)
+    required = sum(1 for a in args_list if "?" not in a.split(":")[0])
+    return (required, len(args_list))
+
+
+def check_verb_arity(adapter: str, verb: str, arg_count: int) -> Optional[str]:
+    """Return a warning if arg count doesn't match the contract schema.
+
+    Returns None if the verb/adapter is unknown or arity is acceptable.
+    """
+    contract = ADAPTER_CONTRACTS.get(adapter)
+    if not contract:
+        return None
+    verbs = contract.get("verbs") or {}
+    verb_schema = verbs.get(verb) or verbs.get(verb.upper()) or verbs.get(verb.lower())
+    if not verb_schema:
+        return None
+    args_spec = verb_schema.get("args")
+    if not args_spec or not isinstance(args_spec, list):
+        return None
+    required_count, max_count = _parse_verb_arity(args_spec)
+    if arg_count < required_count:
+        return f"{adapter}.{verb} expects at least {required_count} args, got {arg_count}"
+    if arg_count > max_count:
+        return f"{adapter}.{verb} expects at most {max_count} args, got {arg_count}"
+    return None
 
 
 def _dedupe(seq: Iterable[Any]) -> List[Any]:
@@ -718,7 +1309,7 @@ def _intent_operation_guide(subtypes: Sequence[str], adapters: Sequence[str]) ->
                 {
                     "step": "Save locally",
                     "when_you_need_to": "write the output file",
-                    "use": "fs.WRITE or fs.Write depending on the strict adapter contract",
+                    "use": "fs.write (lowercase per adapter contract)",
                     "example": "Blocked until fs contract is loaded.",
                     "status": "blocked",
                     "blocked_by": "adapter_contract:fs",
@@ -901,7 +1492,7 @@ def _partial_scaffold(
             {
                 "name": "output_write",
                 "status": "ready",
-                "lines": [*base, "  written = fs.WRITE output_path csv", "  out written"],
+                "lines": [*base, "  written = fs.write output_path csv", "  out written"],
                 "validate_after": True,
                 "verify_after_run": "Read/check output_path under the configured fs.root and confirm rows were written.",
             }
@@ -979,9 +1570,34 @@ def get_started(
     diagnostics: Optional[Dict[str, Any]] = None,
     capabilities_snapshot: Optional[Dict[str, Any]] = None,
     adapter_contracts_snapshot: Optional[Dict[str, Any]] = None,
+    wizard_state_json: Optional[Dict[str, Any]] = None,
+    current_step: Optional[str] = None,
+    request_examples_for: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Classify a natural-language goal and return a wizard state."""
+    """Classify a natural-language goal and return a wizard state.
+
+    Args:
+        goal: Natural language description of what the user wants to build
+        detail_level: Output verbosity ('brief', 'standard', 'full')
+        existing_source: Reserved for repair/debug wizard stages
+        path: Reserved for repair/debug wizard stages
+        diagnostics: Compiler diagnostics from a previous validation attempt
+        capabilities_snapshot: Result from a previous ainl_capabilities call
+        adapter_contracts_snapshot: Map of adapter name to contract data
+        wizard_state_json: Serialized WizardState to resume from
+        current_step: Current wizard step (for step-local examples)
+        request_examples_for: Request examples for a specific topic
+
+    Returns:
+        Wizard state dict with guidance, checkpoints, and next actions
+    """
     del existing_source, path  # Reserved for future repair/debug wizard stages.
+
+    if request_examples_for:
+        return step_examples(
+            current_step=current_step or "general",
+            request_examples_for=request_examples_for,
+        )
     syntax_corrections: List[Dict[str, str]] = []
     if isinstance(diagnostics, dict):
         pd = diagnostics.get("primary_diagnostic")
@@ -1031,7 +1647,7 @@ def get_started(
         missing.append("runtime_output_plan")
     missing = _dedupe(missing)
 
-    can_author_now = (not adapters and task_type == "core_workflow") or (
+    can_author_now = (not adapters and task_type in ("core_workflow", "run_or_debug_existing")) or (
         bool(adapters) and not missing
     )
     first_line = _first_line_for_goal(goal or "", subtypes)
@@ -1043,6 +1659,32 @@ def get_started(
         adapters=adapters,
         adapter_contracts_snapshot=adapter_contracts_snapshot,
     )
+
+    formal_state = initialize_wizard_state(
+        goal=goal or "",
+        task_type=task_type,
+        subtypes=list(subtypes),
+        adapters=list(adapters),
+        existing_state=wizard_state_json,
+    )
+
+    if _capabilities_seen(capabilities_snapshot):
+        formal_state = advance_checkpoint(
+            formal_state,
+            "capabilities_inspected",
+            tool_used="ainl_capabilities",
+            result=capabilities_snapshot,
+        )
+
+    if adapter_contracts_snapshot:
+        for adapter_name, contract_data in adapter_contracts_snapshot.items():
+            if isinstance(contract_data, dict):
+                formal_state = wizard_state_from_tool_result(
+                    formal_state,
+                    "ainl_adapter_contract",
+                    {"adapter": adapter_name, **contract_data},
+                )
+
     if not adapters:
         wizard_stage = "core_starter"
     elif not _capabilities_seen(capabilities_snapshot):
@@ -1051,6 +1693,8 @@ def get_started(
         wizard_stage = "contract_resolution"
     else:
         wizard_stage = "incremental_authoring"
+
+    next_action = get_next_wizard_action(formal_state)
     next_tool_call = (
         {
             "tool": "ainl_validate",
@@ -1081,6 +1725,8 @@ def get_started(
         "goal": goal,
         "detail_level": detail,
         "wizard_stage": wizard_stage,
+        "formal_stage": formal_state.stage.value,
+        "session_id": formal_state.session_id,
         "inferred_task_type": task_type,
         "subtypes": subtypes,
         "confidence": _confidence(scored),
@@ -1096,7 +1742,17 @@ def get_started(
             ),
             "complete_checkpoints": complete_checkpoints,
             "missing_checkpoints": [] if can_author_now else missing,
+            "formal_checkpoints": {
+                k: {"status": v.status.value, "tool": v.tool_used}
+                for k, v in formal_state.checkpoints.items()
+            },
+            "blocking_checkpoints": formal_state.blocking_checkpoints,
+            "slices_validated": len(formal_state.slices_validated),
+            "run_succeeded": formal_state.run_succeeded,
+            "side_effects_verified": formal_state.side_effects_verified,
         },
+        "wizard_state_json": formal_state.to_dict(),
+        "next_wizard_action": next_action,
         "available_adapters": _available_adapters(capabilities_snapshot),
         "syntax_style": {
             "recommended": "compact",
@@ -1369,62 +2025,163 @@ def reverse_engineer_corpus(
     }
 
 
+_FAMILY_INDEX_CACHE: Optional[Dict[str, Any]] = None
+
+
+def _load_family_index() -> Dict[str, Any]:
+    """Load the strict-valid family index from corpus."""
+    global _FAMILY_INDEX_CACHE
+    if _FAMILY_INDEX_CACHE is not None:
+        return _FAMILY_INDEX_CACHE
+
+    import pathlib
+    index_path = pathlib.Path(__file__).parent.parent / "corpus" / "strict_valid_family_index.json"
+    if index_path.exists():
+        try:
+            import json
+            _FAMILY_INDEX_CACHE = json.loads(index_path.read_text())
+            return _FAMILY_INDEX_CACHE
+        except Exception:
+            pass
+    _FAMILY_INDEX_CACHE = {"families": {}, "by_adapter": {}, "all_examples": []}
+    return _FAMILY_INDEX_CACHE
+
+
+def _get_corpus_examples_for_family(family: str, limit: int = 3) -> List[Dict[str, Any]]:
+    """Get example paths and metadata from corpus for a family."""
+    index = _load_family_index()
+    family_examples = index.get("families", {}).get(family, [])
+    return family_examples[:limit]
+
+
+def _get_corpus_examples_for_adapter(adapter: str, limit: int = 3) -> List[Dict[str, Any]]:
+    """Get example paths using a specific adapter."""
+    index = _load_family_index()
+    paths = index.get("by_adapter", {}).get(adapter, [])
+    all_examples = index.get("all_examples", [])
+    results = []
+    for ex in all_examples:
+        if ex.get("path") in paths:
+            results.append(ex)
+            if len(results) >= limit:
+                break
+    return results
+
+
+STEP_EXAMPLE_SNIPPETS: Dict[str, List[Dict[str, Any]]] = {
+    "fs": [
+        {"when_you_need_to": "write CSV text to an output path", "code": "written = fs.write output_path csv", "requires": ["adapter_contract:fs"]},
+        {"when_you_need_to": "build a CSV header", "code": 'csv_header = "name,phone,address,parcel_number,date\\n"', "requires": []},
+        {"when_you_need_to": "combine header and rows", "code": "csv = core.CONCAT csv_header rows", "requires": []},
+        {"when_you_need_to": "read a file", "code": "content = fs.read file_path", "requires": ["adapter_contract:fs"]},
+    ],
+    "browser": [
+        {"when_you_need_to": "open a page", "code": "session = browser.NAVIGATE target_url", "requires": ["adapter_contract:browser"]},
+        {"when_you_need_to": "wait for a selector", "code": 'visible = browser.WAIT "form" 5000', "requires": ["adapter_contract:browser"]},
+        {"when_you_need_to": "click an element", "code": 'result = browser.CLICK "button.submit"', "requires": ["adapter_contract:browser"]},
+        {"when_you_need_to": "extract page text", "code": "text = browser.READ_PAGE", "requires": ["adapter_contract:browser"]},
+    ],
+    "http": [
+        {"when_you_need_to": "fetch JSON from an API", "code": "response = http.GET api_url", "requires": ["adapter_contract:http"]},
+        {"when_you_need_to": "POST data to an endpoint", "code": "response = http.POST api_url body", "requires": ["adapter_contract:http"]},
+        {"when_you_need_to": "extract a field from response", "code": 'value = core.GET response "data"', "requires": []},
+    ],
+    "cache": [
+        {"when_you_need_to": "cache a value", "code": "result = cache.set cache_key value", "requires": ["adapter_contract:cache"]},
+        {"when_you_need_to": "retrieve cached value", "code": "cached = cache.get cache_key", "requires": ["adapter_contract:cache"]},
+    ],
+    "queue": [
+        {"when_you_need_to": "put a message on a queue", "code": 'queued = queue.Put "channel_name" payload', "requires": ["adapter_contract:queue"]},
+        {"when_you_need_to": "read from a queue", "code": 'next = queue.get "channel_name"', "requires": ["adapter_contract:queue"]},
+    ],
+    "memory": [
+        {"when_you_need_to": "store session-scoped data", "code": "stored = memory.store session_key data", "requires": ["adapter_contract:memory"]},
+        {"when_you_need_to": "recall stored data", "code": "prev = memory.recall session_key", "requires": ["adapter_contract:memory"]},
+    ],
+    "llm": [
+        {"when_you_need_to": "complete a prompt (provider-specific llm.*)", "code": "R llm.COMPLETION user_prompt 256 ->resp", "requires": ["adapter_contract:llm"]},
+        {"when_you_need_to": "chat-style messages payload", "code": "R llm.CHAT messages 150 0.5 ->chat_response", "requires": ["adapter_contract:llm"]},
+    ],
+    "solana": [
+        {"when_you_need_to": "check wallet balance", "code": "balance = solana.GET_BALANCE wallet_address", "requires": ["adapter_contract:solana"]},
+        {"when_you_need_to": "transfer SOL", "code": "result = solana.TRANSFER from_addr to_addr amount", "requires": ["adapter_contract:solana"]},
+    ],
+    "core": [
+        {"when_you_need_to": "start a workflow", "code": "workflow_name:", "requires": []},
+        {"when_you_need_to": "define inputs", "code": "in: input1 input2", "requires": []},
+        {"when_you_need_to": "return a value", "code": "out result", "requires": []},
+        {"when_you_need_to": "branch on condition", "code": 'if status == "ok":\n  out success', "requires": []},
+        {"when_you_need_to": "add numbers", "code": "total = core.ADD a b", "requires": []},
+        {"when_you_need_to": "concatenate strings", "code": 'message = core.CONCAT "Hello, " name', "requires": []},
+        {"when_you_need_to": "get a field from dict", "code": 'value = core.GET response "key"', "requires": []},
+    ],
+}
+
+
 def step_examples(
     *,
     current_step: str,
     request_examples_for: Optional[str] = None,
     example_count: int = 3,
+    include_corpus_references: bool = True,
 ) -> Dict[str, Any]:
-    """Return examples for the current wizard step without advancing state."""
+    """Return examples for the current wizard step without advancing state.
+
+    Args:
+        current_step: Current wizard step name.
+        request_examples_for: Optional topic to get specific examples for.
+        example_count: Maximum number of examples to return.
+        include_corpus_references: Whether to include paths to strict-valid corpus files.
+    """
     topic = (request_examples_for or current_step or "").lower()
-    examples: List[Dict[str, Any]]
-    if "fs" in topic or "csv" in topic or "output" in topic:
-        examples = [
-            {
-                "when_you_need_to": "write CSV text to an output path",
-                "code": "written = fs.WRITE output_path csv",
-                "requires": ["adapter_contract:fs"],
-            },
-            {
-                "when_you_need_to": "build a CSV header",
-                "code": 'csv_header = "name,phone,address,parcel_number,date\\n"',
-                "requires": [],
-            },
-            {
-                "when_you_need_to": "combine header and rows",
-                "code": "csv = core.CONCAT csv_header rows",
-                "requires": [],
-            },
-        ]
-    elif "browser" in topic:
-        examples = [
-            {
-                "when_you_need_to": "open a page",
-                "code": "session = browser.NAVIGATE target_url",
-                "requires": ["adapter_contract:browser"],
-            },
-            {
-                "when_you_need_to": "wait for a selector",
-                "code": 'visible = browser.WAIT "form" 5000',
-                "requires": ["adapter_contract:browser"],
-            },
-        ]
+    examples: List[Dict[str, Any]] = []
+    corpus_refs: List[Dict[str, Any]] = []
+    matched_family = "core"
+
+    topic_to_adapter = {
+        "fs": "fs", "csv": "fs", "output": "fs", "file": "fs", "write": "fs", "read": "fs",
+        "browser": "browser", "scrape": "browser", "navigate": "browser", "click": "browser",
+        "http": "http", "api": "http", "fetch": "http", "post": "http", "get": "http", "request": "http",
+        "cache": "cache", "cached": "cache",
+        "queue": "queue", "message": "queue", "channel": "queue",
+        "memory": "memory", "store": "memory", "recall": "memory",
+        "llm": "llm", "classify": "llm", "generate": "llm", "ai": "llm",
+        "solana": "solana", "blockchain": "solana", "wallet": "solana", "transfer": "solana",
+    }
+
+    matched_adapter = None
+    for keyword, adapter in topic_to_adapter.items():
+        if keyword in topic:
+            matched_adapter = adapter
+            break
+
+    if matched_adapter and matched_adapter in STEP_EXAMPLE_SNIPPETS:
+        examples = STEP_EXAMPLE_SNIPPETS[matched_adapter]
+        if include_corpus_references:
+            corpus_refs = _get_corpus_examples_for_adapter(matched_adapter, limit=3)
+        family_map = {
+            "fs": "filesystem", "browser": "browser", "http": "http", "cache": "cache",
+            "queue": "queue", "memory": "memory", "llm": "llm", "solana": "blockchain",
+        }
+        matched_family = family_map.get(matched_adapter, "core")
     else:
-        examples = [
-            {
-                "when_you_need_to": "start a workflow",
-                "code": "workflow_name:",
-                "requires": [],
-            },
-            {
-                "when_you_need_to": "return a value",
-                "code": "out result",
-                "requires": [],
-            },
-        ]
-    return {
+        examples = STEP_EXAMPLE_SNIPPETS.get("core", [])
+        if include_corpus_references:
+            corpus_refs = _get_corpus_examples_for_family("core", limit=3)
+
+    result: Dict[str, Any] = {
         "wizard_stage": "incremental_authoring",
         "current_step": current_step,
         "step_status": "examples_only",
+        "matched_family": matched_family,
+        "matched_adapter": matched_adapter,
         "examples": examples[: max(1, int(example_count or 3))],
     }
+
+    if include_corpus_references and corpus_refs:
+        result["corpus_references"] = [
+            {"path": ex.get("path", ""), "graph_name": ex.get("graph_name", ""), "description": ex.get("description", "")}
+            for ex in corpus_refs
+        ]
+
+    return result

@@ -1,5 +1,5 @@
 {
-  "version": "1.7.1",
+  "version": "1.8.0",
   "project": "AINL",
   "description": "Discoverable bootstrap for bots and agents working in the AINL/OpenClaw repo. Pointers only; not an execution engine.",
   "primary_onboarding_doc": "docs/BOT_ONBOARDING.md",
@@ -52,7 +52,7 @@
     },
     "setup_script": {
       "command": "./scripts/setup_ainl_integration.sh [--workspace PATH] [--dry-run] [--with-cron] [--verbose]",
-      "description": "Shell convenience wrapper around `ainl install openclaw`. Supports --dry-run to preview without changes. Now delegates to ainl CLI (no longer uses deprecated gateway config.patch). v1.7.1+.",
+      "description": "Shell convenience wrapper around `ainl install openclaw`. Supports --dry-run to preview without changes. Now delegates to ainl CLI (no longer uses deprecated gateway config.patch). v1.8.0+.",
       "doc": "docs/QUICKSTART_OPENCLAW.md"
     }
   },

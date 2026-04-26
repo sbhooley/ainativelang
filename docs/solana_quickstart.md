@@ -1,4 +1,4 @@
-# Solana strict graphs — quickstart (AINL v1.7.1)
+# Solana strict graphs — quickstart (AINL v1.8.0)
 
 Use this page when you want **deterministic prediction-market style workflows** on Solana: PDAs, Pyth or Hermes prices, and `INVOKE` / `TRANSFER_SPL` with priority fees. The canonical end-to-end example is **`examples/prediction_market_demo.ainl`**.
 

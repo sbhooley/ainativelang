@@ -19,7 +19,7 @@ tags:
 
 **AINL** is an AI-native language that compiles **deterministic graphs**. In ZeroClaw, use it to import workflows, compile them, run them, and expose **`ainl-mcp`** tools to the agent.
 
-**PyPI:** `ainativelang` **v1.7.1** (optional extras: `[mcp]`, `[solana]`).
+**PyPI:** `ainativelang` **v1.8.0** (optional extras: `[mcp]`, `[solana]`).
 
 ## Agent instructions
 
@@ -71,7 +71,7 @@ Tell the user they can say in ZeroClaw:
 
 ## MCP
 
-Configure the host to run **`ainl-mcp`** as a stdio MCP server (see AINL docs: *External orchestration* / MCP). **`ainl install-mcp --host zeroclaw`** aligns local setup with ZeroClaw paths where applicable.
+Configure the host to run **`ainl-mcp`** as a stdio MCP server (see AINL docs: *External orchestration* / MCP). **`ainl install-mcp --host zeroclaw`** aligns local setup with ZeroClaw paths where applicable. Authoring tools include **`ainl_get_started`** (pass **`wizard_state_json`** to continue), **`ainl_step_examples`** (snippets by topic), validate/compile responses with **`contract_validation_status`**, and resources **`ainl://strict-valid-examples`** and **`ainl://strict-valid-families`**. See repo **`AGENTS.md`** and **`docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`**.
 
 ## References
 

@@ -5,7 +5,7 @@ Use this section for real deployment-style operational docs: monitors, playbooks
 ## Key docs
 
 - [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) — **OpenClaw + AINL gold standard** (profiles, caps, cron, host behavior, verification); **`openclaw_ainl_gold_standard`**
-- [`OPENCLAW_HOST_AINL_1_2_8.md`](OPENCLAW_HOST_AINL_1_2_8.md) — **AINL v1.2.8–v1.7.1 host briefing** (bridge probe, rolling hydrate, profiles, explicit OpenClaw responsibilities); **`openclaw_host_ainl_1_2_8`**
+- [`OPENCLAW_HOST_AINL_1_2_8.md`](OPENCLAW_HOST_AINL_1_2_8.md) — **AINL v1.2.8–v1.8.0 host briefing** (bridge probe, rolling hydrate, profiles, explicit OpenClaw responsibilities); **`openclaw_host_ainl_1_2_8`**
 - [`AINL_PROFILES.md`](AINL_PROFILES.md) — **named env profiles** (`ainl profile list|show|emit-shell`), portable defaults for many installs
 - [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md) — separate DBs/paths per workspace or tenant
 - [`HOST_PACK_OPENCLAW.md`](HOST_PACK_OPENCLAW.md) — OpenClaw reference bundle (links bootstrap + monitoring + profiles)
@@ -18,6 +18,7 @@ Use this section for real deployment-style operational docs: monitors, playbooks
 - [`SANDBOX_EXECUTION_PROFILE.md`](SANDBOX_EXECUTION_PROFILE.md) — sandbox execution profile and constraints
 - [`EXTERNAL_ORCHESTRATION_GUIDE.md`](EXTERNAL_ORCHESTRATION_GUIDE.md) — orchestrating AINL from external systems (includes MCP agent role templates, desktop-safe recipe, and end-to-end validator/inspector/runner example)
 - [`BATCH_AUTOMATION_GUIDE.md`](BATCH_AUTOMATION_GUIDE.md) — batch issue-solving and Dispatch-style repo automation: inspect-first, worktree-safe, deterministic, auditable
+- [`MCP_AINL_WIZARD_AND_CORPUS.md`](MCP_AINL_WIZARD_AND_CORPUS.md) — **MCP authoring wizard** (`ainl_get_started`, `ainl_step_examples`), **`ainl://strict-valid-families`**, **`contract_validation_status` / `contract_alignment`**, corpus regeneration, ArmaraOS `mcp_ainl_wizard_state_hint` / `mcp:ainl:wizard_state`
 
 ## Related sections
 

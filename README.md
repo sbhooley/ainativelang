@@ -104,10 +104,15 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 
 **Agentic HTTP payments & commerce (x402, MPP, AP2, ACP, AGTP):** integration hub **[docs/integrations/README.md](docs/integrations/README.md)** — HTTP-402 rails on the **`http`** adapter (**[HTTP_MACHINE_PAYMENTS.md](docs/integrations/HTTP_MACHINE_PAYMENTS.md)**), practitioner readiness (**[AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md](docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md)**), and **AGTP** options (**[AGTP.md](docs/integrations/AGTP.md)**).
 
+## New in v1.8.0
+
+- **MCP authoring & strict-valid corpus:** **`ainl_step_examples`**; **`ainl_get_started`** with **`wizard_state_json`** for session continuity; MCP resource **`ainl://strict-valid-families`** (mined **`corpus/strict_valid_family_index.json`**, **`tooling/corpus_mining.py`**); **`ainl_validate`** / **`ainl_compile`** responses include **`contract_validation_status`** and **`contract_alignment.mismatched_calls`** (lightweight drift vs `ADAPTER_CONTRACTS`); **`tooling/mcp_exposure_profiles.json`** registers the wizard tool + family resource on **`design_impact_first`**, **`inspect_only`**, **`safe_workflow`**, and **`full`**. Hub: **`docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`**. ArmaraOS pairs with **`mcp:ainl:wizard_state`** graph facts and **`mcp_ainl_wizard_state_hint`** in the system prompt (see **`armaraos/docs/mcp-a2a.md`**).
+- **HTTP machine payments (opt-in):** **`http`** adapter **`payment_profile`** (**`none`/`auto`/`x402`/`mpp`**) with structured **402** **`payment_required`** + **`http_payment`** frame merges; CLI **`--http-payment-profile`** / **`--http-max-payment-rounds`**; runner + MCP **`adapters.http`** keys. Docs: **`docs/integrations/HTTP_MACHINE_PAYMENTS.md`**, hub **`docs/integrations/README.md`**.
+
 ## New in v1.7.1
 
 - **A2A (Agent-to-Agent) adapter (opt-in):** **`a2a`** — wire profile **1.0** (`GET …/.well-known/agent.json`, **`tasks/send`** / **`tasks/get`**); **`allow_hosts`** / optional **`strict_ssrf`** / **redirects off by default**; enable via **`--enable-adapter a2a`** and **`--a2a-allow-hosts`**, or **`adapters` + `adapters.a2a`**. MCP **exposure profiles** do not enable **a2a** without **`adapters`** (see **`tooling/mcp_exposure_profiles.json`** + **`docs/integrations/A2A_ADAPTER.md`**). Tests: **`tests/test_a2a_adapter.py`**, **`tests/test_a2a_adapter_integration.py`**; example: **`examples/compact/a2a_delegate.ainl`**.
-- **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine aligned to **1.7.1** (see **`docs/CHANGELOG.md`** § **[1.7.1]**, **`docs/RELEASE_NOTES.md`**, **Known limitations** in both point at **`A2A_ADAPTER`**: TOCTOU, empty allowlist, IDNA).
+- **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine aligned to **1.7.1** for that tag's PyPI publish (see **`docs/CHANGELOG.md`** § **v1.7.1**, **`docs/RELEASE_NOTES.md`**; **Known limitations** point at **`A2A_ADAPTER`**: TOCTOU, empty allowlist, IDNA).
 
 ## New in v1.7.0
 
@@ -118,15 +123,15 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 - **Hand pack `schema_version`:** **`ainl emit --target armaraos`** writes **`schema_version`** on **`HAND.toml`**, IR JSON, and **`security.json`** — **`tests/test_emit_armaraos_handpack.py`**.
 - **Monitor registry bootstrap:** **`build_armaraos_monitor_registry`**, **`boot_armaraos_graph_memory`**, **`CronDriftCheckAdapter`**, **`tests/test_armaraos_monitor_registry.py`**.
 - **Runtime:** public **`AdapterRegistry.get`**; graph-patch uses **`adapters.get("ainl_graph_memory")`**.
-- **Release hygiene (v1.7.0 line):** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine bumped to **1.7.0** for that tag's PyPI publish (**latest PyPI** is **v1.7.1** — see **New in v1.7.1** above).
+- **Release hygiene (v1.7.0 line):** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine bumped to **1.7.0** for that tag's PyPI publish (**latest PyPI** is **v1.8.0** — see **New in v1.8.0** above).
 
 ## New in v1.6.0
 
 - **GraphPatch:** runtime **`R memory.patch`** (and graph **`memory.patch`**) installs procedural label bodies from the JSON graph store via **`ainl_graph_memory.graph_patch`**, with compile-time strict literal checks, runtime dataflow validation (**`_analyze_step_rw`**), overwrite protection for compiled labels, boot-time **`_reinstall_patches`**, and per-label fitness EMA (including early **`J`** exits). Tests: **`tests/test_graph_patch_op.py`**.
-- **Foundation for unified graph execution:** v1.6.0 established the canonical Python GraphPatch semantics while the ArmaraOS Rust stack formalized adapter-based patch dispatch (`PatchAdapter` registry + `GraphPatchAdapter` fallback), creating a stable integration seam that **v1.7.0** extended through vitals, extractor, persona, and semantic-tagging convergence, and that **v1.7.1** extends with the opt-in **a2a** (Agent-to-Agent) network adapter.
+- **Foundation for unified graph execution:** v1.6.0 established the canonical Python GraphPatch semantics while the ArmaraOS Rust stack formalized adapter-based patch dispatch (`PatchAdapter` registry + `GraphPatchAdapter` fallback), creating a stable integration seam that **v1.7.0** extended through vitals, extractor, persona, and semantic-tagging convergence, and that **v1.7.1** extended with the opt-in **a2a** (Agent-to-Agent) network adapter — **v1.8.0** layers MCP authoring depth (wizard, corpus index, contract alignment) and HTTP **402** payment profiles on **`http`**.
 - **Release hygiene:** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine, and **`ADAPTER_REGISTRY.json`** / **`docs/reference/ADAPTER_REGISTRY.md`** aligned to **1.6.0**.
 
-## Unified graph execution engine vision (1.6.0 → 1.7.1)
+## Unified graph execution engine vision (1.6.0 → 1.8.0)
 
 - **Single typed substrate:** the same graph artifact carries executable workflow structure plus memory layers (episodic, semantic, procedural, persona), rather than splitting execution and memory into separate systems.
 - **Memory as compiled knowledge:** GraphPatch (`memory.patch`) promotes proven behavior into reusable procedural graph structure under strict dataflow and overwrite guards.
@@ -930,7 +935,7 @@ For implementation and shipped-capability status, see:
 ### Essential reading
 
 - What is AINL? (canonical primer + capabilities): **`docs/WHAT_IS_AINL.md`** · root **`WHAT_IS_AINL.md`** (stub → docs)
-- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.7.1**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
+- Whitepaper draft (architecture, benchmarks, OpenClaw ops + token economics through **v1.8.0**, async runtime, reactive DB/realtime adapters; native Solana — **`docs/solana_quickstart.md`**): **`WHITEPAPERDRAFT.md`**
 - Reactive / event-driven workflows (DynamoDB Streams, Supabase Realtime, Redis Pub/Sub, Airtable webhooks) + examples: `docs/reactive/REACTIVE_EVENTS.md`, `examples/reactive/`
 - Advanced durability patterns for multi-node/cross-process checkpoints and cursors using existing adapters only: `docs/reactive/ADVANCED_DURABILITY.md`
 - Packaged durability templates (Redis + Postgres checkpoint helpers): `templates/durability/`
@@ -987,7 +992,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.7.1** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Current PyPI / runtime package version:** **`ainativelang` 1.8.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

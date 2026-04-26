@@ -6,8 +6,7 @@
 # Validate: python -m cli.main validate examples/wishlist/03_parallel_fanout.ainl --strict
 
 wishlist_03_parallel_fanout:
-  in:
+  in: fan_json
 
-  fan_json = "[[\"core\",\"add\",2,3],[\"core\",\"mul\",4,5],[\"core\",\"concat\",\"a\",\"b\"]]"
   R fanout.ALL fan_json ->results
   out results

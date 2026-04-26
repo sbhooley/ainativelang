@@ -1,0 +1,20 @@
+# examples/compact/fs_write_compact.ainl
+# Minimal strict-valid compact filesystem write example.
+# Demonstrates fs.write with lowercase verb per adapter contract.
+#
+# Validate: ainl validate examples/compact/fs_write_compact.ainl --strict
+# Run:      ainl run examples/compact/fs_write_compact.ainl
+#           (requires fs adapter with root configured)
+#
+# frame: output_path: string
+# frame: content: string
+
+fs_writer:
+  in: output_path content
+
+  result = fs.write output_path content
+  ok = core.GET result "ok"
+  bytes_written = core.GET result "bytes"
+  summary = core.CONCAT "Wrote " bytes_written " bytes to " output_path
+
+  out summary

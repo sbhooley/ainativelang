@@ -112,14 +112,34 @@ class TestEnvExclusion:
 class TestExposureProfiles:
     def test_validate_only_profile(self):
         tools, resources = _reimport_scoping({"AINL_MCP_EXPOSURE_PROFILE": "validate_only"})
-        assert tools == {"ainl_get_started", "ainl_adapter_contract", "ainl_validate", "ainl_compile"}
+        assert tools == {
+            "ainl_get_started",
+            "ainl_step_examples",
+            "ainl_adapter_contract",
+            "ainl_validate",
+            "ainl_compile",
+        }
         assert resources == set()
 
     def test_inspect_only_profile(self):
         tools, resources = _reimport_scoping({"AINL_MCP_EXPOSURE_PROFILE": "inspect_only"})
-        assert tools == {"ainl_get_started", "ainl_adapter_contract", "ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report"}
+        assert tools == {
+            "ainl_get_started",
+            "ainl_step_examples",
+            "ainl_adapter_contract",
+            "ainl_validate",
+            "ainl_compile",
+            "ainl_capabilities",
+            "ainl_security_report",
+        }
         assert "ainl_run" not in tools
         assert "ainl://adapter-manifest" in resources
+        assert "ainl://strict-valid-families" in resources
+
+    def test_design_impact_first_profile_includes_wizard_extras(self):
+        tools, resources = _reimport_scoping({"AINL_MCP_EXPOSURE_PROFILE": "design_impact_first"})
+        assert "ainl_step_examples" in tools
+        assert "ainl://strict-valid-families" in resources
 
     def test_safe_workflow_profile(self):
         tools, resources = _reimport_scoping({"AINL_MCP_EXPOSURE_PROFILE": "safe_workflow"})

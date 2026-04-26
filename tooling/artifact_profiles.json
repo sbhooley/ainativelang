@@ -32,6 +32,7 @@
       "examples/compact/cache_lookup_compact.ainl",
       "examples/compact/openclaw_learning_handoff.ainl",
       "examples/compact/github_raw_fetch_compact.ainl",
+      "examples/compact/fs_write_compact.ainl",
       "examples/rag_pipeline.ainl",
       "examples/rag/cache-warmer.ainl",
       "examples/crud_api.ainl",

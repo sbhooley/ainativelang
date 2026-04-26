@@ -22,4 +22,4 @@ github_raw_fetch:
   res = http.GET url {} 15
   status = core.GET res "status"
   body = core.GET res "body"
-  out {url: url, status: status, bytes: body}
+  out body

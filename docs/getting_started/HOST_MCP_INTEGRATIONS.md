@@ -2,7 +2,7 @@
 
 Single entry point for wiring **AINL** into agent stacks that consume **stdio `ainl-mcp`**: upgrade **`ainl[mcp]`** from PyPI, merge **`mcp.servers.ainl`** (or YAML **`mcp_servers.ainl`** on Hermes), install **`ainl-run`** under the host’s config tree, and suggest shell **`PATH`** updates.
 
-**Current PyPI release:** `ainativelang` **v1.7.1**.
+**Current PyPI release:** `ainativelang` **v1.8.0**.
 
 **A2A (`ainl run` + `a2a` in production):** wire allowlists, **`strict_ssrf`**, and MCP/server **`adapters`** in [`docs/integrations/A2A_ADAPTER.md`](../integrations/A2A_ADAPTER.md) — **named exposure profiles** alone do not enable the **a2a** adapter; opt in under **`adapters`**.
 

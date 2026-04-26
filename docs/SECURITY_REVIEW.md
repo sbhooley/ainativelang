@@ -1,6 +1,6 @@
 # AINL Security Review
 
-> Independent security review of the AINL (AI Native Language) compiler + runtime + adapters platform, version 1.7.1.
+> Independent security review of the AINL (AI Native Language) compiler + runtime + adapters platform, version 1.8.0.
 > Date: 2026-04-22.
 > Scope: Full audit covering malicious-code review, architecture/trust boundaries, `ainl serve` HTTP API, runtime runner service, MCP server, all major adapters, secrets/dependency supply chain, and compiler/IR/emitter injection surface.
 

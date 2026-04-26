@@ -27,7 +27,7 @@ Need validation before processing.
 
 ## Implementation
 
-### Real AINL Syntax (v1.7.1 — this compiles)
+### Real AINL Syntax (v1.8.0 — this compiles)
 
 ```ainl
 # validation_pipeline.ainl — Multi-stage data validation

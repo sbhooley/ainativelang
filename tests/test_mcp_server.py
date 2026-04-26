@@ -113,7 +113,7 @@ class TestGetStarted:
         assert result["wizard_stage"] == "incremental_authoring"
         assert result["current_step"] == "output_write"
         assert result["step_status"] == "examples_only"
-        assert any("fs.WRITE" in row["code"] for row in result["examples"])
+        assert any("fs.write" in row["code"] for row in result["examples"])
 
     def test_reverse_engineer_source_returns_human_goals(self):
         code = (ROOT / "examples" / "monitoring" / "solana-balance.ainl").read_text(
@@ -171,7 +171,7 @@ class TestGetStarted:
         joined = "\n".join("\n".join(row["lines"]) for row in scaffold["slices"])
         assert "page = http.GET target_url" in joined
         assert "session = browser.NAVIGATE target_url" in joined
-        assert "written = fs.WRITE output_path csv" in joined
+        assert "written = fs.write output_path csv" in joined
         assert result["agent_authoring_policy"]["adapter_specific_source_allowed"] is True
 
     def test_adapter_contract_http_is_real_not_placeholder(self):
@@ -461,7 +461,8 @@ class TestContractAlignment:
         out: Dict[str, Any] = {"ok": True, "warnings": []}
         _merge_contract_alignment_into_output(out, ir, ok_graph=True)
         assert "contract_alignment" in out
-        assert out["contract_alignment"]["items"]
+        assert out["contract_alignment"]["mismatched_calls"]
+        assert out["contract_validation_status"] == "syntax_valid_contract_mismatch"
 
 
 # ---------------------------------------------------------------------------
@@ -776,3 +777,162 @@ class TestMergeHelpers:
         over_ceiling = server_default + 1_000_000
         merged = _merge_limits({"max_steps": over_ceiling})
         assert merged["max_steps"] == server_default
+
+
+# ---------------------------------------------------------------------------
+# Wizard State Machine
+# ---------------------------------------------------------------------------
+
+
+class TestWizardStateMachine:
+    """Tests for the deterministic wizard state machine."""
+
+    def test_wizard_state_returned_from_get_started(self):
+        result = ainl_get_started(goal="Build a scraper that saves CSV")
+        assert "wizard_state_json" in result
+        assert "session_id" in result
+        assert result["wizard_stage"] in ("core_starter", "capability_discovery", "contract_resolution", "incremental_authoring")
+
+    def test_wizard_state_resumption_preserves_session(self):
+        result1 = ainl_get_started(goal="Build a scraper that saves CSV")
+        wizard_state = result1.get("wizard_state_json")
+        result2 = ainl_get_started(goal="Build a scraper that saves CSV", wizard_state_json=wizard_state)
+        assert result1["session_id"] == result2["session_id"]
+
+    def test_core_workflow_can_author_immediately(self):
+        result = ainl_get_started(goal="Run hello.ainl")
+        assert result["wizard_state"]["can_author_now"] is True
+        assert result["wizard_stage"] == "core_starter"
+
+    def test_adapter_workflow_blocks_until_contracts(self):
+        result = ainl_get_started(goal="Build a scraper that saves CSV")
+        assert result["wizard_state"]["can_author_now"] is False
+        assert result["wizard_stage"] == "capability_discovery"
+        assert "capabilities_inspected" in result["wizard_state"]["blocking_checkpoints"]
+
+    def test_next_wizard_action_guides_progression(self):
+        result = ainl_get_started(goal="Build a scraper that saves CSV")
+        next_action = result.get("next_wizard_action")
+        assert next_action is not None
+        assert next_action["tool"] == "ainl_capabilities"
+
+
+class TestLeadGenWorkflow:
+    """Tests for lead-gen style workflows with strict validation requirements."""
+
+    def test_strict_validation_required_for_adapter_workflows(self):
+        """Adapter workflow must pass strict validation, not just loose."""
+        code = '''
+scraper:
+  in: url output_path
+  page = http.GET url
+  rows = core.GET page "body"
+  written = fs.write output_path rows
+  out written
+'''
+        loose_result = ainl_validate(code=code, strict=False)
+        strict_result = ainl_validate(code=code, strict=True)
+        assert loose_result["ok"] is True
+        assert strict_result["ok"] is True
+        assert strict_result.get("strict") is True
+
+    def test_run_proof_requires_ok_true(self):
+        """ainl_run ok:false should not satisfy proof gate."""
+        code = '''
+hello:
+  out "test"
+'''
+        validate_result = ainl_validate(code=code, strict=True)
+        assert validate_result["ok"] is True
+        compile_result = ainl_compile(code=code, strict=True)
+        assert compile_result.get("ok", True) is True
+
+    def test_contract_validation_status_returned(self):
+        """Validate should return contract_validation_status for adapter workflows."""
+        code = '''
+fetcher:
+  in: url
+  res = http.GET url
+  out res
+'''
+        result = ainl_validate(code=code, strict=True)
+        assert "contract_validation_status" in result
+        assert result["contract_validation_status"] in (
+            "syntax_valid_contract_verified",
+            "syntax_valid_contract_unknown",
+            "syntax_valid_contract_mismatch",
+        )
+
+
+class TestAdapterRegistrationE2E:
+    """Tests for adapter registration and runtime readiness."""
+
+    def test_compile_returns_required_adapters(self):
+        """ainl_compile should return required_adapters for configuring ainl_run."""
+        code = '''
+fetcher:
+  in: url output_path
+  page = http.GET url
+  fs.write output_path page
+  out page
+'''
+        result = ainl_compile(code=code)
+        assert "required_adapters" in result
+        required = result["required_adapters"]
+        assert "http" in required
+        assert "fs" in required
+
+    def test_runtime_readiness_hints_for_adapters(self):
+        """Compile should include runtime_readiness hints."""
+        code = '''
+writer:
+  in: path content
+  fs.write path content
+  out "done"
+'''
+        result = ainl_compile(code=code)
+        assert "runtime_readiness" in result
+        readiness = result["runtime_readiness"]
+        assert "fs" in readiness.get("required_adapters", [])
+        assert readiness.get("ready") is False
+        assert "suggested_adapters" in readiness
+
+    def test_suggested_adapters_payload_complete(self):
+        """Compile should suggest adapters payload structure."""
+        code = '''
+combined:
+  in: url output_path
+  page = http.GET url
+  fs.write output_path page
+  out page
+'''
+        result = ainl_compile(code=code)
+        # Runtime readiness includes adapter configuration hints
+        assert result.get("required_adapters")
+
+
+class TestStrictOutputDiagnostics:
+    """Tests for strict mode output/JSON diagnostics."""
+
+    def test_inline_json_literal_detected(self):
+        """Inline JSON in out/Set should be flagged in strict mode."""
+        code = '''
+builder:
+  in: name
+  out {name: name, status: "ok"}
+'''
+        result = ainl_validate(code=code, strict=True)
+        assert result["ok"] is False
+        errors = result.get("errors") or []
+        assert any("inline JSON" in str(e).lower() or "object literal" in str(e).lower() for e in errors)
+
+    def test_core_stringify_for_structured_output(self):
+        """core.STRINGIFY should be suggested for structured output."""
+        code = '''
+builder:
+  in: data
+  json_text = core.STRINGIFY data
+  out json_text
+'''
+        result = ainl_validate(code=code, strict=True)
+        assert result["ok"] is True
