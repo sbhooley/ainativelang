@@ -38,6 +38,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -46,8 +47,10 @@ import threading
 import time
 import uuid
 import yaml
+from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
+from urllib.parse import urlparse
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -82,6 +85,14 @@ from tooling.mcp_ecosystem_import import (
     import_clawflow_mcp,
     import_markdown_mcp,
     list_ecosystem_templates,
+)
+from tooling.ainl_get_started import (
+    adapter_contract as ainl_adapter_contract_payload,
+    get_started as ainl_get_started_wizard,
+    load_artifact_profiles,
+    reverse_engineer_corpus as reverse_engineer_ainl_corpus,
+    reverse_engineer_source as reverse_engineer_ainl_source,
+    step_examples as ainl_get_started_step_examples,
 )
 from tooling.graph_diff import graph_diff
 from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
@@ -169,6 +180,21 @@ _MCP_INTEGRATION_RESOURCE_CATALOG: List[Dict[str, str]] = [
         "title": "Example: HTTP machine payment flow (strict-valid)",
         "summary": "Opcode graph for 402/payment_required + frame.http_payment; run python scripts/run_http_machine_payment_roundtrip_demo.py for a local stdlib round-trip.",
     },
+    {
+        "uri": "ainl://strict-authoring-cheatsheet",
+        "title": "Strict AINL authoring cheatsheet",
+        "summary": "Strict-mode syntax, MCP code= contract, validate/compile/run chain, no inline dict/J-object pitfalls.",
+    },
+    {
+        "uri": "ainl://strict-valid-examples",
+        "title": "Strict-valid example index",
+        "summary": "JSON list of repo paths from tooling/artifact_profiles.json strict-valid; safe templates for --strict CI.",
+    },
+    {
+        "uri": "ainl://adapter-contracts",
+        "title": "Adapter contracts bundle",
+        "summary": "JSON bundle of deterministic ainl_adapter_contract payloads (http, fs, browser, …).",
+    },
 ]
 
 # Resource floor aligned with ``scripts/runtime_runner_service._SERVER_DEFAULT_LIMITS``.
@@ -189,6 +215,8 @@ _DEFAULT_LIMITS: Dict[str, Any] = dict(_MCP_DEFAULT_LIMITS)
 
 # NOTE: These lists are part of the testing contract for exposure scoping.
 ALL_TOOL_NAMES: List[str] = [
+    "ainl_get_started",
+    "ainl_adapter_contract",
     "ainl_validate",
     "ainl_compile",
     "ainl_capabilities",
@@ -209,6 +237,9 @@ ALL_RESOURCE_URIS: List[str] = [
     "ainl://adapter-manifest",
     "ainl://security-profiles",
     "ainl://authoring-cheatsheet",
+    "ainl://strict-authoring-cheatsheet",
+    "ainl://strict-valid-examples",
+    "ainl://adapter-contracts",
     "ainl://impact-checklist",
     "ainl://adapter-risk-matrix",
     "ainl://run-readiness",
@@ -244,6 +275,59 @@ Ground truth in-repo: **AGENTS.md** (HTTP adapter, queue, strict-valid examples)
 - **`ainl_run`** → `adapters.http`: optional **`payment_profile`** (`none`, `auto`, `mpp`, `x402`) and **`max_payment_rounds`** (int, default 2). On **402** / payment-required flows, merge retry material from the prior result into **`frame.http_payment`** (see hub doc).
 - Readiness / vocabulary: **`ainl://integrations-agentic-protocols-readiness`**, **`ainl://integrations-agtp`**, hub **`ainl://integrations-hub`**.
 - Strict-valid graph template: **`ainl://examples-http-machine-payment-flow`** (opcode `http.GET` + `payment_required` branch + `http_payment` frame); local demo: **`python scripts/run_http_machine_payment_roundtrip_demo.py`**.
+"""
+
+_STRICT_AUTHORING_CHEATSHEET_MARKDOWN: str = """# Strict AINL authoring (MCP)
+
+**Scope:** patterns that pass **`ainl_validate(..., strict=true)`** and match CI **`strict-valid`** examples in `tooling/artifact_profiles.json`. This is **not** the same as “will run on every host”: MCP **`ainl_run`** still needs per-run **`adapters`** for `http`, `fs`, `cache`, `sqlite`, etc.
+
+## Golden path (agents)
+
+1. **`ainl_get_started`** with a plain-language goal; finish **`missing_checkpoints`** before adapter-heavy lines.
+2. **`ainl_capabilities`** → real verb names; do **not** invent verbs from memory or random repo files.
+3. **`ainl_adapter_contract`** for each non-`core` adapter you will call.
+4. **`ainl_validate`** (`strict=true`) after **each** small edit; **`ainl_compile`** before **`ainl_run`** when you need `frame_hints` / IR checks.
+5. **`ainl_run`** with **`adapters`** matching `required_adapters` / `runtime_readiness` from validate/compile.
+
+## MCP tool contract (critical)
+
+- Pass the **full `.ainl` / `.lang` source text** in the **`code`** argument (string). Legacy alias **`ainl`** is accepted.
+- **Do not** pass only a filesystem path unless your host also reads the file into `code` for you.
+
+## Compact syntax starter (strict-valid shape)
+
+```ainl
+workflow:
+  result = core.ADD 2 3
+  out result
+```
+
+## HTTP (`R http.*` / compact `http.*`)
+
+- **GET** positional args only: URL, optional headers dict, optional timeout seconds. Put query params **in the URL**.
+- **POST**: URL, body variable (dict built in **`frame`** or via **`core`**, never inline `{...}` on the `R` line).
+- Wrong: `params=`, `timeout=` as fake named tokens on the `R` line.
+
+Example (strict-safe):
+
+```ainl
+fetch:
+  res = http.GET "https://example.com/api?x=1" {} 15
+  out res
+```
+
+## Strict bans (common agent mistakes)
+
+- **No** inline JSON/object/map literals as operands to **`J`**, **`Set`**, or **`out`** in strict mode — use variables, **`frame`**, **`core.PARSE`**, **`core.STRINGIFY`**, **`core.MERGE`** (variables only).
+- **No** invented **`core.FORMAT`** / formatting verbs — use **`core.CONCAT`**, **`core.STR`**, **`core.STRINGIFY`**.
+- **`core.GET`** is **`core.GET container key`** (object first, key second).
+
+## Where to copy templates from
+
+- MCP resource **`ainl://strict-valid-examples`** — JSON index of **`strict-valid`** repo paths.
+- Opcode HTTP payment template: **`ainl://examples-http-machine-payment-flow`**.
+- Full adapter verb lists + `strict_contract` flags: **`ainl://adapter-manifest`** and **`ainl_capabilities.strict_summary`**.
+- Deterministic adapter semantics bundle: **`ainl://adapter-contracts`**.
 """
 
 _IMPACT_CHECKLIST_MARKDOWN: str = """# Impact-first checklist (GitNexus-style alignment)
@@ -290,6 +374,134 @@ def _impact_first_mode() -> bool:
         return True
     prof = (os.environ.get("AINL_MCP_EXPOSURE_PROFILE") or "").strip()
     return prof == "design_impact_first"
+
+
+_ADAPTER_CONTRACT_BUNDLE_KEYS: Tuple[str, ...] = (
+    "http",
+    "browser",
+    "fs",
+    "cache",
+    "llm",
+    "core",
+    "http_or_browser",
+    "provider_or_http",
+    "state_or_database",
+)
+
+
+def _strict_valid_examples_json() -> str:
+    """JSON index of CI strict-valid example paths (artifact_profiles.json)."""
+    profiles = load_artifact_profiles(_REPO_ROOT)
+    paths = sorted(profiles.get("strict-valid", set()))
+    payload: Dict[str, Any] = {
+        "schema_version": "1.0",
+        "profile": "strict-valid",
+        "count": len(paths),
+        "paths": paths,
+        "note": (
+            "These paths are the repo contract for `ainl validate --strict` in CI. "
+            "Read file contents into MCP `code=` (full source string), not just the path."
+        ),
+        "snippet_resources": ["ainl://examples-http-machine-payment-flow"],
+    }
+    return json.dumps(payload, indent=2)
+
+
+def _adapter_contracts_bundle_json() -> str:
+    """Deterministic JSON bundle of adapter_contract payloads for MCP resources/read."""
+    bundle = {name: ainl_adapter_contract_payload(name) for name in _ADAPTER_CONTRACT_BUNDLE_KEYS}
+    return json.dumps(bundle, indent=2)
+
+
+def _strict_summary_from_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
+    """Compact strict-relevant view of adapter_manifest.json for agents."""
+    adapters = manifest.get("adapters") or {}
+    per_adapter: Dict[str, Any] = {}
+    strict_valid_verbs: Dict[str, List[str]] = {}
+    for name, info in adapters.items():
+        if not isinstance(info, dict):
+            continue
+        verbs = info.get("verbs") or []
+        verb_list = [str(v) for v in verbs] if isinstance(verbs, list) else []
+        st = bool(info.get("strict_contract"))
+        entry: Dict[str, Any] = {
+            "strict_contract": st,
+            "support_tier": info.get("support_tier"),
+            "verb_count": len(verb_list),
+        }
+        if len(verb_list) <= 48:
+            entry["verbs"] = verb_list
+        if st and verb_list:
+            strict_valid_verbs[name] = verb_list if len(verb_list) <= 120 else verb_list[:120] + ["…truncated"]
+        per_adapter[name] = entry
+    return {
+        "schema_version": "1.0",
+        "note": (
+            "`strict_contract` reflects compiler catalog alignment; some verbs may still be "
+            "unsupported at Python runtime — verify with `ainl_capabilities` + `ainl_validate --strict`."
+        ),
+        "adapters": per_adapter,
+        "strict_valid_verbs": strict_valid_verbs,
+    }
+
+
+def _repair_recipe_from_failure(
+    primary: Optional[Dict[str, Any]],
+    failure_tags: Set[str],
+) -> Dict[str, Any]:
+    """Deterministic repair hints keyed off diagnostics (no auto-rewrite)."""
+    recipe: Dict[str, Any] = {
+        "resources": ["ainl://strict-authoring-cheatsheet"],
+        "recommended_tools": ["ainl_get_started", "ainl_validate"],
+        "steps": [],
+    }
+    if primary and isinstance(primary, dict):
+        sfx = primary.get("suggested_fix")
+        if sfx:
+            recipe["steps"].append(str(sfx))
+        kind = str(primary.get("kind") or "")
+        msg_l = str(primary.get("message") or "").lower()
+        if kind == "strict_validation_failure" or "inline" in msg_l and "literal" in msg_l:
+            recipe["steps"].append(
+                "For structured data, pass dicts via `ainl_run` `frame`, or build text with "
+                "`core.STRINGIFY` / `core.PARSE` / variables — not `{...}` tokens on `R`/`J`/`out` lines."
+            )
+        if "unknown adapter" in msg_l or "unknown verb" in msg_l or "does not exist on adapter" in msg_l:
+            recipe["recommended_tools"] = ["ainl_capabilities", "ainl_adapter_contract", "ainl_validate"]
+        if "http" in msg_l and any(
+            x in msg_l for x in ("params", "timeout", "named argument", "dict literal", "tokenize")
+        ):
+            recipe["resources"].append("ainl://authoring-cheatsheet")
+    if "adapter_or_verb" in failure_tags:
+        recipe["recommended_tools"] = ["ainl_capabilities", "ainl_adapter_contract", "ainl_validate"]
+    if "http_or_rline" in failure_tags:
+        recipe["resources"].append("ainl://authoring-cheatsheet")
+    recipe["resources"] = list(dict.fromkeys(recipe["resources"]))
+    recipe["recommended_tools"] = list(dict.fromkeys(recipe["recommended_tools"]))
+    recipe["resources"] = [u for u in recipe["resources"] if u in _ALLOWED_RESOURCES]
+    recipe["recommended_tools"] = [t for t in recipe["recommended_tools"] if t in _ALLOWED_TOOLS]
+    return recipe
+
+
+def _missing_source_tool_error(tool: str) -> Dict[str, Any]:
+    """Standard payload when MCP tools are called without `code` / `ainl` source text."""
+    out_ms: Dict[str, Any] = {
+        "ok": False,
+        "errors": ["missing required argument: code"],
+        "tool_call_error": True,
+        "why_this_matters": (
+            "This failure is a host/tool wiring issue: no AINL source was passed, so nothing was compiled."
+        ),
+        "next_step": (
+            f"Read the target `.ainl` / `.lang` file (or your editor buffer) and pass the **full source** "
+            f"into `{tool}(code=...)` as a string. Legacy alias `ainl=` is accepted."
+        ),
+        "copy_paste_next_call": {"tool": tool, "args": {"code": "<paste full AINL source here>", "strict": True}},
+        "recommended_resources": [u for u in ("ainl://strict-authoring-cheatsheet",) if u in _ALLOWED_RESOURCES],
+        "recommended_next_tools": [t for t in ("ainl_get_started", tool) if t in _ALLOWED_TOOLS],
+    }
+    _attach_policy_contract_hints(out_ms)
+    return out_ms
 
 
 def _csv_set(val: Optional[str]) -> Set[str]:
@@ -354,10 +566,60 @@ _TELEM_LOCK = threading.Lock()
 _MCP_TELEM: Dict[str, int] = {}
 _pending_validate_ok_sha256: Optional[str] = None
 _last_validate_was_fail = False
+_COMPILE_CACHE_LOCK = threading.Lock()
+_COMPILE_CACHE: "OrderedDict[tuple[str, bool, str], Dict[str, Any]]" = OrderedDict()
 
 
 def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _compile_cache_max_entries() -> int:
+    raw = os.environ.get("AINL_MCP_COMPILE_CACHE_MAX_ENTRIES") or os.environ.get(
+        "ARMARA_AINL_CACHE_MAX_ENTRIES"
+    )
+    try:
+        return max(0, int(raw)) if raw is not None else 256
+    except (TypeError, ValueError):
+        return 256
+
+
+def _compile_cache_version() -> str:
+    return (
+        os.environ.get("AINL_MCP_COMPILER_VERSION")
+        or os.environ.get("ARMARA_AINL_COMPILER_VERSION")
+        or RUNTIME_VERSION
+    )
+
+
+def _compile_cache_key(code: str, strict: bool) -> tuple[str, bool, str]:
+    return (_sha256_text(code), bool(strict), _compile_cache_version())
+
+
+def _compile_cache_get(code: str, strict: bool) -> Optional[Dict[str, Any]]:
+    if _compile_cache_max_entries() <= 0:
+        return None
+    key = _compile_cache_key(code, strict)
+    with _COMPILE_CACHE_LOCK:
+        cached = _COMPILE_CACHE.get(key)
+        if cached is None:
+            return None
+        _COMPILE_CACHE.move_to_end(key)
+        with _TELEM_LOCK:
+            _MCP_TELEM["compile_cache_hits"] = _MCP_TELEM.get("compile_cache_hits", 0) + 1
+        return copy.deepcopy(cached)
+
+
+def _compile_cache_put(code: str, strict: bool, ir: Dict[str, Any]) -> None:
+    max_entries = _compile_cache_max_entries()
+    if max_entries <= 0:
+        return
+    key = _compile_cache_key(code, strict)
+    with _COMPILE_CACHE_LOCK:
+        _COMPILE_CACHE[key] = copy.deepcopy(ir)
+        _COMPILE_CACHE.move_to_end(key)
+        while len(_COMPILE_CACHE) > max_entries:
+            _COMPILE_CACHE.popitem(last=False)
 
 
 def _telemetry_snapshot() -> Dict[str, int]:
@@ -494,18 +756,20 @@ def _add_recommended_next_steps(
         tags = failure_tags or set()
         adapter = "adapter_or_verb" in tags
         http = "http_or_rline" in tags
+        strict_sheet = "ainl://strict-authoring-cheatsheet"
+        contracts = "ainl://adapter-contracts"
         if adapter and not http:
             tools = ["ainl_capabilities", "ainl_validate", "ainl_compile"]
-            resources = []
+            resources = [strict_sheet, contracts]
         elif http and not adapter:
             tools = ["ainl_validate"]
-            resources = ["ainl://authoring-cheatsheet"]
+            resources = [strict_sheet, "ainl://authoring-cheatsheet"]
         elif adapter and http:
             tools = ["ainl_capabilities", "ainl_validate"]
-            resources = ["ainl://authoring-cheatsheet"]
+            resources = [strict_sheet, "ainl://authoring-cheatsheet"]
         else:
             tools = ["ainl_validate", "ainl_capabilities"]
-            resources = ["ainl://authoring-cheatsheet"]
+            resources = [strict_sheet, "ainl://authoring-cheatsheet"]
     elif kind == "compile_ok":
         if if_:
             tools = ["ainl_ir_diff", "ainl_run", "ainl_validate", "ainl_security_report"]
@@ -514,7 +778,7 @@ def _add_recommended_next_steps(
     else:
         return
     tools_f = [t for t in tools if t in _ALLOWED_TOOLS]
-    res_f = [r for r in resources if r in _ALLOWED_RESOURCES]
+    res_f = [r for r in dict.fromkeys(resources) if r in _ALLOWED_RESOURCES]
     out["recommended_next_tools"] = tools_f
     if res_f:
         out["recommended_resources"] = res_f
@@ -568,10 +832,16 @@ if _HAS_MCP:
             "Use ainl_list_ecosystem for curated Clawflows/Agency-Agents presets; "
             "ainl_import_clawflow, ainl_import_agency_agent, and ainl_import_markdown "
             "fetch Markdown and return deterministic .ainl source (network). "
-            "MCP resource ainl://authoring-cheatsheet summarizes HTTP R-lines and adapters; "
+            "Call ainl_get_started before writing unfamiliar adapter-heavy AINL. "
+            "Pass full program text in validate/compile/run `code` (string); legacy `ainl` alias is accepted. "
+            "MCP resource ainl://strict-authoring-cheatsheet is the strict-mode syntax contract; "
+            "ainl://authoring-cheatsheet adds HTTP machine-payment / R-line integration notes; "
+            "ainl://strict-valid-examples lists CI strict-valid template paths; "
+            "ainl://adapter-contracts is a JSON bundle of adapter semantics. "
             "ainl://integrations-* resources ship docs/integrations (machine payments, AGTP, A2A). "
-            "validate/compile responses include recommended_next_tools. "
-            "ainl_capabilities returns mcp_telemetry (call counters) and mcp_resources (integration URIs)."
+            "validate/compile ok means compiler success — check required_adapters/runtime_readiness before assuming ainl_run works without adapters=. "
+            "validate/compile responses include recommended_next_tools and repair_recipe on failures. "
+            "ainl_capabilities returns strict_summary, mcp_telemetry (call counters), and mcp_resources (integration URIs)."
         ),
     )
 
@@ -616,12 +886,17 @@ def _ir_from_compilation_diagnostic_error(exc: CompilationDiagnosticError) -> Di
 
 def _compile(code: str, strict: bool = True) -> Dict[str, Any]:
     """Compile with :class:`CompilerContext` so IR includes rich structured diagnostics."""
+    cached = _compile_cache_get(code, strict)
+    if cached is not None:
+        return cached
     compiler = AICodeCompiler(strict_mode=strict)
     ctx = CompilerContext()
     try:
-        return compiler.compile(code, context=ctx)
+        ir = compiler.compile(code, context=ctx)
     except CompilationDiagnosticError as e:
-        return _ir_from_compilation_diagnostic_error(e)
+        ir = _ir_from_compilation_diagnostic_error(e)
+    _compile_cache_put(code, strict, ir)
+    return copy.deepcopy(ir)
 
 
 def _extract_frame_hints(code: str, ir: Dict[str, Any]) -> List[Dict[str, str]]:
@@ -874,6 +1149,7 @@ def _load_capabilities() -> Dict[str, Any]:
         adapters[name] = {
             "support_tier": info.get("support_tier"),
             "verbs": info.get("verbs", []),
+            "strict_contract": info.get("strict_contract"),
             "effect_default": info.get("effect_default"),
             "recommended_lane": info.get("recommended_lane"),
             "privilege_tier": info.get("privilege_tier"),
@@ -891,9 +1167,109 @@ def _load_capabilities() -> Dict[str, Any]:
         "runtime_version": RUNTIME_VERSION,
         "policy_support": True,
         "adapters": adapters,
+        "strict_summary": _strict_summary_from_manifest(manifest),
         "mcp_telemetry": _telemetry_snapshot(),
         "mcp_resources": catalog,
     }
+
+
+_MCP_CONFIGURABLE_ADAPTERS: Set[str] = {"http", "fs", "cache", "sqlite", "a2a"}
+
+
+def _required_adapters_from_ir(ir: Dict[str, Any]) -> List[str]:
+    """Return sorted non-core adapters required by compiled IR."""
+    reqs = (ir.get("execution_requirements") or {}).get("required_capabilities") or []
+    found: Set[str] = {str(x).strip().lower() for x in reqs if str(x).strip()}
+    avm = (ir.get("avm_policy_fragment") or {}).get("allowed_adapters") or []
+    found.update(str(x).strip().lower() for x in avm if str(x).strip())
+    found.discard("core")
+    return sorted(found)
+
+
+def _http_hosts_from_ir(ir: Dict[str, Any]) -> List[str]:
+    hosts: Set[str] = set()
+    for body in (ir.get("labels") or {}).values():
+        if not isinstance(body, dict):
+            continue
+        for node in body.get("nodes") or []:
+            if not isinstance(node, dict):
+                continue
+            data = node.get("data") or {}
+            adapter = str(data.get("adapter") or "").lower()
+            if not adapter.startswith("http."):
+                continue
+            target = str(data.get("target") or "")
+            parsed = urlparse(target)
+            if parsed.hostname:
+                hosts.add(parsed.hostname)
+    return sorted(hosts)
+
+
+def _suggested_adapters_payload(required: List[str], ir: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Build a copyable per-run adapters payload for adapters MCP can configure."""
+    enable = [a for a in required if a in _MCP_CONFIGURABLE_ADAPTERS]
+    payload: Dict[str, Any] = {"enable": enable}
+    for adapter in enable:
+        if adapter == "http":
+            hosts = _http_hosts_from_ir(ir or {}) or ["<host>"]
+            payload["http"] = {
+                "allow_hosts": hosts,
+                "timeout_s": 15.0,
+                "payment_profile": "none",
+            }
+        elif adapter == "fs":
+            payload["fs"] = {
+                "root": "<absolute-workspace-or-output-root>",
+                "allow_extensions": [".json", ".jsonl", ".csv", ".txt"],
+            }
+        elif adapter == "cache":
+            payload["cache"] = {"path": "<absolute-cache-json-path>"}
+        elif adapter == "sqlite":
+            payload["sqlite"] = {"db_path": "<absolute-sqlite-db-path>", "allow_write": False}
+        elif adapter == "a2a":
+            payload["a2a"] = {"allow_hosts": ["<agent-host>"], "timeout_s": 30.0}
+    return payload
+
+
+def _runtime_readiness_from_ir(ir: Dict[str, Any]) -> Dict[str, Any]:
+    required = _required_adapters_from_ir(ir)
+    configurable = [a for a in required if a in _MCP_CONFIGURABLE_ADAPTERS]
+    unknown = [a for a in required if a not in _MCP_CONFIGURABLE_ADAPTERS and a not in {"llm"}]
+    env_required = [a for a in required if a in {"llm"}]
+    ready = not required
+    out: Dict[str, Any] = {
+        "ready": ready,
+        "reason": (
+            "core-only workflow; no per-run adapter registration required"
+            if ready
+            else "AINL source is valid, but ainl_run needs adapter registration/configuration for this host."
+        ),
+        "required_adapters": required,
+        "missing_adapters": required,
+        "mcp_configurable_adapters": configurable,
+        "env_config_required": env_required,
+        "unknown_or_external_adapters": unknown,
+    }
+    if configurable:
+        out["suggested_adapters"] = _suggested_adapters_payload(configurable, ir)
+    if unknown:
+        out["next_step"] = (
+            "Call ainl_adapter_contract for unknown/external adapters and inspect local gateway/OpenAPI docs before running."
+        )
+    return out
+
+
+def _attach_runtime_readiness(out: Dict[str, Any], ir: Dict[str, Any]) -> None:
+    required = _required_adapters_from_ir(ir)
+    out["required_adapters"] = required
+    out["runtime_readiness"] = _runtime_readiness_from_ir(ir)
+
+
+def _missing_adapter_from_error_text(text: str) -> Optional[str]:
+    m = re.search(r"adapter not registered:\s*([A-Za-z0-9_\-.]+)", text)
+    if not m:
+        return None
+    return m.group(1).split(".", 1)[0].lower()
 
 
 def _merge_policy(caller_policy: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -949,23 +1325,122 @@ def _resolve_code_arg(code: Optional[str], ainl: Optional[str] = None) -> str:
 # ---------------------------------------------------------------------------
 
 @_register_tool
+def ainl_get_started(
+    goal: Optional[str] = None,
+    detail_level: str = "standard",
+    existing_source: Optional[str] = None,
+    path: Optional[str] = None,
+    diagnostics: Optional[dict] = None,
+    capabilities_snapshot: Optional[dict] = None,
+    adapter_contracts_snapshot: Optional[dict] = None,
+    reverse_source: Optional[str] = None,
+    reverse_path: Optional[str] = None,
+    reverse_paths: Optional[List[str]] = None,
+    current_step: Optional[str] = None,
+    request_examples_for: Optional[str] = None,
+    example_count: int = 3,
+) -> dict:
+    """Start AINL authoring from natural language.
+
+    This read-only wizard is the first tool to call before writing unfamiliar
+    AINL.  It accepts a natural-language goal, infers a deterministic task
+    spec, returns an intent-to-syntax guide, and tells the agent which discovery
+    checkpoint to complete next. It can also return step-local examples without
+    advancing the wizard, or reverse-engineer existing AINL source into
+    human-like goals for fixture/corpus building.
+    """
+    if current_step or request_examples_for:
+        return ainl_get_started_step_examples(
+            current_step=current_step or request_examples_for or "current_step",
+            request_examples_for=request_examples_for,
+            example_count=example_count,
+        )
+    if reverse_source:
+        return {
+            "ok": True,
+            "mode": "reverse_engineer_source",
+            "result": reverse_engineer_ainl_source(
+                reverse_source,
+                source_file=reverse_path,
+            ),
+        }
+    if reverse_paths:
+        root = _REPO_ROOT.resolve()
+        paths: List[Path] = []
+        for rel in reverse_paths:
+            try:
+                target = (root / str(rel)).resolve()
+                target.relative_to(root)
+            except Exception:
+                continue
+            if target.suffix in {".ainl", ".lang"} and target.is_file():
+                paths.append(target)
+        return {
+            "ok": True,
+            "mode": "reverse_engineer_corpus",
+            "result": reverse_engineer_ainl_corpus(paths, repo_root=root),
+        }
+    if not isinstance(goal, str) or not goal.strip():
+        return {
+            "ok": False,
+            "error": "missing required argument: goal",
+            "tool_call_error": True,
+            "next_step": "Call ainl_get_started with a plain-language goal, e.g. {'goal': 'Build a scraper that fills a form and saves a CSV.'}.",
+        }
+    return ainl_get_started_wizard(
+        goal,
+        detail_level=detail_level,
+        existing_source=existing_source,
+        path=path,
+        diagnostics=diagnostics,
+        capabilities_snapshot=capabilities_snapshot,
+        adapter_contracts_snapshot=adapter_contracts_snapshot,
+    )
+
+
+@_register_tool
+def ainl_adapter_contract(adapter: str, detail_level: str = "standard") -> dict:
+    """Return the known argument/runtime contract for an AINL adapter.
+
+    Use this after ``ainl_get_started`` / ``ainl_capabilities`` and before
+    writing adapter-specific AINL. Known contracts cover common adapters such as
+    ``http``, ``browser``, ``fs``, ``cache``, ``core``, and composite choices
+    like ``http_or_browser``.
+    """
+    if not isinstance(adapter, str) or not adapter.strip():
+        return {
+            "ok": False,
+            "error": "missing required argument: adapter",
+            "tool_call_error": True,
+            "next_step": "Call ainl_adapter_contract with an adapter name, e.g. {'adapter': 'http'} or {'adapter': 'http_or_browser'}.",
+        }
+    return ainl_adapter_contract_payload(adapter, detail_level=detail_level)
+
+
+@_register_tool
 def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optional[str] = None) -> dict:
     """Validate AINL source code without executing it.
 
     Returns whether the code compiles successfully, along with any errors
     or warnings.  No side effects.
 
+    Pass the **full** program source in the ``code`` argument (UTF-8 string).
+    The legacy ``ainl`` parameter name is accepted as an alias for ``code``.
+    Do not pass only a filesystem path unless your host reads the file into
+    ``code`` for you.
+
     On failure, ``primary_diagnostic`` and per-row ``source_context`` (snippet +
     caret) point at the first error to fix; ``agent_repair_steps`` suggests a
     tight validate loop instead of copying unrelated files as templates.
 
     Always includes ``recommended_next_tools`` (and on failure,
-    ``recommended_resources`` may list ``ainl://authoring-cheatsheet``) filtered
-    by MCP exposure.
+    ``recommended_resources`` lists ``ainl://strict-authoring-cheatsheet`` first,
+    then optional ``ainl://authoring-cheatsheet`` for HTTP/R-line issues) filtered
+    by MCP exposure. Failures also include a deterministic ``repair_recipe``.
     """
     source = _resolve_code_arg(code, ainl)
     if not source:
-        return {"ok": False, "errors": ["missing required argument: code"]}
+        return _missing_source_tool_error("ainl_validate")
     ir = _compile(source, strict=strict)
     fb = _enriched_compile_feedback(ir)
     ok = len(fb["errors"]) == 0
@@ -980,6 +1455,12 @@ def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optiona
     if "agent_repair_steps" in fb:
         out["agent_repair_steps"] = fb["agent_repair_steps"]
     if ok:
+        _attach_runtime_readiness(out, ir)
+        out["compiler_vs_runtime_note"] = (
+            "Compiler success under the requested strict flag does **not** imply `ainl_run` is ready: "
+            "check `required_adapters` / `runtime_readiness` and register adapters per-run in MCP."
+        )
+    if ok:
         _add_recommended_next_steps(out, "validate_ok")
     else:
         tags = _failure_tags_from_diagnostics(
@@ -987,6 +1468,7 @@ def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optiona
             fb.get("primary_diagnostic"),
         )
         _add_recommended_next_steps(out, "validate_fail", failure_tags=tags)
+        out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
     return out
 
 
@@ -1001,17 +1483,20 @@ def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional
     1. Explicit ``# frame: name: type`` comment lines in source (authoritative).
     2. Variables referenced in the IR that are never assigned (heuristic).
 
+    Pass the **full** program source in ``code`` (string); ``ainl`` is a legacy
+    alias for ``code``.
+
     No execution, no side effects.
 
     On compile failure, returns the same diagnostic bundle as ``ainl_validate``
     (merged structured diagnostics, snippets, ``primary_diagnostic``).
 
     Success and failure responses include ``recommended_next_tools`` (and
-    failure may add ``recommended_resources``) like ``ainl_validate``.
+    failure may add ``recommended_resources`` / ``repair_recipe``) like ``ainl_validate``.
     """
     source = _resolve_code_arg(code, ainl)
     if not source:
-        return {"ok": False, "errors": ["missing required argument: code"]}
+        return _missing_source_tool_error("ainl_compile")
     ir = _compile(source, strict=strict)
     errors = ir.get("errors") or []
     if errors:
@@ -1027,10 +1512,16 @@ def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional
             fb.get("primary_diagnostic"),
         )
         _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
+        out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
         return out
     _on_compile_finished(True, source)
     frame_hints = _extract_frame_hints(source, ir)
     out_ok: Dict[str, Any] = {"ok": True, "ir": ir, "frame_hints": frame_hints}
+    _attach_runtime_readiness(out_ok, ir)
+    out_ok["compiler_vs_runtime_note"] = (
+        "IR is canonical for this compile; `ainl_run` still needs per-run `adapters` registration in MCP "
+        "when the graph uses http/fs/cache/sqlite/a2a."
+    )
     _add_recommended_next_steps(out_ok, "compile_ok")
     return out_ok
 
@@ -1054,10 +1545,12 @@ def ainl_security_report(code: Optional[str] = None, ainl: Optional[str] = None)
 
     Shows which adapters, verbs, and privilege tiers the workflow uses,
     broken down per label and in aggregate.  No execution, no side effects.
+
+    Pass full source in ``code`` (``ainl`` alias accepted).
     """
     source = _resolve_code_arg(code, ainl)
     if not source:
-        return {"ok": False, "errors": ["missing required argument: code"]}
+        return _missing_source_tool_error("ainl_security_report")
     ir = _compile(source, strict=False)
     errors = ir.get("errors") or []
     if errors:
@@ -1151,11 +1644,16 @@ def ainl_run(
 
     Returns structured execution output on success or a policy/runtime
     error on failure.
+
+    Pass full source in ``code`` (``ainl`` alias accepted).
     """
     trace_id = str(uuid.uuid4())
     source = _resolve_code_arg(code, ainl)
     if not source:
-        return {"ok": False, "error": "missing required argument: code"}
+        out_ms = _missing_source_tool_error("ainl_run")
+        out_ms["trace_id"] = trace_id
+        out_ms["error"] = "missing required argument: code"
+        return out_ms
     _on_run_started(source)
     run_warnings: List[str] = []
 
@@ -1173,6 +1671,12 @@ def ainl_run(
         }
         if "agent_repair_steps" in fb:
             out["agent_repair_steps"] = fb["agent_repair_steps"]
+        tags = _failure_tags_from_diagnostics(
+            fb["diagnostics"],
+            fb.get("primary_diagnostic"),
+        )
+        _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
+        out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
         return out
 
     merged_policy = _merge_policy(policy)
@@ -1376,14 +1880,73 @@ def ainl_run(
         entry = label or eng.default_entry_label()
         out = eng.run_label(entry, frame=frame or {})
     except AinlRuntimeError as e:
-        return {
+        err_text = str(e)
+        out_err: Dict[str, Any] = {
             "ok": False,
             "trace_id": trace_id,
-            "error": str(e),
+            "error": err_text,
             "error_structured": e.to_dict(),
         }
+        missing_adapter = _missing_adapter_from_error_text(err_text)
+        if missing_adapter:
+            required = _required_adapters_from_ir(ir)
+            if missing_adapter not in required:
+                required = sorted(set(required + [missing_adapter]))
+            out_err["runtime_readiness"] = _runtime_readiness_from_ir(ir)
+            out_err["runtime_readiness"]["ready"] = False
+            out_err["runtime_readiness"]["missing_adapters"] = required
+            out_err["adapter_registration_error"] = {
+                "adapter": missing_adapter,
+                "message": f"`{missing_adapter}` is used by the IR but was not registered for this ainl_run call.",
+                "suggested_adapters": _suggested_adapters_payload(required, ir),
+                "next_step": "Retry ainl_run with the suggested `adapters` payload instead of editing away the adapter-dependent behavior.",
+                "ainl_adapter_contract": {
+                    "tool": "ainl_adapter_contract",
+                    "args": {"adapter": missing_adapter},
+                },
+                "recommended_resources": [
+                    u
+                    for u in (
+                        "ainl://strict-authoring-cheatsheet",
+                        "ainl://adapter-contracts",
+                    )
+                    if u in _ALLOWED_RESOURCES
+                ],
+                "recommended_next_tools": [
+                    t for t in ("ainl_adapter_contract", "ainl_run", "ainl_compile") if t in _ALLOWED_TOOLS
+                ],
+            }
+        return out_err
     except Exception as e:
-        return {"ok": False, "trace_id": trace_id, "error": str(e)}
+        err_text = str(e)
+        out_err = {"ok": False, "trace_id": trace_id, "error": err_text}
+        missing_adapter = _missing_adapter_from_error_text(err_text)
+        if missing_adapter:
+            required = _required_adapters_from_ir(ir)
+            if missing_adapter not in required:
+                required = sorted(set(required + [missing_adapter]))
+            out_err["adapter_registration_error"] = {
+                "adapter": missing_adapter,
+                "message": f"`{missing_adapter}` is used by the IR but was not registered for this ainl_run call.",
+                "suggested_adapters": _suggested_adapters_payload(required, ir),
+                "next_step": "Retry ainl_run with the suggested `adapters` payload.",
+                "ainl_adapter_contract": {
+                    "tool": "ainl_adapter_contract",
+                    "args": {"adapter": missing_adapter},
+                },
+                "recommended_resources": [
+                    u
+                    for u in (
+                        "ainl://strict-authoring-cheatsheet",
+                        "ainl://adapter-contracts",
+                    )
+                    if u in _ALLOWED_RESOURCES
+                ],
+                "recommended_next_tools": [
+                    t for t in ("ainl_adapter_contract", "ainl_run") if t in _ALLOWED_TOOLS
+                ],
+            }
+        return out_err
 
     out_run: Dict[str, Any] = {
         "ok": True,
@@ -1725,6 +2288,24 @@ def security_profiles_resource() -> str:
 def authoring_cheatsheet_resource() -> str:
     """Concise AINL authoring rules: validate-first, HTTP R-lines, adapters, frame dicts."""
     return _AUTHORING_CHEATSHEET_MARKDOWN
+
+
+@_register_resource("ainl://strict-authoring-cheatsheet")
+def strict_authoring_cheatsheet_resource() -> str:
+    """Strict-mode authoring contract: compact syntax, MCP `code=`, no inline dict/J pitfalls."""
+    return _STRICT_AUTHORING_CHEATSHEET_MARKDOWN
+
+
+@_register_resource("ainl://strict-valid-examples")
+def strict_valid_examples_resource() -> str:
+    """JSON index of CI `strict-valid` paths from tooling/artifact_profiles.json."""
+    return _strict_valid_examples_json()
+
+
+@_register_resource("ainl://adapter-contracts")
+def adapter_contracts_bundle_resource() -> str:
+    """JSON bundle of deterministic adapter_contract payloads (http, fs, browser, …)."""
+    return _adapter_contracts_bundle_json()
 
 
 @_register_resource("ainl://impact-checklist")
