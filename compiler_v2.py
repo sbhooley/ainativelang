@@ -1194,6 +1194,62 @@ class AICodeCompiler:
         line_start = sum(len(source_lines[i]) + 1 for i in range(lineno - 1))
         return (line_start + c0, line_start + c1), c0 + 1
 
+    @staticmethod
+    def _slots_look_like_inline_structured_literal(slots: Sequence[Any], start_index: int = 0) -> bool:
+        """True when a step appears to use a raw JSON/dict/array literal as slots."""
+        if len(slots) <= start_index:
+            return False
+        first = str(slots[start_index]).strip()
+        if first in ("{", "[") or first.startswith(("{", "[")):
+            return True
+        tail = [str(x).strip() for x in slots[start_index:]]
+        return any(x in ("{", "[", ":", ",") for x in tail) or any(
+            x.endswith(("}", "]")) for x in tail
+        )
+
+    def _record_strict_inline_structured_literal_error(
+        self,
+        *,
+        context: Optional[CompilerContext],
+        line_node: Dict[str, Any],
+        lineno: int,
+        source_lines: Sequence[str],
+        op: str,
+        slot_index: int,
+    ) -> None:
+        msg = (
+            f"Line {lineno}: inline JSON/object literals are not valid strict AINL operands for {op!r}"
+        )
+        diag_msg = f"inline JSON/object literals are not valid strict AINL operands for {op!r}"
+        self._errors.append(msg)
+        if context is None:
+            return
+        span, col = self._strict_nth_slot_content_char_span(
+            line_node, slot_index, lineno, source_lines
+        )
+        context.diagnostics.append(
+            Diagnostic(
+                lineno=lineno,
+                col_offset=col,
+                kind="strict_validation_failure",
+                message=diag_msg,
+                span=span,
+                label_id=str(self.current_label) if self.current_label else None,
+                node_id=None,
+                contract_violation_reason=(
+                    "AINL tokenizes inline JSON/dict/array text as separate raw slots, so runtime "
+                    "would receive only the first token (for example `{`) instead of a structured value."
+                ),
+                suggested_fix=(
+                    "Do not write `J { ... }`, `out { ... }`, or `Set name { ... }` in strict AINL. "
+                    "Build structured output through supported operations (for example stringify/parse a JSON "
+                    "string or merge existing dict variables), pass the dict via frame, then return a variable: "
+                    "`Set result payload` followed by `J result`."
+                ),
+                related_span=None,
+            )
+        )
+
     def _strict_closest_label_id(self, missing: str) -> Optional[str]:
         """Best-effort label id suggestion using declared labels (strict / IR).
 
@@ -3677,6 +3733,18 @@ class AICodeCompiler:
                         parsed = self._parse_req_slots(r_slots)
                         leg["steps"].append({"op": "R", "lineno": lineno, **(parsed or {"raw": r_slots})})
                     elif slots[i] == "J":
+                        j_end = i + 2
+                        while j_end < len(slots) and slots[j_end] not in step_ops:
+                            j_end += 1
+                        if self.strict_mode and self._slots_look_like_inline_structured_literal(slots[i + 1 : j_end], 0):
+                            self._record_strict_inline_structured_literal_error(
+                                context=context,
+                                line_node=line_node,
+                                lineno=lineno,
+                                source_lines=source_lines,
+                                op="J",
+                                slot_index=i + 1,
+                            )
                         var = slots[i + 1] if i + 1 < len(slots) else "data"
                         leg["steps"].append({"op": "J", "lineno": lineno, "var": var})
                         i += 2
@@ -3720,6 +3788,18 @@ class AICodeCompiler:
                         leg["steps"].append({"op": "If", "lineno": lineno, "cond": cond, "then": then_l, "else": else_l})
                         i += 4 if len(slots) > i + 3 else 3
                     elif slots[i] == "Set" and i + 3 <= len(slots):
+                        set_end = i + 3
+                        while set_end < len(slots) and slots[set_end] not in step_ops:
+                            set_end += 1
+                        if self.strict_mode and self._slots_look_like_inline_structured_literal(slots[i + 2 : set_end], 0):
+                            self._record_strict_inline_structured_literal_error(
+                                context=context,
+                                line_node=line_node,
+                                lineno=lineno,
+                                source_lines=source_lines,
+                                op="Set",
+                                slot_index=i + 2,
+                            )
                         step = {"op": "Set", "lineno": lineno, "name": slots[i + 1], "ref": slots[i + 2]}
                         if i + 2 < len(slot_kinds) and slot_kinds[i + 2] == "string":
                             step["__literal_fields"] = {"ref": True}
@@ -4038,6 +4118,15 @@ class AICodeCompiler:
                     self._label_steps("_anon").append(step_payload)
 
             elif op == "J":
+                if self.strict_mode and self._slots_look_like_inline_structured_literal(slots, 0):
+                    self._record_strict_inline_structured_literal_error(
+                        context=context,
+                        line_node=line_node,
+                        lineno=lineno,
+                        source_lines=source_lines,
+                        op=op,
+                        slot_index=0,
+                    )
                 var = slots[0] if slots else "data"
                 step_j = {"op": "J", "lineno": lineno, "var": var}
                 if slots and slot_kinds and slot_kinds[0] == "string":
@@ -4293,6 +4382,15 @@ class AICodeCompiler:
                     self._label_steps(self.current_label).append(step)
             elif op == "Set":
                 if len(slots) >= 2 and self.current_label:
+                    if self.strict_mode and self._slots_look_like_inline_structured_literal(slots, 1):
+                        self._record_strict_inline_structured_literal_error(
+                            context=context,
+                            line_node=line_node,
+                            lineno=lineno,
+                            source_lines=source_lines,
+                            op=op,
+                            slot_index=1,
+                        )
                     self._ensure_label(self.current_label)
                     step = {"op": "Set", "lineno": lineno, "name": slots[0], "ref": slots[1]}
                     if len(slot_kinds) > 1 and slot_kinds[1] == "string":
