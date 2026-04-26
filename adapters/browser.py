@@ -63,11 +63,15 @@ logger = logging.getLogger(__name__)
 _VERB_TO_TOOL = {
     "navigate": "browser_navigate",
     "click": "browser_click",
+    "click_text": "browser_click_text",
+    "clicktext": "browser_click_text",
     "type": "browser_type",
+    "fill": "browser_fill",
     "screenshot": "browser_screenshot",
     "read_page": "browser_read_page",
     "readpage": "browser_read_page",
     "read": "browser_read_page",
+    "snapshot": "browser_snapshot",
     "close": "browser_close",
     "scroll": "browser_scroll",
     "wait": "browser_wait",
@@ -154,10 +158,20 @@ class BrowserAdapter(RuntimeAdapter):
                 raise AdapterError("browser.CLICK requires a CSS selector or visible text")
             return tool, {"selector": a[0]}
 
+        if tool == "browser_click_text":
+            if not a or not isinstance(a[0], str):
+                raise AdapterError("browser.CLICK_TEXT requires visible text")
+            return tool, {"text": a[0]}
+
         if tool == "browser_type":
             if len(a) < 2 or not isinstance(a[0], str):
                 raise AdapterError("browser.TYPE requires (selector, text)")
             return tool, {"selector": a[0], "text": str(a[1])}
+
+        if tool == "browser_fill":
+            if len(a) < 2 or not isinstance(a[0], str):
+                raise AdapterError("browser.FILL requires (field, value)")
+            return tool, {"field": a[0], "value": str(a[1])}
 
         if tool == "browser_scroll":
             arguments = {}
@@ -192,8 +206,8 @@ class BrowserAdapter(RuntimeAdapter):
                 arguments["mode"] = a[0].strip()
             return tool, arguments
 
-        # browser_screenshot, browser_read_page, browser_close, browser_back,
-        # browser_session_status — no args.
+        # browser_screenshot, browser_read_page, browser_snapshot,
+        # browser_close, browser_back, browser_session_status — no args.
         return tool, {}
 
     # ── Wire layer (MCP HTTP, stdlib only — no requests dependency) ────
