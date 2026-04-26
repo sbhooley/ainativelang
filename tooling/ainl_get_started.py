@@ -28,6 +28,9 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 DETAIL_LEVELS = {"brief", "standard", "full"}
 
+# Bumped when `adapter_contract` top-level fields change (MCP + `ainl://adapter-contracts`).
+ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION = "1.1.0"
+
 REVERSE_ENGINEERING_PATTERNS: Tuple[Dict[str, str], ...] = (
     {
         "name": "comments_to_goal",
@@ -547,6 +550,37 @@ def _blocking_contracts(adapters: Sequence[str]) -> List[str]:
     )
 
 
+def _strict_valid_pointers_for_adapter_key(adapter_key: str) -> List[Dict[str, Any]]:
+    """Repo `strict-valid` example paths (CI) relevant to an adapter; see phase2 Track 1.2."""
+    prof = load_artifact_profiles()
+    sv = set(prof.get("strict-valid", set()) or set())
+    key = (adapter_key or "").strip().lower()
+    out: List[Dict[str, Any]] = []
+    if key == "http":
+        path = "examples/http_get_minimal.ainl"
+        out.append(
+            {
+                "path": path,
+                "in_ci_strict_valid": path in sv,
+                "resource_uri": "ainl://strict-valid-examples",
+                "note": "Documented minimal `http.GET` shape; listed in `tooling/artifact_profiles.json` strict-valid.",
+            }
+        )
+    elif key == "fs":
+        out.append(
+            {
+                "path": None,
+                "in_ci_strict_valid": False,
+                "resource_uri": "ainl://strict-valid-examples",
+                "note": (
+                    "No `strict-valid` example path in `artifact_profiles.json` currently includes `fs.*` in CI; "
+                    "use this module's `ainl_adapter_contract` / `get_started` fs snippets, then `ainl_validate --strict`."
+                ),
+            }
+        )
+    return out
+
+
 def adapter_contract(adapter: str, *, detail_level: str = "standard") -> Dict[str, Any]:
     """Return a deterministic adapter contract payload."""
     name = (adapter or "").strip().lower()
@@ -559,6 +593,7 @@ def adapter_contract(adapter: str, *, detail_level: str = "standard") -> Dict[st
     if name in {"http_or_browser", "browser_or_web"}:
         return {
             "ok": True,
+            "schema_version": ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION,
             "adapter": name,
             "status": "composite",
             "summary": "Choose HTTP for network-submit forms/static endpoints; choose browser for interactive/JavaScript pages.",
@@ -579,6 +614,7 @@ def adapter_contract(adapter: str, *, detail_level: str = "standard") -> Dict[st
     if name == "provider_or_http":
         return {
             "ok": True,
+            "schema_version": ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION,
             "adapter": name,
             "status": "composite",
             "summary": "Use a provider-specific adapter when configured; otherwise use http against the provider API.",
@@ -587,6 +623,7 @@ def adapter_contract(adapter: str, *, detail_level: str = "standard") -> Dict[st
     if name == "state_or_database":
         return {
             "ok": True,
+            "schema_version": ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION,
             "adapter": name,
             "status": "composite",
             "summary": "Use cache for simple key/value state, memory for semantic memory, or a DB adapter for relational state.",
@@ -604,14 +641,21 @@ def adapter_contract(adapter: str, *, detail_level: str = "standard") -> Dict[st
         }
     out = dict(contract)
     out["ok"] = True
+    out["schema_version"] = ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION
+    if resolved in ("http", "fs"):
+        out["strict_valid_pointers"] = _strict_valid_pointers_for_adapter_key(resolved)
     if detail_level == "brief":
-        return {
+        brief: Dict[str, Any] = {
             "ok": True,
+            "schema_version": out["schema_version"],
             "adapter": out["adapter"],
             "status": out["status"],
             "summary": out["summary"],
             "runtime_registration": out.get("runtime_registration"),
         }
+        if "strict_valid_pointers" in out:
+            brief["strict_valid_pointers"] = out["strict_valid_pointers"]
+        return brief
     return out
 
 

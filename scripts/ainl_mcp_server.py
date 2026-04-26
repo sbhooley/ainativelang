@@ -474,6 +474,10 @@ def _repair_recipe_from_failure(
             recipe["resources"].append("ainl://authoring-cheatsheet")
     if "adapter_or_verb" in failure_tags:
         recipe["recommended_tools"] = ["ainl_capabilities", "ainl_adapter_contract", "ainl_validate"]
+        recipe["steps"].append(
+            "Do not remove non-core adapter lines just to get `ok: true` unless the user relaxes the workflow; "
+            "fix verb names against `ainl_capabilities` / `ainl_adapter_contract` and use `adapters=` on `ainl_run`."
+        )
     if "http_or_rline" in failure_tags:
         recipe["resources"].append("ainl://authoring-cheatsheet")
     recipe["resources"] = list(dict.fromkeys(recipe["resources"]))
@@ -725,6 +729,22 @@ def _attach_policy_contract_hints(out: Dict[str, Any]) -> None:
     }
 
 
+def _attach_strict_mode_annotation(out: Dict[str, Any], strict: bool) -> None:
+    """Make non-strict validate/compile/run responses explicit (roadmap: B4c / Track 2.1)."""
+    out["strict"] = bool(strict)
+    if not strict:
+        out["strict_mode_note"] = (
+            "This call used `strict=false`. The compiler used the non-strict path; that is **not** the same as "
+            "CI `ainl validate --strict` or `strict-valid` in `tooling/artifact_profiles.json`. "
+            "Re-run with `strict=true` (the default) before claiming strict alignment."
+        )
+
+
+def _annotate_run_return(out: Dict[str, Any], strict: bool) -> Dict[str, Any]:
+    _attach_strict_mode_annotation(out, strict)
+    return out
+
+
 def _add_recommended_next_steps(
     out: Dict[str, Any],
     kind: str,
@@ -775,6 +795,24 @@ def _add_recommended_next_steps(
             tools = ["ainl_ir_diff", "ainl_run", "ainl_validate", "ainl_security_report"]
         else:
             tools = ["ainl_run", "ainl_security_report", "ainl_validate"]
+        # When the IR needs runtime adapters, surface capability/contract discovery next to
+        # `ainl_run` so hosts can build a correct `adapters=` payload (Track 2 / 3 of phase2 roadmap).
+        if (out.get("required_adapters") or []) and "ainl_capabilities" in _ALLOWED_TOOLS:
+            if if_:
+                tools = [
+                    "ainl_ir_diff",
+                    "ainl_run",
+                    "ainl_capabilities",
+                    "ainl_security_report",
+                    "ainl_validate",
+                ]
+            else:
+                tools = [
+                    "ainl_run",
+                    "ainl_capabilities",
+                    "ainl_security_report",
+                    "ainl_validate",
+                ]
     else:
         return
     tools_f = [t for t in tools if t in _ALLOWED_TOOLS]
@@ -1259,6 +1297,116 @@ def _runtime_readiness_from_ir(ir: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+# Lightweight contract check (Track 1.2): compare IR `R` lines for http/fs to `tooling/ainl_get_started` ADAPTER_CONTRACTS.
+_CONTRACT_CHECK_ADAPTERS: Set[str] = {"http", "fs"}
+
+
+def _r_node_adapter_src(data: Dict[str, Any]) -> str:
+    s = str(data.get("src") or "").strip().lower()
+    if s:
+        return s
+    ad = str(data.get("adapter") or "")
+    if "." in ad:
+        return ad.split(".", 1)[0].strip().lower()
+    return s
+
+
+def _r_node_verb_token(data: Dict[str, Any], src: str) -> str:
+    ad_full = str(data.get("adapter") or "")
+    if "." in ad_full:
+        tail = ad_full.split(".", 1)[1]
+    else:
+        tail = ""
+    ro = str(data.get("req_op") or "")
+    if src == "http":
+        v = (ro or tail or "").upper()
+        return v
+    return (ro or tail or "").lower()
+
+
+def _contract_verb_in_get_started_contract(adapter: str, verb: str) -> bool:
+    from tooling.ainl_get_started import ADAPTER_CONTRACTS
+
+    c = ADAPTER_CONTRACTS.get(adapter)
+    if not c:
+        return True
+    verbs = c.get("verbs") or {}
+    if not verbs:
+        return True
+    if adapter == "http":
+        u = verb.upper()
+        return any(str(k).upper() == u for k in verbs)
+    u = verb.lower()
+    return any(str(k).lower() == u for k in verbs)
+
+
+def _contract_alignment_hints_from_ir(ir: Dict[str, Any]) -> Tuple[List[str], List[Dict[str, Any]]]:
+    """Return (warning strings, structured items) when an http/fs verb is not in the get_started contract.
+
+    Warnings are non-fatal: compiler/strict may still be ok; the graph may use a newer runtime verb.
+    """
+    warns: List[str] = []
+    items: List[Dict[str, Any]] = []
+    for _lbl, body in (ir.get("labels") or {}).items():
+        if not isinstance(body, dict):
+            continue
+        for node in body.get("nodes") or []:
+            if not isinstance(node, dict) or node.get("op") != "R":
+                continue
+            data = node.get("data")
+            if not isinstance(data, dict) or str(data.get("op") or "") != "R":
+                continue
+            src = _r_node_adapter_src(data)
+            if src not in _CONTRACT_CHECK_ADAPTERS:
+                continue
+            verb = _r_node_verb_token(data, src)
+            if not verb:
+                continue
+            if _contract_verb_in_get_started_contract(src, verb):
+                continue
+            ln = 0
+            try:
+                ln = int(data.get("lineno") or 0)
+            except (TypeError, ValueError):
+                ln = 0
+            code = f"CONTRACT_VERB_NOT_IN_AINL_GET_STARTED:{src}.{verb}"
+            items.append(
+                {
+                    "kind": "contract_verb_mismatch",
+                    "adapter": src,
+                    "verb": verb,
+                    "line": ln,
+                    "code": code,
+                }
+            )
+            warns.append(
+                f"{code} (line {ln or '?'}) — not listed under `ainl_adapter_contract({src!r})` / "
+                f"`ADAPTER_CONTRACTS` in `tooling/ainl_get_started.py`. This is a **warning** only; "
+                f"see `ainl_capabilities` and MCP resource `ainl://adapter-contracts`."
+            )
+    return warns, items
+
+
+def _merge_contract_alignment_into_output(out: Dict[str, Any], ir: Dict[str, Any], *, ok_graph: bool) -> None:
+    if not ok_graph:
+        return
+    w, items = _contract_alignment_hints_from_ir(ir)
+    if not w:
+        return
+    ow = [str(x) for x in (out.get("warnings") or []) if isinstance(x, str)]
+    out["warnings"] = ow + w
+    out["contract_alignment"] = {
+        "schema_version": "1.0.0",
+        "severity": "warning",
+        "adapters_checked": sorted(_CONTRACT_CHECK_ADAPTERS),
+        "items": items,
+        "source_of_truth": (
+            "Authoritative full verb sets: `tooling/adapter_manifest.json` (strict_summary, ainl_capabilities) "
+            "and runtime adapters; this check uses `ADAPTER_CONTRACTS` in `tooling/ainl_get_started.py` (MCP contract bundle)."
+        ),
+    }
+
+
 def _attach_runtime_readiness(out: Dict[str, Any], ir: Dict[str, Any]) -> None:
     required = _required_adapters_from_ir(ir)
     out["required_adapters"] = required
@@ -1303,6 +1451,7 @@ def _envelope_adapter_registration_error(
     missing_mcp: List[str],
     *,
     error_text: Optional[str] = None,
+    strict: bool = True,
 ) -> Dict[str, Any]:
     """Shared payload when ainl_run cannot execute until MCP registers required adapters (preflight or runtime)."""
     if not missing_mcp:
@@ -1359,6 +1508,7 @@ def _envelope_adapter_registration_error(
             "primary_fix": "adapters_parameter",
         },
     }
+    _attach_strict_mode_annotation(out, strict)
     return out
 
 
@@ -1549,6 +1699,7 @@ def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optiona
         out["agent_repair_steps"] = fb["agent_repair_steps"]
     if ok:
         _attach_runtime_readiness(out, ir)
+        _merge_contract_alignment_into_output(out, ir, ok_graph=True)
         out["compiler_vs_runtime_note"] = (
             "Compiler success under the requested strict flag does **not** imply `ainl_run` is ready: "
             "check `required_adapters` / `runtime_readiness` and register adapters per-run in MCP."
@@ -1562,6 +1713,7 @@ def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optiona
         )
         _add_recommended_next_steps(out, "validate_fail", failure_tags=tags)
         out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
+    _attach_strict_mode_annotation(out, strict)
     return out
 
 
@@ -1606,16 +1758,19 @@ def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional
         )
         _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
         out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
+        _attach_strict_mode_annotation(out, strict)
         return out
     _on_compile_finished(True, source)
     frame_hints = _extract_frame_hints(source, ir)
     out_ok: Dict[str, Any] = {"ok": True, "ir": ir, "frame_hints": frame_hints}
     _attach_runtime_readiness(out_ok, ir)
+    _merge_contract_alignment_into_output(out_ok, ir, ok_graph=True)
     out_ok["compiler_vs_runtime_note"] = (
         "IR is canonical for this compile; `ainl_run` still needs per-run `adapters` registration in MCP "
         "when the graph uses http/fs/cache/sqlite/a2a."
     )
     _add_recommended_next_steps(out_ok, "compile_ok")
+    _attach_strict_mode_annotation(out_ok, strict)
     return out_ok
 
 
@@ -1749,7 +1904,7 @@ def ainl_run(
         out_ms = _missing_source_tool_error("ainl_run")
         out_ms["trace_id"] = trace_id
         out_ms["error"] = "missing required argument: code"
-        return out_ms
+        return _annotate_run_return(out_ms, strict)
     _on_run_started(source)
     run_warnings: List[str] = []
 
@@ -1773,17 +1928,20 @@ def ainl_run(
         )
         _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
         out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
-        return out
+        return _annotate_run_return(out, strict)
 
     merged_policy = _merge_policy(policy)
     policy_result = validate_ir_against_policy(ir, merged_policy)
     if not policy_result["ok"]:
-        return {
-            "ok": False,
-            "trace_id": trace_id,
-            "error": "policy_violation",
-            "policy_errors": policy_result["errors"],
-        }
+        return _annotate_run_return(
+            {
+                "ok": False,
+                "trace_id": trace_id,
+                "error": "policy_violation",
+                "policy_errors": policy_result["errors"],
+            },
+            strict,
+        )
 
     # Item 9: Per-workspace limits override.
     # If the fs adapter root contains an ``ainl_mcp_limits.json`` file, merge it
@@ -1825,12 +1983,15 @@ def ainl_run(
             h = adapters.get("http") or {}
             allow_hosts = h.get("allow_hosts") or []
             if not isinstance(allow_hosts, list) or not allow_hosts:
-                return {
-                    "ok": False,
-                    "trace_id": trace_id,
-                    "error": "adapter_config_error",
-                    "details": "http adapter enabled but adapters.http.allow_hosts must be a non-empty list",
-                }
+                return _annotate_run_return(
+                    {
+                        "ok": False,
+                        "trace_id": trace_id,
+                        "error": "adapter_config_error",
+                        "details": "http adapter enabled but adapters.http.allow_hosts must be a non-empty list",
+                    },
+                    strict,
+                )
             reg.register(
                 "http",
                 SimpleHttpAdapter(
@@ -1845,12 +2006,15 @@ def ainl_run(
             f = adapters.get("fs") or {}
             root = f.get("root")
             if not root:
-                return {
-                    "ok": False,
-                    "trace_id": trace_id,
-                    "error": "adapter_config_error",
-                    "details": "fs adapter enabled but adapters.fs.root is missing",
-                }
+                return _annotate_run_return(
+                    {
+                        "ok": False,
+                        "trace_id": trace_id,
+                        "error": "adapter_config_error",
+                        "details": "fs adapter enabled but adapters.fs.root is missing",
+                    },
+                    strict,
+                )
             reg.register(
                 "fs",
                 SandboxedFileSystemAdapter(
@@ -1865,23 +2029,29 @@ def ainl_run(
             c = adapters.get("cache") or {}
             cache_path = c.get("path")
             if not cache_path:
-                return {
-                    "ok": False,
-                    "trace_id": trace_id,
-                    "error": "adapter_config_error",
-                    "details": "cache adapter enabled but adapters.cache.path is missing",
-                }
+                return _annotate_run_return(
+                    {
+                        "ok": False,
+                        "trace_id": trace_id,
+                        "error": "adapter_config_error",
+                        "details": "cache adapter enabled but adapters.cache.path is missing",
+                    },
+                    strict,
+                )
             reg.register("cache", LocalFileCacheAdapter(path=str(cache_path)))
         if "sqlite" in enabled:
             s = adapters.get("sqlite") or {}
             db_path = s.get("db_path")
             if not db_path:
-                return {
-                    "ok": False,
-                    "trace_id": trace_id,
-                    "error": "adapter_config_error",
-                    "details": "sqlite adapter enabled but adapters.sqlite.db_path is missing",
-                }
+                return _annotate_run_return(
+                    {
+                        "ok": False,
+                        "trace_id": trace_id,
+                        "error": "adapter_config_error",
+                        "details": "sqlite adapter enabled but adapters.sqlite.db_path is missing",
+                    },
+                    strict,
+                )
             reg.register(
                 "sqlite",
                 SimpleSqliteAdapter(
@@ -1896,19 +2066,25 @@ def ainl_run(
             allow_hosts = a2.get("allow_hosts") or []
             allow_insecure = bool(a2.get("allow_insecure_local", False))
             if not allow_hosts and not allow_insecure:
-                return {
-                    "ok": False,
-                    "trace_id": trace_id,
-                    "error": "adapter_config_error",
-                    "details": "a2a adapter: set adapters.a2a.allow_hosts and/or allow_insecure_local",
-                }
+                return _annotate_run_return(
+                    {
+                        "ok": False,
+                        "trace_id": trace_id,
+                        "error": "adapter_config_error",
+                        "details": "a2a adapter: set adapters.a2a.allow_hosts and/or allow_insecure_local",
+                    },
+                    strict,
+                )
             if not isinstance(allow_hosts, list):
-                return {
-                    "ok": False,
-                    "trace_id": trace_id,
-                    "error": "adapter_config_error",
-                    "details": "a2a: adapters.a2a.allow_hosts must be a list when set",
-                }
+                return _annotate_run_return(
+                    {
+                        "ok": False,
+                        "trace_id": trace_id,
+                        "error": "adapter_config_error",
+                        "details": "a2a: adapters.a2a.allow_hosts must be a list when set",
+                    },
+                    strict,
+                )
             reg.register(
                 "a2a",
                 A2aAdapter(
@@ -1940,12 +2116,15 @@ def ainl_run(
                         if raw.strip():
                             json.loads(raw)
                     except json.JSONDecodeError as e:
-                        return {
-                            "ok": False,
-                            "trace_id": trace_id,
-                            "error": "adapter_config_error",
-                            "details": f"cache.json at {_cp} is not valid JSON: {e}",
-                        }
+                        return _annotate_run_return(
+                            {
+                                "ok": False,
+                                "trace_id": trace_id,
+                                "error": "adapter_config_error",
+                                "details": f"cache.json at {_cp} is not valid JSON: {e}",
+                            },
+                            strict,
+                        )
                     reg.register("cache", LocalFileCacheAdapter(path=str(_cp)))
                     break
 
@@ -1964,7 +2143,7 @@ def ainl_run(
 
     miss = _mcp_configurable_adapters_missing_from_registry(reg, ir)
     if miss:
-        return _envelope_adapter_registration_error(trace_id, ir, miss)
+        return _envelope_adapter_registration_error(trace_id, ir, miss, strict=strict)
 
     try:
         eng = RuntimeEngine(
@@ -1983,27 +2162,30 @@ def ainl_run(
         missing_adapter = _missing_adapter_from_error_text(err_text)
         if missing_adapter:
             out_err = _envelope_adapter_registration_error(
-                trace_id, ir, [missing_adapter], error_text=err_text
+                trace_id, ir, [missing_adapter], error_text=err_text, strict=strict
             )
             if out_err:
                 out_err["error_structured"] = e.to_dict()
                 return out_err
-        return {
-            "ok": False,
-            "trace_id": trace_id,
-            "error": err_text,
-            "error_structured": e.to_dict(),
-        }
+        return _annotate_run_return(
+            {
+                "ok": False,
+                "trace_id": trace_id,
+                "error": err_text,
+                "error_structured": e.to_dict(),
+            },
+            strict,
+        )
     except Exception as e:
         err_text = str(e)
         missing_adapter = _missing_adapter_from_error_text(err_text)
         if missing_adapter:
             out_err = _envelope_adapter_registration_error(
-                trace_id, ir, [missing_adapter], error_text=err_text
+                trace_id, ir, [missing_adapter], error_text=err_text, strict=strict
             )
             if out_err:
                 return out_err
-        return {"ok": False, "trace_id": trace_id, "error": err_text}
+        return _annotate_run_return({"ok": False, "trace_id": trace_id, "error": err_text}, strict)
 
     out_run: Dict[str, Any] = {
         "ok": True,
@@ -2015,7 +2197,7 @@ def ainl_run(
     }
     if run_warnings:
         out_run["warnings"] = run_warnings
-    return out_run
+    return _annotate_run_return(out_run, strict)
 
 
 @_register_tool

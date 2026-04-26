@@ -39,6 +39,8 @@ from scripts.ainl_mcp_server import (
     _read_integration_doc,
     _strict_valid_examples_json,
     _adapter_contracts_bundle_json,
+    _contract_alignment_hints_from_ir,
+    _merge_contract_alignment_into_output,
 )
 from tooling.ainl_get_started import reverse_engineer_corpus, template_status_for_path
 
@@ -217,6 +219,15 @@ class TestValidate:
         assert result["required_adapters"] == []
         assert result["runtime_readiness"]["ready"] is True
         assert "compiler_vs_runtime_note" in result
+        assert result.get("strict") is True
+        assert "strict_mode_note" not in result
+
+    def test_validate_nonstrict_includes_mode_note(self):
+        result = ainl_validate(VALID_CODE, strict=False)
+        assert result["ok"] is True
+        assert result.get("strict") is False
+        assert "strict_mode_note" in result
+        assert "strict=false" in result["strict_mode_note"].lower() or "strict=False" in result["strict_mode_note"]
 
     def test_validate_reports_required_adapters_and_suggested_payload(self):
         result = ainl_validate(HTTP_FS_CODE, strict=True)
@@ -302,6 +313,27 @@ class TestValidate:
         assert "inline JSON/object literals" in pd["message"]
         assert "`out { ... }`" in pd["suggested_fix"]
 
+    def test_validate_ok_recommends_compile_first(self):
+        result = ainl_validate(VALID_CODE, strict=True)
+        assert result["ok"] is True
+        assert result["recommended_next_tools"][0] == "ainl_compile"
+        assert "required_adapters" in result
+        assert result["runtime_readiness"]["ready"] is True
+
+    def test_validate_and_compile_align_fs_required_adapters(self):
+        v = ainl_validate(FS_CODE, strict=True)
+        c = ainl_compile(FS_CODE, strict=True)
+        assert v["ok"] and c["ok"]
+        assert v["required_adapters"] == c["required_adapters"] == ["fs"]
+        assert v["runtime_readiness"]["ready"] is False
+        assert c["runtime_readiness"]["ready"] is False
+
+    def test_validate_unknown_verb_repair_recipe_discourages_stripping_adapters(self):
+        result = ainl_validate(UNKNOWN_ADAPTER_VERB, strict=True)
+        assert result["ok"] is False
+        steps = (result.get("repair_recipe") or {}).get("steps") or []
+        assert any("Do not remove non-core" in s for s in steps)
+
 
 # ---------------------------------------------------------------------------
 # ainl-compile
@@ -323,6 +355,17 @@ class TestCompile:
         assert result["ok"] is True
         assert result["required_adapters"] == ["fs"]
         assert result["runtime_readiness"]["suggested_adapters"]["enable"] == ["fs"]
+
+    def test_compile_ok_inserts_ainl_capabilities_after_run_when_adapters_required(self):
+        """Phase 2 roadmap: after compile, next steps should surface capability discovery for adapters=…"""
+        for code in (FS_CODE, HTTP_FS_CODE):
+            result = ainl_compile(code, strict=True)
+            assert result["ok"] is True
+            assert result["required_adapters"]
+            tools = result["recommended_next_tools"]
+            assert tools[0] == "ainl_run"
+            assert tools[1] == "ainl_capabilities"
+            assert "compiler_vs_runtime_note" in result
 
     def test_compile_invalid_returns_errors(self):
         result = ainl_compile(INVALID_CODE, strict=True)
@@ -347,6 +390,8 @@ class TestCompile:
     def test_compile_nonstrict(self):
         result = ainl_compile(VALID_CODE, strict=False)
         assert result["ok"] is True
+        assert result.get("strict") is False
+        assert "strict_mode_note" in result
 
     def test_compile_cache_reuses_validate_compile_ir(self):
         with _COMPILE_CACHE_LOCK:
@@ -356,6 +401,67 @@ class TestCompile:
         assert ainl_compile(VALID_CODE, strict=True)["ok"] is True
         after = ainl_capabilities()["mcp_telemetry"].get("compile_cache_hits", 0)
         assert after >= before + 1
+
+
+# ---------------------------------------------------------------------------
+# ainl-adapter-contract (http + fs vertical)
+# ---------------------------------------------------------------------------
+
+class TestAdapterContractMcp:
+    def test_http_contract_has_get_verb_and_pitfalls(self):
+        r = ainl_adapter_contract("http", detail_level="standard")
+        assert r["ok"] is True
+        assert r.get("schema_version")
+        assert r.get("adapter") == "http"
+        assert "verbs" in r
+        assert "GET" in r["verbs"]
+        assert "pitfalls" in r
+        assert any("params" in p.lower() or "URL" in p for p in r["pitfalls"])
+        ptrs = r.get("strict_valid_pointers") or []
+        assert len(ptrs) == 1
+        assert ptrs[0].get("path") == "examples/http_get_minimal.ainl"
+        assert ptrs[0].get("in_ci_strict_valid") is True
+        assert ptrs[0].get("resource_uri") == "ainl://strict-valid-examples"
+
+    def test_fs_contract_has_write_verb(self):
+        r = ainl_adapter_contract("fs", detail_level="standard")
+        assert r["ok"] is True
+        assert r.get("adapter") == "fs"
+        assert "write" in r.get("verbs", {})
+        ptrs = r.get("strict_valid_pointers") or []
+        assert len(ptrs) == 1
+        assert ptrs[0].get("path") is None
+        assert ptrs[0].get("in_ci_strict_valid") is False
+        assert "strict-valid" in (ptrs[0].get("note") or "").lower()
+
+
+class TestContractAlignment:
+    def test_synthetic_ir_unknown_http_verb_emits_warning(self):
+        ir = {
+            "labels": {
+                "1": {
+                    "nodes": [
+                        {
+                            "op": "R",
+                            "data": {
+                                "op": "R",
+                                "adapter": "http.OPTIONS",
+                                "src": "http",
+                                "req_op": "OPTIONS",
+                                "lineno": 9,
+                            },
+                        }
+                    ]
+                }
+            }
+        }
+        w, items = _contract_alignment_hints_from_ir(ir)
+        assert w and items
+        assert any(it.get("adapter") == "http" for it in items)
+        out: Dict[str, Any] = {"ok": True, "warnings": []}
+        _merge_contract_alignment_into_output(out, ir, ok_graph=True)
+        assert "contract_alignment" in out
+        assert out["contract_alignment"]["items"]
 
 
 # ---------------------------------------------------------------------------
@@ -463,6 +569,14 @@ class TestRun:
         assert "trace_id" in result
         assert "out" in result
         assert "runtime_version" in result
+        assert result.get("strict") is True
+        assert "strict_mode_note" not in result
+
+    def test_run_nonstrict_includes_mode_note(self):
+        result = ainl_run(VALID_CODE, strict=False)
+        assert result["ok"] is True
+        assert result.get("strict") is False
+        assert "strict_mode_note" in result
 
     def test_run_network_workflow_not_blocked_by_default_policy(self):
         """Default MCP grant matches runner: http is allowed at policy layer (may fail at runtime if adapter missing)."""
@@ -633,6 +747,7 @@ class TestResources:
         bundle = json.loads(_adapter_contracts_bundle_json())
         assert bundle["http"]["ok"] is True
         assert "GET" in bundle["http"]["verbs"]
+        assert bundle["http"].get("strict_valid_pointers")
 
 
 # ---------------------------------------------------------------------------
