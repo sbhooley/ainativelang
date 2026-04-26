@@ -91,6 +91,21 @@ CORPUS_INTENT_BUCKETS: Tuple[Dict[str, Any], ...] = (
         "terms": ("llm", "ai", "classify", "summarize", "generate", "prompt"),
         "human_goal": "Use AI inside the workflow to classify, summarize, or generate a response from the input.",
     },
+    {
+        "bucket": "lead_routing_crm",
+        "terms": ("lead", "router", "crm", "pipeline", "salesforce", "hubspot", "deal"),
+        "human_goal": "Route inbound leads to the right owner, score them, and keep an audit trail in CRM or a spreadsheet.",
+    },
+    {
+        "bucket": "outreach_sequences",
+        "terms": ("outreach", "sequence", "drip", "campaign", "cold email", "follow-up", "follow up"),
+        "human_goal": "Run a respectful outreach sequence with logging, opt-out handling, and a clear paper trail of what was sent.",
+    },
+    {
+        "bucket": "machine_readable_exports",
+        "terms": ("jsonl", "ndjson", "newline", "append log", "event log", "audit log"),
+        "human_goal": "Append structured lines to a JSONL or log file using strict-safe string building (no fake formatting verbs).",
+    },
 )
 
 
@@ -857,6 +872,35 @@ def _partial_scaffold(
     }
 
 
+def _planner_and_host_follow_ups(
+    task_type: str,
+    subtypes: Sequence[str],
+    adapters: Sequence[str],
+) -> List[str]:
+    """Correlate MCP wizard output with ArmaraOS / inference deterministic-planner behavior."""
+    lines: List[str] = [
+        "ArmaraOS / inference: when the control plane returns structured.kind=deterministic_plan, execute plan.steps in order; read structured.follow_ups next to plan (adapters, file proof, get_started) — not a second model turn.",
+        "MCP: after this wizard, follow next_tool_call and ordered_checklist; keep using mcp_ainl_ainl_validate(strict=true) after each edit.",
+    ]
+    if any(a in adapters for a in ("http", "http_or_browser")) or "browser_or_http_scraper" in subtypes:
+        lines.append(
+            "HTTP/browser graphs: before mcp_ainl_ainl_run, pass adapters with allow_hosts (http) or confirm browser runtime; validate ok alone is not runnable proof."
+        )
+    if "fs" in adapters or "local_file_output" in subtypes:
+        lines.append(
+            "File outputs: after a successful run with fs, file_read the output path before claiming CSV/JSONL/log contents in the user reply."
+        )
+    if "llm" in adapters or "llm_workflow" in subtypes:
+        lines.append(
+            "LLM adapters: discover provider config (AINL_CONFIG / env) before assuming llm.* calls will run on MCP hosts."
+        )
+    if task_type == "scheduled_workflow" or "scheduled_automation" in subtypes:
+        lines.append(
+            "Scheduled graphs: confirm the host scheduler path (e.g. ArmaraOS cron) separately from strict validate/compile."
+        )
+    return _dedupe(lines)
+
+
 def _ordered_checklist(task_type: str, subtypes: Sequence[str], adapters: Sequence[str]) -> List[str]:
     """Task-shaped checklist (always includes proof-of-run reminders)."""
     base = [
@@ -1031,6 +1075,7 @@ def get_started(
             "Fetch MCP resources ainl://strict-authoring-cheatsheet and ainl://strict-valid-examples.",
             "Use ainl_validate(strict=true) after every small edit; compile before run when side effects matter.",
         ],
+        "planner_and_host_follow_ups": _planner_and_host_follow_ups(task_type, subtypes, adapters),
         "why_this_matters": (
             "Compiler-valid AINL is not the same as runnable AINL on an MCP host: `ainl_run` must opt in "
             "to http/fs/cache/sqlite/a2a with explicit adapter configuration."
@@ -1122,6 +1167,7 @@ def get_started(
                 "next_tool_call",
                 "authoring_status",
                 "quick_start",
+                "planner_and_host_follow_ups",
                 "why_this_matters",
                 "ordered_checklist",
                 "syntax_corrections",

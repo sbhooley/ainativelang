@@ -5277,7 +5277,10 @@ class AICodeCompiler:
             # Graph-level invariants on nodes/edges/entry/exits (canonical graph IR).
             self._validate_graphs(context=context)
 
-        if self.meta:
+        if self.meta and not self.strict_mode:
+            # In non-strict (lossless) compiles, unknown/partial lines are kept in `ir["meta"]` and summarized here.
+            # In strict mode, the same conditions already emit per-line `self._errors` (arity/scope/unknown op);
+            # do not add a second soft "meta" warning that could read as "only" a warning.
             self._warnings.append(f"meta contains {len(self.meta)} preserved unknown/invalid lines")
         if self.api_opts.get("deprecate"):
             self._warnings.append(f"api deprecations declared: {len(self.api_opts.get('deprecate', []))}")

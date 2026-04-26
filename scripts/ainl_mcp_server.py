@@ -1272,6 +1272,96 @@ def _missing_adapter_from_error_text(text: str) -> Optional[str]:
     return m.group(1).split(".", 1)[0].lower()
 
 
+def _mcp_configurable_adapters_missing_from_registry(reg: "AdapterRegistry", ir: Dict[str, Any]) -> List[str]:
+    """IR-required adapters that must be registered in MCP (http/fs/cache/sqlite/a2a) but are absent from ``reg``."""
+    missing: List[str] = []
+    for name in _required_adapters_from_ir(ir):
+        if name not in _MCP_CONFIGURABLE_ADAPTERS:
+            continue
+        if name not in reg:
+            missing.append(name)
+    return missing
+
+
+def _adapter_registration_recommended_tools() -> List[str]:
+    return [
+        t
+        for t in (
+            "ainl_capabilities",
+            "ainl_adapter_contract",
+            "ainl_run",
+            "ainl_compile",
+            "ainl_validate",
+        )
+        if t in _ALLOWED_TOOLS
+    ]
+
+
+def _envelope_adapter_registration_error(
+    trace_id: str,
+    ir: Dict[str, Any],
+    missing_mcp: List[str],
+    *,
+    error_text: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Shared payload when ainl_run cannot execute until MCP registers required adapters (preflight or runtime)."""
+    if not missing_mcp:
+        return {}
+    first = missing_mcp[0]
+    required = _required_adapters_from_ir(ir)
+    for m in missing_mcp:
+        if m not in required:
+            required = sorted(set(required + [m]))
+    suggested = _suggested_adapters_payload(required, ir)
+    rr = _runtime_readiness_from_ir(ir)
+    rr["ready"] = False
+    rr["missing_adapters"] = required
+    out: Dict[str, Any] = {
+        "ok": False,
+        "trace_id": trace_id,
+        "error": (error_text or f"adapter not registered: {first}"),
+        "error_kind": "adapter_registration",
+        "required_adapters": required,
+        "runtime_readiness": rr,
+        "adapter_registration_error": {
+            "adapter": first,
+            "missing_mcp_configurable": missing_mcp,
+            "message": (
+                f"The workflow requires these MCP-configurable runtime adapters, but the current `ainl_run` "
+                f"call did not register them: {missing_mcp!r}. Use `suggested_adapters` as the `adapters` "
+                "argument; confirm verb names and tiers with `ainl_capabilities` first."
+            ),
+            "suggested_adapters": suggested,
+            "next_step": (
+                "Retry `ainl_run` with the same `code` and `suggested_adapters` in the `adapters` parameter. "
+                "Prefer adapter configuration over deleting fs/http/cache/sqlite lines unless the user changes requirements."
+            ),
+            "ainl_adapter_contract": {
+                "tool": "ainl_adapter_contract",
+                "args": {"adapter": first},
+            },
+            "recommended_resources": [
+                u
+                for u in (
+                    "ainl://strict-authoring-cheatsheet",
+                    "ainl://adapter-contracts",
+                )
+                if u in _ALLOWED_RESOURCES
+            ],
+            "recommended_next_tools": _adapter_registration_recommended_tools(),
+        },
+        "repair_recipe": {
+            "kind": "adapter_registration",
+            "summary": (
+                f"Register missing MCP runtime adapters {missing_mcp!r} — copy `suggested_adapters` from this "
+                "response into the next `ainl_run` call."
+            ),
+            "primary_fix": "adapters_parameter",
+        },
+    }
+    return out
+
+
 def _merge_policy(caller_policy: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Restrictively merge caller policy on top of server defaults via grants."""
     caller_grant = empty_grant()
@@ -1345,9 +1435,10 @@ def ainl_get_started(
     This read-only wizard is the first tool to call before writing unfamiliar
     AINL.  It accepts a natural-language goal, infers a deterministic task
     spec, returns an intent-to-syntax guide, and tells the agent which discovery
-    checkpoint to complete next. It can also return step-local examples without
-    advancing the wizard, or reverse-engineer existing AINL source into
-    human-like goals for fixture/corpus building.
+    checkpoint to complete next. Full responses include ``planner_and_host_follow_ups``
+    (how ArmaraOS / inference ``deterministic_plan`` + ``follow_ups`` relates to MCP
+    authoring). It can also return step-local examples without advancing the wizard,
+    or reverse-engineer existing AINL source into human-like goals for fixture/corpus building.
     """
     if current_step or request_examples_for:
         return ainl_get_started_step_examples(
@@ -1426,6 +1517,8 @@ def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optiona
 
     Pass the **full** program source in the ``code`` argument (UTF-8 string).
     The legacy ``ainl`` parameter name is accepted as an alias for ``code``.
+    An empty call (e.g. ``{}``) or omitted ``code``/``ainl`` is a **tool wiring** error
+    (``error`` / ``tool_call_error``) — fix the MCP invocation, not the graph source.
     Do not pass only a filesystem path unless your host reads the file into
     ``code`` for you.
 
@@ -1643,7 +1736,10 @@ def ainl_run(
     server defaults.
 
     Returns structured execution output on success or a policy/runtime
-    error on failure.
+    error on failure.  If the compiled graph needs MCP-configurable adapters
+    (``http``, ``fs``, ``cache``, ``sqlite``, ``a2a``) but this call did not
+    register them on ``reg``, the server returns ``error_kind: adapter_registration``
+    with ``suggested_adapters`` **before** starting the runtime (no partial run).
 
     Pass full source in ``code`` (``ainl`` alias accepted).
     """
@@ -1866,6 +1962,9 @@ def ainl_run(
             # Log warning but continue; server remains functional without LLM
             print(f"[ainl_mcp_server] Warning: failed to register LLM adapters: {e}")
 
+    miss = _mcp_configurable_adapters_missing_from_registry(reg, ir)
+    if miss:
+        return _envelope_adapter_registration_error(trace_id, ir, miss)
 
     try:
         eng = RuntimeEngine(
@@ -1881,72 +1980,30 @@ def ainl_run(
         out = eng.run_label(entry, frame=frame or {})
     except AinlRuntimeError as e:
         err_text = str(e)
-        out_err: Dict[str, Any] = {
+        missing_adapter = _missing_adapter_from_error_text(err_text)
+        if missing_adapter:
+            out_err = _envelope_adapter_registration_error(
+                trace_id, ir, [missing_adapter], error_text=err_text
+            )
+            if out_err:
+                out_err["error_structured"] = e.to_dict()
+                return out_err
+        return {
             "ok": False,
             "trace_id": trace_id,
             "error": err_text,
             "error_structured": e.to_dict(),
         }
-        missing_adapter = _missing_adapter_from_error_text(err_text)
-        if missing_adapter:
-            required = _required_adapters_from_ir(ir)
-            if missing_adapter not in required:
-                required = sorted(set(required + [missing_adapter]))
-            out_err["runtime_readiness"] = _runtime_readiness_from_ir(ir)
-            out_err["runtime_readiness"]["ready"] = False
-            out_err["runtime_readiness"]["missing_adapters"] = required
-            out_err["adapter_registration_error"] = {
-                "adapter": missing_adapter,
-                "message": f"`{missing_adapter}` is used by the IR but was not registered for this ainl_run call.",
-                "suggested_adapters": _suggested_adapters_payload(required, ir),
-                "next_step": "Retry ainl_run with the suggested `adapters` payload instead of editing away the adapter-dependent behavior.",
-                "ainl_adapter_contract": {
-                    "tool": "ainl_adapter_contract",
-                    "args": {"adapter": missing_adapter},
-                },
-                "recommended_resources": [
-                    u
-                    for u in (
-                        "ainl://strict-authoring-cheatsheet",
-                        "ainl://adapter-contracts",
-                    )
-                    if u in _ALLOWED_RESOURCES
-                ],
-                "recommended_next_tools": [
-                    t for t in ("ainl_adapter_contract", "ainl_run", "ainl_compile") if t in _ALLOWED_TOOLS
-                ],
-            }
-        return out_err
     except Exception as e:
         err_text = str(e)
-        out_err = {"ok": False, "trace_id": trace_id, "error": err_text}
         missing_adapter = _missing_adapter_from_error_text(err_text)
         if missing_adapter:
-            required = _required_adapters_from_ir(ir)
-            if missing_adapter not in required:
-                required = sorted(set(required + [missing_adapter]))
-            out_err["adapter_registration_error"] = {
-                "adapter": missing_adapter,
-                "message": f"`{missing_adapter}` is used by the IR but was not registered for this ainl_run call.",
-                "suggested_adapters": _suggested_adapters_payload(required, ir),
-                "next_step": "Retry ainl_run with the suggested `adapters` payload.",
-                "ainl_adapter_contract": {
-                    "tool": "ainl_adapter_contract",
-                    "args": {"adapter": missing_adapter},
-                },
-                "recommended_resources": [
-                    u
-                    for u in (
-                        "ainl://strict-authoring-cheatsheet",
-                        "ainl://adapter-contracts",
-                    )
-                    if u in _ALLOWED_RESOURCES
-                ],
-                "recommended_next_tools": [
-                    t for t in ("ainl_adapter_contract", "ainl_run") if t in _ALLOWED_TOOLS
-                ],
-            }
-        return out_err
+            out_err = _envelope_adapter_registration_error(
+                trace_id, ir, [missing_adapter], error_text=err_text
+            )
+            if out_err:
+                return out_err
+        return {"ok": False, "trace_id": trace_id, "error": err_text}
 
     out_run: Dict[str, Any] = {
         "ok": True,

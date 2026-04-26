@@ -482,9 +482,22 @@ class TestRun:
         assert reg["adapter"] == "fs"
         assert reg["suggested_adapters"]["enable"] == ["fs"]
         assert reg["suggested_adapters"]["fs"]["root"] == "<absolute-workspace-or-output-root>"
-        assert "Retry ainl_run" in reg["next_step"]
+        assert "Retry `ainl_run`" in reg["next_step"] or "Retry ainl_run" in reg["next_step"]
         assert reg["ainl_adapter_contract"]["args"]["adapter"] == "fs"
         assert "ainl://strict-authoring-cheatsheet" in reg["recommended_resources"]
+        assert result.get("error_kind") == "adapter_registration"
+        assert "repair_recipe" in result
+        assert reg["recommended_next_tools"][0] == "ainl_capabilities"
+
+    def test_run_preflight_fails_before_engine_when_http_and_fs_unregistered(self):
+        """C1: multi-adapter IR returns a copyable payload without executing the graph."""
+        result = ainl_run(HTTP_FS_CODE, strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "adapter_registration"
+        reg = result["adapter_registration_error"]
+        assert set(reg["missing_mcp_configurable"]) == {"http", "fs"}
+        assert reg["suggested_adapters"]["enable"] == ["fs", "http"]
+        assert reg["suggested_adapters"]["http"]["allow_hosts"] == ["example.com"]
 
     def test_run_invalid_includes_compile_feedback(self):
         result = ainl_run(INVALID_CODE)
