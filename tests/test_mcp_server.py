@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.ainl_mcp_server import (
+    ainl_adapter_contract,
+    ainl_get_started,
     ainl_validate,
     ainl_compile,
     ainl_capabilities,
@@ -32,14 +34,166 @@ from scripts.ainl_mcp_server import (
     _load_json,
     _merge_policy,
     _merge_limits,
+    _COMPILE_CACHE,
+    _COMPILE_CACHE_LOCK,
     _read_integration_doc,
+    _strict_valid_examples_json,
+    _adapter_contracts_bundle_json,
 )
+from tooling.ainl_get_started import reverse_engineer_corpus, template_status_for_path
 
 
 VALID_CODE = "S app api /api\nL1:\nR core.ADD 2 3 ->sum\nJ sum"
 INVALID_CODE = "S app api /api\nL1:\nR !!!invalid!!!"
 NETWORK_CODE = "S app api /api\nL1:\nR http.Get \"https://example.com\" ->resp\nJ resp"
+FS_CODE = "S app core noop\nL1:\nR fs.write \"out.csv\" \"name\\n\" ->written\nJ written"
+HTTP_FS_CODE = "S app core noop\nL1:\nR http.GET \"https://example.com\" ->resp\nR fs.write \"out.csv\" \"name\\n\" ->written\nJ written"
+JSON_DIRECT_RETURN_CODE = "S app core noop\nL1:\nJ {\"ok\": true}"
+COMPACT_JSON_DIRECT_RETURN_CODE = "workflow:\n out {\"ok\": true}"
 UNKNOWN_ADAPTER_VERB = "S app core noop\ncore.NotARealTopLevelVerb 1\n"
+
+
+# ---------------------------------------------------------------------------
+# ainl-get-started
+# ---------------------------------------------------------------------------
+
+class TestGetStarted:
+    def test_scraper_goal_blocks_authoring_until_contracts(self):
+        result = ainl_get_started(
+            goal="I need a scraper that visits a site, fills a form, scrapes results, and saves a CSV."
+        )
+        assert result["ok"] is True
+        assert result["inferred_task_type"] == "adapter_workflow"
+        assert "browser_or_http_scraper" in result["subtypes"]
+        assert "local_file_output" in result["subtypes"]
+        assert result["wizard_state"]["can_author_now"] is False
+        missing = set(result["wizard_state"]["missing_checkpoints"])
+        assert "ainl_capabilities" in missing
+        assert "adapter_contract:http_or_browser" in missing
+        assert "adapter_contract:fs" in missing
+        assert result["next_tool_call"] == {"tool": "ainl_capabilities", "args": {}}
+        guide = result["intent_operation_guide"]
+        assert any(row["step"] == "Start the workflow" for row in guide)
+        assert any(row.get("blocked_by") == "adapter_contract:http_or_browser" for row in guide)
+        assert result["agent_authoring_policy"]["adapter_specific_source_allowed"] is False
+        assert "Do not write adapter-specific AINL lines yet." in result["agent_authoring_policy"]["must_not_do"]
+
+    def test_twilio_goal_detects_llm_state_and_messaging(self):
+        result = ainl_get_started(
+            goal="I need to build a Twilio texting bot that texts a batch of phone numbers and uses AI for replies."
+        )
+        assert result["ok"] is True
+        assert "messaging_or_social" in result["subtypes"]
+        assert "llm_generation_or_classification" in result["subtypes"]
+        assert "stateful_tracking" in result["subtypes"]
+        assert "llm" in result["adapter_contracts_needed"]
+        assert "state_or_database" in result["adapter_contracts_needed"]
+
+    def test_core_goal_can_author_with_starter_scaffold(self):
+        result = ainl_get_started(goal="Make a hello world AINL workflow.")
+        assert result["ok"] is True
+        assert result["wizard_state"]["can_author_now"] is True
+        assert result["starter_scaffold"]["code"].startswith("workflow:")
+        assert result["next_tool_call"]["tool"] == "ainl_validate"
+        assert "quick_start" in result
+        assert "ordered_checklist" in result
+        assert result["strict_valid_example_index"]["resource_uri"] == "ainl://strict-valid-examples"
+        assert result["strict_valid_example_index"]["count"] >= 1
+
+    def test_missing_goal_is_tool_call_error(self):
+        result = ainl_get_started()
+        assert result["ok"] is False
+        assert result["tool_call_error"] is True
+        assert "goal" in result["next_step"]
+
+    def test_step_local_examples_do_not_advance_wizard(self):
+        result = ainl_get_started(current_step="output_write", request_examples_for="fs_write_csv")
+        assert result["wizard_stage"] == "incremental_authoring"
+        assert result["current_step"] == "output_write"
+        assert result["step_status"] == "examples_only"
+        assert any("fs.WRITE" in row["code"] for row in result["examples"])
+
+    def test_reverse_engineer_source_returns_human_goals(self):
+        code = (ROOT / "examples" / "monitoring" / "solana-balance.ainl").read_text(
+            encoding="utf-8"
+        )
+        result = ainl_get_started(
+            reverse_source=code,
+            reverse_path="examples/monitoring/solana-balance.ainl",
+        )
+        assert result["ok"] is True
+        rev = result["result"]
+        assert "solana" in rev["detected_adapters"]
+        assert any("Solana wallet" in goal for goal in rev["reconstructed_user_goals"])
+        assert rev["workflow_family"] == "blockchain_monitoring"
+        assert rev["recommended_template_status"] == "strict-valid"
+        assert "required_contracts" in rev
+        assert "adapter_contracts_needed" in rev["expected_classifier"]
+
+    def test_reverse_corpus_scanner_marks_strict_and_demo_signal(self):
+        strict_path = ROOT / "examples" / "monitoring" / "solana-balance.ainl"
+        demo_path = ROOT / "demo" / "heartbeat.lang"
+        result = reverse_engineer_corpus([strict_path, demo_path], repo_root=ROOT)
+        assert result["ok"] is True
+        assert "patterns" in result
+        statuses = {row["source_file"]: row["recommended_template_status"] for row in result["fixtures"]}
+        assert statuses["examples/monitoring/solana-balance.ainl"] == "strict-valid"
+        assert statuses["demo/heartbeat.lang"] == "experimental_or_negative_signal"
+        assert all(row["reconstructed_user_goals"] for row in result["fixtures"])
+
+    def test_template_status_uses_artifact_profiles(self):
+        assert template_status_for_path("examples/compact/hello_compact.ainl") == "strict-valid"
+        assert template_status_for_path("demo/heartbeat.lang") == "experimental_or_negative_signal"
+
+    def test_capabilities_snapshot_moves_to_contract_resolution(self):
+        result = ainl_get_started(
+            goal="I need a scraper that visits a site, fills a form, scrapes results, and saves a CSV.",
+            capabilities_snapshot={"adapters": {"core": {}, "http": {}, "browser": {}, "fs": {}}},
+        )
+        assert result["wizard_stage"] == "contract_resolution"
+        assert "ainl_capabilities" in result["wizard_state"]["complete_checkpoints"]
+        assert result["next_tool_call"]["tool"] == "ainl_adapter_contract"
+        assert result["next_tool_call"]["args"]["adapter"] == "http_or_browser"
+
+    def test_contract_snapshots_unlock_incremental_authoring_scaffold(self):
+        result = ainl_get_started(
+            goal="I need a scraper that visits a site, fills a form, scrapes results, and saves a CSV.",
+            capabilities_snapshot={"adapters": {"core": {}, "http": {}, "browser": {}, "fs": {}}},
+            adapter_contracts_snapshot={"http_or_browser": {"ok": True}, "fs": {"ok": True}},
+        )
+        assert result["wizard_stage"] == "incremental_authoring"
+        assert result["wizard_state"]["can_author_now"] is True
+        scaffold = result["partial_scaffold"]
+        names = {row["name"] for row in scaffold["slices"]}
+        assert {"adapter_access_http_path", "adapter_access_browser_path", "output_write"}.issubset(names)
+        joined = "\n".join("\n".join(row["lines"]) for row in scaffold["slices"])
+        assert "page = http.GET target_url" in joined
+        assert "session = browser.NAVIGATE target_url" in joined
+        assert "written = fs.WRITE output_path csv" in joined
+        assert result["agent_authoring_policy"]["adapter_specific_source_allowed"] is True
+
+    def test_adapter_contract_http_is_real_not_placeholder(self):
+        result = ainl_adapter_contract("http")
+        assert result["ok"] is True
+        assert result["status"] == "known"
+        assert "GET" in result["verbs"]
+        assert result["verbs"]["GET"]["args"] == ["url: string", "headers?: dict", "timeout_s?: number"]
+        assert "runtime_registration" in result
+        assert result["runtime_registration"]["http"]["allow_hosts"] == ["<host>"]
+
+    def test_adapter_contract_browser_or_http_decision(self):
+        result = ainl_adapter_contract("http_or_browser")
+        assert result["ok"] is True
+        assert result["status"] == "composite"
+        assert {row["choose"] for row in result["decision_guide"]} == {"http", "browser"}
+        adapters = {row["adapter"] for row in result["contracts"]}
+        assert {"http", "browser"}.issubset(adapters)
+
+    def test_adapter_contract_unknown_guides_discovery(self):
+        result = ainl_adapter_contract("x")
+        assert result["ok"] is False
+        assert result["status"] == "unknown"
+        assert "ainl_capabilities" in result["next_step"]
 
 
 # ---------------------------------------------------------------------------
@@ -47,12 +201,34 @@ UNKNOWN_ADAPTER_VERB = "S app core noop\ncore.NotARealTopLevelVerb 1\n"
 # ---------------------------------------------------------------------------
 
 class TestValidate:
+    def test_missing_code_is_tool_call_error(self):
+        result = ainl_validate()
+        assert result["ok"] is False
+        assert result.get("tool_call_error") is True
+        assert "copy_paste_next_call" in result
+        assert result["copy_paste_next_call"]["tool"] == "ainl_validate"
+
     def test_valid_code_returns_ok(self):
         result = ainl_validate(VALID_CODE, strict=True)
         assert result["ok"] is True
         assert result["errors"] == []
         assert "recommended_next_tools" in result
         assert "ainl_compile" in result["recommended_next_tools"]
+        assert result["required_adapters"] == []
+        assert result["runtime_readiness"]["ready"] is True
+        assert "compiler_vs_runtime_note" in result
+
+    def test_validate_reports_required_adapters_and_suggested_payload(self):
+        result = ainl_validate(HTTP_FS_CODE, strict=True)
+        assert result["ok"] is True
+        assert result["required_adapters"] == ["fs", "http"]
+        readiness = result["runtime_readiness"]
+        assert readiness["ready"] is False
+        assert readiness["missing_adapters"] == ["fs", "http"]
+        suggested = readiness["suggested_adapters"]
+        assert suggested["enable"] == ["fs", "http"]
+        assert suggested["http"]["allow_hosts"] == ["example.com"]
+        assert suggested["fs"]["root"] == "<absolute-workspace-or-output-root>"
 
     def test_invalid_code_returns_errors(self):
         result = ainl_validate(INVALID_CODE, strict=True)
@@ -60,9 +236,11 @@ class TestValidate:
         assert len(result["errors"]) > 0
         assert "recommended_next_tools" in result
         assert "ainl_validate" in result["recommended_next_tools"]
-        # Parser/strict failures that look like adapter/verb issues skip cheatsheet.
+        assert "repair_recipe" in result
+        assert isinstance(result["repair_recipe"], dict)
         if "recommended_resources" in result:
-            assert "ainl://authoring-cheatsheet" in result["recommended_resources"]
+            assert result["recommended_resources"][0] == "ainl://strict-authoring-cheatsheet"
+            assert "ainl://adapter-contracts" in result["recommended_resources"]
         else:
             assert result["recommended_next_tools"][0] == "ainl_capabilities"
 
@@ -98,7 +276,31 @@ class TestValidate:
         assert result["ok"] is False
         tools = result["recommended_next_tools"]
         assert tools[0] == "ainl_capabilities"
-        assert "recommended_resources" not in result
+        # Adapter/verb issues: strict cheatsheet + contracts, not HTTP integration cheatsheet.
+        assert "recommended_resources" in result
+        assert result["recommended_resources"][0] == "ainl://strict-authoring-cheatsheet"
+        assert "ainl://adapter-contracts" in result["recommended_resources"]
+        assert "ainl://authoring-cheatsheet" not in result["recommended_resources"]
+
+    def test_validate_strict_rejects_direct_json_join(self):
+        result = ainl_validate(JSON_DIRECT_RETURN_CODE, strict=True)
+        assert result["ok"] is False
+        pd = result["primary_diagnostic"]
+        assert pd is not None
+        assert pd["kind"] == "strict_validation_failure"
+        assert "inline JSON/object literals" in pd["message"]
+        assert "Do not write `J { ... }`" in pd["suggested_fix"]
+        assert "source_context" in pd
+        rr = result.get("repair_recipe") or {}
+        assert "ainl://strict-authoring-cheatsheet" in rr.get("resources", [])
+
+    def test_validate_strict_rejects_compact_direct_json_out(self):
+        result = ainl_validate(COMPACT_JSON_DIRECT_RETURN_CODE, strict=True)
+        assert result["ok"] is False
+        pd = result["primary_diagnostic"]
+        assert pd is not None
+        assert "inline JSON/object literals" in pd["message"]
+        assert "`out { ... }`" in pd["suggested_fix"]
 
 
 # ---------------------------------------------------------------------------
@@ -114,14 +316,23 @@ class TestCompile:
         assert "labels" in ir
         assert "recommended_next_tools" in result
         assert "ainl_run" in result["recommended_next_tools"]
+        assert result["runtime_readiness"]["ready"] is True
+
+    def test_compile_reports_required_adapters(self):
+        result = ainl_compile(FS_CODE, strict=True)
+        assert result["ok"] is True
+        assert result["required_adapters"] == ["fs"]
+        assert result["runtime_readiness"]["suggested_adapters"]["enable"] == ["fs"]
 
     def test_compile_invalid_returns_errors(self):
         result = ainl_compile(INVALID_CODE, strict=True)
         assert result["ok"] is False
         assert "errors" in result
         assert "recommended_next_tools" in result
+        assert "repair_recipe" in result
         if "recommended_resources" in result:
-            assert "ainl://authoring-cheatsheet" in result["recommended_resources"]
+            assert result["recommended_resources"][0] == "ainl://strict-authoring-cheatsheet"
+            assert "ainl://adapter-contracts" in result["recommended_resources"]
         else:
             assert result["recommended_next_tools"][0] == "ainl_capabilities"
 
@@ -136,6 +347,15 @@ class TestCompile:
     def test_compile_nonstrict(self):
         result = ainl_compile(VALID_CODE, strict=False)
         assert result["ok"] is True
+
+    def test_compile_cache_reuses_validate_compile_ir(self):
+        with _COMPILE_CACHE_LOCK:
+            _COMPILE_CACHE.clear()
+        before = ainl_capabilities()["mcp_telemetry"].get("compile_cache_hits", 0)
+        assert ainl_validate(VALID_CODE, strict=True)["ok"] is True
+        assert ainl_compile(VALID_CODE, strict=True)["ok"] is True
+        after = ainl_capabilities()["mcp_telemetry"].get("compile_cache_hits", 0)
+        assert after >= before + 1
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +388,18 @@ class TestCapabilities:
         uris = {r["uri"] for r in rows}
         assert "ainl://integrations-http-machine-payments" in uris
         assert "ainl://examples-http-machine-payment-flow" in uris
+        assert "ainl://strict-authoring-cheatsheet" in uris
         for r in rows:
             assert set(r.keys()) == {"uri", "title", "summary"}
+
+    def test_capabilities_strict_summary_shape(self):
+        caps = ainl_capabilities()
+        assert "strict_summary" in caps
+        ss = caps["strict_summary"]
+        assert ss.get("schema_version") == "1.0"
+        assert "adapters" in ss
+        assert "strict_valid_verbs" in ss
+        assert caps["adapters"]["core"].get("strict_contract") is True
 
     def test_read_integration_doc_http_machine_payments_nonempty(self):
         text = _read_integration_doc("HTTP_MACHINE_PAYMENTS.md")
@@ -244,6 +474,18 @@ class TestRun:
         assert result["ok"] is False
         assert "errors" in result
 
+    def test_run_missing_adapter_returns_retry_payload(self):
+        result = ainl_run(FS_CODE, strict=True)
+        assert result["ok"] is False
+        assert "adapter_registration_error" in result
+        reg = result["adapter_registration_error"]
+        assert reg["adapter"] == "fs"
+        assert reg["suggested_adapters"]["enable"] == ["fs"]
+        assert reg["suggested_adapters"]["fs"]["root"] == "<absolute-workspace-or-output-root>"
+        assert "Retry ainl_run" in reg["next_step"]
+        assert reg["ainl_adapter_contract"]["args"]["adapter"] == "fs"
+        assert "ainl://strict-authoring-cheatsheet" in reg["recommended_resources"]
+
     def test_run_invalid_includes_compile_feedback(self):
         result = ainl_run(INVALID_CODE)
         assert result["ok"] is False
@@ -251,6 +493,8 @@ class TestRun:
         assert "primary_diagnostic" in result
         assert "agent_repair_steps" in result
         assert "trace_id" in result
+        assert "repair_recipe" in result
+        assert "recommended_next_tools" in result
 
     def test_run_caller_can_add_restrictions(self):
         result = ainl_run(
@@ -365,6 +609,17 @@ class TestResources:
         data = _load_json("security_profiles.json")
         assert "profiles" in data
         assert "local_minimal" in data["profiles"]
+
+    def test_strict_valid_examples_json_lists_profile_paths(self):
+        payload = json.loads(_strict_valid_examples_json())
+        assert payload.get("profile") == "strict-valid"
+        assert payload.get("count", 0) >= 1
+        assert "examples/compact/hello_compact.ainl" in payload.get("paths", [])
+
+    def test_adapter_contracts_bundle_includes_http(self):
+        bundle = json.loads(_adapter_contracts_bundle_json())
+        assert bundle["http"]["ok"] is True
+        assert "GET" in bundle["http"]["verbs"]
 
 
 # ---------------------------------------------------------------------------
