@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/sbhooley-ainativelang-badge.png)](https://mseep.ai/app/sbhooley-ainativelang)
+
 # AI Native Lang (AINL)
 
 <p align="center">
