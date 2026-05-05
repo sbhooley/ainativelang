@@ -8,10 +8,11 @@ import json
 import os
 import sys
 import re
+from dataclasses import dataclass
 from pathlib import Path
 import shutil
 import shlex
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from collections import deque
 import datetime
 import time
@@ -187,10 +188,6 @@ class _NullApiAdapter(RuntimeAdapter):
 # the wasm registration block under ``if "api" in enabled`` (introduced in
 # 818d5a3), so wasm only registered when api was also enabled. Wasm is now
 # unconditional on its own enablement again.
-
-from dataclasses import dataclass
-from typing import Callable
-
 
 @dataclass(frozen=True)
 class _AdapterSpec:
