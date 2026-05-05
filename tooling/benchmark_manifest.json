@@ -57,8 +57,28 @@
     }
   },
   "handwritten_baselines": {
-    "status": "scaffolded",
+    "status": "active",
     "path": "benchmarks/handwritten_baselines/",
-    "note": "Framework scaffold is ready; handwritten baseline programs can be added incrementally."
+    "note": "Baselines compare compiled AINL vs vanilla (pure async + LangGraph) on latency and LLM token spend.",
+    "groups": {
+      "token_budget_monitor": {
+        "ainl_reference": "openclaw/bridge/wrappers/token_budget_alert.ainl",
+        "measures": "execution_latency"
+      },
+      "basic_scraper": {
+        "ainl_reference": "examples/scraper/basic_scraper.ainl",
+        "measures": "execution_latency"
+      },
+      "retry_timeout_wrapper": {
+        "ainl_reference": "examples/retry_error_resilience.ainl",
+        "measures": "execution_latency"
+      },
+      "doc_pipeline": {
+        "ainl_reference": "examples/benchmark/doc_pipeline_compiled.ainl",
+        "measures": "llm_token_spend",
+        "benchmark_script": "scripts/benchmark_token_savings.py",
+        "note": "Analytically measures LLM API token savings from compiled IR routing vs vanilla chain-of-prompts."
+      }
+    }
   }
 }

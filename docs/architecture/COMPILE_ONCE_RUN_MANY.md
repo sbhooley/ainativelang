@@ -36,7 +36,8 @@ It does **not** introduce new semantics; it only packages existing tools and tes
 - **Benchmarks (optional)**
   - **Size:** `BENCHMARK.md`, `scripts/benchmark_size.py`, `tooling/benchmark_size.json` — **tiktoken cl100k_base** in markdown tables; **viable subset** vs **legacy-inclusive** totals; **minimal_emit fallback stub** + **prisma** / **react_ts** compaction notes (Mar 2026); **Compile ms (mean×3)** column; schema `3.5+`.
   - **Runtime:** `scripts/benchmark_runtime.py`, `tooling/benchmark_runtime_results.json` (post-compile latency/RSS; optional reliability batches; **tiktoken**-based cost columns; scalability probe).
-  - **Hub:** `docs/benchmarks.md` ties metrics, `make benchmark` / `make benchmark-ci`, and CI regression gating together.
+  - **Orchestration-token economics (analytical, no live LLM):** `scripts/benchmark_token_savings.py`, `scripts/benchmark_compile_once_run_many.py`, `scripts/benchmark_authoring_density.py` — regenerated sections in `BENCHMARK.md`; see `docs/benchmarks.md` § *Analytical orchestration-token economics*. Reference `.ainl` examples: `examples/benchmark/enterprise_monitor.ainl`, `examples/workflows/data_pipeline.ainl`, `examples/workflows/lead_enrichment.ainl`, `examples/workflows/support_ticket_router.ainl`.
+  - **Hub:** `docs/benchmarks.md` ties metrics, `make benchmark` / `make benchmark-ci`, CI regression gating, and analytical token scripts together.
   - Not required for the minimal proof recipe below.
 
 ---

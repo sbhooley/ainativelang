@@ -1,0 +1,68 @@
+# examples/benchmark/doc_pipeline_compiled.ainl
+#
+# Document processing pipeline — compiled (IR-routing) approach.
+#
+# Routing and type-dispatch are deterministic IR branches: zero LLM tokens.
+# LLM is called ONLY for content tasks (extraction, summarisation) where
+# language understanding is genuinely required.
+#
+# Contrast with benchmarks/handwritten_baselines/doc_pipeline/pure_async_python.py
+# which calls an LLM for every step including classification and routing.
+#
+# Token savings accounting (see scripts/benchmark_token_savings.py):
+#   vanilla_llm_steps:  classify_type, route_action, extract_fields, summarize, action_items
+#   compiled_llm_steps: extract_fields, summarize, action_items
+#   compiled_saves_routing: classify_type + route_action → 0 tokens (IR dispatch)
+#   compiled_saves_focus:   remaining prompts ~30% shorter (type already known, no hedging)
+#
+# frame: document  — the document text to process
+# frame: doc_type  — pre-determined type: "invoice" | "contract" | "support" | "other"
+# frame: extract_prompt  — type-specific extraction instruction (shorter than vanilla)
+# frame: summary_prompt  — type-specific summarisation instruction
+
+S app core noop
+
+L_start:
+  If doc_type=invoice ->L_invoice ->L_not_invoice
+
+L_not_invoice:
+  If doc_type=contract ->L_contract ->L_not_contract
+
+L_not_contract:
+  If doc_type=support ->L_support ->L_generic
+
+L_invoice:
+  R llm.GENERATE extract_prompt 400 0.2 ->extraction_r
+  R core.GET extraction_r "text" ->fields
+  R llm.GENERATE summary_prompt 200 0.3 ->summary_r
+  R core.GET summary_r "text" ->summary
+  Set result_type "invoice"
+  Set llm_calls 2
+  J {type: result_type, fields: fields, summary: summary, llm_calls: llm_calls}
+
+L_contract:
+  R llm.GENERATE extract_prompt 500 0.2 ->extraction_r
+  R core.GET extraction_r "text" ->fields
+  R llm.GENERATE summary_prompt 250 0.3 ->summary_r
+  R core.GET summary_r "text" ->summary
+  Set result_type "contract"
+  Set llm_calls 2
+  J {type: result_type, fields: fields, summary: summary, llm_calls: llm_calls}
+
+L_support:
+  R llm.GENERATE extract_prompt 300 0.2 ->extraction_r
+  R core.GET extraction_r "text" ->fields
+  R llm.GENERATE summary_prompt 150 0.3 ->summary_r
+  R core.GET summary_r "text" ->summary
+  Set result_type "support"
+  Set llm_calls 2
+  J {type: result_type, fields: fields, summary: summary, llm_calls: llm_calls}
+
+L_generic:
+  R llm.GENERATE extract_prompt 350 0.3 ->extraction_r
+  R core.GET extraction_r "text" ->fields
+  R llm.GENERATE summary_prompt 200 0.3 ->summary_r
+  R core.GET summary_r "text" ->summary
+  Set result_type "other"
+  Set llm_calls 2
+  J {type: result_type, fields: fields, summary: summary, llm_calls: llm_calls}

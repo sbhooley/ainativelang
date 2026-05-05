@@ -2,6 +2,8 @@
 
 This page ties together the **size**, **runtime**, and **LLM-generation** benchmarks so you can defend AINL with numbers—not vibes.
 
+**Crosswalk (what claim maps to which script):** [`CLAIMS_AND_EVIDENCE.md`](CLAIMS_AND_EVIDENCE.md).
+
 ### Benchmark highlights (March 2026)
 
 > **Source of truth:** repository root **[`BENCHMARK.md`](../BENCHMARK.md)** (regenerate with `make benchmark`). Numbers below are **tiktoken cl100k_base** as in the Mode Comparison and legacy-inclusive sections.
@@ -25,6 +27,24 @@ Quick **size** snapshot:
 - **Emitter compaction (Mar 2026)** — **`prisma`** and **`react_ts`** benchmark stubs shortened (~50–70% tk reduction on those lines in examples).
 - **Hybrid wrapper emitters in full_multitarget** — **`langgraph`** / **`temporal`** sizes come from `scripts/emit_langgraph.py` and `scripts/emit_temporal.py`; not part of **`minimal_emit`** unless `emit_capabilities` gains matching flags later.
 - **`--strict-mode`** — `scripts/benchmark_size.py` with **`--profile-name=canonical_strict_valid`** runs the compiler in strict reachability mode; see the strict callout in `BENCHMARK.md` when enabled.
+
+### Analytical orchestration-token economics (no live LLM)
+
+These scripts measure **LLM token counts** with **tiktoken** (`cl100k_base`) for orchestration comparisons — vanilla / prompt-loop baselines vs compiled AINL — and inject markdown into **[`BENCHMARK.md`](../BENCHMARK.md)** when run:
+
+| Script | What it measures |
+|--------|------------------|
+| [`scripts/benchmark_token_savings.py`](../scripts/benchmark_token_savings.py) | Doc-style pipeline: LLM-first vs hand-optimized vs compiled AINL; routing-depth sensitivity |
+| [`scripts/benchmark_compile_once_run_many.py`](../scripts/benchmark_compile_once_run_many.py) | Compile-once / run-many: per-run tokens across recurring-job scenarios (monitors, enrichment, triage, …) |
+| [`scripts/benchmark_authoring_density.py`](../scripts/benchmark_authoring_density.py) | DSL authoring density: `.ainl` source vs equivalent Python / TypeScript |
+
+```bash
+python scripts/benchmark_token_savings.py
+python scripts/benchmark_compile_once_run_many.py
+python scripts/benchmark_authoring_density.py
+```
+
+Reference **strict-valid** workflow examples used in density / scenario modeling: [`examples/benchmark/enterprise_monitor.ainl`](../examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](../examples/workflows/data_pipeline.ainl), [`examples/workflows/lead_enrichment.ainl`](../examples/workflows/lead_enrichment.ainl), [`examples/workflows/support_ticket_router.ainl`](../examples/workflows/support_ticket_router.ainl).
 
 ## Comparative methodology (LangGraph, Temporal, others)
 
@@ -105,7 +125,7 @@ Pull requests and pushes run **`benchmark-regression`** (see `.github/workflows/
 
 ## See also
 
-- `scripts/benchmark_size.py`, `scripts/benchmark_runtime.py`, `tooling/bench_metrics.py`
+- `scripts/benchmark_size.py`, `scripts/benchmark_runtime.py`, `scripts/benchmark_token_savings.py`, `scripts/benchmark_compile_once_run_many.py`, `scripts/benchmark_authoring_density.py`, `tooling/bench_metrics.py`
 - `docs/TEST_PROFILES.md` — pytest profile matrix
 - `docs/architecture/COMPILE_ONCE_RUN_MANY.md` — architectural framing
 - `docs/OPENCLAW_INTEGRATION.md` — **OpenClaw skill**, **`ainl install-openclaw`**, and links to **`examples/ecosystem/`** (auto-sync, MCP importer tools)

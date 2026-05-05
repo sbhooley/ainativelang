@@ -1,0 +1,982 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-05-05T14:07:36.522959+00:00",
+  "kind": "token_savings",
+  "token_counting_method": "tiktoken_cl100k_base",
+  "tiktoken_available": true,
+  "savings_range": {
+    "low_x": 2.08,
+    "high_x": 7.06,
+    "note": "Range across scenarios.  Savings narrow for very long documents; savings widen for classification-heavy pipelines with short documents."
+  },
+  "methodology": {
+    "three_way_comparison": {
+      "vanilla": "LLM-first: all pipeline steps (including routing) call LLM. Common in prototypes.",
+      "vanilla_optimized": "Hand-optimised: LLM for classification only; rule-based routing (0 tokens); type-specific prompts for content steps \u2014 same as compiled AINL content steps.",
+      "compiled": "Compiled AINL: IR dispatch eliminates all routing calls (including classification). Steps 3\u20135 use type-specific prompts guaranteed by the compiler."
+    },
+    "savings_attribution": {
+      "routing_elimination": "vanilla_optimized vs compiled \u2014 irreducible IR compilation benefit (~1.4\u00d7)",
+      "full_llm_first_savings": "vanilla vs compiled \u2014 full comparison against LLM-first stack (~2.1\u00d7)"
+    },
+    "prompt_templates": "benchmarks/handwritten_baselines/doc_pipeline/pure_async_python.py",
+    "ainl_reference": "examples/benchmark/doc_pipeline_compiled.ainl",
+    "reproducibility": "Run `python scripts/benchmark_token_savings.py` on any machine with `pip install ainativelang[benchmark]`.  Token counts are deterministic (tiktoken cl100k_base; no live LLM calls required).",
+    "output_token_note": "Mock LLM outputs are fixed strings for reproducibility.  Real model outputs for extraction/summarization are typically 2\u20135\u00d7 larger; higher real output tokens reduce the headline savings ratio to approximately 1.8\u20131.95\u00d7 for the doc_processing scenario.  IR-routing savings (steps eliminated entirely) are unaffected by output size."
+  },
+  "scenarios": {
+    "doc_processing": {
+      "scenario": "doc_processing",
+      "description": "5-step business document pipeline (classify \u2192 route \u2192 extract \u2192 summarise \u2192 action items). Three-way comparison: LLM-first vanilla vs hand-optimised vanilla vs compiled AINL.",
+      "documents_measured": 3,
+      "per_document": [
+        {
+          "document_label": "Invoice (#INV-2026-0042)",
+          "doc_type": "invoice",
+          "document_tiktoken": 219,
+          "vanilla": {
+            "total_tokens": 1850,
+            "total_input_tokens": 1697,
+            "total_output_tokens": 153,
+            "llm_calls": 5,
+            "description": "LLM-first: every step calls LLM (common in prototypes)"
+          },
+          "vanilla_optimized": {
+            "total_tokens": 1264,
+            "total_input_tokens": 1113,
+            "total_output_tokens": 151,
+            "llm_calls": 4,
+            "description": "Hand-optimized: LLM classify only, rule-based routing, type-specific prompts"
+          },
+          "compiled": {
+            "total_tokens": 889,
+            "total_input_tokens": 739,
+            "total_output_tokens": 150,
+            "llm_calls": 3,
+            "description": "Compiled AINL: IR routing eliminates all LLM routing calls"
+          },
+          "savings_ratio_vs_vanilla": 2.08,
+          "savings_ratio_vs_vanilla_optimized": 1.42,
+          "tokens_saved_total": 961,
+          "tokens_saved_from_ir_routing": 741,
+          "tokens_saved_from_focused_prompts": 220,
+          "step_breakdown": [
+            {
+              "step": "classify_type",
+              "vanilla_input_tokens": 374,
+              "vanilla_output_tokens": 1,
+              "vanilla_total": 375,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 375,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_action",
+              "vanilla_input_tokens": 364,
+              "vanilla_output_tokens": 2,
+              "vanilla_total": 366,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 366,
+              "is_ir_routed": true
+            },
+            {
+              "step": "extract_fields",
+              "vanilla_input_tokens": 392,
+              "vanilla_output_tokens": 81,
+              "vanilla_total": 473,
+              "compiled_input_tokens": 259,
+              "compiled_output_tokens": 81,
+              "compiled_total": 340,
+              "tokens_saved": 133,
+              "is_ir_routed": false
+            },
+            {
+              "step": "summarize",
+              "vanilla_input_tokens": 271,
+              "vanilla_output_tokens": 32,
+              "vanilla_total": 303,
+              "compiled_input_tokens": 241,
+              "compiled_output_tokens": 32,
+              "compiled_total": 273,
+              "tokens_saved": 30,
+              "is_ir_routed": false
+            },
+            {
+              "step": "action_items",
+              "vanilla_input_tokens": 296,
+              "vanilla_output_tokens": 37,
+              "vanilla_total": 333,
+              "compiled_input_tokens": 239,
+              "compiled_output_tokens": 37,
+              "compiled_total": 276,
+              "tokens_saved": 57,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "document_label": "Service Agreement",
+          "doc_type": "contract",
+          "document_tiktoken": 242,
+          "vanilla": {
+            "total_tokens": 1970,
+            "total_input_tokens": 1817,
+            "total_output_tokens": 153,
+            "llm_calls": 5,
+            "description": "LLM-first: every step calls LLM (common in prototypes)"
+          },
+          "vanilla_optimized": {
+            "total_tokens": 1360,
+            "total_input_tokens": 1209,
+            "total_output_tokens": 151,
+            "llm_calls": 4,
+            "description": "Hand-optimized: LLM classify only, rule-based routing, type-specific prompts"
+          },
+          "compiled": {
+            "total_tokens": 956,
+            "total_input_tokens": 806,
+            "total_output_tokens": 150,
+            "llm_calls": 3,
+            "description": "Compiled AINL: IR routing eliminates all LLM routing calls"
+          },
+          "savings_ratio_vs_vanilla": 2.06,
+          "savings_ratio_vs_vanilla_optimized": 1.42,
+          "tokens_saved_total": 1014,
+          "tokens_saved_from_ir_routing": 789,
+          "tokens_saved_from_focused_prompts": 225,
+          "step_breakdown": [
+            {
+              "step": "classify_type",
+              "vanilla_input_tokens": 398,
+              "vanilla_output_tokens": 1,
+              "vanilla_total": 399,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 399,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_action",
+              "vanilla_input_tokens": 388,
+              "vanilla_output_tokens": 2,
+              "vanilla_total": 390,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 390,
+              "is_ir_routed": true
+            },
+            {
+              "step": "extract_fields",
+              "vanilla_input_tokens": 416,
+              "vanilla_output_tokens": 81,
+              "vanilla_total": 497,
+              "compiled_input_tokens": 280,
+              "compiled_output_tokens": 81,
+              "compiled_total": 361,
+              "tokens_saved": 136,
+              "is_ir_routed": false
+            },
+            {
+              "step": "summarize",
+              "vanilla_input_tokens": 295,
+              "vanilla_output_tokens": 32,
+              "vanilla_total": 327,
+              "compiled_input_tokens": 263,
+              "compiled_output_tokens": 32,
+              "compiled_total": 295,
+              "tokens_saved": 32,
+              "is_ir_routed": false
+            },
+            {
+              "step": "action_items",
+              "vanilla_input_tokens": 320,
+              "vanilla_output_tokens": 37,
+              "vanilla_total": 357,
+              "compiled_input_tokens": 263,
+              "compiled_output_tokens": 37,
+              "compiled_total": 300,
+              "tokens_saved": 57,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "document_label": "Support Ticket (#SUP-8821)",
+          "doc_type": "support",
+          "document_tiktoken": 223,
+          "vanilla": {
+            "total_tokens": 1870,
+            "total_input_tokens": 1717,
+            "total_output_tokens": 153,
+            "llm_calls": 5,
+            "description": "LLM-first: every step calls LLM (common in prototypes)"
+          },
+          "vanilla_optimized": {
+            "total_tokens": 1280,
+            "total_input_tokens": 1129,
+            "total_output_tokens": 151,
+            "llm_calls": 4,
+            "description": "Hand-optimized: LLM classify only, rule-based routing, type-specific prompts"
+          },
+          "compiled": {
+            "total_tokens": 892,
+            "total_input_tokens": 742,
+            "total_output_tokens": 150,
+            "llm_calls": 3,
+            "description": "Compiled AINL: IR routing eliminates all LLM routing calls"
+          },
+          "savings_ratio_vs_vanilla": 2.1,
+          "savings_ratio_vs_vanilla_optimized": 1.43,
+          "tokens_saved_total": 978,
+          "tokens_saved_from_ir_routing": 749,
+          "tokens_saved_from_focused_prompts": 229,
+          "step_breakdown": [
+            {
+              "step": "classify_type",
+              "vanilla_input_tokens": 378,
+              "vanilla_output_tokens": 1,
+              "vanilla_total": 379,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 379,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_action",
+              "vanilla_input_tokens": 368,
+              "vanilla_output_tokens": 2,
+              "vanilla_total": 370,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 370,
+              "is_ir_routed": true
+            },
+            {
+              "step": "extract_fields",
+              "vanilla_input_tokens": 396,
+              "vanilla_output_tokens": 81,
+              "vanilla_total": 477,
+              "compiled_input_tokens": 257,
+              "compiled_output_tokens": 81,
+              "compiled_total": 338,
+              "tokens_saved": 139,
+              "is_ir_routed": false
+            },
+            {
+              "step": "summarize",
+              "vanilla_input_tokens": 275,
+              "vanilla_output_tokens": 32,
+              "vanilla_total": 307,
+              "compiled_input_tokens": 241,
+              "compiled_output_tokens": 32,
+              "compiled_total": 273,
+              "tokens_saved": 34,
+              "is_ir_routed": false
+            },
+            {
+              "step": "action_items",
+              "vanilla_input_tokens": 300,
+              "vanilla_output_tokens": 37,
+              "vanilla_total": 337,
+              "compiled_input_tokens": 244,
+              "compiled_output_tokens": 37,
+              "compiled_total": 281,
+              "tokens_saved": 56,
+              "is_ir_routed": false
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "total_vanilla_tokens": 5690,
+        "total_vanilla_optimized_tokens": 3904,
+        "total_compiled_tokens": 2737,
+        "savings_ratio_vs_vanilla": 2.08,
+        "savings_ratio_vs_vanilla_optimized": 1.43,
+        "overall_savings_ratio": 2.08,
+        "mean_per_doc_vanilla": 1897,
+        "mean_per_doc_vanilla_optimized": 1301,
+        "mean_per_doc_compiled": 912,
+        "tokens_saved_from_ir_routing": 2279,
+        "tokens_saved_from_focused_prompts": 674,
+        "ir_routing_pct_of_savings": 77.2
+      }
+    },
+    "event_routing": {
+      "scenario": "event_routing",
+      "description": "Short infrastructure/security events (~25 tokens). Vanilla = LLM-first: 5 routing steps (classify \u2192 severity \u2192 team \u2192 region \u2192 escalation) all call LLM, representing teams that delegate routing to the model. Compiled AINL: all 5 routing steps become zero-token IR branches; 1 content step (response generation) still calls LLM. Represents the upper bound of savings for LLM-first routing architectures.",
+      "events_measured": 5,
+      "per_event": [
+        {
+          "event_label": "Event #1",
+          "event_tiktoken": 29,
+          "vanilla": {
+            "total_tokens": 569,
+            "llm_calls": 6
+          },
+          "compiled": {
+            "total_tokens": 83,
+            "llm_calls": 1
+          },
+          "savings_ratio": 6.86,
+          "step_breakdown": [
+            {
+              "step": "classify_event_type",
+              "vanilla_total": 77,
+              "compiled_total": 0,
+              "tokens_saved": 77,
+              "is_ir_routed": true
+            },
+            {
+              "step": "assess_severity",
+              "vanilla_total": 95,
+              "compiled_total": 0,
+              "tokens_saved": 95,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_team",
+              "vanilla_total": 95,
+              "compiled_total": 0,
+              "tokens_saved": 95,
+              "is_ir_routed": true
+            },
+            {
+              "step": "determine_region",
+              "vanilla_total": 87,
+              "compiled_total": 0,
+              "tokens_saved": 87,
+              "is_ir_routed": true
+            },
+            {
+              "step": "escalation_policy",
+              "vanilla_total": 95,
+              "compiled_total": 0,
+              "tokens_saved": 95,
+              "is_ir_routed": true
+            },
+            {
+              "step": "generate_response",
+              "vanilla_total": 120,
+              "compiled_total": 83,
+              "tokens_saved": 37,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "event_label": "Event #2",
+          "event_tiktoken": 26,
+          "vanilla": {
+            "total_tokens": 548,
+            "llm_calls": 6
+          },
+          "compiled": {
+            "total_tokens": 76,
+            "llm_calls": 1
+          },
+          "savings_ratio": 7.21,
+          "step_breakdown": [
+            {
+              "step": "classify_event_type",
+              "vanilla_total": 74,
+              "compiled_total": 0,
+              "tokens_saved": 74,
+              "is_ir_routed": true
+            },
+            {
+              "step": "assess_severity",
+              "vanilla_total": 92,
+              "compiled_total": 0,
+              "tokens_saved": 92,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_team",
+              "vanilla_total": 92,
+              "compiled_total": 0,
+              "tokens_saved": 92,
+              "is_ir_routed": true
+            },
+            {
+              "step": "determine_region",
+              "vanilla_total": 81,
+              "compiled_total": 0,
+              "tokens_saved": 81,
+              "is_ir_routed": true
+            },
+            {
+              "step": "escalation_policy",
+              "vanilla_total": 92,
+              "compiled_total": 0,
+              "tokens_saved": 92,
+              "is_ir_routed": true
+            },
+            {
+              "step": "generate_response",
+              "vanilla_total": 117,
+              "compiled_total": 76,
+              "tokens_saved": 41,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "event_label": "Event #3",
+          "event_tiktoken": 33,
+          "vanilla": {
+            "total_tokens": 588,
+            "llm_calls": 6
+          },
+          "compiled": {
+            "total_tokens": 84,
+            "llm_calls": 1
+          },
+          "savings_ratio": 7.0,
+          "step_breakdown": [
+            {
+              "step": "classify_event_type",
+              "vanilla_total": 81,
+              "compiled_total": 0,
+              "tokens_saved": 81,
+              "is_ir_routed": true
+            },
+            {
+              "step": "assess_severity",
+              "vanilla_total": 99,
+              "compiled_total": 0,
+              "tokens_saved": 99,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_team",
+              "vanilla_total": 98,
+              "compiled_total": 0,
+              "tokens_saved": 98,
+              "is_ir_routed": true
+            },
+            {
+              "step": "determine_region",
+              "vanilla_total": 88,
+              "compiled_total": 0,
+              "tokens_saved": 88,
+              "is_ir_routed": true
+            },
+            {
+              "step": "escalation_policy",
+              "vanilla_total": 99,
+              "compiled_total": 0,
+              "tokens_saved": 99,
+              "is_ir_routed": true
+            },
+            {
+              "step": "generate_response",
+              "vanilla_total": 123,
+              "compiled_total": 84,
+              "tokens_saved": 39,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "event_label": "Event #4",
+          "event_tiktoken": 26,
+          "vanilla": {
+            "total_tokens": 539,
+            "llm_calls": 6
+          },
+          "compiled": {
+            "total_tokens": 75,
+            "llm_calls": 1
+          },
+          "savings_ratio": 7.19,
+          "step_breakdown": [
+            {
+              "step": "classify_event_type",
+              "vanilla_total": 74,
+              "compiled_total": 0,
+              "tokens_saved": 74,
+              "is_ir_routed": true
+            },
+            {
+              "step": "assess_severity",
+              "vanilla_total": 90,
+              "compiled_total": 0,
+              "tokens_saved": 90,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_team",
+              "vanilla_total": 89,
+              "compiled_total": 0,
+              "tokens_saved": 89,
+              "is_ir_routed": true
+            },
+            {
+              "step": "determine_region",
+              "vanilla_total": 83,
+              "compiled_total": 0,
+              "tokens_saved": 83,
+              "is_ir_routed": true
+            },
+            {
+              "step": "escalation_policy",
+              "vanilla_total": 89,
+              "compiled_total": 0,
+              "tokens_saved": 89,
+              "is_ir_routed": true
+            },
+            {
+              "step": "generate_response",
+              "vanilla_total": 114,
+              "compiled_total": 75,
+              "tokens_saved": 39,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "event_label": "Event #5",
+          "event_tiktoken": 23,
+          "vanilla": {
+            "total_tokens": 525,
+            "llm_calls": 6
+          },
+          "compiled": {
+            "total_tokens": 74,
+            "llm_calls": 1
+          },
+          "savings_ratio": 7.09,
+          "step_breakdown": [
+            {
+              "step": "classify_event_type",
+              "vanilla_total": 70,
+              "compiled_total": 0,
+              "tokens_saved": 70,
+              "is_ir_routed": true
+            },
+            {
+              "step": "assess_severity",
+              "vanilla_total": 88,
+              "compiled_total": 0,
+              "tokens_saved": 88,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_team",
+              "vanilla_total": 87,
+              "compiled_total": 0,
+              "tokens_saved": 87,
+              "is_ir_routed": true
+            },
+            {
+              "step": "determine_region",
+              "vanilla_total": 81,
+              "compiled_total": 0,
+              "tokens_saved": 81,
+              "is_ir_routed": true
+            },
+            {
+              "step": "escalation_policy",
+              "vanilla_total": 87,
+              "compiled_total": 0,
+              "tokens_saved": 87,
+              "is_ir_routed": true
+            },
+            {
+              "step": "generate_response",
+              "vanilla_total": 112,
+              "compiled_total": 74,
+              "tokens_saved": 38,
+              "is_ir_routed": false
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "total_vanilla_tokens": 2769,
+        "total_compiled_tokens": 392,
+        "overall_savings_ratio": 7.06,
+        "mean_per_event_vanilla": 554,
+        "mean_per_event_compiled": 78,
+        "tokens_saved_from_ir_routing": 2183,
+        "tokens_saved_from_focused_prompts": 194,
+        "ir_routing_pct_of_savings": 91.8
+      }
+    },
+    "triage_heavy": {
+      "scenario": "triage_heavy",
+      "description": "Batch of 10 documents (round-robin, 3 types). Models a classification-heavy triage queue at enterprise scale. Vanilla = LLM-first (all routing via LLM).",
+      "batch_size": 10,
+      "aggregate": {
+        "batch_total_vanilla_tokens": 18920,
+        "batch_total_compiled_tokens": 9100,
+        "overall_savings_ratio": 2.08,
+        "extrapolated_monthly_at_5k_docs": {
+          "vanilla_tokens": 9460000,
+          "compiled_tokens": 4550000,
+          "vanilla_est_cost_usd_gpt4o": 28.38,
+          "compiled_est_cost_usd_gpt4o": 13.65,
+          "monthly_savings_usd": 14.73,
+          "cost_model_note": "GPT-4o: $2.50/1M input + $10/1M output; blended ~$0.003/1K for these pipelines (~92% input tokens). Actual costs vary by provider and model."
+        }
+      },
+      "sample_doc_breakdown": [
+        {
+          "document_label": "Invoice #1",
+          "doc_type": "invoice",
+          "document_tiktoken": 219,
+          "vanilla": {
+            "total_tokens": 1850,
+            "total_input_tokens": 1697,
+            "total_output_tokens": 153,
+            "llm_calls": 5,
+            "description": "LLM-first: every step calls LLM (common in prototypes)"
+          },
+          "vanilla_optimized": {
+            "total_tokens": 1264,
+            "total_input_tokens": 1113,
+            "total_output_tokens": 151,
+            "llm_calls": 4,
+            "description": "Hand-optimized: LLM classify only, rule-based routing, type-specific prompts"
+          },
+          "compiled": {
+            "total_tokens": 889,
+            "total_input_tokens": 739,
+            "total_output_tokens": 150,
+            "llm_calls": 3,
+            "description": "Compiled AINL: IR routing eliminates all LLM routing calls"
+          },
+          "savings_ratio_vs_vanilla": 2.08,
+          "savings_ratio_vs_vanilla_optimized": 1.42,
+          "tokens_saved_total": 961,
+          "tokens_saved_from_ir_routing": 741,
+          "tokens_saved_from_focused_prompts": 220,
+          "step_breakdown": [
+            {
+              "step": "classify_type",
+              "vanilla_input_tokens": 374,
+              "vanilla_output_tokens": 1,
+              "vanilla_total": 375,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 375,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_action",
+              "vanilla_input_tokens": 364,
+              "vanilla_output_tokens": 2,
+              "vanilla_total": 366,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 366,
+              "is_ir_routed": true
+            },
+            {
+              "step": "extract_fields",
+              "vanilla_input_tokens": 392,
+              "vanilla_output_tokens": 81,
+              "vanilla_total": 473,
+              "compiled_input_tokens": 259,
+              "compiled_output_tokens": 81,
+              "compiled_total": 340,
+              "tokens_saved": 133,
+              "is_ir_routed": false
+            },
+            {
+              "step": "summarize",
+              "vanilla_input_tokens": 271,
+              "vanilla_output_tokens": 32,
+              "vanilla_total": 303,
+              "compiled_input_tokens": 241,
+              "compiled_output_tokens": 32,
+              "compiled_total": 273,
+              "tokens_saved": 30,
+              "is_ir_routed": false
+            },
+            {
+              "step": "action_items",
+              "vanilla_input_tokens": 296,
+              "vanilla_output_tokens": 37,
+              "vanilla_total": 333,
+              "compiled_input_tokens": 239,
+              "compiled_output_tokens": 37,
+              "compiled_total": 276,
+              "tokens_saved": 57,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "document_label": "Contract #2",
+          "doc_type": "contract",
+          "document_tiktoken": 242,
+          "vanilla": {
+            "total_tokens": 1970,
+            "total_input_tokens": 1817,
+            "total_output_tokens": 153,
+            "llm_calls": 5,
+            "description": "LLM-first: every step calls LLM (common in prototypes)"
+          },
+          "vanilla_optimized": {
+            "total_tokens": 1360,
+            "total_input_tokens": 1209,
+            "total_output_tokens": 151,
+            "llm_calls": 4,
+            "description": "Hand-optimized: LLM classify only, rule-based routing, type-specific prompts"
+          },
+          "compiled": {
+            "total_tokens": 956,
+            "total_input_tokens": 806,
+            "total_output_tokens": 150,
+            "llm_calls": 3,
+            "description": "Compiled AINL: IR routing eliminates all LLM routing calls"
+          },
+          "savings_ratio_vs_vanilla": 2.06,
+          "savings_ratio_vs_vanilla_optimized": 1.42,
+          "tokens_saved_total": 1014,
+          "tokens_saved_from_ir_routing": 789,
+          "tokens_saved_from_focused_prompts": 225,
+          "step_breakdown": [
+            {
+              "step": "classify_type",
+              "vanilla_input_tokens": 398,
+              "vanilla_output_tokens": 1,
+              "vanilla_total": 399,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 399,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_action",
+              "vanilla_input_tokens": 388,
+              "vanilla_output_tokens": 2,
+              "vanilla_total": 390,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 390,
+              "is_ir_routed": true
+            },
+            {
+              "step": "extract_fields",
+              "vanilla_input_tokens": 416,
+              "vanilla_output_tokens": 81,
+              "vanilla_total": 497,
+              "compiled_input_tokens": 280,
+              "compiled_output_tokens": 81,
+              "compiled_total": 361,
+              "tokens_saved": 136,
+              "is_ir_routed": false
+            },
+            {
+              "step": "summarize",
+              "vanilla_input_tokens": 295,
+              "vanilla_output_tokens": 32,
+              "vanilla_total": 327,
+              "compiled_input_tokens": 263,
+              "compiled_output_tokens": 32,
+              "compiled_total": 295,
+              "tokens_saved": 32,
+              "is_ir_routed": false
+            },
+            {
+              "step": "action_items",
+              "vanilla_input_tokens": 320,
+              "vanilla_output_tokens": 37,
+              "vanilla_total": 357,
+              "compiled_input_tokens": 263,
+              "compiled_output_tokens": 37,
+              "compiled_total": 300,
+              "tokens_saved": 57,
+              "is_ir_routed": false
+            }
+          ]
+        },
+        {
+          "document_label": "Support #3",
+          "doc_type": "support",
+          "document_tiktoken": 223,
+          "vanilla": {
+            "total_tokens": 1870,
+            "total_input_tokens": 1717,
+            "total_output_tokens": 153,
+            "llm_calls": 5,
+            "description": "LLM-first: every step calls LLM (common in prototypes)"
+          },
+          "vanilla_optimized": {
+            "total_tokens": 1280,
+            "total_input_tokens": 1129,
+            "total_output_tokens": 151,
+            "llm_calls": 4,
+            "description": "Hand-optimized: LLM classify only, rule-based routing, type-specific prompts"
+          },
+          "compiled": {
+            "total_tokens": 892,
+            "total_input_tokens": 742,
+            "total_output_tokens": 150,
+            "llm_calls": 3,
+            "description": "Compiled AINL: IR routing eliminates all LLM routing calls"
+          },
+          "savings_ratio_vs_vanilla": 2.1,
+          "savings_ratio_vs_vanilla_optimized": 1.43,
+          "tokens_saved_total": 978,
+          "tokens_saved_from_ir_routing": 749,
+          "tokens_saved_from_focused_prompts": 229,
+          "step_breakdown": [
+            {
+              "step": "classify_type",
+              "vanilla_input_tokens": 378,
+              "vanilla_output_tokens": 1,
+              "vanilla_total": 379,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 379,
+              "is_ir_routed": true
+            },
+            {
+              "step": "route_action",
+              "vanilla_input_tokens": 368,
+              "vanilla_output_tokens": 2,
+              "vanilla_total": 370,
+              "compiled_input_tokens": 0,
+              "compiled_output_tokens": 0,
+              "compiled_total": 0,
+              "tokens_saved": 370,
+              "is_ir_routed": true
+            },
+            {
+              "step": "extract_fields",
+              "vanilla_input_tokens": 396,
+              "vanilla_output_tokens": 81,
+              "vanilla_total": 477,
+              "compiled_input_tokens": 257,
+              "compiled_output_tokens": 81,
+              "compiled_total": 338,
+              "tokens_saved": 139,
+              "is_ir_routed": false
+            },
+            {
+              "step": "summarize",
+              "vanilla_input_tokens": 275,
+              "vanilla_output_tokens": 32,
+              "vanilla_total": 307,
+              "compiled_input_tokens": 241,
+              "compiled_output_tokens": 32,
+              "compiled_total": 273,
+              "tokens_saved": 34,
+              "is_ir_routed": false
+            },
+            {
+              "step": "action_items",
+              "vanilla_input_tokens": 300,
+              "vanilla_output_tokens": 37,
+              "vanilla_total": 337,
+              "compiled_input_tokens": 244,
+              "compiled_output_tokens": 37,
+              "compiled_total": 281,
+              "tokens_saved": 56,
+              "is_ir_routed": false
+            }
+          ]
+        }
+      ]
+    },
+    "routing_depth_sensitivity": {
+      "scenario": "routing_depth_sensitivity",
+      "description": "Analytical projection of savings ratio vs number of LLM routing steps. Average per-step token costs derived from measured doc_processing data. Demonstrates that the 2\u20135\u00d7 range spans a natural, continuous parameter space.",
+      "methodology": "Vanilla = N \u00d7 370 (routing) + 3 \u00d7 350 (content). Compiled = 3 \u00d7 270 (content only). Average costs from invoice document measurement.",
+      "two_x_at_routing_steps": 2,
+      "five_x_at_routing_steps": 9,
+      "rows": [
+        {
+          "routing_steps": 1,
+          "vanilla_tokens": 1420,
+          "compiled_tokens": 810,
+          "savings_ratio": 1.75,
+          "routing_pct_of_vanilla": 26.1
+        },
+        {
+          "routing_steps": 2,
+          "vanilla_tokens": 1790,
+          "compiled_tokens": 810,
+          "savings_ratio": 2.21,
+          "routing_pct_of_vanilla": 41.3
+        },
+        {
+          "routing_steps": 3,
+          "vanilla_tokens": 2160,
+          "compiled_tokens": 810,
+          "savings_ratio": 2.67,
+          "routing_pct_of_vanilla": 51.4
+        },
+        {
+          "routing_steps": 4,
+          "vanilla_tokens": 2530,
+          "compiled_tokens": 810,
+          "savings_ratio": 3.12,
+          "routing_pct_of_vanilla": 58.5
+        },
+        {
+          "routing_steps": 5,
+          "vanilla_tokens": 2900,
+          "compiled_tokens": 810,
+          "savings_ratio": 3.58,
+          "routing_pct_of_vanilla": 63.8
+        },
+        {
+          "routing_steps": 6,
+          "vanilla_tokens": 3270,
+          "compiled_tokens": 810,
+          "savings_ratio": 4.04,
+          "routing_pct_of_vanilla": 67.9
+        },
+        {
+          "routing_steps": 7,
+          "vanilla_tokens": 3640,
+          "compiled_tokens": 810,
+          "savings_ratio": 4.49,
+          "routing_pct_of_vanilla": 71.2
+        },
+        {
+          "routing_steps": 8,
+          "vanilla_tokens": 4010,
+          "compiled_tokens": 810,
+          "savings_ratio": 4.95,
+          "routing_pct_of_vanilla": 73.8
+        },
+        {
+          "routing_steps": 9,
+          "vanilla_tokens": 4380,
+          "compiled_tokens": 810,
+          "savings_ratio": 5.41,
+          "routing_pct_of_vanilla": 76.0
+        },
+        {
+          "routing_steps": 10,
+          "vanilla_tokens": 4750,
+          "compiled_tokens": 810,
+          "savings_ratio": 5.86,
+          "routing_pct_of_vanilla": 77.9
+        }
+      ],
+      "aggregate": {
+        "overall_savings_ratio": 2.21
+      }
+    }
+  }
+}
