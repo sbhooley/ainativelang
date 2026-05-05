@@ -1,0 +1,79 @@
+# examples/workflows/lead_enrichment.ainl
+#
+# B2B lead enrichment pipeline.
+#
+# Given a company domain, fetches firmographic data from a Clearbit-compatible
+# enrichment API, classifies account tier (enterprise / mid-market / SMB) via
+# IR branches — zero LLM tokens for routing — generates a personalised sales
+# context string with a single llm.COMPLETION call, caches the result, and
+# returns it.  Repeat calls for the same domain cost zero API tokens.
+#
+# Adapters: http, core, llm, cache
+# LLM calls per run:  0 (cache hit)  |  1 (cache miss)
+# Zero-token IR branches: emp_count > 500 (enterprise), emp_count > 100 (mid-market)
+#
+# Real-world deployments:
+#   • CRM enrichment before SDR outreach (HubSpot / Salesforce workflows)
+#   • Marketing-automation account scoring (Marketo / Pardot)
+#   • Inbound lead qualification triggered by a form-fill webhook
+#
+# Compatible enrichment APIs (return {name, employees, industry, country}):
+#   Clearbit:        https://company.clearbit.com/v2/companies/find?domain=
+#   People Data Labs: https://api.peopledatalabs.com/v5/company/enrich?website=
+#   Apollo.io:       https://api.apollo.io/v1/organizations/enrich?domain=
+#
+# Validate: ainl validate examples/workflows/lead_enrichment.ainl --strict
+# Run:      ainl run examples/workflows/lead_enrichment.ainl
+#
+# frame: domain     — company domain to look up (e.g. "stripe.com")
+# frame: enrich_url — base URL of enrichment endpoint; domain is appended
+#                     e.g. "https://company.clearbit.com/v2/companies/find?domain="
+
+lead_enrichment:
+  in: domain enrich_url
+
+  cached = cache.GET domain
+  if cached:
+    out cached
+
+  url = core.CONCAT enrich_url domain
+  resp = http.GET url {} 15
+  data = core.GET resp "body"
+  company_name = core.GET data "name"
+  emp_raw = core.GET data "employees"
+  industry = core.GET data "industry"
+  emp_count = core.INT emp_raw
+
+  is_enterprise = core.GT emp_count 500
+  if is_enterprise:
+    ent_p1 = core.CONCAT "Write a 2-sentence enterprise sales context for " company_name
+    ent_p2 = core.CONCAT ent_p1 " in the "
+    ent_p3 = core.CONCAT ent_p2 industry
+    ent_prompt = core.CONCAT ent_p3 " industry. Emphasise strategic value and multi-year ROI."
+    ent_r = llm.COMPLETION ent_prompt 150
+    ent_ctx = core.GET ent_r "content"
+    ent_result = core.CONCAT "enterprise|" ent_ctx
+    cache.SET domain ent_result
+    out ent_result
+
+  is_mid = core.GT emp_count 100
+  if is_mid:
+    mid_p1 = core.CONCAT "Write a 2-sentence mid-market sales context for " company_name
+    mid_p2 = core.CONCAT mid_p1 " in the "
+    mid_p3 = core.CONCAT mid_p2 industry
+    mid_prompt = core.CONCAT mid_p3 " industry. Focus on team adoption and productivity."
+    mid_r = llm.COMPLETION mid_prompt 120
+    mid_ctx = core.GET mid_r "content"
+    mid_result = core.CONCAT "mid_market|" mid_ctx
+    cache.SET domain mid_result
+    out mid_result
+
+  smb_p1 = core.CONCAT "Write a 1-sentence SMB sales context for " company_name
+  smb_p2 = core.CONCAT smb_p1 " in the "
+  smb_p3 = core.CONCAT smb_p2 industry
+  smb_prompt = core.CONCAT smb_p3 " industry. Keep it punchy and value-focused."
+  smb_r = llm.COMPLETION smb_prompt 80
+  smb_ctx = core.GET smb_r "content"
+  smb_result = core.CONCAT "smb|" smb_ctx
+  cache.SET domain smb_result
+  out smb_result

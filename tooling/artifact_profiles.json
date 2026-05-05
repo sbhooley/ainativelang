@@ -77,9 +77,14 @@
       "examples/openclaw_full_unification.ainl",
       "examples/test_if_var.ainl",
       "examples/test_mul.ainl",
-      "examples/test_X_sub.ainl"
+      "examples/test_X_sub.ainl",
+      "examples/workflows/lead_enrichment.ainl",
+      "examples/workflows/support_ticket_router.ainl",
+      "examples/benchmark/enterprise_monitor.ainl",
+      "examples/workflows/data_pipeline.ainl"
     ],
     "non-strict-only": [
+      "examples/benchmark/doc_pipeline_compiled.ainl",
       "examples/integrations/executor_bridge_min.ainl",
       "examples/integrations/executor_bridge_adapter_min.ainl",
       "examples/openclaw/daily_digest.lang",

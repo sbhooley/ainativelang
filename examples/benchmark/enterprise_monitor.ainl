@@ -1,0 +1,69 @@
+# examples/benchmark/enterprise_monitor.ainl
+#
+# Enterprise infrastructure health monitor — multi-adapter AINL reference.
+#
+# Polls an HTTP health endpoint, evaluates latency and HTTP status, routes by
+# severity entirely via IR branches (zero LLM tokens for routing), generates a
+# human-readable incident alert with llm.COMPLETION only when the endpoint is
+# degraded or down, persists severity state in cache, and returns the result.
+#
+# Adapters: http, core, llm, cache
+# LLM calls per run:  0 (healthy endpoint)  |  1 (degraded or critical)
+# Zero-token IR branches: is_up/is_down, is_slow/is_healthy
+#
+# Real-world deployments:
+#   • Cron-based uptime monitor running every 5 minutes
+#   • PagerDuty / Slack alert pre-processor (feed draft into downstream webhook)
+#   • Cost-efficient SLO enforcer — LLM fires only on incidents
+#
+# Equivalent Python:     benchmarks/handwritten_baselines/authoring_density/enterprise_monitor.py
+# Equivalent TypeScript: benchmarks/handwritten_baselines/authoring_density/enterprise_monitor.ts
+#
+# Validate: ainl validate examples/benchmark/enterprise_monitor.ainl --strict
+# Run:      ainl run examples/benchmark/enterprise_monitor.ainl
+#
+# frame: endpoint_url — HTTP health endpoint to poll (e.g. "https://api.example.com/health")
+# frame: threshold_ms — latency ceiling in ms; responses above this are "degraded"
+
+S app core noop
+
+L_start:
+  R http.GET endpoint_url {} 10 ->response
+  R core.GET response "status" ->status_code
+  R core.GET response "elapsed_ms" ->latency_ms
+  R core.EQ status_code 200 ->is_up
+  If is_up ->L_up ->L_down
+
+L_down:
+  R core.CONCAT "Critical: endpoint " endpoint_url ->p1
+  R core.CONCAT p1 " is DOWN. HTTP status: " ->p2
+  R core.STR status_code ->status_str
+  R core.CONCAT p2 status_str ->alert_prompt
+  R llm.COMPLETION alert_prompt 200 ->alert_r
+  R core.GET alert_r "content" ->alert_text
+  R cache.SET "monitor_last_severity" "critical" ->_
+  R cache.SET "monitor_last_alert" alert_text ->_
+  J alert_text
+
+L_up:
+  R core.GT latency_ms threshold_ms ->is_slow
+  If is_slow ->L_degraded ->L_healthy
+
+L_degraded:
+  R core.CONCAT "Degraded: endpoint " endpoint_url ->p1
+  R core.STR latency_ms ->latency_str
+  R core.CONCAT p1 " latency " ->p2
+  R core.CONCAT p2 latency_str ->p3
+  R core.CONCAT p3 "ms exceeds threshold. Draft a concise ops alert." ->alert_prompt
+  R llm.COMPLETION alert_prompt 150 ->alert_r
+  R core.GET alert_r "content" ->alert_text
+  R cache.SET "monitor_last_severity" "degraded" ->_
+  R cache.SET "monitor_last_alert" alert_text ->_
+  J alert_text
+
+L_healthy:
+  R cache.SET "monitor_last_severity" "healthy" ->_
+  R core.STR latency_ms ->latency_str
+  R core.CONCAT "healthy: " latency_str ->status_msg
+  R core.CONCAT status_msg "ms" ->status_msg
+  J status_msg

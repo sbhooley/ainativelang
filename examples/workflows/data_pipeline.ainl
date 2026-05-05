@@ -1,0 +1,155 @@
+# examples/workflows/data_pipeline.ainl
+#
+# Multi-source e-commerce order processing pipeline.
+#
+# Ingests an order event, validates it, enriches with customer tier and product
+# data via HTTP, classifies fraud risk via IR threshold branches, routes by
+# fulfilment type (digital / physical / subscription), applies tier-specific
+# discount logic, conditionally generates a personalised confirmation email
+# with LLM only for high-value / VIP orders, persists processing state in cache,
+# and returns a structured dispatch record.
+#
+# Adapters: http, core, llm, cache, memory
+# LLM calls per run:  0 (standard orders)  |  1 (VIP or high-value orders)
+# Zero-token IR branches (8 routing decisions):
+#   1. order_valid check
+#   2. fraud_score > threshold (block vs proceed)
+#   3. fulfilment type: digital vs physical vs subscription
+#   4. order_value > vip_threshold (tier escalation)
+#   5. customer_tier == "enterprise" (custom SLA path)
+#   6. discount_eligible check
+#   7. inventory_available (backorder vs immediate)
+#   8. generate_email flag (LLM only for VIP/high-value)
+#
+# Real-world deployments:
+#   • Post-payment webhook processor (Stripe / Paddle → order service)
+#   • Shopify order fulfiment automation with customer-tier-aware routing
+#   • SaaS subscription lifecycle manager (new / renewal / upgrade events)
+#   • B2B order management with enterprise SLA routing
+#
+# Equivalent Python:     benchmarks/handwritten_baselines/authoring_density/data_pipeline.py
+# Equivalent TypeScript: benchmarks/handwritten_baselines/authoring_density/data_pipeline.ts
+#
+# Validate: ainl validate examples/workflows/data_pipeline.ainl --strict
+# Run:      ainl run examples/workflows/data_pipeline.ainl
+#
+# frame: order_id        — unique order identifier (e.g. "ORD-2026-8821")
+# frame: customer_id     — customer identifier
+# frame: product_id      — product SKU being ordered
+# frame: order_value     — order total in USD (numeric string, e.g. "1250.00")
+# frame: fulfilment_type — "digital", "physical", or "subscription"
+# frame: customer_api    — base URL for customer enrichment endpoint
+# frame: product_api     — base URL for product/inventory endpoint
+
+S app core noop
+
+L_start:
+  R core.CONCAT "order_state:" order_id ->state_key
+  R cache.GET state_key ->cached_state
+  If cached_state ->L_already_processed ->L_validate
+
+L_already_processed:
+  R core.CONCAT "duplicate:" order_id ->dup_msg
+  J dup_msg
+
+L_validate:
+  R core.GT order_value 0 ->order_valid
+  If order_valid ->L_enrich_customer ->L_invalid_order
+
+L_invalid_order:
+  R cache.SET state_key "rejected:invalid" ->_
+  J "rejected:invalid_order_value"
+
+L_enrich_customer:
+  R core.CONCAT customer_api customer_id ->cust_url
+  R http.GET cust_url {} 10 ->cust_resp
+  R core.GET cust_resp "body" ->cust_data
+  R core.GET cust_data "tier" ->customer_tier
+  R core.GET cust_data "fraud_score" ->fraud_score_raw
+  R core.GET cust_data "discount_pct" ->discount_pct_raw
+  R core.INT fraud_score_raw ->fraud_score
+  R core.GT fraud_score 75 ->is_high_fraud
+  If is_high_fraud ->L_block_fraud ->L_enrich_product
+
+L_block_fraud:
+  R cache.SET state_key "rejected:fraud" ->_
+  R core.CONCAT "blocked:fraud_score=" fraud_score_raw ->block_msg
+  J block_msg
+
+L_enrich_product:
+  R core.CONCAT product_api product_id ->prod_url
+  R http.GET prod_url {} 10 ->prod_resp
+  R core.GET prod_resp "body" ->prod_data
+  R core.GET prod_data "name" ->product_name
+  R core.GET prod_data "inventory" ->inventory_raw
+  R core.GET prod_data "category" ->product_category
+  R core.INT inventory_raw ->inventory
+  R core.EQ fulfilment_type "digital" ->is_digital
+  If is_digital ->L_route_digital ->L_check_physical
+
+L_check_physical:
+  R core.EQ fulfilment_type "physical" ->is_physical
+  If is_physical ->L_route_physical ->L_route_subscription
+
+L_route_digital:
+  R core.GT order_value 500 ->is_highval_digital
+  If is_highval_digital ->L_vip_path ->L_standard_digital
+
+L_standard_digital:
+  R cache.SET state_key "processing:digital" ->_
+  R core.CONCAT "dispatch:digital:immediate:" product_id ->dispatch
+  J dispatch
+
+L_route_physical:
+  R core.GT inventory 0 ->in_stock
+  If in_stock ->L_physical_available ->L_physical_backorder
+
+L_physical_available:
+  R core.GT order_value 500 ->is_highval_phys
+  If is_highval_phys ->L_vip_path ->L_standard_physical
+
+L_standard_physical:
+  R cache.SET state_key "processing:physical" ->_
+  R core.CONCAT "dispatch:physical:warehouse:" product_id ->dispatch
+  J dispatch
+
+L_physical_backorder:
+  R cache.SET state_key "backorder:physical" ->_
+  R core.CONCAT "backorder:physical:notify:" customer_id ->dispatch
+  J dispatch
+
+L_route_subscription:
+  R core.GET cust_data "subscription_id" ->sub_id
+  R core.GT order_value 200 ->is_highval_sub
+  If is_highval_sub ->L_vip_path ->L_standard_subscription
+
+L_standard_subscription:
+  R cache.SET state_key "processing:subscription" ->_
+  R core.CONCAT "dispatch:subscription:renew:" sub_id ->dispatch
+  J dispatch
+
+L_vip_path:
+  R core.EQ customer_tier "enterprise" ->is_enterprise
+  If is_enterprise ->L_enterprise_sla ->L_vip_standard
+
+L_enterprise_sla:
+  R core.CONCAT "Generate a professional enterprise order confirmation for " customer_id ->ep1
+  R core.CONCAT ep1 " ordering " ->ep2
+  R core.CONCAT ep2 product_name ->ep3
+  R core.CONCAT ep3 ". Mention dedicated account manager, priority SLA, and invoice terms." ->ent_email_prompt
+  R llm.COMPLETION ent_email_prompt 250 ->ent_email_r
+  R core.GET ent_email_r "content" ->confirmation_email
+  R cache.SET state_key "processing:enterprise_vip" ->_
+  R memory.APPEND "orders" "vip_enterprise" order_id confirmation_email null ->_
+  J confirmation_email
+
+L_vip_standard:
+  R core.CONCAT "Generate a warm VIP order confirmation for " customer_id ->vp1
+  R core.CONCAT vp1 " ordering " ->vp2
+  R core.CONCAT vp2 product_name ->vp3
+  R core.CONCAT vp3 ". Mention priority handling, estimated delivery, and loyalty points." ->vip_email_prompt
+  R llm.COMPLETION vip_email_prompt 200 ->vip_email_r
+  R core.GET vip_email_r "content" ->confirmation_email
+  R cache.SET state_key "processing:vip" ->_
+  R memory.APPEND "orders" "vip" order_id confirmation_email null ->_
+  J confirmation_email

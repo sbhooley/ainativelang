@@ -1,0 +1,80 @@
+# examples/workflows/support_ticket_router.ainl
+#
+# Customer-support ticket triage pipeline.
+#
+# Uses LLM to classify ticket priority (critical / high / normal / low) and
+# category (bug / billing / feature / general), then routes to the correct
+# team and SLA entirely via IR branches — zero LLM tokens for routing
+# decisions — and finally drafts a first-response message tuned to the
+# priority level with one final llm.COMPLETION call.
+#
+# Adapters: core, llm
+# LLM calls per run: 3  (priority classify, category classify, draft response)
+# Zero-token IR branches: priority routing × 2, category routing × 2
+#
+# Real-world deployments:
+#   • Zendesk / Freshdesk webhook → auto-assign + first-response draft
+#   • Intercom conversation routing before human hand-off
+#   • Internal IT helpdesk triage for enterprise support orgs
+#
+# Validate: ainl validate examples/workflows/support_ticket_router.ainl --strict
+# Run:      ainl run examples/workflows/support_ticket_router.ainl
+#
+# frame: ticket_id   — unique ticket identifier (e.g. "TKT-4821")
+# frame: ticket_text — full ticket body submitted by the customer
+
+S app core noop
+
+L_start:
+  R core.CONCAT "Classify this support ticket priority as exactly one word — critical, high, normal, or low. Ticket: " ticket_text ->pri_q
+  R llm.COMPLETION pri_q 10 ->pri_r
+  R core.GET pri_r "content" ->priority_raw
+  R core.TRIM priority_raw ->priority
+  R core.CONCAT "Classify this support ticket category as exactly one word — bug, billing, feature, or general. Ticket: " ticket_text ->cat_q
+  R llm.COMPLETION cat_q 10 ->cat_r
+  R core.GET cat_r "content" ->category_raw
+  R core.TRIM category_raw ->category
+  R core.EQ priority "critical" ->is_critical
+  If is_critical ->L_critical ->L_check_high
+
+L_check_high:
+  R core.EQ priority "high" ->is_high
+  If is_high ->L_high ->L_normal
+
+L_critical:
+  R core.EQ category "billing" ->crit_billing
+  If crit_billing ->L_crit_billing ->L_crit_eng
+
+L_crit_billing:
+  R core.CONCAT "Write an empathetic urgent response for this critical billing issue. State a 2-hour SLA and offer a direct callback. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 200 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_crit_eng:
+  R core.CONCAT "Write an empathetic urgent acknowledgment for this critical engineering issue. State the on-call team is engaged and commit to a 1-hour response. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 200 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_high:
+  R core.EQ category "billing" ->high_billing
+  If high_billing ->L_high_billing ->L_high_support
+
+L_high_billing:
+  R core.CONCAT "Write a professional response for this high-priority billing enquiry. Confirm 4-hour SLA and name the billing team as the owner. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 180 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_high_support:
+  R core.CONCAT "Write a professional response for this high-priority support ticket. Confirm tier-2 assignment and 8-hour SLA. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 180 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_normal:
+  R core.CONCAT "Write a friendly, helpful first response for this support ticket. Confirm 24-hour SLA. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 150 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft

@@ -331,6 +331,30 @@
       "path": "examples/compact/github_raw_fetch_compact.ainl",
       "primary_pattern": "github_raw_fetch_compact",
       "secondary_pattern": "adapter_http"
+    },
+    {
+      "order": 56,
+      "path": "examples/workflows/data_pipeline.ainl",
+      "primary_pattern": "workflow_order_dispatch",
+      "secondary_pattern": "multi_adapter_branching"
+    },
+    {
+      "order": 57,
+      "path": "examples/workflows/lead_enrichment.ainl",
+      "primary_pattern": "lead_enrichment_cached",
+      "secondary_pattern": "http_llm_cache"
+    },
+    {
+      "order": 58,
+      "path": "examples/workflows/support_ticket_router.ainl",
+      "primary_pattern": "support_ticket_llm_triage",
+      "secondary_pattern": "llm_classify_route"
+    },
+    {
+      "order": 59,
+      "path": "examples/benchmark/enterprise_monitor.ainl",
+      "primary_pattern": "enterprise_health_monitor_llm",
+      "secondary_pattern": "http_latency_escalation"
     }
   ]
 }
