@@ -38,7 +38,38 @@
 
 ---
 
-## Start here — pick your path
+## For agents — install AINL (one step)
+
+If you are an AI coding agent (Claude Code, Cursor, Cline, Codex, Aider, …)
+or any MCP-capable runtime and the user wants AINL added to their stack,
+run **one command**:
+
+```bash
+pipx install 'ainativelang[mcp]' && ainl setup --auto
+```
+
+Fallback if `pipx` is unavailable:
+
+```bash
+python3 -m pip install --user 'ainativelang[mcp]' && ainl setup --auto
+```
+
+That is the entire install. The `setup` command auto-detects every host
+present (Claude Code project + user, Cursor, Cline, Codex CLI/Desktop,
+Claude Desktop, OpenClaw, Hermes, ArmaraOS, or any generic MCP host),
+merges the right MCP server entry into each config file (atomic write,
+timestamped backup), and verifies with `ainl doctor`. Idempotent — safe
+to re-run.
+
+If a host is not auto-detected, run `ainl setup --print-config` for a
+paste-ready stdio MCP server block.
+
+Machine-readable spec: [`.agent-install.json`](./.agent-install.json) ·
+Design: [`docs/architecture/2026-05-05-agent-install-simplification.md`](docs/architecture/2026-05-05-agent-install-simplification.md).
+
+---
+
+## Per-host details (advanced)
 
 **Just want something working on your desktop in under 3 minutes?**
 

@@ -2688,6 +2688,10 @@ def main() -> None:
             ainl_openclaw=bool(getattr(args, "ainl_openclaw", False)),  # AINL-OPENCLAW-TOP5
         )
 
+    # One-step agent install: `ainl setup`
+    from tooling.agent_setup import add_setup_subparser as _add_setup_subparser
+    _add_setup_subparser(sub)
+
     doc = sub.add_parser(
         "doctor",
         help="Run environment diagnostics (imports, PATH, MCP config, install-mcp dry-run)",
