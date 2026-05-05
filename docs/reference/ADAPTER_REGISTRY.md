@@ -103,6 +103,7 @@ For monitoring-oriented flows, the `http` adapter is described as returning a **
 - `body: any` — decoded response body (string/JSON/etc.), as today.
 - `headers: dict|none` — optional response headers, when available.
 - `url: str` — URL/path that was called (for correlation).
+- `payment: dict|none` — optional `payment` block populated when `payment_profile` is enabled (x402/MPP). On HTTP 402, `ok=false` with `error=payment_required` and a payment challenge; on a successful settlement, `payment` carries settlement metadata. See [HTTP_MACHINE_PAYMENTS.md](../integrations/HTTP_MACHINE_PAYMENTS.md).
 
 This envelope is **descriptive metadata only** in this pass; it does not change current adapter behavior. Future monitoring patterns and agents can treat these fields as the canonical monitoring contract once runtime normalization is implemented.
 

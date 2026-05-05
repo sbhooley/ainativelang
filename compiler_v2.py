@@ -1195,14 +1195,39 @@ class AICodeCompiler:
         return (line_start + c0, line_start + c1), c0 + 1
 
     @staticmethod
-    def _slots_look_like_inline_structured_literal(slots: Sequence[Any], start_index: int = 0) -> bool:
-        """True when a step appears to use a raw JSON/dict/array literal as slots."""
+    def _slots_look_like_inline_structured_literal(
+        slots: Sequence[Any],
+        start_index: int = 0,
+        kinds: Optional[Sequence[str]] = None,
+    ) -> bool:
+        """True when a step appears to use a raw JSON/dict/array literal as slots.
+
+        Quoted string operands (``kind == "string"``) are unambiguously string
+        literals — even when their content begins with ``{`` or ``[`` — and must
+        not be flagged. The hazard this gate exists for is *bare* JSON-like
+        tokens that AINL splits across multiple raw slots; quoted strings stay a
+        single token at runtime.
+        """
         if len(slots) <= start_index:
+            return False
+        if kinds is not None and len(kinds) > start_index and kinds[start_index] == "string":
             return False
         first = str(slots[start_index]).strip()
         if first in ("{", "[") or first.startswith(("{", "[")):
             return True
-        tail = [str(x).strip() for x in slots[start_index:]]
+        tail_indices = list(range(start_index, len(slots)))
+        tail = [str(slots[i]).strip() for i in tail_indices]
+        if kinds is not None:
+            tail_kinds = [
+                kinds[i] if i < len(kinds) else None for i in tail_indices
+            ]
+            return any(
+                t in ("{", "[", ":", ",") and k != "string"
+                for t, k in zip(tail, tail_kinds)
+            ) or any(
+                t.endswith(("}", "]")) and k != "string"
+                for t, k in zip(tail, tail_kinds)
+            )
         return any(x in ("{", "[", ":", ",") for x in tail) or any(
             x.endswith(("}", "]")) for x in tail
         )
@@ -3736,7 +3761,7 @@ class AICodeCompiler:
                         j_end = i + 2
                         while j_end < len(slots) and slots[j_end] not in step_ops:
                             j_end += 1
-                        if self.strict_mode and self._slots_look_like_inline_structured_literal(slots[i + 1 : j_end], 0):
+                        if self.strict_mode and self._slots_look_like_inline_structured_literal(slots[i + 1 : j_end], 0, kinds=slot_kinds[i + 1 : j_end]):
                             self._record_strict_inline_structured_literal_error(
                                 context=context,
                                 line_node=line_node,
@@ -3791,7 +3816,7 @@ class AICodeCompiler:
                         set_end = i + 3
                         while set_end < len(slots) and slots[set_end] not in step_ops:
                             set_end += 1
-                        if self.strict_mode and self._slots_look_like_inline_structured_literal(slots[i + 2 : set_end], 0):
+                        if self.strict_mode and self._slots_look_like_inline_structured_literal(slots[i + 2 : set_end], 0, kinds=slot_kinds[i + 2 : set_end]):
                             self._record_strict_inline_structured_literal_error(
                                 context=context,
                                 line_node=line_node,
@@ -4118,7 +4143,7 @@ class AICodeCompiler:
                     self._label_steps("_anon").append(step_payload)
 
             elif op == "J":
-                if self.strict_mode and self._slots_look_like_inline_structured_literal(slots, 0):
+                if self.strict_mode and self._slots_look_like_inline_structured_literal(slots, 0, kinds=slot_kinds):
                     self._record_strict_inline_structured_literal_error(
                         context=context,
                         line_node=line_node,
@@ -4382,7 +4407,7 @@ class AICodeCompiler:
                     self._label_steps(self.current_label).append(step)
             elif op == "Set":
                 if len(slots) >= 2 and self.current_label:
-                    if self.strict_mode and self._slots_look_like_inline_structured_literal(slots, 1):
+                    if self.strict_mode and self._slots_look_like_inline_structured_literal(slots, 1, kinds=slot_kinds):
                         self._record_strict_inline_structured_literal_error(
                             context=context,
                             line_node=line_node,
