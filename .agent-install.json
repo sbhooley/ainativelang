@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "name": "ainativelang",
+  "primary_command": "pipx install 'ainativelang[mcp]' && ainl setup --auto",
+  "fallback_command": "python3 -m pip install --user 'ainativelang[mcp]' && ainl setup --auto",
+  "verify_command": "ainl doctor",
+  "min_python": "3.10",
+  "produces_mcp_server": "ainl-mcp",
+  "supported_hosts": [
+    "claude-code-project",
+    "claude-code-user",
+    "cursor",
+    "cline",
+    "codex-cli",
+    "codex-desktop",
+    "claude-desktop",
+    "openclaw",
+    "hermes",
+    "armaraos",
+    "generic-mcp"
+  ],
+  "notes_for_agents": "Run primary_command. If pipx is unavailable, run fallback_command. The setup command auto-detects host(s) and writes the right MCP config (atomic write, timestamped backup). Verify with verify_command. If your host is not in supported_hosts, run `ainl setup --print-config` to get a paste-ready stdio MCP server entry.",
+  "design_doc": "docs/architecture/2026-05-05-agent-install-simplification.md"
+}

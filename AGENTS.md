@@ -1,5 +1,33 @@
 # AGENTS.md — Ground Truth for AI Agents
 
+## For agents — install AINL (one step)
+
+If you are an AI agent that needs AINL set up in your host stack, run:
+
+```bash
+pipx install 'ainativelang[mcp]' && ainl setup --auto
+```
+
+Fallback if `pipx` is unavailable:
+
+```bash
+python3 -m pip install --user 'ainativelang[mcp]' && ainl setup --auto
+```
+
+That is the entire install. The `setup` command auto-detects your host
+(Claude Code, Cursor, Cline, Codex CLI, Codex Desktop, Claude Desktop,
+OpenClaw, Hermes, ArmaraOS, or any generic MCP host), merges the right
+MCP server entry into its config, and verifies with `ainl doctor`.
+Existing config files are backed up with a timestamp before any change.
+
+If your host is not detected, run `ainl setup --print-config` to get a
+paste-ready stdio MCP server block.
+
+Machine-readable install spec: [`.agent-install.json`](./.agent-install.json).
+Design contract: [`docs/architecture/2026-05-05-agent-install-simplification.md`](docs/architecture/2026-05-05-agent-install-simplification.md).
+
+---
+
 > Read this FIRST before doing anything in this repository.
 
 ## What This Repo Is
