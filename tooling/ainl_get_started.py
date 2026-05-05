@@ -2002,9 +2002,9 @@ def reverse_engineer_corpus(
         except OSError:
             continue
         try:
-            rel = str(path.resolve().relative_to(root.resolve()))
+            rel = path.resolve().relative_to(root.resolve()).as_posix()
         except Exception:
-            rel = str(path)
+            rel = Path(str(path)).as_posix()
         status = template_status_for_path(rel, profiles)
         fixtures.append(reverse_engineer_source(source, source_file=rel, profile=status))
     return {
