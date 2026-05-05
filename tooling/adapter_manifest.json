@@ -332,7 +332,9 @@
       "verbs": [
         "discover",
         "send",
-        "get_task"
+        "get_task",
+        "discover_hermes",
+        "send_hermes"
       ],
       "effect_default": "io",
       "privilege_tier": "network",

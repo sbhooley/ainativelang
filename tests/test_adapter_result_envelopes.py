@@ -21,7 +21,7 @@ def _load_adapter_docs() -> str:
 
 
 EXPECTED_ENVELOPES: Dict[str, Set[str]] = {
-  "http": {"ok", "status_code", "error", "body", "headers", "url"},
+  "http": {"ok", "status_code", "error", "body", "headers", "url", "payment"},
   "queue": {"ok", "message_id", "queue_name", "error"},
   "svc": {"ok", "status", "latency_ms", "error"},
 }

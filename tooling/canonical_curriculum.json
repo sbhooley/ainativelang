@@ -319,6 +319,18 @@
       "path": "examples/http/http_machine_payment_flow_compact.ainl",
       "primary_pattern": "http_machine_payment_flow",
       "secondary_pattern": "http_payment_frame"
+    },
+    {
+      "order": 54,
+      "path": "examples/compact/fs_write_compact.ainl",
+      "primary_pattern": "fs_write_compact",
+      "secondary_pattern": "adapter_fs"
+    },
+    {
+      "order": 55,
+      "path": "examples/compact/github_raw_fetch_compact.ainl",
+      "primary_pattern": "github_raw_fetch_compact",
+      "secondary_pattern": "adapter_http"
     }
   ]
 }
