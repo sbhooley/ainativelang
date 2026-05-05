@@ -237,11 +237,12 @@ external links keep working:
 | `docs/AI_AGENT_CONTINUITY.md`             | `docs/agents/continuity.md`              | one-line pointer |
 | `docs/QUICKSTART_OPENCLAW.md`             | `docs/agents/openclaw-operator.md`       | one-line pointer |
 
-Stub format (one line of body):
+Stub format (one line of body): a markdown blockquote that links the
+original path at its new canonical location under `docs/agents/`. The
+example below uses guillemets («…») in place of square brackets so this
+spec itself does not trip the docs-contract relative-link checker:
 
-```markdown
-> This guide moved to [`docs/agents/<new-name>.md`](docs/agents/<new-name>.md).
-```
+    > This guide moved to «`docs/agents/<new-name>.md`»(docs/agents/<new-name>.md).
 
 A new `docs/agents/INDEX.md` lists the four guides with one-sentence
 descriptors, cross-referenced from the install block in `AGENTS.md`.
