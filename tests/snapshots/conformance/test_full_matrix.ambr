@@ -574,6 +574,21 @@
             'x',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'data',
+            'to': 'n2',
+            'var': 'x',
+          }),
+          dict({
+            'from': 'n2',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'x',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -1598,6 +1613,14 @@
             'v',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n2',
+            'port': 'data',
+            'to': 'n3',
+            'var': 'cond',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
         ]),
@@ -1723,6 +1746,15 @@
             't',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n2',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 't',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -1805,6 +1837,15 @@
           'writes': list([
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'v',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -1867,6 +1908,21 @@
             'x',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'data',
+            'to': 'n2',
+            'var': 'x',
+          }),
+          dict({
+            'from': 'n2',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'x',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -1976,6 +2032,15 @@
           'writes': list([
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'err',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -2028,6 +2093,15 @@
           'writes': list([
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'ok',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -2104,6 +2178,21 @@
             'work_out',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'data',
+            'to': 'n2',
+            'var': 'slept',
+          }),
+          dict({
+            'from': 'n3',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'work_out',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -2237,6 +2326,15 @@
           'writes': list([
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'ok',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -2289,6 +2387,15 @@
           'writes': list([
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'timeout',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -2350,6 +2457,21 @@
             'error',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'data',
+            'to': 'n2',
+            'var': 'error',
+          }),
+          dict({
+            'from': 'n2',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'error',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -2464,6 +2586,21 @@
             'placeholder',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'data',
+            'to': 'n2',
+            'var': 'placeholder',
+          }),
+          dict({
+            'from': 'n2',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'placeholder',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
@@ -3887,6 +4024,51 @@
             'record_payload',
           ]),
         }),
+        'emit_edges': list([
+          dict({
+            'from': 'n1',
+            'port': 'data',
+            'to': 'n2',
+            'var': 'memory_meta',
+          }),
+          dict({
+            'from': 'n2',
+            'port': 'data',
+            'to': 'n3',
+            'var': 'memory_filters',
+          }),
+          dict({
+            'from': 'n3',
+            'port': 'data',
+            'to': 'n4',
+            'var': 'record_payload',
+          }),
+          dict({
+            'from': 'n4',
+            'port': 'data',
+            'to': 'n5',
+            'var': '_w',
+          }),
+          dict({
+            'from': 'n5',
+            'port': 'data',
+            'to': 'n6',
+            'var': 'hist',
+          }),
+          dict({
+            'from': 'n6',
+            'port': 'data',
+            'to': 'n7',
+            'var': '_pr',
+          }),
+          dict({
+            'from': 'n7',
+            'port': 'emit',
+            'target': 'python_api',
+            'to': 'emit_target',
+            'var': 'hist',
+          }),
+        ]),
         'entry': 'n1',
         'exits': list([
           dict({
