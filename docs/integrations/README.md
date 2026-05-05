@@ -2,6 +2,12 @@
 
 Canonical **wire + security** docs for outbound agent integrations live in this folder. Read **`AGENTS.md`** (repo root) first for HTTP `R` line rules, queue forms, and strict example policy.
 
+## IDE / developer workflows
+
+| Doc | What it covers |
+|-----|----------------|
+| **[`CURSOR_GRAPH_MEMORY.md`](./CURSOR_GRAPH_MEMORY.md)** | **Plan & tracker:** Cursor chat artifacts → strict AINL pipelines → graph memory / ArmaraOS inbox; reproducibility, phases, competitive framing, deliverables. |
+
 ## Agent protocols & commerce (HTTP and beyond)
 
 | Doc | What it covers |
