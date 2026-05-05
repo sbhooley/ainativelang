@@ -148,7 +148,7 @@ Source: `docs/benchmarks/RUNTIME_BENCHMARKS.md`
 - **2,500+** GitHub stars
 - **120+** contributors
 - **59** example AINL programs in repo
-- **Weekly releases** (current line **v1.8.0** on PyPI)
+- **Weekly releases** (**v1.8.0** target line; PyPI after publish — **`docs/RELEASING.md`**)
 - **Enterprise customers**: 12+ (Stealth mode: FinTech, Healthcare, SaaS)
 
 ---

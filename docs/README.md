@@ -2,7 +2,7 @@
 
 This is the primary navigation hub for the `docs/` tree.
 
-**Current `ainl` release:** **v1.8.0** — [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (PyPI / **`RUNTIME_VERSION`** / citation metadata).
+**Target `ainl` line:** **v1.8.0** — [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (**`RUNTIME_VERSION`** / citation metadata; **PyPI** after publish — [`RELEASING.md`](RELEASING.md)).
 
 AINL docs are organized by user intent and conceptual layer rather than by file creation history. Start here if you want the shortest path to the right section. Use [`DOCS_INDEX.md`](DOCS_INDEX.md) as the exhaustive reference map.
 
@@ -41,7 +41,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 
 ## Operations & monitoring (OpenClaw bridge; see also ZeroClaw; Hermes uses [`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md))
 
-**OpenClaw + AINL gold standard (install / upgrade):** [`operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md) (**`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**). **Host briefing — AINL v1.8.0 (current PyPI):** [`operations/OPENCLAW_HOST_AINL_1_2_8.md`](operations/OPENCLAW_HOST_AINL_1_2_8.md) (**`openclaw_host_ainl_1_2_8`**). **Token / usage observability (evidence-based savings, agent-friendly map):** [`operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md). **Named env profiles** (scale-out defaults): [`operations/AINL_PROFILES.md`](operations/AINL_PROFILES.md) · **workspace isolation:** [`operations/WORKSPACE_ISOLATION.md`](operations/WORKSPACE_ISOLATION.md) · **agent + AINL operating model:** [`operations/AGENT_AINL_OPERATING_MODEL.md`](operations/AGENT_AINL_OPERATING_MODEL.md).
+**OpenClaw + AINL gold standard (install / upgrade):** [`operations/OPENCLAW_AINL_GOLD_STANDARD.md`](operations/OPENCLAW_AINL_GOLD_STANDARD.md) (**`tooling/bot_bootstrap.json`** → **`openclaw_ainl_gold_standard`**). **Host briefing — AINL v1.8.0 (PyPI mirrors this line after upload):** [`operations/OPENCLAW_HOST_AINL_1_2_8.md`](operations/OPENCLAW_HOST_AINL_1_2_8.md) (**`openclaw_host_ainl_1_2_8`**) — [`RELEASING.md`](RELEASING.md). **Token / usage observability (evidence-based savings, agent-friendly map):** [`operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md). **Named env profiles** (scale-out defaults): [`operations/AINL_PROFILES.md`](operations/AINL_PROFILES.md) · **workspace isolation:** [`operations/WORKSPACE_ISOLATION.md`](operations/WORKSPACE_ISOLATION.md) · **agent + AINL operating model:** [`operations/AGENT_AINL_OPERATING_MODEL.md`](operations/AGENT_AINL_OPERATING_MODEL.md).
 
 Production token/budget monitoring, daily memory appends, weekly trends, cron examples, and troubleshooting are documented in one place:
 

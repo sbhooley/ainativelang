@@ -2,7 +2,7 @@
 
 This folder is the **Hermes Agent** companion skill pack for **AINL**.
 
-**PyPI:** `ainativelang` **v1.8.0** (optional extras: `[mcp]`, `[solana]`).
+**Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
 
 **Gold standard integration:**
 

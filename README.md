@@ -156,7 +156,7 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 - **Hand pack `schema_version`:** **`ainl emit --target armaraos`** writes **`schema_version`** on **`HAND.toml`**, IR JSON, and **`security.json`** — **`tests/test_emit_armaraos_handpack.py`**.
 - **Monitor registry bootstrap:** **`build_armaraos_monitor_registry`**, **`boot_armaraos_graph_memory`**, **`CronDriftCheckAdapter`**, **`tests/test_armaraos_monitor_registry.py`**.
 - **Runtime:** public **`AdapterRegistry.get`**; graph-patch uses **`adapters.get("ainl_graph_memory")`**.
-- **Release hygiene (v1.7.0 line):** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine bumped to **1.7.0** for that tag's PyPI publish (**latest PyPI** is **v1.8.0** — see **New in v1.8.0** above).
+- **Release hygiene (v1.7.0 line):** **`pyproject.toml`**, **`RUNTIME_VERSION`**, **`CITATION.cff`**, **`tooling/bot_bootstrap.json`**, mirrored emit server engine bumped to **1.7.0** for that tag's PyPI publish (**superseded by v1.8.0** in this tree — see **New in v1.8.0** above; **PyPI** shows **1.8.0** only after that release is uploaded — **`docs/RELEASING.md`**).
 
 ## New in v1.6.0
 
@@ -1025,7 +1025,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 
 ### Release and contribution
 
-- **Current PyPI / runtime package version:** **`ainativelang` 1.8.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`).
+- **Target package version (this tree / next PyPI upload):** **`ainativelang` 1.8.0** (see `pyproject.toml`, `runtime/engine.py` **`RUNTIME_VERSION`**, `docs/CHANGELOG.md`, `docs/RELEASE_NOTES.md`). **Latest published on PyPI:** [pypi.org/project/ainativelang](https://pypi.org/project/ainativelang/#history) — run **`pip install -U ainativelang`** after **1.8.0** appears there (**`docs/RELEASING.md`**).
 - Release readiness matrix: `docs/RELEASE_READINESS.md`
 - No-break migration tracker: `docs/NO_BREAK_MIGRATION_PLAN.md`
 - Release notes: `docs/RELEASE_NOTES.md`

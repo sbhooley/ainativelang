@@ -2,7 +2,7 @@
 
 Deterministic compiled graphs for [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw): **importer**, **CLI**, **`ainl-mcp`**, and a **`zeroclaw ainl run`**-friendly shim after bootstrap.
 
-**PyPI:** `ainativelang` **v1.8.0** (optional extras: `[mcp]`, `[solana]`).
+**Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
 
 ## Standalone repo (`sbhooley/ainl-zeroclaw-skill`)
 

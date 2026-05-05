@@ -19,7 +19,7 @@ tags:
 
 **AINL** is an AI-native language that compiles **deterministic graphs**. In ZeroClaw, use it to import workflows, compile them, run them, and expose **`ainl-mcp`** tools to the agent.
 
-**PyPI:** `ainativelang` **v1.8.0** (optional extras: `[mcp]`, `[solana]`).
+**Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
 
 ## Agent instructions
 
