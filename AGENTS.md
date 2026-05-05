@@ -52,7 +52,7 @@ armaraos/emitter/       — `armaraos.py`: `ainl emit --target armaraos` Hand pa
 scripts/                — Standalone scripts (`refresh_repo_stats.py`, emit_langgraph, emit_temporal, `ainl_mcp_server.py` MCP entrypoint, etc).
 tooling/                — Graph analysis, normalization, effect analysis; `ainl_get_started.py` (authoring wizard + adapter contracts), `corpus_mining.py` (strict-valid family index for `corpus/strict_valid_family_index.json`).
 corpus/                 — Generated/mined JSON (e.g. `strict_valid_family_index.json`, `reverse_prompt_fixtures.json`); see `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`.
-examples/               — 93+ `.ainl` files under `examples/` (strict CI subset: `tooling/artifact_profiles.json`). See `examples/README.md`.
+examples/               — 98+ `.ainl` files under `examples/` (strict CI subset: `tooling/artifact_profiles.json`). See `examples/README.md`.
 tests/                  — 1048 `*.py` files under `tests/` (~306k lines total); 213 `test_*.py` modules; pytest —collect-only: 1333/1372 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
 docs/                   — Documentation (some accurate, some aspirational — see **`STATUS.yaml`**).
 ```
@@ -239,6 +239,10 @@ svc        — Service control (STATUS, RESTART, CADDY, NGINX, HEALTH)
 crm        — CRM ops (QUERY, UPDATE)
 llm/*      — LLM adapters (openrouter, ollama, anthropic, cohere)
 ```
+
+## Reproducible orchestration-token economics
+
+**`BENCHMARK.md`** includes analytical comparisons (tiktoken **cl100k_base**, no live LLM): orchestration vs LLM-first (**`scripts/benchmark_token_savings.py`**), compile-once/run-many scenarios (**`scripts/benchmark_compile_once_run_many.py`**), authoring density (**`scripts/benchmark_authoring_density.py`**). Narrative hub: **`docs/benchmarks.md`** § *Analytical orchestration-token economics*. Claim-to-evidence crosswalk: **`docs/CLAIMS_AND_EVIDENCE.md`**. Example strict-valid workflows: **`examples/benchmark/enterprise_monitor.ainl`**, **`examples/workflows/data_pipeline.ainl`**, **`examples/workflows/lead_enrichment.ainl`**, **`examples/workflows/support_ticket_router.ainl`**.
 
 ## How To Test
 

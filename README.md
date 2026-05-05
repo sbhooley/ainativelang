@@ -98,13 +98,15 @@ After install, ask your agent: *"Use AINL to build this workflow"* — it compil
 
 | Workload | Typical savings |
 |:---------|:----------------|
-| Recurring monitors, digests, scheduled jobs | [**90–95% fewer tokens** vs prompt loops](agent_reports/Grok-analysis-as-of-March-25-2026–v1-2-8-Token-Cost-Savings.md) — field analysis (OpenClaw monitors, compile-once / run-many) |
-| Multi-step automations and workflows | [**2–5× reduction** per task](agent_reports/2026-03-27-ainl-cost-savings.md) — Apollo cost report (OpenRouter lifetime usage, architectural efficiency) |
+| Recurring monitors, digests, scheduled jobs | [**90–95% fewer tokens** vs prompt loops](agent_reports/Grok-analysis-as-of-March-25-2026–v1-2-8-Token-Cost-Savings.md) — field analysis (OpenClaw monitors, compile-once / run-many); **reproducible tables:** [`BENCHMARK.md`](BENCHMARK.md) (compile-once / run-many scenarios) |
+| Multi-step automations and workflows | [**2–5× reduction** per task](agent_reports/2026-03-27-ainl-cost-savings.md) — Apollo cost report (OpenRouter lifetime usage, architectural efficiency); **reproducible:** [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py) → [`BENCHMARK.md`](BENCHMARK.md) |
 | Simple one-off tasks | [Smaller but still positive](agent_reports/plushifier-openclaw-2026-03-18.md) — early OpenClaw operator field report (Plushify) |
+
+**Reproducible repo evidence (deterministic scripts, no live LLM):** claim-to-artifact map **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)**; regenerated sections in **[`BENCHMARK.md`](BENCHMARK.md)** from [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py) (routing vs LLM-first), [`scripts/benchmark_compile_once_run_many.py`](scripts/benchmark_compile_once_run_many.py) (recurring-run orchestration tokens), and [`scripts/benchmark_authoring_density.py`](scripts/benchmark_authoring_density.py) (`.ainl` vs Python/TS authoring density). Reference workflows (strict-valid): [`examples/benchmark/enterprise_monitor.ainl`](examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](examples/workflows/data_pipeline.ainl), [`examples/workflows/lead_enrichment.ainl`](examples/workflows/lead_enrichment.ainl), [`examples/workflows/support_ticket_router.ainl`](examples/workflows/support_ticket_router.ainl).
 
 The reason: AINL compiles your workflow once. The runtime executes it deterministically — no LLM re-generation on each run, no prompt bloat, no orchestration chatter. The model authors the graph once; the runtime runs it on every invocation.
 
-> **[Token savings breakdown and benchmarks →](https://ainativelang.com/benchmark)**
+> **[Token savings breakdown and benchmarks →](https://ainativelang.com/benchmark)** · **[`BENCHMARK.md`](BENCHMARK.md)** (source tables + methodology) · **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)** (claim crosswalk)
 
 ---
 
@@ -486,7 +488,7 @@ Details: **[`docs/ZEROCLAW_INTEGRATION.md`](docs/ZEROCLAW_INTEGRATION.md)** · s
 
 **Bootstrap** (PyPI self-upgrade, **`mcp.servers.ainl`** in **`~/.openclaw/openclaw.json`**, **`~/.openclaw/bin/ainl-run`**, **`PATH`** hint): from the skill directory run **`./install.sh`**, or run **`ainl install-mcp --host openclaw`** (use **`--dry-run`** / **`--verbose`** as needed). **`install.sh`** may run **`npm install -g openclaw@latest`** when npm is on PATH; set **`OPENCLAW_SKIP_NPM=1`** to skip.
 
-Once bootstrapped, the OpenClaw bridge automatically activates AINL's intelligence layer, including the cap auto-tuner and memory hydration/embedding pilot. This creates a self-managing runtime that continuously adjusts execution caps and prunes caches based on observed token usage — helping sustain 90–95% token savings on high-frequency monitors and digests with zero recurring LLM orchestration cost.
+Once bootstrapped, the OpenClaw bridge automatically activates AINL's intelligence layer, including the cap auto-tuner and memory hydration/embedding pilot. This creates a self-managing runtime that continuously adjusts execution caps and prunes caches based on observed token usage — helping sustain **90–95%** token savings on high-frequency monitors and digests with zero recurring LLM orchestration cost (see **[`BENCHMARK.md`](BENCHMARK.md)** compile-once/run-many scenarios + [`scripts/benchmark_compile_once_run_many.py`](scripts/benchmark_compile_once_run_many.py)).
 
 For restricted Python sandboxes (PEP 668 externally-managed environments, common on OpenClaw/Clawbot hosts), no-root install order is: **venv first**, then **`--user`**, then **`--break-system-packages`** only as a last resort. `skills/ainl/install.sh` runs a compatible fallback sequence automatically and continues with MCP setup once `ainl` is available.
 

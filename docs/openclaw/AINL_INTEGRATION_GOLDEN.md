@@ -2,6 +2,8 @@
 
 **Goal:** Achieve 85–95% token savings on session bootstrap by using AINL's curated `session_context.md` instead of full `MEMORY.md`.
 
+**Repo benchmarks:** recurring-job **orchestration-token** economics (compiled IR vs prompt-loop baselines) live in **[`BENCHMARK.md`](../BENCHMARK.md)** / [`scripts/benchmark_compile_once_run_many.py`](../scripts/benchmark_compile_once_run_many.py) — complementary to this doc’s **session bootstrap** footprint.
+
 ---
 
 ## 1. Prerequisites

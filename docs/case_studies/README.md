@@ -17,3 +17,4 @@ This is the canonical home for narrative, applied, and production-oriented AINL 
 - Why this approach exists: [`../fundamentals/README.md`](../fundamentals/README.md)
 - Operational proof: [`../operations/README.md`](../operations/README.md)
 - Root docs navigation: [`../README.md`](../README.md)
+- **Orchestration-token benchmarks (reproducible):** [`../benchmarks.md`](../benchmarks.md) § *Analytical orchestration-token economics* · [`../../BENCHMARK.md`](../../BENCHMARK.md) · scripts [`benchmark_token_savings.py`](../../scripts/benchmark_token_savings.py), [`benchmark_compile_once_run_many.py`](../../scripts/benchmark_compile_once_run_many.py), [`benchmark_authoring_density.py`](../../scripts/benchmark_authoring_density.py)

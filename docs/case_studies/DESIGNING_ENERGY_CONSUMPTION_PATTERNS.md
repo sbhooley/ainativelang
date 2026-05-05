@@ -28,7 +28,7 @@ Compilation (`compiler_v2.py`) performs deterministic parsing/lowering/validatio
 Emitters can then generate deployable artifacts (for example FastAPI, cron-facing surfaces, React/TypeScript, Prisma, OpenAPI) while preserving canonical graph intent. See:
 
 - [`../emitters/README.md`](../emitters/README.md)
-- [`../benchmarks.md`](../benchmarks.md)
+- [`../benchmarks.md`](../benchmarks.md) — includes § *Analytical orchestration-token economics* (`scripts/benchmark_token_savings.py`, `benchmark_compile_once_run_many.py`, `benchmark_authoring_density.py`)
 - [`../../BENCHMARK.md`](../../BENCHMARK.md)
 
 **Design implication:** each workflow type gets a deliberate thinking budget (for example, exact count/placement of model-backed `R` calls) plus deterministic scaffolding.

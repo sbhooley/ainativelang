@@ -56,6 +56,10 @@ See also AI_CONSULTANT_REPORT_APOLLO.md for a full AI AGENT/BOT written report o
 — see `AI_CONSULTANT_REPORT_APOLLO.md` (root)
 — see `CONSULTANT_REPORTS.md` (root)
 
+## Reproducible token accounting (repository benchmarks)
+
+This narrative aligns with **analytical** orchestration-token benchmarks in the repo (tiktoken `cl100k_base`, no live LLM): **[`docs/CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md)** (full crosswalk) · **[`BENCHMARK.md`](../../BENCHMARK.md)** — sections produced by [`scripts/benchmark_token_savings.py`](../../scripts/benchmark_token_savings.py), [`scripts/benchmark_compile_once_run_many.py`](../../scripts/benchmark_compile_once_run_many.py), and [`scripts/benchmark_authoring_density.py`](../../scripts/benchmark_authoring_density.py). Hub: [`docs/benchmarks.md`](../benchmarks.md) § *Analytical orchestration-token economics*. Example strict-valid workflows: [`examples/benchmark/enterprise_monitor.ainl`](../../examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](../../examples/workflows/data_pipeline.ainl).
+
 ## Related
 
 - Graph-native vs prompt-loop agents: `docs/case_studies/graph_agents_vs_prompt_agents.md`

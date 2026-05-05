@@ -7,6 +7,8 @@ _Generated: 2026-03-25 | Live operational data from AINL King infrastructure_
 
 Running 17 AINL-orchestrated cron jobs 24/7, AINL delivers **7.2× cost reduction** over equivalent traditional agent loop workflows — with zero orchestration overhead and full deterministic execution.
 
+**Reproducible analytical benchmarks (any auditor):** [`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](BENCHMARK.md) · [`scripts/benchmark_compile_once_run_many.py`](scripts/benchmark_compile_once_run_many.py) · [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py). Figures below are **deployment-specific** operational estimates; scripts above give **deterministic** tiktoken comparisons.
+
 ---
 
 ## Cost Comparison

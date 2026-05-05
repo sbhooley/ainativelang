@@ -6,6 +6,7 @@ Use this section to answer: what is AINL, what kind of system is it, and where s
 
 - [`../WHAT_IS_AINL.md`](../WHAT_IS_AINL.md) — **canonical** primer (narrative + includes, visualizer, trajectory, Hyperspace, adapters). Root [`../../WHAT_IS_AINL.md`](../../WHAT_IS_AINL.md) is a stub pointing here.
 - [`../../WHITEPAPERDRAFT.md`](../../WHITEPAPERDRAFT.md) — long-form architecture (through **v1.8.0**: Hermes Agent, ArmaraOS host pack, graph-memory IR + **`.ainlbundle`**, `ainl install openclaw`, `ainl status`, native Solana; v1.2.8+ OpenClaw intelligence, token economics, graph pitfalls, auto-tuner).
+- [`../CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md) — maps headline token/cost claims to **[`BENCHMARK.md`](../../BENCHMARK.md)** and `scripts/benchmark_*.py`.
 - [`../CHANGELOG.md`](../CHANGELOG.md) / [`../RELEASE_NOTES.md`](../RELEASE_NOTES.md) — **current release v1.8.0** (`pyproject.toml`, **`RUNTIME_VERSION`**)
 - [`../AUDIENCE_GUIDE.md`](../AUDIENCE_GUIDE.md) — choose the right entry path by audience
 - [`../architecture/ARCHITECTURE_OVERVIEW.md`](../architecture/ARCHITECTURE_OVERVIEW.md) — publication-ready system overview

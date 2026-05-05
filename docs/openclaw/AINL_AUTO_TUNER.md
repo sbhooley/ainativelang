@@ -4,6 +4,8 @@
 
 The `auto_tune_ainl_caps` program automatically adjusts AINL-related environment variables in OpenClaw to maintain token savings in the 90–95% range. It is production-grade, safe, and designed for any OpenClaw+AINL deployment.
 
+**Related reproducible economics:** compile-once / run-many orchestration-token scenarios are modeled in **[`BENCHMARK.md`](../BENCHMARK.md)** (see [`scripts/benchmark_compile_once_run_many.py`](../scripts/benchmark_compile_once_run_many.py)). This auto-tuner targets **bridge/session** savings (bootstrap + caps), which is a different surface than the analytical benchmark scenarios — both can be true in different parts of the stack.
+
 ## How It Works
 
 1. **Data Collection**  

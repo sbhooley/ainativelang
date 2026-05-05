@@ -263,3 +263,7 @@ The discipline required upfront (types, topology, adapter semantics) pays compou
 **Infrastructure:** OpenClaw + AINL Canonical Runtime  
 **Deployment Status:** ✅ LIVE  
 **Next Review:** 2026-03-24 (Daily Reports Automation)
+
+---
+
+**Reproducible benchmark crosswalk (repository):** [`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](BENCHMARK.md).

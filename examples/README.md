@@ -14,7 +14,8 @@ Not every file under `examples/` is a safe template. **CI enforces** that every 
 2. **Ground-truth language and adapter rules** live in **`AGENTS.md`** at the repo root (HTTP adapter, `Do NOT`, queue syntax, etc.). Read it before inventing adapters (e.g. there is **no** `regex_find` in this repo).
 3. **Classification and tables**: **`docs/EXAMPLE_SUPPORT_MATRIX.md`** explains canonical vs compatibility examples and points to the same JSON files.
 4. **Agentic payments & commerce (x402, MPP, AP2, ACP, AGTP):** hub **`docs/integrations/README.md`** — HTTP-402 profiles on **`http`** (**`HTTP_MACHINE_PAYMENTS.md`**), what is realistic in graphs today (**`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`**), and **AGTP** integration paths (**`AGTP.md`**). **Strict-valid graph + local demo:** **`examples/http/http_machine_payment_flow_compact.ainl`** + **`python scripts/run_http_machine_payment_roundtrip_demo.py`** (stdlib 402 server, two-step frame); MCP resource **`ainl://examples-http-machine-payment-flow`**.
-4. **`demo/`** is excluded from this contract by design — demos may use experimental syntax; do not treat them as strict references (see **`AGENTS.md`** App Store section).
+5. **`demo/`** is excluded from this contract by design — demos may use experimental syntax; do not treat them as strict references (see **`AGENTS.md`** App Store section).
+6. **Benchmark-backed workflow examples** (strict-valid, used in analytical token scripts): **`examples/benchmark/enterprise_monitor.ainl`**, **`examples/workflows/data_pipeline.ainl`**, **`examples/workflows/lead_enrichment.ainl`**, **`examples/workflows/support_ticket_router.ainl`** — see **`docs/CLAIMS_AND_EVIDENCE.md`** and **`BENCHMARK.md`**.
 
 The machine-readable source of truth is:
 

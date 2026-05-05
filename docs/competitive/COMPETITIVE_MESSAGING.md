@@ -18,7 +18,7 @@ While tools like LangGraph and Temporal start with general workflow engines and 
 |---------|------|-----------|----------|-----------|
 | **Compile-time validation** | ✅ Strict type/schema checks | ❌ Runtime only | ⚠️ Limited (workflow definitions) | ❌ |
 | **Deterministic execution** | ✅ Same input → same output | ❌ Prompt-based branching | ✅ If code deterministic | ❌ |
-| **Token efficiency** | 90–95% reduction vs agents | ❌ High (re-prompt on every step) | ✅ Low (code execution) | ⚠️ Low-cost APIs |
+| **Token efficiency** | **Up to ~90–95%** fewer orchestration tokens vs prompt-loop agents on recurring monitors / digests / schedulers (compile-once IR routing); smaller gains when every run needs LLM classification or drafting | ❌ High (re-prompt on every step) | ✅ Low (code execution) | ⚠️ Low-cost APIs |
 | **Audit trail** | ✅ JSONL immutable traces | ⚠️ Manual logging | ⚠️ Need custom implementation | ❌ |
 | **Learning curve** | Low (declarative language) | Medium (Python state machines) | High (Docker, workers) | Very low |
 | **Portability** | ✅ Emit to multiple targets | ❌ Locked to LangChain | ✅ Code is portable | ❌ |
@@ -27,13 +27,15 @@ While tools like LangGraph and Temporal start with general workflow engines and 
 
 **Key takeaway**: AINL combines the ease of declarative language with enterprise-grade validation that workflow tools lack.
 
+**Numbers:** Do not cite this matrix row without the workload qualifier above. Reproduce orchestration-token scenarios in **[`BENCHMARK.md`](../../BENCHMARK.md)** (sections produced by [`scripts/benchmark_compile_once_run_many.py`](../../scripts/benchmark_compile_once_run_many.py), [`scripts/benchmark_token_savings.py`](../../scripts/benchmark_token_savings.py)); authoring-density rows via [`scripts/benchmark_authoring_density.py`](../../scripts/benchmark_authoring_density.py). Example strict-valid `.ainl` references: [`examples/benchmark/enterprise_monitor.ainl`](../../examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](../../examples/workflows/data_pipeline.ainl).
+
 ---
 
 ## 🎪 Messaging by Persona
 
 ### For CTOs/VPEs
 
-> "AINL gives you **deterministic AI workflows** with compile-time validation. No more 'the LLM changed its mind' surprises. Immutable audit trails for compliance. Token savings up to 95% vs agent frameworks."
+> "AINL gives you **deterministic AI workflows** with compile-time validation. No more 'the LLM changed its mind' surprises. Immutable audit trails for compliance. On recurring monitors and digests, orchestration-token savings often reach **~90–95%** vs prompt-loop agents — reproduce in **`BENCHMARK.md`**."
 
 **Keywords**: deterministic, compile-time validation, audit trails, token efficiency, compliance
 
@@ -81,7 +83,7 @@ While tools like LangGraph and Temporal start with general workflow engines and 
 
 ### For Finance/Procurement
 
-> "AINL **reduces LLM costs by 90-95%** through orchestration token efficiency. Predictable pricing: orchestration tokens are cheap, and you control budgets via policies. No vendor lock-in."
+> "AINL **cuts orchestration-token spend by ~90–95%** vs prompt-loop agents on recurring monitors, digests, and scheduled jobs — see **`BENCHMARK.md`** (`benchmark_compile_once_run_many.py`). Predictable pricing: compiled graphs avoid per-run orchestration chatter, and you control budgets via policies. No vendor lock-in."
 
 **Keywords**: cost savings, token efficiency, predictable pricing, no lock-in
 

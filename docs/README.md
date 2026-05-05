@@ -6,6 +6,8 @@ This is the primary navigation hub for the `docs/` tree.
 
 AINL docs are organized by user intent and conceptual layer rather than by file creation history. Start here if you want the shortest path to the right section. Use [`DOCS_INDEX.md`](DOCS_INDEX.md) as the exhaustive reference map.
 
+**Token/cost claims ↔ reproducible evidence:** [`CLAIMS_AND_EVIDENCE.md`](CLAIMS_AND_EVIDENCE.md) maps headline economics statements to [`BENCHMARK.md`](../BENCHMARK.md) and `scripts/benchmark_*.py`.
+
 ## Sections
 
 - [`overview/`](overview/README.md) — what AINL is, who it is for, and top-level orientation
@@ -35,7 +37,7 @@ AINL docs are organized by user intent and conceptual layer rather than by file 
 - **ZeroClaw skill:** [`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md) — one-command skill install, **`~/.zeroclaw/`** MCP + **`ainl-run`** shim; links **[`examples/ecosystem/`](../examples/ecosystem/)** and benchmarks (**viable subset**, **~1.02×** context).
 - **Hermes Agent:** [`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md) — **`~/.hermes/config.yaml`** MCP + **`--emit hermes-skill`**; skill pack [`skills/hermes/`](../skills/hermes/) · **`ainl compile --emit hermes-skill`**
 - Looking for proof and practical examples: read [`case_studies/`](case_studies/README.md) and [`operations/`](operations/README.md)
-- **Performance & benchmarks:** reproducible **tiktoken cl100k_base** size tables in **[`BENCHMARK.md`](../BENCHMARK.md)**; narrative hub **[`benchmarks.md`](benchmarks.md)** (highlights, `make benchmark` / `make benchmark-ci`, runtime + LLM eval links)
+- **Performance & benchmarks:** reproducible **tiktoken cl100k_base** size tables in **[`BENCHMARK.md`](../BENCHMARK.md)**; narrative hub **[`benchmarks.md`](benchmarks.md)** (highlights, `make benchmark` / `make benchmark-ci`, runtime + LLM eval links); **analytical orchestration-token scripts** (`scripts/benchmark_token_savings.py`, `benchmark_compile_once_run_many.py`, `benchmark_authoring_density.py`) → regenerated sections in **`BENCHMARK.md`**
 - **Energy pattern framing:** [`case_studies/DESIGNING_ENERGY_CONSUMPTION_PATTERNS.md`](case_studies/DESIGNING_ENERGY_CONSUMPTION_PATTERNS.md) — mapping AINL to explicit inference/compute budget design
 - **Clawflows / Agency-Agents ecosystem & OpenClaw / ZeroClaw hooks:** **[`ECOSYSTEM_OPENCLAW.md`](ECOSYSTEM_OPENCLAW.md)** — `examples/ecosystem/` (weekly auto-sync), CLI, MCP, PR templates; **OpenClaw** path **[`OPENCLAW_INTEGRATION.md`](OPENCLAW_INTEGRATION.md)** · **ZeroClaw** path **[`ZEROCLAW_INTEGRATION.md`](ZEROCLAW_INTEGRATION.md)** · **Hermes** path **[`HERMES_INTEGRATION.md`](HERMES_INTEGRATION.md)** · **[Hermes Agent](https://github.com/NousResearch/hermes-agent)**
 
@@ -74,7 +76,7 @@ Supporting detail:
 - **Reusable LLM includes:** [`../modules/llm/README.md`](../modules/llm/README.md) (e.g. JSON-array-only system line for chat completions).
 - **App-local strict includes:** bridge JSON shells and deployment-specific graphs live next to your gateway (see [`language/AINL_CORE_AND_MODULES.md`](language/AINL_CORE_AND_MODULES.md) §8); they often compose [`../modules/common/executor_bridge_request.ainl`](../modules/common/executor_bridge_request.ainl).
 - **Full conformance matrix:** run `make conformance` from repo root (or `SNAPSHOT_UPDATE=1 make conformance` when intentionally updating snapshots). Outputs are written to `tests/snapshots/conformance/`.
-- **Benchmarks (size, runtime, economics, CI regression):** [`benchmarks.md`](benchmarks.md) — links [`BENCHMARK.md`](../BENCHMARK.md), `make benchmark` / `make benchmark-ci`, and LLM bench + optional Claude cloud comparison.
+- **Benchmarks (size, runtime, economics, CI regression):** [`benchmarks.md`](benchmarks.md) — links [`BENCHMARK.md`](../BENCHMARK.md), `make benchmark` / `make benchmark-ci`, LLM bench + optional Claude cloud comparison, and § *Analytical orchestration-token economics* (`scripts/benchmark_token_savings.py`, `benchmark_compile_once_run_many.py`, `benchmark_authoring_density.py`).
 - `DOCS_INDEX.md` remains in place as the detailed reference map.
 - Existing paths will be migrated gradually to avoid breaking relative links and old deep links.
 - `case_studies/` is the canonical case-study folder name going forward.

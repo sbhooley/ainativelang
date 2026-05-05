@@ -228,6 +228,8 @@ Starter modules in-repo include `modules/common/retry.ainl`, `modules/common/tim
 
 Reproducible **size** tables (**tiktoken cl100k_base**, viable subset vs legacy-inclusive transparency): [`BENCHMARK.md`](../BENCHMARK.md). Hub (commands, CI, runtime + LLM eval pointers): [`docs/benchmarks.md`](benchmarks.md).
 
+**Orchestration-token economics** (analytical `tiktoken` counts, no live LLM — outputs merged into [`BENCHMARK.md`](../BENCHMARK.md)): [`scripts/benchmark_token_savings.py`](../scripts/benchmark_token_savings.py), [`scripts/benchmark_compile_once_run_many.py`](../scripts/benchmark_compile_once_run_many.py), [`scripts/benchmark_authoring_density.py`](../scripts/benchmark_authoring_density.py). **Crosswalk:** [`CLAIMS_AND_EVIDENCE.md`](CLAIMS_AND_EVIDENCE.md). Example strict-valid workflows: [`examples/benchmark/enterprise_monitor.ainl`](../examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](../examples/workflows/data_pipeline.ainl), [`examples/workflows/lead_enrichment.ainl`](../examples/workflows/lead_enrichment.ainl), [`examples/workflows/support_ticket_router.ainl`](../examples/workflows/support_ticket_router.ainl).
+
 Long-form architecture: [`WHITEPAPERDRAFT.md`](../WHITEPAPERDRAFT.md) (repository root) — **v1.8.0** positioning: OpenClaw intelligence, token caps, embedding pilot, graph-runtime pitfalls, weekly cap auto-tuner, and native Solana + prediction-market workflows (**`docs/solana_quickstart.md`**).
 
 ## Why now

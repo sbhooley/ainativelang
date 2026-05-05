@@ -101,7 +101,8 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Post-release immediate roadmap: `docs/POST_RELEASE_ROADMAP.md`
 - Maintainer release operations: `docs/RELEASING.md`
 - Reproducible size benchmark report (tiktoken **cl100k_base**, viable vs legacy-inclusive transparency): `BENCHMARK.md`
-- Benchmark hub (highlights Mar 2026, metrics glossary, `make benchmark` / `make benchmark-ci`, CI gate, LLM/cloud bench): `docs/benchmarks.md`
+- **Claims ↔ evidence (economics, scopes, scripts):** `docs/CLAIMS_AND_EVIDENCE.md`
+- Benchmark hub (highlights Mar 2026, metrics glossary, `make benchmark` / `make benchmark-ci`, CI gate, LLM/cloud bench, **analytical orchestration-token scripts**): `docs/benchmarks.md`
 - Competitive framing + vs LangGraph/Temporal methodology: `docs/competitive/README.md` · `docs/competitive/OVERVIEW.md` (synced to site) · `docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md` · `docs/competitive/COMPARISON_TABLE.md`
 - Hybrid emitters (LangGraph / Temporal / `S hybrid`): `docs/HYBRID_GUIDE.md`
 - Runner emitter discovery (MCP / HTTP): `GET /capabilities/langgraph`, `GET /capabilities/temporal` on `scripts/runtime_runner_service.py`
@@ -109,6 +110,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Benchmark generator script: `scripts/benchmark_size.py`
 - Machine-readable benchmark output: `tooling/benchmark_size.json`
 - Runtime benchmark script: `scripts/benchmark_runtime.py`
+- Analytical orchestration-token economics (outputs merged into `BENCHMARK.md`): `scripts/benchmark_token_savings.py`, `scripts/benchmark_compile_once_run_many.py`, `scripts/benchmark_authoring_density.py`
 - Shared bench metrics (tiktoken, pricing helpers): `tooling/bench_metrics.py`
 - Benchmark JSON regression checker: `scripts/compare_benchmark_json.py`
 - Tracked runtime benchmark JSON (CI regression baseline): `tooling/benchmark_runtime_results.json`

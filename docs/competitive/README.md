@@ -8,6 +8,8 @@ Use this section for comparative framing such as “AINL vs X” and category-de
 
 Comparative docs should be grounded in **shipped** behavior (compiler, runtime, emitters, MCP) and link to **reproducible** benchmarks where numbers are claimed.
 
+**Orchestration-token / density claims:** cite **[`BENCHMARK.md`](../BENCHMARK.md)** and the analytical scripts documented in **[`docs/benchmarks.md`](../benchmarks.md)** § *Analytical orchestration-token economics* (`scripts/benchmark_token_savings.py`, `benchmark_compile_once_run_many.py`, `benchmark_authoring_density.py`); full crosswalk **[`docs/CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md)**. [`COMPETITIVE_MESSAGING.md`](COMPETITIVE_MESSAGING.md) includes an explicit qualifier on the token-efficiency matrix row.
+
 ## Guides (v1.2.5+ baseline; **v1.8.0** target line — PyPI after publish — **`docs/RELEASING.md`**)
 
 - **[`FROM_LANGGRAPH_TO_AINL.md`](FROM_LANGGRAPH_TO_AINL.md)** — 15-minute onboarding from graph-first Python to AINL + optional `--emit langgraph`.

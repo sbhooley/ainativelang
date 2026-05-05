@@ -64,7 +64,7 @@ real_and_working:
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 
   examples:
-    count: 93
+    count: 98
     format: ".ainl under examples/ (real, compilable syntax)"
 
   http_server:

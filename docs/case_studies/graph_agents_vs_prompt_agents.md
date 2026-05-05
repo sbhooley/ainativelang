@@ -20,6 +20,8 @@ It represents workflows as **deterministic execution graphs**, compiled into a c
 
 This case study compares these two paradigms using real production evidence from Apollo (OpenClaw Assistant).
 
+**Repository benchmarks (reproducible orchestration-token economics):** **[`BENCHMARK.md`](../../BENCHMARK.md)** · [`docs/benchmarks.md`](../benchmarks.md) § *Analytical orchestration-token economics* · [`scripts/benchmark_token_savings.py`](../../scripts/benchmark_token_savings.py), [`scripts/benchmark_compile_once_run_many.py`](../../scripts/benchmark_compile_once_run_many.py), [`scripts/benchmark_authoring_density.py`](../../scripts/benchmark_authoring_density.py). Example `.ainl` programs: [`examples/benchmark/enterprise_monitor.ainl`](../../examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](../../examples/workflows/data_pipeline.ainl).
+
 ---
 
 # Two Competing Architectures

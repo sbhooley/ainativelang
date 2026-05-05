@@ -1,3 +1,7 @@
+> **Canonical copy (tables + reproducible benchmarks):** [`docs/case_studies/HOW_AINL_SAVES_MONEY.md`](docs/case_studies/HOW_AINL_SAVES_MONEY.md) · [`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)
+
+---
+
 AINL runtime cost advantage for routine monitoring
 
 AINL reduces cost by moving intelligence from the runtime path to the authoring/compile path.

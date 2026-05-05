@@ -17,6 +17,8 @@ python -m pip install -e ".[dev,web]"
 For platform-specific details (Windows, Docker, pre-commit), see
 [`../INSTALL.md`](../INSTALL.md).
 
+**Economics & evidence:** headline token/cost claims in README and whitepaper map to reproducible scripts — see **[`../CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md)** and **[`../BENCHMARK.md`](../BENCHMARK.md)**.
+
 ## Strict vs non-strict (your choice)
 
 By default, validation and `ainl run` use the **permissive** compiler policy. **`--strict`** on **`ainl-validate`** (or `AICodeCompiler(strict_mode=True)`) turns on **stricter** static checks for production-style graphs. Read **[`STRICT_AND_NON_STRICT.md`](STRICT_AND_NON_STRICT.md)** for when to use which, and how that relates to files under `demo/` and `examples/`.

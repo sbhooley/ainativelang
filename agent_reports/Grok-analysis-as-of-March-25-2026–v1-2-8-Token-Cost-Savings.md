@@ -1,3 +1,7 @@
+**Repository hub (claim ↔ reproducible evidence):** [`docs/CLAIMS_AND_EVIDENCE.md`](../docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](../BENCHMARK.md).
+
+---
+
 **AINL v1.2.8 (as of the March 25, 2026 bump) remains a polished, production-oriented compiler + runtime stack that turns one-time LLM-authored graphs into deterministic, auditable, low-cost executables.** The repo shows active, high-velocity development: the latest commits (literally minutes to hours old) include the v1.2.8 version bump across runtime, pyproject.toml, tests, and docs; OpenClaw gold-standard install/upgrade checklists; intelligence hydration + embedding pilots; Set-based memory frame fixes; and bridge enhancements. No tagged GitHub releases yet, but the version is live in code and the ecosystem is syncing weekly via CI.
 
 The core architecture is unchanged in spirit — compact .ainl DSL → strict compiler → canonical IR → pluggable runtime with adapters — but v1.2.8 tightens OpenClaw-native ergonomics (skills/openclaw/, bridge wrappers, MCP server) and adds execution_requirements metadata, sandbox config generation, and unified shim for restricted environments. This directly strengthens the “structured worker” pitch for OpenClaw users.

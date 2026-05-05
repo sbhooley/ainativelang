@@ -4,6 +4,8 @@ Deterministic compiled graphs for [ZeroClaw](https://github.com/zeroclaw-labs/ze
 
 **Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
 
+**Token economics (reproducible):** [`docs/CLAIMS_AND_EVIDENCE.md`](../../docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](../../BENCHMARK.md).
+
 ## Standalone repo (`sbhooley/ainl-zeroclaw-skill`)
 
 Publish this folder as the **repository root** (not nested under `skills/`):

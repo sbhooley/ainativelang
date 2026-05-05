@@ -4,6 +4,8 @@ Deterministic compiled graphs for [OpenClaw](https://openclaw.ai/): **importer**
 
 **Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
 
+**Token economics (reproducible):** [`docs/CLAIMS_AND_EVIDENCE.md`](../../docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](../../BENCHMARK.md) · [`scripts/benchmark_compile_once_run_many.py`](../../scripts/benchmark_compile_once_run_many.py).
+
 OpenClaw is normally installed with **npm** and **`openclaw onboard`**. This skill adds the **Python** **`ainl`** toolchain and wires **MCP** + **`ainl-run`** for OpenClaw’s config layout.
 
 **Not ZeroClaw:** there is no `zeroclaw skills install <git url>` here. Use **ClawHub** (when the skill is published there), **manual folder copy**, or a **standalone git repo** you clone yourself.

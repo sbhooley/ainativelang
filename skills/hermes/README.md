@@ -4,6 +4,8 @@ This folder is the **Hermes Agent** companion skill pack for **AINL**.
 
 **Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
 
+**Token economics (reproducible):** [`docs/CLAIMS_AND_EVIDENCE.md`](../../docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](../../BENCHMARK.md).
+
 **Gold standard integration:**
 
 - **AINL** compiles AI-authored workflows into **deterministic graphs** (canonical IR).
