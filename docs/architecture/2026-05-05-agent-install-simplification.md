@@ -130,13 +130,30 @@ top-level key naming):
 
 ```json
 {
-  "command": "ainl-mcp",
+  "command": "/abs/path/to/ainl-mcp",
   "args": [],
-  "env": {}
+  "env": {"AINL_MCP_AGENT_ID": "<host-tag>"}
 }
 ```
 
-For Codex CLI (TOML), the equivalent table form is emitted. If the user has
+The `command` is **always written as an absolute path** resolved via
+`shutil.which("ainl-mcp")` at install time. GUI MCP hosts (Claude Desktop,
+Cursor on macOS) do not see `~/.local/bin` from their launch environment, so
+relying on `PATH` produces silent "server failed to start" failures. This
+mirrors brainctl's working pattern (`/Users/.../venvs/brainctl/bin/brainctl-mcp`
+in real Claude Desktop config) — verified on this developer's machine.
+
+For Codex CLI (TOML), the equivalent shape is:
+
+```toml
+[mcp_servers.ainl]
+command = "/abs/path/to/ainl-mcp"
+cwd = "/Users/<user>"
+enabled = true
+```
+
+Format observed in working Codex CLI config on this developer's machine; the
+detection writer follows that exact shape. If the user has
 configured a non-default exposure profile, `setup` reads
 `AINL_MCP_EXPOSURE_PROFILE` from the environment and threads it into the
 `env` block of the MCP entry so re-runs are idempotent for that operator
