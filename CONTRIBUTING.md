@@ -2,6 +2,21 @@
 
 Thanks for helping improve AI Native Lang.
 
+## Pre-commit (recommended — auto-refreshes headline stats)
+
+So no one has to remember manual steps before pushing:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+When you commit changes under `compiler_v2.py`, `runtime/`, `cli/`, `adapters/`, `tests/`, `examples/`, `ainl_preprocess.py`, or the stats script itself, the **`refresh-repo-stats`** hook runs **`python scripts/refresh_repo_stats.py`** and updates **`STATUS.yaml`** / **`AGENTS.md`** if needed. If it modifies files, Git will ask you to stage those updates and commit again (normal pre-commit behavior).
+
+Requires **`pip install -e ".[dev]"`** so `pytest --collect-only` works.
+
+**If hooks are not installed**, GitHub Actions still runs **`python scripts/refresh_repo_stats.py --check`** on **every** pull request and push to `main` — the PR will fail until stats match the tree.
+
 ## Where things live
 
 | Area | Entry |
@@ -36,7 +51,7 @@ python scripts/refresh_repo_stats.py --check
 
 Requirements: Python environment with dev deps (`pip install -e ".[dev]"`) so `pytest --collect-only` works.
 
-**When to run:** before tagging a release (see **`docs/RELEASING.md`**), or after substantial changes under `compiler_v2.py`, `runtime/`, `cli/`, `adapters/`, `tests/`, or `examples/`. CI runs **`repo-stats`** on pull requests that touch those paths.
+**When to run:** before tagging a release (see **`docs/RELEASING.md`**), after substantial edits under the paths above, or rely on **pre-commit** / **CI** (see above).
 
 ## Tests
 

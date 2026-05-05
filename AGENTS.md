@@ -30,6 +30,8 @@ Design contract: [`docs/architecture/2026-05-05-agent-install-simplification.md`
 
 > Read this FIRST before doing anything in this repository.
 
+**Headline repo stats:** If you edit the compiler, runtime, CLI, adapters, tests, or examples, run **`python scripts/refresh_repo_stats.py`** or install **[pre-commit](https://pre-commit.com/)** (`pre-commit install` — see **`CONTRIBUTING.md`**) so **`STATUS.yaml`** and this file’s **Repository Layout** stay accurate. CI enforces this on every PR.
+
 ## What This Repo Is
 
 Python compiler + runtime for AINL (AI Native Language), version 1.8.0.

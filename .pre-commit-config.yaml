@@ -1,15 +1,21 @@
-repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: check-yaml
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
+# Install once: pip install pre-commit && pre-commit install
+# Runs headline stat refresh when you change code that affects STATUS.yaml / AGENTS.md counts.
+# CI workflow "Repo stats" is the backstop if hooks are not installed.
 
+repos:
   - repo: local
     hooks:
-      - id: ainl-docs-contract
-        name: AINL docs contract check
-        entry: bash scripts/precommit_docs_contract.sh
+      - id: refresh-repo-stats
+        name: Refresh headline repo stats (STATUS.yaml / AGENTS.md)
+        entry: python scripts/refresh_repo_stats.py
         language: system
         pass_filenames: false
+        files: |
+          (?x)^(
+            compiler_v2\.py|
+            ainl_preprocess\.py|
+            STATUS\.yaml|
+            AGENTS\.md|
+            scripts/refresh_repo_stats\.py|
+            (runtime|cli|adapters|tests|examples)/
+          )

@@ -1,33 +1,12 @@
 # Verifies STATUS.yaml + AGENTS.md headline stats match the working tree.
 # Run locally: python scripts/refresh_repo_stats.py
+# Runs on every PR/push so contributors never rely on remembering path filters.
 name: Repo stats
 
 on:
   pull_request:
-    paths:
-      - "compiler_v2.py"
-      - "runtime/engine.py"
-      - "cli/main.py"
-      - "ainl_preprocess.py"
-      - "adapters/**"
-      - "tests/**"
-      - "examples/**"
-      - "STATUS.yaml"
-      - "AGENTS.md"
-      - "scripts/refresh_repo_stats.py"
   push:
     branches: [main, master]
-    paths:
-      - "compiler_v2.py"
-      - "runtime/engine.py"
-      - "cli/main.py"
-      - "ainl_preprocess.py"
-      - "adapters/**"
-      - "tests/**"
-      - "examples/**"
-      - "STATUS.yaml"
-      - "AGENTS.md"
-      - "scripts/refresh_repo_stats.py"
   workflow_dispatch:
 
 jobs:

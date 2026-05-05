@@ -6,7 +6,7 @@ This document describes how to cut a **PyPI-ready** release of the **`ainl`** pa
 
 **PyPI lag:** Marketing and operator docs may name **`v1.8.0`** as the *current line* while **`pyproject.toml`** and **`RUNTIME_VERSION`** match that tag. Until the wheel/sdist is uploaded, **`pip index versions ainativelang`** (or the [PyPI project page](https://pypi.org/project/ainativelang/#history)) still shows the prior release. After publish, confirm **`1.8.0`** appears on PyPI before telling users to `pip install -U ainativelang` for this line.
 
-**Headline repo statistics:** Before tagging, run **`python scripts/refresh_repo_stats.py`** so **`STATUS.yaml`** and the **Repository Layout** block in **`AGENTS.md`** match current line counts, test inventory, and `pytest --collect-only` output. See **[`CONTRIBUTING.md`](../CONTRIBUTING.md)**. The **`repo-stats`** GitHub Actions workflow checks for drift when relevant paths change.
+**Headline repo statistics:** Before tagging, run **`python scripts/refresh_repo_stats.py`** so **`STATUS.yaml`** and the **Repository Layout** block in **`AGENTS.md`** match current line counts, test inventory, and `pytest --collect-only` output. See **[`CONTRIBUTING.md`](../CONTRIBUTING.md)** (optional **`pre-commit install`** auto-runs the refresh on relevant commits). The **`repo-stats`** GitHub Actions workflow runs **`--check`** on **every** pull request and push to `main`.
 
 ### v1.8.0 — publish checklist (this tree)
 
