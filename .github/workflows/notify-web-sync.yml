@@ -1,18 +1,22 @@
 name: Notify ainativelangweb content sync
 
+# Push-triggered dispatch is disabled until `secrets.GH_PAT` can access
+# `sbhooley/ainativelangweb` (repository_dispatch requires a PAT with repo scope
+# on the target). Without it, the job fails with "Bad credentials".
+# Restore automatic runs by uncommenting the `push:` block below.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "GROWTH-PLAN.md"
-      - "README.md"
-      - "docs/**"
-      - "pyproject.toml"
-      - "WHITEPAPERDRAFT.md"
-      - "WHAT_IS_AINL.md"
-      - "BENCHMARK.md"
-      - "HOW_AINL_SAVES_MONEY.md"
   workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "GROWTH-PLAN.md"
+  #     - "README.md"
+  #     - "docs/**"
+  #     - "pyproject.toml"
+  #     - "WHITEPAPERDRAFT.md"
+  #     - "WHAT_IS_AINL.md"
+  #     - "BENCHMARK.md"
+  #     - "HOW_AINL_SAVES_MONEY.md"
 
 jobs:
   dispatch:
