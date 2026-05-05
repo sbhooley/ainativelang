@@ -38,21 +38,23 @@ graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
 ## Repository Layout
 
+<!-- repo-stats:layout-begin -->
 ```
-compiler_v2.py          — The compiler (5300 lines). Parses .ainl → IR dict.
+compiler_v2.py          — The compiler (6864 lines). Parses .ainl → IR dict.
 compiler_diagnostics.py — Error/warning types used by compiler.
-runtime/engine.py       — The runtime engine (2150 lines). Executes IR graphs.
+runtime/engine.py       — The runtime engine (3216 lines). Executes IR graphs.
 runtime/adapters/       — Runtime adapter base classes and builtins.
-cli/main.py             — CLI entry point (2700 lines). All `ainl` commands.
-adapters/               — 54 adapter modules (solana, postgres, redis, LLM, etc); ArmaraOS monitor bootstrap: `armaraos_integration.py`, `armaraos_defaults.py` (`build_armaraos_monitor_registry`, `boot_armaraos_graph_memory`). See `docs/ARMARAOS_INTEGRATION.md`, `docs/adapters/AINL_GRAPH_MEMORY.md`.
+cli/main.py             — CLI entry point (3376 lines). All `ainl` commands.
+adapters/               — 65 Python files under `adapters/` (recursive); ArmaraOS monitor bootstrap: `armaraos_integration.py`, `armaraos_defaults.py` (`build_armaraos_monitor_registry`, `boot_armaraos_graph_memory`). See `docs/ARMARAOS_INTEGRATION.md`, `docs/adapters/AINL_GRAPH_MEMORY.md`.
 armaraos/emitter/       — `armaraos.py`: `ainl emit --target armaraos` Hand pack (`HAND.toml`, IR JSON, `security.json`, README) with `schema_version` for openfang-hands validation.
-scripts/                — Standalone scripts (emit_langgraph, emit_temporal, `ainl_mcp_server.py` MCP entrypoint, etc).
+scripts/                — Standalone scripts (`refresh_repo_stats.py`, emit_langgraph, emit_temporal, `ainl_mcp_server.py` MCP entrypoint, etc).
 tooling/                — Graph analysis, normalization, effect analysis; `ainl_get_started.py` (authoring wizard + adapter contracts), `corpus_mining.py` (strict-valid family index for `corpus/strict_valid_family_index.json`).
 corpus/                 — Generated/mined JSON (e.g. `strict_valid_family_index.json`, `reverse_prompt_fixtures.json`); see `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`.
-examples/               — 154+ .ainl example files. **Training contract:** only paths listed as `strict-valid` in `tooling/artifact_profiles.json` are CI-checked with `ainl validate --strict`. See `examples/README.md` and `docs/EXAMPLE_SUPPORT_MATRIX.md` before copying random files. MCP resource **`ainl://strict-valid-families`** exposes the mined family index.
-tests/                  — ~1000 test files, 300K lines. Run with pytest.
-docs/                   — Documentation (some accurate, some aspirational — see below).
+examples/               — 93+ `.ainl` files under `examples/` (strict CI subset: `tooling/artifact_profiles.json`). See `examples/README.md`.
+tests/                  — 1048 `*.py` files under `tests/` (~306k lines total); 213 `test_*.py` modules; pytest —collect-only: 1333/1372 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
+docs/                   — Documentation (some accurate, some aspirational — see **`STATUS.yaml`**).
 ```
+<!-- repo-stats:layout-end -->
 
 ## Commands That Work
 
@@ -238,11 +240,15 @@ llm/*      — LLM adapters (openrouter, ollama, anthropic, cohere)
 
 ## How To Test
 
+<!-- repo-stats:test-hint-begin -->
 ```bash
 source .venv-ainl/bin/activate
 python -m pytest tests/ -x -q -k "not test_profiles_cover"
-# Expected: ~1000 passed, 6 skipped (ArmaraOS CLI / langgraph / temporalio not installed)
+# Pass/fail totals vary by machine (optional deps). Typical skips without extras:
+# ArmaraOS CLI, langgraph, temporalio — install `.[dev]` / `.[interop]` as needed.
+# Refresh STATUS.yaml + layout counts: python scripts/refresh_repo_stats.py
 ```
+<!-- repo-stats:test-hint-end -->
 
 Focused suites (optional): **`tests/test_compact_opcode_ir_parity.py`** (compact ↔ opcode IR), **`tests/test_memory_search_op.py`** (**`MemorySearch`** + **`GraphStore`**), **`tests/test_memory_merge.py`** (**`memory.merge`** + SQLite patterns), **`tests/test_semantic_edges.py`** (**`EdgeType`** / **`persona.update`** compile + graph store), **`tests/test_core_builtins_v143.py`** (v1.4.3 **`core.*`**). Shared fixture **`offline_llm_provider_config`** lives in **`tests/conftest.py`** (no network).
 

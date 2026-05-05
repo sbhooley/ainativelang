@@ -1,22 +1,22 @@
 # STATUS.yaml — What is real vs aspirational
-# Updated: 2026-03-30
+# stats_refreshed: 2026-05-05 (UTC) — run: python scripts/refresh_repo_stats.py
 
 real_and_working:
   compiler:
     file: compiler_v2.py
-    lines: 5303
+    lines: 6864
     status: production
-    notes: "Parses .ainl → IR. 25 emitters. Fully tested."
+    notes: "Parses .ainl → IR. Multiple emitters. Fully tested."
 
   runtime:
     file: runtime/engine.py
-    lines: 2153
+    lines: 3216
     status: production
     notes: "Executes IR graphs. Async support. Observability."
 
   cli:
     file: cli/main.py
-    lines: 2700
+    lines: 3376
     status: production
     commands:
       - "ainl run"
@@ -32,15 +32,16 @@ real_and_working:
 
   adapters:
     status: production
-    count: 54
+    python_modules_under_adapters: 65
+    notes: "Count = recursive *.py under adapters/ (excludes __pycache__). Older docs said '54 modules' — this is the live count."
     key_adapters:
-      - "solana (1447 lines)"
-      - "postgres (469 lines)"
-      - "dynamodb (604 lines)"
-      - "redis (615 lines)"
-      - "supabase (764 lines)"
-      - "mysql (475 lines)"
-      - "airtable (415 lines)"
+      - "solana"
+      - "postgres"
+      - "dynamodb"
+      - "redis"
+      - "supabase"
+      - "mysql"
+      - "airtable"
       - "llm/openrouter"
       - "llm/ollama"
       - "llm/anthropic"
@@ -48,12 +49,23 @@ real_and_working:
       - "http, memory, cache, queue"
 
   tests:
-    count: "~1000 files, ~300K lines"
-    status: "400 passing"
+    definitions:
+      py_files_under_tests: "Every *.py under tests/ (includes conftest.py, helpers, harnesses)."
+      test_named_py_files: "Files named test_*.py under tests/ (pytest test modules)."
+      lines_python_under_tests: "Sum of lines of all *.py under tests/."
+      pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
+    py_files_under_tests: 1048
+    test_named_py_files: 213
+    lines_python_under_tests: 306293
+    lines_python_under_tests_rounded: "~306k"
+    pytest_collect_only_selected: 1333
+    pytest_collect_only_total: 1372
+    pytest_deselected: 39
+    status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 
   examples:
-    count: 154
-    format: ".ainl (real, compilable syntax)"
+    count: 93
+    format: ".ainl under examples/ (real, compilable syntax)"
 
   http_server:
     command: "ainl serve --port 8080"
@@ -67,7 +79,7 @@ real_and_working:
 
   compact_syntax_preprocessor:
     file: ainl_preprocess.py
-    lines: 500
+    lines: 501
     status: production
     tests: 54
     notes: >
