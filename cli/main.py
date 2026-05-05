@@ -173,282 +173,392 @@ class _NullApiAdapter(RuntimeAdapter):
         return {"ok": True, "method": verb or "GET", "path": path}
 
 
-def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -> None:
-    enabled = set(args.enable_adapter or [])
-    env_enable_ptc = str(os.environ.get("AINL_ENABLE_PTC", "")).strip().lower() in {"1", "true", "yes", "on"}
-    if "ext" in enabled:
-        reg.register("ext", _EchoAdapter())
-    if "http" in enabled:
-        reg.register(
-            "http",
-            SimpleHttpAdapter(
-                default_timeout_s=args.http_timeout_s,
-                max_response_bytes=args.http_max_response_bytes,
-                allow_hosts=args.http_allow_host or [],
-                payment_profile=str(getattr(args, "http_payment_profile", "none") or "none"),
-                max_payment_rounds=int(getattr(args, "http_max_payment_rounds", 2) or 2),
-            ),
-        )
-    if "a2a" in enabled:
-        hosts = list(getattr(args, "a2a_allow_host", None) or [])
-        allow_loc = bool(getattr(args, "a2a_allow_insecure_local", False))
-        if not hosts and not allow_loc:
-            raise SystemExit(
-                "--enable-adapter a2a requires at least one --a2a-allow-host or --a2a-allow-insecure-local"
-            )
-        reg.register(
-            "a2a",
-            A2aAdapter(
-                allow_hosts=hosts,
-                allow_insecure_local=allow_loc,
-                default_timeout_s=float(getattr(args, "a2a_timeout_s", 30.0)),
-                max_response_bytes=int(getattr(args, "a2a_max_response_bytes", 1_000_000)),
-                strict_ssrf=bool(getattr(args, "a2a_strict_ssrf", False)),
-                follow_redirects=bool(getattr(args, "a2a_follow_redirects", False)),
-            ),
-        )
-    if "bridge" in enabled:
-        endpoints = _parse_bridge_endpoints(getattr(args, "bridge_endpoint", None) or [])
-        if not endpoints:
-            raise SystemExit("--enable-adapter bridge requires at least one --bridge-endpoint NAME=URL")
-        reg.register(
-            "bridge",
-            ExecutorBridgeAdapter(
-                endpoints=endpoints,
-                default_timeout_s=args.http_timeout_s,
-                max_response_bytes=args.http_max_response_bytes,
-                allow_hosts=args.http_allow_host or [],
-            ),
-        )
-    if "sqlite" in enabled:
-        db = args.sqlite_db or ":memory:"
-        reg.register(
-            "sqlite",
-            SimpleSqliteAdapter(
-                db_path=db,
-                allow_write=bool(args.sqlite_allow_write),
-                allow_tables=args.sqlite_allow_table or [],
-                timeout_s=args.sqlite_timeout_s,
-            ),
-        )
-    if "postgres" in enabled:
-        from adapters.postgres import PostgresAdapter
+# --- adapter spec table ---------------------------------------------------
+#
+# Each adapter registered here is described by an _AdapterSpec entry below.
+# The previous implementation was 22 sequential ``if name in enabled`` blocks
+# with adapter-specific ``getattr`` extraction inline; adding an adapter
+# meant editing two places (this function plus the ``allowed`` list in
+# ``_adapter_registry_from_args``). The table-driven form keeps adapter
+# definitions next to their factories and makes the registration loop
+# trivial.
+#
+# Side-fix included with this refactor: the prior code accidentally indented
+# the wasm registration block under ``if "api" in enabled`` (introduced in
+# 818d5a3), so wasm only registered when api was also enabled. Wasm is now
+# unconditional on its own enablement again.
 
-        reg.register(
-            "postgres",
-            PostgresAdapter(
-                dsn=args.postgres_url or None,
-                host=args.postgres_host or None,
-                port=args.postgres_port,
-                database=args.postgres_db or None,
-                user=args.postgres_user or None,
-                password=args.postgres_password if args.postgres_password else None,
-                sslmode=args.postgres_sslmode or None,
-                sslrootcert=args.postgres_sslrootcert or None,
-                timeout_s=args.postgres_timeout_s,
-                statement_timeout_ms=args.postgres_statement_timeout_ms,
-                allow_write=bool(args.postgres_allow_write),
-                allow_tables=args.postgres_allow_table or [],
-                pool_min_size=args.postgres_pool_min,
-                pool_max_size=args.postgres_pool_max,
-            ),
-        )
-    if "mysql" in enabled:
-        from adapters.mysql import MySQLAdapter
+from dataclasses import dataclass
+from typing import Callable
 
-        reg.register(
-            "mysql",
-            MySQLAdapter(
-                dsn=args.mysql_url or None,
-                host=args.mysql_host or None,
-                port=args.mysql_port,
-                database=args.mysql_db or None,
-                user=args.mysql_user or None,
-                password=args.mysql_password if args.mysql_password else None,
-                ssl_mode=args.mysql_ssl_mode or None,
-                ssl_ca=args.mysql_ssl_ca or None,
-                timeout_s=args.mysql_timeout_s,
-                allow_write=bool(args.mysql_allow_write),
-                allow_tables=args.mysql_allow_table or [],
-                pool_min_size=args.mysql_pool_min,
-                pool_max_size=args.mysql_pool_max,
-            ),
-        )
-    if "redis" in enabled:
-        from adapters.redis import RedisAdapter
 
-        reg.register(
-            "redis",
-            RedisAdapter(
-                url=args.redis_url or None,
-                host=args.redis_host or None,
-                port=args.redis_port,
-                db=args.redis_db,
-                username=args.redis_user or None,
-                password=args.redis_password if args.redis_password else None,
-                ssl=bool(args.redis_ssl),
-                timeout_s=args.redis_timeout_s,
-                allow_write=bool(args.redis_allow_write),
-                allow_prefixes=args.redis_allow_prefix or [],
-            ),
-        )
-    if "dynamodb" in enabled:
-        from adapters.dynamodb import DynamoDBAdapter
+@dataclass(frozen=True)
+class _AdapterSpec:
+    name: str
+    factory: Callable[[argparse.Namespace], RuntimeAdapter]
+    always_on: bool = False
+    extra_enable_env: Optional[str] = None  # e.g. "AINL_ENABLE_PTC"
 
-        reg.register(
-            "dynamodb",
-            DynamoDBAdapter(
-                url=args.dynamodb_url or None,
-                region=args.dynamodb_region or None,
-                timeout_s=args.dynamodb_timeout_s,
-                allow_write=bool(args.dynamodb_allow_write),
-                allow_tables=args.dynamodb_allow_table or [],
-                consistent_read=bool(args.dynamodb_consistent_read),
-            ),
-        )
-    if "airtable" in enabled:
-        from adapters.airtable import AirtableAdapter
 
-        reg.register(
-            "airtable",
-            AirtableAdapter(
-                api_key=args.airtable_api_key or None,
-                base_id=args.airtable_base_id or None,
-                timeout_s=args.airtable_timeout_s,
-                allow_write=bool(args.airtable_allow_write),
-                allow_tables=args.airtable_allow_table or [],
-                allow_attachment_hosts=args.airtable_allow_attachment_host or [],
-                max_page_size=args.airtable_max_page_size,
-            ),
-        )
-    if "supabase" in enabled:
-        from adapters.supabase import SupabaseAdapter
+def _env_truthy(name: str) -> bool:
+    return str(os.environ.get(name, "")).strip().lower() in {"1", "true", "yes", "on"}
 
-        reg.register(
-            "supabase",
-            SupabaseAdapter(
-                db_url=args.supabase_db_url or None,
-                supabase_url=args.supabase_url or None,
-                anon_key=args.supabase_anon_key or None,
-                service_role_key=args.supabase_service_role_key or None,
-                timeout_s=args.supabase_timeout_s,
-                allow_write=bool(args.supabase_allow_write),
-                allow_tables=args.supabase_allow_table or [],
-                allow_buckets=args.supabase_allow_bucket or [],
-                allow_channels=args.supabase_allow_channel or [],
-            ),
+
+# --- factories (kept module-level so they're trivially testable) ----------
+
+def _make_ext(args: argparse.Namespace) -> RuntimeAdapter:
+    return _EchoAdapter()
+
+
+def _make_http(args: argparse.Namespace) -> RuntimeAdapter:
+    return SimpleHttpAdapter(
+        default_timeout_s=args.http_timeout_s,
+        max_response_bytes=args.http_max_response_bytes,
+        allow_hosts=args.http_allow_host or [],
+        payment_profile=str(getattr(args, "http_payment_profile", "none") or "none"),
+        max_payment_rounds=int(getattr(args, "http_max_payment_rounds", 2) or 2),
+    )
+
+
+def _make_a2a(args: argparse.Namespace) -> RuntimeAdapter:
+    hosts = list(getattr(args, "a2a_allow_host", None) or [])
+    allow_loc = bool(getattr(args, "a2a_allow_insecure_local", False))
+    if not hosts and not allow_loc:
+        raise SystemExit(
+            "--enable-adapter a2a requires at least one --a2a-allow-host or --a2a-allow-insecure-local"
         )
-    if "fs" in enabled:
-        if not args.fs_root:
-            raise SystemExit("--fs-root is required when --enable-adapter fs is used")
-        reg.register(
-            "fs",
-            SandboxedFileSystemAdapter(
-                sandbox_root=args.fs_root,
-                max_read_bytes=args.fs_max_read_bytes,
-                max_write_bytes=args.fs_max_write_bytes,
-                allow_extensions=args.fs_allow_ext or [],
-                allow_delete=bool(args.fs_allow_delete),
-            ),
-        )
-    if "tools" in enabled:
-        tools = {
-            "echo": lambda *a, context=None: a[0] if a else None,
-            "sum": lambda a, b, context=None: int(a) + int(b),
-            "join": lambda sep, arr, context=None: str(sep).join([str(x) for x in (arr or [])]),
-        }
-        reg.register("tools", ToolBridgeAdapter(tools, allow_tools=args.tools_allow or tools.keys()))
-    if "db" in enabled:
-        reg.register("db", _InMemoryDbAdapter())
-    if "api" in enabled:
-        reg.register("api", _NullApiAdapter())
-        if "wasm" in enabled:
-            modules: Dict[str, str] = {}
-            for raw in (getattr(args, "wasm_module", None) or []):
-                if "=" not in raw:
-                    raise SystemExit("--wasm-module entries must be name=path")
-                name, path = raw.split("=", 1)
-                name = name.strip()
-                path = path.strip()
-                if not name or not path:
-                    raise SystemExit("--wasm-module entries must be name=path")
-                modules[name] = path
-            if not modules:
-                raise SystemExit("--enable-adapter wasm requires at least one --wasm-module name=path")
-            reg.register("wasm", WasmAdapter(modules=modules, allowed_modules=(getattr(args, "wasm_allow_module", None) or None)))
-    # Always register memory (used by record_decision includes)
+    return A2aAdapter(
+        allow_hosts=hosts,
+        allow_insecure_local=allow_loc,
+        default_timeout_s=float(getattr(args, "a2a_timeout_s", 30.0)),
+        max_response_bytes=int(getattr(args, "a2a_max_response_bytes", 1_000_000)),
+        strict_ssrf=bool(getattr(args, "a2a_strict_ssrf", False)),
+        follow_redirects=bool(getattr(args, "a2a_follow_redirects", False)),
+    )
+
+
+def _make_bridge(args: argparse.Namespace) -> RuntimeAdapter:
+    endpoints = _parse_bridge_endpoints(getattr(args, "bridge_endpoint", None) or [])
+    if not endpoints:
+        raise SystemExit("--enable-adapter bridge requires at least one --bridge-endpoint NAME=URL")
+    return ExecutorBridgeAdapter(
+        endpoints=endpoints,
+        default_timeout_s=args.http_timeout_s,
+        max_response_bytes=args.http_max_response_bytes,
+        allow_hosts=args.http_allow_host or [],
+    )
+
+
+def _make_sqlite(args: argparse.Namespace) -> RuntimeAdapter:
+    return SimpleSqliteAdapter(
+        db_path=args.sqlite_db or ":memory:",
+        allow_write=bool(args.sqlite_allow_write),
+        allow_tables=args.sqlite_allow_table or [],
+        timeout_s=args.sqlite_timeout_s,
+    )
+
+
+def _make_postgres(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.postgres import PostgresAdapter
+
+    return PostgresAdapter(
+        dsn=args.postgres_url or None,
+        host=args.postgres_host or None,
+        port=args.postgres_port,
+        database=args.postgres_db or None,
+        user=args.postgres_user or None,
+        password=args.postgres_password if args.postgres_password else None,
+        sslmode=args.postgres_sslmode or None,
+        sslrootcert=args.postgres_sslrootcert or None,
+        timeout_s=args.postgres_timeout_s,
+        statement_timeout_ms=args.postgres_statement_timeout_ms,
+        allow_write=bool(args.postgres_allow_write),
+        allow_tables=args.postgres_allow_table or [],
+        pool_min_size=args.postgres_pool_min,
+        pool_max_size=args.postgres_pool_max,
+    )
+
+
+def _make_mysql(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.mysql import MySQLAdapter
+
+    return MySQLAdapter(
+        dsn=args.mysql_url or None,
+        host=args.mysql_host or None,
+        port=args.mysql_port,
+        database=args.mysql_db or None,
+        user=args.mysql_user or None,
+        password=args.mysql_password if args.mysql_password else None,
+        ssl_mode=args.mysql_ssl_mode or None,
+        ssl_ca=args.mysql_ssl_ca or None,
+        timeout_s=args.mysql_timeout_s,
+        allow_write=bool(args.mysql_allow_write),
+        allow_tables=args.mysql_allow_table or [],
+        pool_min_size=args.mysql_pool_min,
+        pool_max_size=args.mysql_pool_max,
+    )
+
+
+def _make_redis(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.redis import RedisAdapter
+
+    return RedisAdapter(
+        url=args.redis_url or None,
+        host=args.redis_host or None,
+        port=args.redis_port,
+        db=args.redis_db,
+        username=args.redis_user or None,
+        password=args.redis_password if args.redis_password else None,
+        ssl=bool(args.redis_ssl),
+        timeout_s=args.redis_timeout_s,
+        allow_write=bool(args.redis_allow_write),
+        allow_prefixes=args.redis_allow_prefix or [],
+    )
+
+
+def _make_dynamodb(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.dynamodb import DynamoDBAdapter
+
+    return DynamoDBAdapter(
+        url=args.dynamodb_url or None,
+        region=args.dynamodb_region or None,
+        timeout_s=args.dynamodb_timeout_s,
+        allow_write=bool(args.dynamodb_allow_write),
+        allow_tables=args.dynamodb_allow_table or [],
+        consistent_read=bool(args.dynamodb_consistent_read),
+    )
+
+
+def _make_airtable(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.airtable import AirtableAdapter
+
+    return AirtableAdapter(
+        api_key=args.airtable_api_key or None,
+        base_id=args.airtable_base_id or None,
+        timeout_s=args.airtable_timeout_s,
+        allow_write=bool(args.airtable_allow_write),
+        allow_tables=args.airtable_allow_table or [],
+        allow_attachment_hosts=args.airtable_allow_attachment_host or [],
+        max_page_size=args.airtable_max_page_size,
+    )
+
+
+def _make_supabase(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.supabase import SupabaseAdapter
+
+    return SupabaseAdapter(
+        db_url=args.supabase_db_url or None,
+        supabase_url=args.supabase_url or None,
+        anon_key=args.supabase_anon_key or None,
+        service_role_key=args.supabase_service_role_key or None,
+        timeout_s=args.supabase_timeout_s,
+        allow_write=bool(args.supabase_allow_write),
+        allow_tables=args.supabase_allow_table or [],
+        allow_buckets=args.supabase_allow_bucket or [],
+        allow_channels=args.supabase_allow_channel or [],
+    )
+
+
+def _make_fs(args: argparse.Namespace) -> RuntimeAdapter:
+    if not args.fs_root:
+        raise SystemExit("--fs-root is required when --enable-adapter fs is used")
+    return SandboxedFileSystemAdapter(
+        sandbox_root=args.fs_root,
+        max_read_bytes=args.fs_max_read_bytes,
+        max_write_bytes=args.fs_max_write_bytes,
+        allow_extensions=args.fs_allow_ext or [],
+        allow_delete=bool(args.fs_allow_delete),
+    )
+
+
+def _make_tools(args: argparse.Namespace) -> RuntimeAdapter:
+    tools = {
+        "echo": lambda *a, context=None: a[0] if a else None,
+        "sum": lambda a, b, context=None: int(a) + int(b),
+        "join": lambda sep, arr, context=None: str(sep).join([str(x) for x in (arr or [])]),
+    }
+    return ToolBridgeAdapter(tools, allow_tools=args.tools_allow or tools.keys())
+
+
+def _make_db(args: argparse.Namespace) -> RuntimeAdapter:
+    return _InMemoryDbAdapter()
+
+
+def _make_api(args: argparse.Namespace) -> RuntimeAdapter:
+    return _NullApiAdapter()
+
+
+def _make_wasm(args: argparse.Namespace) -> RuntimeAdapter:
+    modules: Dict[str, str] = {}
+    for raw in (getattr(args, "wasm_module", None) or []):
+        if "=" not in raw:
+            raise SystemExit("--wasm-module entries must be name=path")
+        name, path = raw.split("=", 1)
+        name = name.strip()
+        path = path.strip()
+        if not name or not path:
+            raise SystemExit("--wasm-module entries must be name=path")
+        modules[name] = path
+    if not modules:
+        raise SystemExit("--enable-adapter wasm requires at least one --wasm-module name=path")
+    return WasmAdapter(modules=modules, allowed_modules=(getattr(args, "wasm_allow_module", None) or None))
+
+
+def _make_memory(args: argparse.Namespace) -> RuntimeAdapter:
     mem_db = (
         str(getattr(args, "memory_db", "") or "").strip()
         or os.environ.get("AINL_MEMORY_DB")
         or str(Path.home() / ".openclaw" / "ainl_memory.sqlite3")
     )
-    reg.register("memory", MemoryAdapter(db_path=mem_db))
+    return MemoryAdapter(db_path=mem_db)
+
+
+def _make_fanout(args: argparse.Namespace) -> RuntimeAdapter:
     from adapters.fanout import FanoutAdapter
+
+    return FanoutAdapter()
+
+
+def _make_cache(args: argparse.Namespace) -> RuntimeAdapter:
     from adapters.local_cache import LocalFileCacheAdapter
 
-    reg.register("fanout", FanoutAdapter())
-    reg.register("cache", LocalFileCacheAdapter())
-    from adapters.openclaw_integration import NotificationQueueAdapter, TiktokAdapter, WebAdapter
+    return LocalFileCacheAdapter()
 
-    reg.register("web", WebAdapter())
-    reg.register("tiktok", TiktokAdapter())
-    reg.register("queue", NotificationQueueAdapter())
+
+def _make_web(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.openclaw_integration import WebAdapter
+
+    return WebAdapter()
+
+
+def _make_tiktok(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.openclaw_integration import TiktokAdapter
+
+    return TiktokAdapter()
+
+
+def _make_queue(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.openclaw_integration import NotificationQueueAdapter
+
+    return NotificationQueueAdapter()
+
+
+def _make_browser(args: argparse.Namespace) -> RuntimeAdapter:
     from adapters.browser import BrowserAdapter
 
-    reg.register("browser", BrowserAdapter())
-    if "vector_memory" in enabled:
-        from adapters.vector_memory import VectorMemoryAdapter
+    return BrowserAdapter()
 
-        reg.register("vector_memory", VectorMemoryAdapter())
-    if "embedding_memory" in enabled:
-        from adapters.embedding_memory import EmbeddingMemoryAdapter
 
-        reg.register("embedding_memory", EmbeddingMemoryAdapter())
-    if "code_context" in enabled:
-        from adapters.code_context import CodeContextAdapter
+def _make_vector_memory(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.vector_memory import VectorMemoryAdapter
 
-        reg.register("code_context", CodeContextAdapter())
-    if "tool_registry" in enabled:
-        from adapters.tool_registry import ToolRegistryAdapter
+    return VectorMemoryAdapter()
 
-        reg.register("tool_registry", ToolRegistryAdapter())
-    if "langchain_tool" in enabled:
-        from adapters.langchain_tool import LangchainToolAdapter
 
-        reg.register("langchain_tool", LangchainToolAdapter())
-    if "ptc_runner" in enabled or env_enable_ptc:
-        from adapters.ptc_runner import PtcRunnerAdapter
+def _make_embedding_memory(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.embedding_memory import EmbeddingMemoryAdapter
 
-        reg.register(
-            "ptc_runner",
-            PtcRunnerAdapter(
-                enabled=True,
-                allow_hosts=args.http_allow_host or [],
-                timeout_s=args.http_timeout_s,
-                max_response_bytes=args.http_max_response_bytes,
-            ),
-        )
-    if "llm_query" in enabled or str(os.environ.get("AINL_ENABLE_LLM_QUERY", "")).strip().lower() in {"1", "true", "yes", "on"}:
-        from adapters.llm_query import LlmQueryAdapter
+    return EmbeddingMemoryAdapter()
 
-        reg.register(
-            "llm_query",
-            LlmQueryAdapter(
-                enabled=True,
-                allow_hosts=args.http_allow_host or [],
-                timeout_s=args.http_timeout_s,
-                max_response_bytes=args.http_max_response_bytes,
-            ),
-        )
-    if "audit_trail" in enabled:
-        from adapters.audit_trail import AuditTrailAdapter
 
-        sink = (
-            str(getattr(args, "audit_sink", "") or "").strip()
-            or os.environ.get("AINL_AUDIT_SINK", "").strip()
-            or "stderr://"
-        )
-        reg.register("audit_trail", AuditTrailAdapter(sink=sink))
+def _make_code_context(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.code_context import CodeContextAdapter
+
+    return CodeContextAdapter()
+
+
+def _make_tool_registry(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.tool_registry import ToolRegistryAdapter
+
+    return ToolRegistryAdapter()
+
+
+def _make_langchain_tool(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.langchain_tool import LangchainToolAdapter
+
+    return LangchainToolAdapter()
+
+
+def _make_ptc_runner(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.ptc_runner import PtcRunnerAdapter
+
+    return PtcRunnerAdapter(
+        enabled=True,
+        allow_hosts=args.http_allow_host or [],
+        timeout_s=args.http_timeout_s,
+        max_response_bytes=args.http_max_response_bytes,
+    )
+
+
+def _make_llm_query(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.llm_query import LlmQueryAdapter
+
+    return LlmQueryAdapter(
+        enabled=True,
+        allow_hosts=args.http_allow_host or [],
+        timeout_s=args.http_timeout_s,
+        max_response_bytes=args.http_max_response_bytes,
+    )
+
+
+def _make_audit_trail(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.audit_trail import AuditTrailAdapter
+
+    sink = (
+        str(getattr(args, "audit_sink", "") or "").strip()
+        or os.environ.get("AINL_AUDIT_SINK", "").strip()
+        or "stderr://"
+    )
+    return AuditTrailAdapter(sink=sink)
+
+
+# Order matters only for repeatable registration logs; behavior is independent.
+# Conditional adapters first (matching the original ordering), then always-on.
+_ADAPTER_SPECS: List[_AdapterSpec] = [
+    _AdapterSpec("ext", _make_ext),
+    _AdapterSpec("http", _make_http),
+    _AdapterSpec("a2a", _make_a2a),
+    _AdapterSpec("bridge", _make_bridge),
+    _AdapterSpec("sqlite", _make_sqlite),
+    _AdapterSpec("postgres", _make_postgres),
+    _AdapterSpec("mysql", _make_mysql),
+    _AdapterSpec("redis", _make_redis),
+    _AdapterSpec("dynamodb", _make_dynamodb),
+    _AdapterSpec("airtable", _make_airtable),
+    _AdapterSpec("supabase", _make_supabase),
+    _AdapterSpec("fs", _make_fs),
+    _AdapterSpec("tools", _make_tools),
+    _AdapterSpec("db", _make_db),
+    _AdapterSpec("api", _make_api),
+    _AdapterSpec("wasm", _make_wasm),
+    _AdapterSpec("memory", _make_memory, always_on=True),
+    _AdapterSpec("fanout", _make_fanout, always_on=True),
+    _AdapterSpec("cache", _make_cache, always_on=True),
+    _AdapterSpec("web", _make_web, always_on=True),
+    _AdapterSpec("tiktok", _make_tiktok, always_on=True),
+    _AdapterSpec("queue", _make_queue, always_on=True),
+    _AdapterSpec("browser", _make_browser, always_on=True),
+    _AdapterSpec("vector_memory", _make_vector_memory),
+    _AdapterSpec("embedding_memory", _make_embedding_memory),
+    _AdapterSpec("code_context", _make_code_context),
+    _AdapterSpec("tool_registry", _make_tool_registry),
+    _AdapterSpec("langchain_tool", _make_langchain_tool),
+    _AdapterSpec("ptc_runner", _make_ptc_runner, extra_enable_env="AINL_ENABLE_PTC"),
+    _AdapterSpec("llm_query", _make_llm_query, extra_enable_env="AINL_ENABLE_LLM_QUERY"),
+    _AdapterSpec("audit_trail", _make_audit_trail),
+]
+
+
+def _register_enabled_adapters(reg: AdapterRegistry, args: argparse.Namespace) -> None:
+    enabled = set(args.enable_adapter or [])
+    for spec in _ADAPTER_SPECS:
+        if not (
+            spec.always_on
+            or spec.name in enabled
+            or (spec.extra_enable_env is not None and _env_truthy(spec.extra_enable_env))
+        ):
+            continue
+        reg.register(spec.name, spec.factory(args))
 
 
 def _pretty_runtime_error(err: Exception) -> str:
@@ -472,22 +582,9 @@ def _pretty_runtime_error(err: Exception) -> str:
 
 def _load_config(args) -> dict:
     """Load YAML config from args.config or AINL_CONFIG env, expanding environment variables."""
-    import yaml
-    config_path = getattr(args, "config", None) or os.environ.get("AINL_CONFIG")
-    if not config_path:
-        return {}
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f) or {}
-    # Recursively expand environment variables in all strings
-    def _expand(value):
-        if isinstance(value, str):
-            return os.path.expandvars(value)
-        if isinstance(value, dict):
-            return {k: _expand(v) for k, v in value.items()}
-        if isinstance(value, list):
-            return [_expand(v) for v in value]
-        return value
-    return _expand(raw)
+    from tooling.config_loader import load_config_from_args_or_env
+
+    return load_config_from_args_or_env(args)
 
 
 def cmd_run_hybrid_ptc(args: argparse.Namespace) -> int:
