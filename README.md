@@ -247,7 +247,7 @@ It is designed for teams building AI workflows that need multiple steps, state a
 
 ### CLI polish (OpenClaw, v1.3.3+)
 
-These commands are implemented in **`cli/main.py`** and documented in **`docs/QUICKSTART_OPENCLAW.md`**. For bots and IDE tools, **`tooling/bot_bootstrap.json`** exposes the same surface under **`openclaw_commands`** (plus **`ai_native_lang_example_yml`**). Project lock example files: **`aiNativeLang.example.yml`** (repo root) and **`tooling/aiNativeLang.example.yml`** (packaged wheels).
+These commands are implemented in **`cli/main.py`** and documented in **`docs/agents/openclaw-operator.md`**. For bots and IDE tools, **`tooling/bot_bootstrap.json`** exposes the same surface under **`openclaw_commands`** (plus **`ai_native_lang_example_yml`**). Project lock example files: **`aiNativeLang.example.yml`** (repo root) and **`tooling/aiNativeLang.example.yml`** (packaged wheels).
 
 | Command | What it does |
 |--------|----------------|
@@ -408,7 +408,7 @@ L1: Call retry/ENTRY ->out J out
 
 See **Includes & modules** below for `timeout.ainl`, strict rules, and the starter table.
 
-**AI agents:** See `AI_AGENT_QUICKSTART_OPENCLAW.md` for a full agent onboarding guide, or `docs/BOT_ONBOARDING.md` for the machine-readable bootstrap path.
+**AI agents:** See `docs/agents/openclaw-quickstart.md` for a full agent onboarding guide, or `docs/BOT_ONBOARDING.md` for the machine-readable bootstrap path.
 
 **Deeper setup:** See `docs/INSTALL.md` for platform-specific install, Docker, and pre-commit setup.
 
@@ -984,7 +984,7 @@ Workflow memory is **externalized through adapters** (not the prompt). Productio
 ### Examples and case studies
 
 - Example support levels: `docs/EXAMPLE_SUPPORT_MATRIX.md`
-- OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md`
+- OpenClaw agent quickstart: `docs/agents/openclaw-quickstart.md`
 - Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage
 - Workflow patterns: `docs/PATTERNS.md`
 

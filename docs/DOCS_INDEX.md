@@ -27,7 +27,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **Consultant reports index**: `CONSULTANT_REPORTS.md` (see also `AI_CONSULTANT_REPORT_APOLLO.md`)
 - **Agent field reports (OpenClaw / ops narratives)**: `agent_reports/README.md` (e.g. `ainl-king-openclaw-2026-03-19.md`)
 - **Intelligence AINL programs** (`memory`, context injection, summarizer): `docs/INTELLIGENCE_PROGRAMS.md`
-- **OpenClaw quickstart (5 min: ainl install openclaw, ainl status, ainl doctor --ainl):** `docs/QUICKSTART_OPENCLAW.md` — `tooling/bot_bootstrap.json` → **`openclaw_quickstart`**
+- **OpenClaw quickstart (5 min: ainl install openclaw, ainl status, ainl doctor --ainl):** `docs/agents/openclaw-operator.md` — `tooling/bot_bootstrap.json` → **`openclaw_quickstart`**
 - **OpenClaw + AINL gold standard (install / upgrade, agent checklist):** `docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md` — also `tooling/bot_bootstrap.json` → **`openclaw_ainl_gold_standard`**
 - **OpenClaw host briefing — AINL v1.2.8–v1.8.0 (what ships vs host obligations; current PyPI v1.8.0):** `docs/operations/OPENCLAW_HOST_AINL_1_2_8.md` — **`openclaw_host_ainl_1_2_8`**
 - **Token / usage observability (gateway, markdown, rolling budget, caps, embedding pilot):** `docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`
@@ -84,7 +84,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - **ArmaraOS + bootstrap (`ainl install armaraos`, `~/.armaraos/config.toml`, `~/.armaraos/bin/ainl-run`):** `docs/ARMARAOS_INTEGRATION.md` — includes **`ainl emit --target armaraos`** Hand pack (**`HAND.toml`**, **`<stem>.ainl.json`**, **`security.json`**, README) with **`schema_version`** for **openfang-hands** / **`openfang hand validate`**; **`AINL_BUNDLE_PATH`** / bundle **`.ainlbundle`** for scheduled **`ainl run`**; host narrative: **armaraos** [`docs/scheduled-ainl.md`](https://github.com/sbhooley/armaraos/blob/main/docs/scheduled-ainl.md). Emitter hub: `docs/emitters/README.md` § *ArmaraOS Hand package emitter*. (PostHog for the **desktop app** is configured on the **armaraos** repo / marketing site env — not in this compiler repo.)
 - **ArmaraOS JSON graph memory (`ainl_graph_memory`, `MemoryRecall`/`MemorySearch`, typed `EdgeType` + `persona.update`, viz server, Python inbox `AinlMemorySyncWriter` + schema/CI):** `docs/adapters/AINL_GRAPH_MEMORY.md` · **Inbox contract + env:** `armaraos/docs/graph-memory-sync.md` · SQLite procedural **MemoryMerge** (`memory.merge`, `store_pattern`/`recall_pattern`): `docs/adapters/MEMORY_CONTRACT.md` §3.7 · demos `demo/procedural_roundtrip_demo.py`, `demo/ainl_graph_memory_demo.py` · tests `tests/test_memory_recall_op.py`, `tests/test_memory_search_op.py`, `tests/test_memory_merge.py`, `tests/test_semantic_edges.py`, `armaraos/bridge/tests/test_ainl_memory_sync.py` · inbox schema `armaraos/bridge/ainl_graph_memory_inbox_schema_v1.json`, workflow `.github/workflows/cross-repo-armaraos-bridge.yml`
 - Case studies: `docs/case_studies/` — graph-native vs prompt-loop agents, runtime cost advantage, long-context memory
-- OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
+- OpenClaw agent quickstart: `docs/agents/openclaw-quickstart.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
 - Workflow patterns: `docs/PATTERNS.md`
 - Safe optimization policy (language vs compiler optimization guardrails): `docs/runtime/SAFE_OPTIMIZATION_POLICY.md`
 - Machine-readable support levels: `tooling/support_matrix.json`
@@ -135,7 +135,7 @@ These docs describe **advanced, extension/OpenClaw, and coordination** features.
 They are intended for operators and advanced users, not as the safe-default
 entry point for new users or unsupervised agents.
 
-- OpenClaw agent quickstart: `AI_AGENT_QUICKSTART_OPENCLAW.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
+- OpenClaw agent quickstart: `docs/agents/openclaw-quickstart.md` · **OpenClaw skill + MCP:** `docs/OPENCLAW_INTEGRATION.md`
 - Agent coordination contract (multi-agent envelopes/spec): `docs/advanced/AGENT_COORDINATION_CONTRACT.md`
 - Safe use and threat model: `docs/advanced/SAFE_USE_AND_THREAT_MODEL.md`
 - Adapter inventory and conventions (including extension/OpenClaw adapters): `docs/reference/ADAPTER_REGISTRY.md`, `docs/adapters/OPENCLAW_ADAPTERS.md`
@@ -174,7 +174,7 @@ entry point for new users or unsupervised agents.
 
 ## AI-Agent Continuity and Handoff
 
-- Agent handoff protocol and persistence checklist: `docs/AI_AGENT_CONTINUITY.md`
+- Agent handoff protocol and persistence checklist: `docs/agents/continuity.md`
 - AI agent contribution guide: `docs/CONTRIBUTING_AI_AGENTS.md`
 - Docs update protocol: `docs/DOCS_MAINTENANCE.md`
 - Tool API contract for loop orchestration: `docs/reference/TOOL_API.md`
