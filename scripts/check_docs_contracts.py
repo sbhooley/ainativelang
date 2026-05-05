@@ -46,7 +46,9 @@ REQUIRED_LINKS = {
         "docs/RUNTIME_COMPILER_CONTRACT.md",
         "docs/DOCS_MAINTENANCE.md",
     ],
-    "docs/AI_AGENT_CONTINUITY.md": [
+    # Note: docs/AI_AGENT_CONTINUITY.md was moved to docs/agents/continuity.md
+    # (see PR consolidating agent guides). The original path is a stub redirect.
+    "docs/agents/continuity.md": [
         "docs/RUNTIME_COMPILER_CONTRACT.md",
         "docs/DOCS_MAINTENANCE.md",
     ],
