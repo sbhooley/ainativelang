@@ -7,7 +7,11 @@
 This file is a stub redirect. Update bookmarks and inbound links to the new path. The consolidated doc covers OpenClaw, ZeroClaw, and Hermes side-by-side; per-host specialty (Apollo X promoter, ZeroClaw bridge monitoring wrappers, Hermes learning loop) lives under each host's section.
 
 - **ZeroClaw section:** [`integrations/MCP_HOSTS.md#zeroclaw`](integrations/MCP_HOSTS.md#zeroclaw)
-- **Bridge monitoring cadence overview (anchor preserved):** [`integrations/MCP_HOSTS.md#cadence-overview`](integrations/MCP_HOSTS.md#cadence-overview)
+- **Bridge monitoring cadence overview:** [`integrations/MCP_HOSTS.md#cadence-overview`](integrations/MCP_HOSTS.md#cadence-overview) (the `#cadence-overview` anchor below preserves inbound links such as `ZEROCLAW_INTEGRATION.md#cadence-overview` that were valid before this stub redirect)
 - **All MCP hosts (one-table reference):** [`getting_started/HOST_MCP_INTEGRATIONS.md`](getting_started/HOST_MCP_INTEGRATIONS.md)
 - **ZeroClaw skill files:** [`../skills/ainl/`](../skills/ainl/)
 - **Native bridge code:** [`../zeroclaw/bridge/README.md`](../zeroclaw/bridge/README.md)
+
+<a id="cadence-overview"></a>
+
+The cadence overview table moved verbatim — see [`integrations/MCP_HOSTS.md#cadence-overview`](integrations/MCP_HOSTS.md#cadence-overview) for the daily/weekly/monthly bridge monitoring wrappers, suggested cron lines, and notify routing.

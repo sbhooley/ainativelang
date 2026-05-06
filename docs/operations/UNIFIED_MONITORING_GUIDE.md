@@ -90,7 +90,7 @@ Scans up to **14** recent `YYYY-MM-DD.md` files under the memory directory, pars
 
 **JSON stdout (ZeroClaw runner only):** prints **`{"status": "ok", "out": …, "wrapper": …}`** on **`--dry-run`** or when **`--json`** / **`--output=json`** is set; add **`--pretty`** for indented JSON. **Live** runs omit stdout by default (unlike **`openclaw/bridge/run_wrapper_ainl.py`**, which always prints a JSON envelope with **`"ok": true`**).
 
-At-a-glance cadence, cron hints, and notify prefixes: **[`docs/ZEROCLAW_INTEGRATION.md`](../ZEROCLAW_INTEGRATION.md#cadence-overview)**.
+At-a-glance cadence, cron hints, and notify prefixes: **[`docs/integrations/MCP_HOSTS.md#cadence-overview`](../integrations/MCP_HOSTS.md#cadence-overview)** (consolidated from the former `docs/ZEROCLAW_INTEGRATION.md`; that path still resolves via stub redirect).
 
 ---
 
