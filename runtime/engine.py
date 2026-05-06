@@ -1475,146 +1475,12 @@ class RuntimeEngine:
             **graph_data,
         }
 
-    def _memory_patch_dispatch(
-        self,
-        *,
-        memory_node_id: str,
-        label_name: str,
-        frame: Dict[str, Any],
-        lid: str,
-        idx: int,
-        stack: List[str],
-    ) -> Dict[str, Any]:
-        """
-        GraphPatch runtime dispatch:
-        1. Call bridge to get pattern steps from ainl-memory
-        2. Validate dataflow (reads vs. current frame)
-        3. Normalize to full IR label body
-        4. Install into self.labels with __patched__ marker
-        """
-        resolved_label = _norm_lid(label_name)
-        if not resolved_label:
-            return {"ok": False, "error": "empty patch label_name"}
-
-        existing_body = self.labels.get(resolved_label)
-        if existing_body is not None and not existing_body.get("__patched__"):
-            raise OverwriteGuardError(
-                f"GraphPatch cannot overwrite compiled label {resolved_label!r}"
-            )
-
-        call_ctx = dict(frame)
-        call_ctx["_runtime_async"] = self.runtime_async
-        call_ctx["_observability"] = self.observability
-        call_ctx["_adapter_registry"] = self.adapters
-
-        # Query ainl-memory for the procedural node
-        bridge_result = self.adapters.call(
-            "ainl_graph_memory",
-            "graph_patch",
-            [memory_node_id, label_name],
-            call_ctx,
-        )
-
-        if not bridge_result or not bridge_result.get("ok"):
-            error_msg = bridge_result.get("error", "Unknown error") if bridge_result else "No response from bridge"
-            return {"ok": False, "error": error_msg}
-
-        steps = bridge_result.get("steps", [])
-        if not steps:
-            return {"ok": False, "error": "No steps returned from memory node"}
-
-        # Validate dataflow
-        validation_error = self._runtime_validate_patch_dataflow(steps, label_name, frame)
-        if validation_error:
-            return {"ok": False, "error": validation_error}
-
-        # Normalize patch
-        normalized = self._runtime_normalize_patch(steps, label_name)
-
-        patch_nid = str(bridge_result.get("node_id") or "")
-        patch_ver = int(bridge_result.get("patch_version") or 1)
-        declared_reads = list(normalized.get("__declared_reads__") or [])
-        merged: Dict[str, Any] = {
-            **normalized,
-            "__patch_node_id__": patch_nid,
-            "__patch_version__": patch_ver,
-            "__fitness__": 0.5,
-        }
-
-        # Install patch
-        self.labels[resolved_label] = merged
-
-        try:
-            bridge = self.adapters.get("ainl_graph_memory")
-            if bridge is not None and patch_nid:
-                bridge._store.finalize_patch(patch_nid, declared_reads, persist=True)
-        except Exception:
-            pass
-
-        _LOG.info(
-            f"GraphPatch: installed label '{resolved_label}' from memory node '{memory_node_id}' "
-            f"with {len(steps)} steps, {len(declared_reads)} declared reads"
-        )
-
-        return {
-            "ok": True,
-            "label": resolved_label,
-            "steps": len(steps),
-            "declared_reads": declared_reads,
-        }
-
-    def _reinstall_patches(self) -> None:
-        """
-        Re-install all active PatchRegistry entries from the GraphStore
-        into self.labels on engine boot. Skips labels that already exist
-        in the compiled IR (overwrite guard: __patched__ only).
-        Logs a warning for each skipped collision.
-        """
-        try:
-            bridge = self.adapters.get("ainl_graph_memory")
-            if bridge is None:
-                return
-            agent_id = str(
-                (self.ir.get("services") or {})
-                .get("core", {})
-                .get("agent_id", "")
-                or "armaraos"
-            )
-            records = bridge._store.get_patch_registry(agent_id=agent_id)
-            for rec in records:
-                if rec.label_name in self.labels:
-                    existing = self.labels[rec.label_name]
-                    if not existing.get("__patched__"):
-                        _LOG.warning(
-                            "GraphPatch boot: skipping label %r — "
-                            "already exists as compiled label",
-                            rec.label_name,
-                        )
-                        continue
-                # Retrieve steps from the source pattern node
-                source_node = bridge._store.get_node(rec.source_pattern_node_id)
-                if source_node is None:
-                    _LOG.warning(
-                        "GraphPatch boot: source node %r missing for label %r",
-                        rec.source_pattern_node_id, rec.label_name,
-                    )
-                    continue
-                steps = (source_node.payload or {}).get("steps") or []
-                if not steps:
-                    continue
-                normalized = self._runtime_normalize_patch(steps, rec.label_name)
-                self.labels[rec.label_name] = {
-                    "__patched__": True,
-                    "__declared_reads__": set(rec.declared_reads),
-                    "__patch_node_id__": rec.node_id,
-                    "__patch_version__": rec.patch_version,
-                    "__fitness__": rec.fitness,
-                    **normalized,
-                }
-            if records:
-                _LOG.info(f"GraphPatch boot: reinstalled {len(records)} patch(es)")
-        except Exception as e:
-            _LOG.warning("GraphPatch boot reinstall failed: %s", e)
+    # GraphPatch runtime dispatch + boot-time reinstall live in
+    # runtime/graph_engine.py and are attached at the bottom of this
+    # module (search for ``_install_graph_engine_methods``). See
+    # docstring on that module for the late-binding rationale.
+    # Signatures are preserved for callers (self._memory_patch_dispatch /
+    # self._reinstall_patches).
 
     def _exec_step(
         self,
@@ -1826,50 +1692,9 @@ class RuntimeEngine:
             return {"action": "continue", "out": None}
         return None
 
-    def _source_context(self, lineno: Optional[int]) -> Dict[str, Any]:
-        if not lineno or lineno < 1:
-            return {}
-        line = self._source_lines[lineno - 1] if lineno - 1 < len(self._source_lines) else ""
-        cst = self._cst_by_line.get(lineno, {})
-        op_tok = None
-        for t in (cst.get("tokens") or []):
-            if t.get("kind") in ("bare", "string"):
-                op_tok = t
-                break
-        return {"lineno": lineno, "line": line, "op_span": op_tok.get("span") if isinstance(op_tok, dict) else None}
-
-    def _raise_runtime_error(
-        self,
-        err: Exception,
-        lid: str,
-        idx: int,
-        op: str,
-        stack: List[str],
-        frame: Dict[str, Any],
-        step: Dict[str, Any],
-        *,
-        node_id: Optional[str] = None,
-    ) -> None:
-        self._emit_trajectory_fail(lid, op, frame, step, err, node_id=node_id)
-        public_lid = stack[-2] if lid == "__tmp__" and len(stack) >= 2 else lid
-        ctx = self._source_context(step.get("lineno"))
-        msg = str(err)
-        if ctx:
-            msg = f"{msg} [line={ctx.get('lineno')} source={ctx.get('line')!r}]"
-        data = {
-            "cause_type": type(err).__name__,
-            "cause_message": str(err),
-            "lineno": ctx.get("lineno") if ctx else None,
-            "source": ctx.get("line") if ctx else None,
-        }
-        code = ERROR_CODE_ADAPTER_ERROR if isinstance(err, AdapterError) else ERROR_CODE_RUNTIME_OP_ERROR
-        if isinstance(err, AdapterError) and "capability gate" in str(err):
-            data["user_hint"] = (
-                "This step needs an adapter your host has not enabled. "
-                "See the error text for AINL_HOST_ADAPTER_ALLOWLIST, AINL_HOST_ADAPTER_DENYLIST, "
-                "AINL_STRICT_MODE, and AINL_SECURITY_PROFILE."
-            )
-        raise AinlRuntimeError(msg, public_lid, idx, op, stack, code=code, data=data)
+    # _source_context and _raise_runtime_error live in
+    # runtime/error_handler.py and are attached at the bottom of this
+    # module (search for ``_install_error_handler_methods``).
 
     def _next_linear_node_edge(
         self, out_edges: List[Dict[str, Any]], lid: str, idx: int, op: str, stack: List[str]
@@ -1916,54 +1741,9 @@ class RuntimeEngine:
             code=ERROR_CODE_GRAPH_AMBIGUOUS_NEXT,
         )
 
-    def _route_graph_error(
-        self,
-        err: Exception,
-        *,
-        cur: Optional[str],
-        out_by_from: Dict[str, List[Dict[str, Any]]],
-        node_by_id: Dict[str, Dict[str, Any]],
-        active_err_handler: Optional[str],
-        lid: str,
-        idx: int,
-        op: str,
-        stack: List[str],
-        frame: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        err_edge = next((ed for ed in out_by_from.get(cur, []) if ed.get("port") == "err"), None)
-        handler: Optional[str] = None
-        if err_edge and err_edge.get("to_kind") == "node":
-            err_node = node_by_id.get(err_edge.get("to"))
-            h_step = (err_node or {}).get("data", {})
-            if h_step.get("op") == "Err":
-                handler = _norm_lid(h_step.get("handler"))
-        if not handler:
-            handler = active_err_handler
-        if not handler:
-            return {"handled": False}
-        if handler in stack:
-            raise AinlRuntimeError(
-                f"error handler recursion detected: handler={handler} failing_op={op}",
-                lid,
-                idx,
-                op,
-                stack,
-                code=ERROR_CODE_ERR_HANDLER_RECURSION,
-            )
-        frame["_error"] = str(err)
-        step_data = (node_by_id.get(cur or "") or {}).get("data")
-        if not isinstance(step_data, dict):
-            step_data = {"op": op}
-        if self._trajectory_log_path:
-            self._emit_trajectory_fail(lid, op, frame, step_data, err, node_id=cur)
-        if self.trace_enabled:
-            self.trace_events.append(
-                {"err_routed": True, "from_node": cur, "handler": handler, "label": lid}
-            )
-            if self.trace_sink is not None:
-                self.trace_sink(self.trace_events[-1])
-        out = self._run_label(handler, frame, stack, force_steps=False)
-        return {"handled": True, "out": out}
+    # _route_graph_error lives in runtime/error_handler.py and is
+    # attached at the bottom of this module (search for
+    # ``_install_error_handler_methods``).
 
     def _node_index_map_for_steps(self, steps: List[Dict[str, Any]]) -> Dict[str, int]:
         """Mirror compiler steps_to_graph node numbering: nth step op => n<nth>."""
@@ -2917,6 +2697,7 @@ class RuntimeEngine:
     async def _run_label_async(self, label_id: str, frame: Dict[str, Any], stack: List[str], force_steps: bool = False) -> Any:
         if not stack:
             self._start_run()
+            frame['_run_id'] = str(uuid.uuid4())
         lid = self._resolve_label_key(label_id, stack)
         stack = stack + [lid]
         self._guard_depth(stack)
@@ -2983,6 +2764,9 @@ class RuntimeEngine:
                     body_l = _norm_lid(s.get("body"))
                     after = _norm_lid(s.get("after"))
                     arr = ref if isinstance(ref, list) else []
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None and len(arr) > max_loop_iters:
+                        raise AinlRuntimeError("max_loop_iters exceeded", lid, i, op, stack, code=ERROR_CODE_MAX_LOOP_ITERS)
                     for it in arr:
                         frame[item_var] = it
                         out = await self._run_label_async(body_l, frame, stack, force_steps=False)
@@ -3000,6 +2784,9 @@ class RuntimeEngine:
                     body_l = _norm_lid(s.get("body"))
                     after = _norm_lid(s.get("after"))
                     limit = int(s.get("limit", 10000))
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None:
+                        limit = min(limit, max_loop_iters)
                     n = 0
                     while self._eval_cond(cond_tok, frame):
                         out = await self._run_label_async(body_l, frame, stack, force_steps=False)
@@ -3037,6 +2824,13 @@ class RuntimeEngine:
                     return shared.get("out")
                 self._emit_trace(lid, op, i, t0, frame, shared.get("out") if shared else None, trajectory_step=s)
                 i += 1
+            except AinlRuntimeError:
+                # Preserve structured error codes (e.g. RUNTIME_MAX_LOOP_ITERS,
+                # RUNTIME_WHILE_LIMIT) the agent/MCP contract relies on. The
+                # broad except below would otherwise rewrap as RUNTIME_OP_ERROR.
+                # See sync sibling at L2297.
+                self._emit_trajectory_fail(lid, op, frame, s, None)
+                raise
             except Exception as e:
                 self._raise_runtime_error(e, lid, i, op, stack, frame, s)
         return None
@@ -3059,6 +2853,15 @@ class RuntimeEngine:
         guard = 0
         while cur and cur in node_by_id:
             guard += 1
+            if guard > 100000:
+                raise AinlRuntimeError(
+                    "graph execution guard exceeded",
+                    lid,
+                    guard,
+                    "GRAPH",
+                    stack,
+                    code=ERROR_CODE_GRAPH_EXEC_GUARD,
+                )
             n = node_by_id[cur]
             step = n.get("data") or {}
             op = step.get("op", n.get("op", ""))
@@ -3093,6 +2896,9 @@ class RuntimeEngine:
                     body_edge = edge_by_from_port_kind.get((cur, "body", "label"))
                     after_edge = edge_by_from_port_kind.get((cur, "after", "label"))
                     arr = ref if isinstance(ref, list) else []
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None and len(arr) > max_loop_iters:
+                        raise AinlRuntimeError("max_loop_iters exceeded", lid, idx, op, stack, code=ERROR_CODE_MAX_LOOP_ITERS)
                     for it in arr:
                         frame[item_var] = it
                         if body_edge:
@@ -3111,6 +2917,9 @@ class RuntimeEngine:
                     body_edge = edge_by_from_port_kind.get((cur, "body", "label"))
                     after_edge = edge_by_from_port_kind.get((cur, "after", "label"))
                     limit = int(step.get("limit", 10000))
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None:
+                        limit = min(limit, max_loop_iters)
                     n_iter = 0
                     while self._eval_cond(cond_tok, frame):
                         n_iter += 1
@@ -3145,6 +2954,14 @@ class RuntimeEngine:
                         return shared.get("out")
                 nxt = self._next_linear_node_edge(out_by_from.get(cur, []), lid, idx, op, stack)
                 cur = nxt.get("to") if nxt else None
+            except AinlRuntimeError as e:
+                # Preserve structured error codes (e.g. RUNTIME_MAX_LOOP_ITERS,
+                # RUNTIME_WHILE_LIMIT, RUNTIME_GRAPH_EXEC_GUARD) the
+                # agent/MCP contract relies on. The broad except below would
+                # otherwise rewrap as RUNTIME_OP_ERROR. See sync sibling at
+                # L2848.
+                self._emit_trajectory_fail(lid, op, frame, step, e, node_id=cur)
+                raise
             except Exception as e:
                 self._raise_runtime_error(e, lid, idx, op, stack, frame, step, node_id=cur)
         return None
@@ -3214,3 +3031,45 @@ def run_with_debug(
         return {"ok": True, "result": out, "trace": engine.get_trace()}
     except AinlRuntimeError as e:
         return {"ok": False, "error": e.to_dict(), "trace": engine.get_trace()}
+
+
+# --- late-bound module splits --------------------------------------------
+#
+# Two extracted modules attach onto RuntimeEngine here:
+#
+# - runtime/graph_engine.py: GraphPatch dispatch + boot-time reinstall
+#   (see sbhooley/ainativelang#39 P1-7).
+# - runtime/error_handler.py: source-context helper, runtime-error
+#   shaping, and graph error routing (same audit ref).
+#
+# Both modules import names from this module (OverwriteGuardError,
+# AinlRuntimeError, AdapterError, error-code constants, _LOG,
+# _norm_lid). Importing them here -- at the very bottom -- ensures
+# those names are already in scope before the cyclic import resolves.
+# Callers continue to use the original ``self.X(...)`` shape exactly
+# as before; Python's descriptor protocol turns regular functions into
+# bound methods when accessed via the class.
+def _install_graph_engine_methods() -> None:
+    from runtime.graph_engine import (
+        _memory_patch_dispatch as _gp_memory_patch_dispatch,
+        _reinstall_patches as _gp_reinstall_patches,
+    )
+
+    RuntimeEngine._memory_patch_dispatch = _gp_memory_patch_dispatch
+    RuntimeEngine._reinstall_patches = _gp_reinstall_patches
+
+
+def _install_error_handler_methods() -> None:
+    from runtime.error_handler import (
+        _source_context as _eh_source_context,
+        _raise_runtime_error as _eh_raise_runtime_error,
+        _route_graph_error as _eh_route_graph_error,
+    )
+
+    RuntimeEngine._source_context = _eh_source_context
+    RuntimeEngine._raise_runtime_error = _eh_raise_runtime_error
+    RuntimeEngine._route_graph_error = _eh_route_graph_error
+
+
+_install_graph_engine_methods()
+_install_error_handler_methods()
