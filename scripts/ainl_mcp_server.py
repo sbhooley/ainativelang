@@ -924,20 +924,9 @@ if _HAS_MCP:
 
 def _load_config_from_path(config_path: str) -> dict:
     """Load YAML config from path and expand environment variables."""
-    import yaml
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f) or {}
+    from tooling.config_loader import load_yaml_config
 
-    def _expand(v):
-        if isinstance(v, str):
-            return os.path.expandvars(v)
-        if isinstance(v, dict):
-            return {k: _expand(v) for k, v in v.items()}
-        if isinstance(v, list):
-            return [_expand(x) for x in v]
-        return v
-
-    return _expand(raw)
+    return load_yaml_config(config_path)
 
 
 def _ir_from_compilation_diagnostic_error(exc: CompilationDiagnosticError) -> Dict[str, Any]:
