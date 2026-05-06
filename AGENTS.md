@@ -46,14 +46,14 @@ compiler_v2.py          — The compiler (6864 lines). Parses .ainl → IR dict.
 compiler_diagnostics.py — Error/warning types used by compiler.
 runtime/engine.py       — The runtime engine (3216 lines). Executes IR graphs.
 runtime/adapters/       — Runtime adapter base classes and builtins.
-cli/main.py             — CLI entry point (3398 lines). All `ainl` commands.
+cli/main.py             — CLI entry point (3492 lines). All `ainl` commands.
 adapters/               — 65 Python files under `adapters/` (recursive); ArmaraOS monitor bootstrap: `armaraos_integration.py`, `armaraos_defaults.py` (`build_armaraos_monitor_registry`, `boot_armaraos_graph_memory`). See `docs/ARMARAOS_INTEGRATION.md`, `docs/adapters/AINL_GRAPH_MEMORY.md`.
 armaraos/emitter/       — `armaraos.py`: `ainl emit --target armaraos` Hand pack (`HAND.toml`, IR JSON, `security.json`, README) with `schema_version` for openfang-hands validation.
 scripts/                — Standalone scripts (`refresh_repo_stats.py`, emit_langgraph, emit_temporal, `ainl_mcp_server.py` MCP entrypoint, etc).
 tooling/                — Graph analysis, normalization, effect analysis; `ainl_get_started.py` (authoring wizard + adapter contracts), `corpus_mining.py` (strict-valid family index for `corpus/strict_valid_family_index.json`).
 corpus/                 — Generated/mined JSON (e.g. `strict_valid_family_index.json`, `reverse_prompt_fixtures.json`); see `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`.
 examples/               — 98+ `.ainl` files under `examples/` (strict CI subset: `tooling/artifact_profiles.json`). See `examples/README.md`.
-tests/                  — 1049 `*.py` files under `tests/` (~306k lines total); 214 `test_*.py` modules; pytest collect-only unavailable (run with dev deps). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
+tests/                  — 1051 `*.py` files under `tests/` (~307k lines total); 216 `test_*.py` modules; pytest —collect-only: 1389/1428 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
 docs/                   — Documentation (some accurate, some aspirational — see **`STATUS.yaml`**).
 ```
 <!-- repo-stats:layout-end -->

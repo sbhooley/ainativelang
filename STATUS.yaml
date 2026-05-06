@@ -1,5 +1,5 @@
 # STATUS.yaml — What is real vs aspirational
-# stats_refreshed: 2026-05-05 (UTC) — run: python scripts/refresh_repo_stats.py
+# stats_refreshed: 2026-05-06 (UTC) — run: python scripts/refresh_repo_stats.py
 
 real_and_working:
   compiler:
@@ -16,7 +16,7 @@ real_and_working:
 
   cli:
     file: cli/main.py
-    lines: 3398
+    lines: 3492
     status: production
     commands:
       - "ainl run"
@@ -54,11 +54,13 @@ real_and_working:
       test_named_py_files: "Files named test_*.py under tests/ (pytest test modules)."
       lines_python_under_tests: "Sum of lines of all *.py under tests/."
       pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
-    py_files_under_tests: 1049
-    test_named_py_files: 214
-    lines_python_under_tests: 306366
-    lines_python_under_tests_rounded: "~306k"
-    pytest_collect_only: "unavailable — could not parse pytest collection output"
+    py_files_under_tests: 1051
+    test_named_py_files: 216
+    lines_python_under_tests: 306996
+    lines_python_under_tests_rounded: "~307k"
+    pytest_collect_only_selected: 1389
+    pytest_collect_only_total: 1428
+    pytest_deselected: 39
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 
   examples:
