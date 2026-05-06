@@ -25,6 +25,22 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def _normalize_status_yaml_for_repo_stats_compare(text: str) -> str:
+    """Strip the rolling ``# stats_refreshed: YYYY-MM-DD (UTC)`` comment line.
+
+    ``render_status_real_section`` embeds *today's* UTC calendar date on every
+    regeneration. Without ignoring that line, ``--check`` fails on CI whenever
+    the committed snapshot was refreshed on a different UTC day than the
+    workflow run, even when all counters match the tree.
+    """
+    out: list[str] = []
+    for line in text.splitlines(keepends=True):
+        if line.startswith("# stats_refreshed:"):
+            continue
+        out.append(line)
+    return "".join(out)
+
+
 @dataclass
 class RepoStats:
     generated_at: str
@@ -381,11 +397,12 @@ def main() -> int:
     agents_path = root / "AGENTS.md"
     old_agents = agents_path.read_text(encoding="utf-8")
 
-    status_changed = new_status != old_status
-    agents_changed = new_agents != old_agents
-
     if args.check:
-        if status_changed or agents_changed:
+        status_ok = _normalize_status_yaml_for_repo_stats_compare(
+            new_status
+        ) == _normalize_status_yaml_for_repo_stats_compare(old_status)
+        agents_ok = new_agents == old_agents
+        if not status_ok or not agents_ok:
             print(
                 "repo-stats: STATUS.yaml or AGENTS.md are out of date; run:",
                 "python scripts/refresh_repo_stats.py",

@@ -53,7 +53,7 @@ scripts/                — Standalone scripts (`refresh_repo_stats.py`, emit_la
 tooling/                — Graph analysis, normalization, effect analysis; `ainl_get_started.py` (authoring wizard + adapter contracts), `corpus_mining.py` (strict-valid family index for `corpus/strict_valid_family_index.json`).
 corpus/                 — Generated/mined JSON (e.g. `strict_valid_family_index.json`, `reverse_prompt_fixtures.json`); see `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`.
 examples/               — 98+ `.ainl` files under `examples/` (strict CI subset: `tooling/artifact_profiles.json`). See `examples/README.md`.
-tests/                  — 1051 `*.py` files under `tests/` (~307k lines total); 216 `test_*.py` modules; pytest —collect-only: 1389/1428 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
+tests/                  — 1052 `*.py` files under `tests/` (~307k lines total); 217 `test_*.py` modules; pytest —collect-only: 1390/1429 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
 docs/                   — Documentation (some accurate, some aspirational — see **`STATUS.yaml`**).
 ```
 <!-- repo-stats:layout-end -->
