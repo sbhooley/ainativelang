@@ -2,6 +2,13 @@
 
 Canonical **wire + security** docs for outbound agent integrations live in this folder. Read **`AGENTS.md`** (repo root) first for HTTP `R` line rules, queue forms, and strict example policy.
 
+## MCP host integrations (OpenClaw / ZeroClaw / Hermes)
+
+| Doc | What it covers |
+|-----|----------------|
+| **[`MCP_HOSTS.md`](./MCP_HOSTS.md)** | Single guide for installing AINL as an MCP-native skill in **OpenClaw**, **ZeroClaw**, and **Hermes**. Per-host install paths, bridges, ZeroClaw bridge monitoring wrappers, and the Hermes closed learning loop. Replaces the previous per-host docs (now stub redirects). |
+| **[`hermes-agent.md`](./hermes-agent.md)** | Hermes Agent — marketing-style intro for the integrations index; deep-dive lives in `MCP_HOSTS.md#hermes`. |
+
 ## IDE / developer workflows
 
 | Doc | What it covers |
