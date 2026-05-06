@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "core_only": { "adapter_allow": ["core"] },
+    "http_core": { "adapter_allow": ["core", "http"] },
+    "standard_io": {
+      "adapter_allow": ["core", "http", "sqlite", "fs", "cache"]
+    },
+    "graph_memory": {
+      "adapter_allow": ["core", "memory", "ainl_graph_memory"]
+    }
+  }
+}

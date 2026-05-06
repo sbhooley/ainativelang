@@ -13,6 +13,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
+from runtime.graph_memory_limits import (
+    export_max_edges,
+    export_max_nodes,
+    max_bundle_file_bytes,
+    max_json_bytes,
+    max_nodes_per_json,
+    max_persona_traits,
+)
 
 from armaraos.bridge.ainl_memory_sync import AinlMemorySyncWriter
 
@@ -497,6 +505,26 @@ def _dry_run(context: Dict[str, Any]) -> bool:
     return os.environ.get("AINL_DRY_RUN", "").strip().lower() in ("1", "true", "yes", "on")
 
 
+def _json_file_within_size(path: Path) -> bool:
+    """Return False (and log) if on-disk file exceeds :func:`~runtime.graph_memory_limits.max_json_bytes`."""
+    try:
+        sz = path.stat().st_size
+    except OSError as e:
+        logger.warning("graph memory: cannot stat %s: %s", path, e)
+        return False
+    cap = max_json_bytes()
+    if sz > cap:
+        logger.error(
+            "graph memory: refusing to read %s (%d bytes > AINL_GRAPH_MEMORY_MAX_JSON_BYTES cap %d); "
+            "raise the cap or shrink the file to load it",
+            path,
+            sz,
+            cap,
+        )
+        return False
+    return True
+
+
 class GraphStore:
     """JSON file graph: nodes + edges with atomic replace and TTL pruning.
 
@@ -516,30 +544,51 @@ class GraphStore:
     def _load(self) -> None:
         self._nodes = {}
         self._edges = {}
+        node_cap = max_nodes_per_json()
         exp = _armaraos_export_snapshot_path()
         if exp and exp.is_file():
-            try:
-                snap_raw = exp.read_text(encoding="utf-8").strip()
-                if snap_raw:
-                    snap = json.loads(snap_raw)
-                    if isinstance(snap, dict) and _looks_like_armaraos_snapshot(snap):
-                        for n in snap.get("nodes") or []:
-                            if isinstance(n, dict):
-                                mn = _memory_node_from_rust_export(n)
-                                if mn:
-                                    self._nodes[mn.id] = mn
-                        for eid, me in _memory_edges_from_rust_export(snap.get("edges")).items():
-                            self._edges[eid] = me
-                        logger.info(
-                            "loaded ArmaraOS graph snapshot from %s (%d nodes, %d edges)",
-                            exp,
-                            len(self._nodes),
-                            len(self._edges),
-                        )
-            except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
-                logger.warning("ArmaraOS graph export load failed (%s): %s", exp, e)
+            if not _json_file_within_size(exp):
+                pass
+            else:
+                try:
+                    snap_raw = exp.read_text(encoding="utf-8").strip()
+                    if snap_raw:
+                        snap = json.loads(snap_raw)
+                        if isinstance(snap, dict) and _looks_like_armaraos_snapshot(snap):
+                            snap_nodes = snap.get("nodes") or []
+                            seen_snap = 0
+                            skipped_snap = 0
+                            for n in snap_nodes:
+                                if node_cap is not None and seen_snap >= node_cap:
+                                    skipped_snap += 1
+                                    continue
+                                seen_snap += 1
+                                if isinstance(n, dict):
+                                    mn = _memory_node_from_rust_export(n)
+                                    if mn:
+                                        self._nodes[mn.id] = mn
+                            for eid, me in _memory_edges_from_rust_export(snap.get("edges")).items():
+                                self._edges[eid] = me
+                            if skipped_snap:
+                                logger.warning(
+                                    "ArmaraOS snapshot %s: skipped %d nodes (AINL_GRAPH_MEMORY_MAX_NODES cap %s)",
+                                    exp,
+                                    skipped_snap,
+                                    node_cap,
+                                )
+                            logger.info(
+                                "loaded ArmaraOS graph snapshot from %s (%d nodes, %d edges)",
+                                exp,
+                                len(self._nodes),
+                                len(self._edges),
+                            )
+                except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
+                    logger.warning("ArmaraOS graph export load failed (%s): %s", exp, e)
 
         if not self.path.is_file():
+            self._prune_expired_unlocked()
+            return
+        if not _json_file_within_size(self.path):
             self._prune_expired_unlocked()
             return
         try:
@@ -555,13 +604,27 @@ class GraphStore:
         if not isinstance(data, dict):
             self._prune_expired_unlocked()
             return
-        for item in data.get("nodes") or []:
+        store_nodes = data.get("nodes") or []
+        skipped_main = 0
+        seen_main = 0
+        for item in store_nodes:
+            if node_cap is not None and seen_main >= node_cap:
+                skipped_main += 1
+                continue
+            seen_main += 1
             if isinstance(item, dict) and item.get("id"):
                 try:
                     n = MemoryNode.from_dict(item)
                     self._nodes[n.id] = n
                 except (KeyError, TypeError, ValueError):
                     continue
+        if skipped_main:
+            logger.warning(
+                "graph memory %s: skipped %d nodes (AINL_GRAPH_MEMORY_MAX_NODES cap %s)",
+                self.path,
+                skipped_main,
+                node_cap,
+            )
         for item in data.get("edges") or []:
             if isinstance(item, dict) and item.get("id"):
                 try:
@@ -734,12 +797,35 @@ class GraphStore:
             return list(self._edges.values())
 
     def export_graph(self) -> Dict[str, Any]:
+        max_n = export_max_nodes()
+        max_e = export_max_edges()
         with self._lock:
             self._prune_expired_unlocked()
-            return {
-                "nodes": [n.to_dict() for n in self._nodes.values()],
-                "edges": [e.to_dict() for e in self._edges.values()],
-            }
+            nodes_list = list(self._nodes.values())
+            total_nodes = len(nodes_list)
+            if max_n is not None and total_nodes > max_n:
+                nodes_list.sort(key=lambda n: float(n.created_at), reverse=True)
+                nodes_list = nodes_list[:max_n]
+            kept_ids = {n.id for n in nodes_list}
+            node_dicts = [n.to_dict() for n in nodes_list]
+
+            edges_list = [e for e in self._edges.values() if e.src in kept_ids and e.dst in kept_ids]
+            total_edges_avail = len(edges_list)
+            if max_e is not None and len(edges_list) > max_e:
+                edges_list = edges_list[:max_e]
+            edge_dicts = [e.to_dict() for e in edges_list]
+
+            out: Dict[str, Any] = {"nodes": node_dicts, "edges": edge_dicts}
+            truncated = (max_n is not None and total_nodes > len(node_dicts)) or (
+                max_e is not None and total_edges_avail > len(edge_dicts)
+            )
+            if truncated:
+                out["export_truncated"] = True
+                out["export_total_nodes"] = total_nodes
+                out["export_total_edges"] = len(self._edges)
+                out["export_returned_nodes"] = len(node_dicts)
+                out["export_returned_edges"] = len(edge_dicts)
+            return out
 
     def flush(self) -> None:
         """Persist current nodes and edges after prior non-persisting mutations."""
@@ -971,45 +1057,60 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
         # Pre-seed from bundle if provided by the host runtime (scheduled `ainl run`).
         bundle_path = (os.environ.get("AINL_BUNDLE_PATH") or "").strip()
         if bundle_path and os.path.exists(bundle_path):
+            skip_bundle = False
             try:
-                from runtime.ainl_bundle import AINLBundle
-
-                bundle = AINLBundle.load(bundle_path)
-                for persona_node in bundle.persona or []:
-                    if not isinstance(persona_node, dict):
-                        persona_skipped += 1
-                        continue
-                    try:
-                        self.call(
-                            "persona.update",
-                            {
-                                "trait_name": persona_node.get("trait_name"),
-                                "strength": persona_node.get("strength", 0.0),
-                                "learned_from": persona_node.get("learned_from", []),
-                            },
-                            {},
-                        )
-                        persona_restored += 1
-                    except Exception:
-                        persona_skipped += 1
-                        logger.debug("bundle persona row skipped", exc_info=True)
+                bsz = os.path.getsize(bundle_path)
+            except OSError:
+                bsz = -1
+            cap_bundle = max_bundle_file_bytes()
+            if bsz >= 0 and bsz > cap_bundle:
+                logger.warning(
+                    "AINL bundle preload skipped: %s is %d bytes (cap AINL_BUNDLE_MAX_FILE_BYTES=%d)",
+                    bundle_path,
+                    bsz,
+                    cap_bundle,
+                )
+                skip_bundle = True
+            if not skip_bundle:
                 try:
-                    mem_ins, mem_skip_ex, mem_skip_inv = self._preseed_memory_nodes_from_bundle(
-                        bundle, agent_id=agent_id, dry_run=dry
+                    from runtime.ainl_bundle import AINLBundle
+
+                    bundle = AINLBundle.load(bundle_path)
+                    for persona_node in bundle.persona or []:
+                        if not isinstance(persona_node, dict):
+                            persona_skipped += 1
+                            continue
+                        try:
+                            self.call(
+                                "persona.update",
+                                {
+                                    "trait_name": persona_node.get("trait_name"),
+                                    "strength": persona_node.get("strength", 0.0),
+                                    "learned_from": persona_node.get("learned_from", []),
+                                },
+                                {},
+                            )
+                            persona_restored += 1
+                        except Exception:
+                            persona_skipped += 1
+                            logger.debug("bundle persona row skipped", exc_info=True)
+                    try:
+                        mem_ins, mem_skip_ex, mem_skip_inv = self._preseed_memory_nodes_from_bundle(
+                            bundle, agent_id=agent_id, dry_run=dry
+                        )
+                    except Exception:
+                        logger.debug("bundle memory pre-seed batch failed", exc_info=True)
+                    logger.info(
+                        "graph memory bundle boot: persona_restored=%d persona_skipped=%d memory_restored=%d "
+                        "memory_skip_existing=%d memory_skip_invalid=%d",
+                        persona_restored,
+                        persona_skipped,
+                        mem_ins,
+                        mem_skip_ex,
+                        mem_skip_inv,
                     )
                 except Exception:
-                    logger.debug("bundle memory pre-seed batch failed", exc_info=True)
-                logger.info(
-                    "graph memory bundle boot: persona_restored=%d persona_skipped=%d memory_restored=%d "
-                    "memory_skip_existing=%d memory_skip_invalid=%d",
-                    persona_restored,
-                    persona_skipped,
-                    mem_ins,
-                    mem_skip_ex,
-                    mem_skip_inv,
-                )
-            except Exception:
-                logger.warning("AINL bundle load or pre-seed failed (%s)", bundle_path, exc_info=True)
+                    logger.warning("AINL bundle load or pre-seed failed (%s)", bundle_path, exc_info=True)
         nid = _new_id("boot")
         node = MemoryNode(
             id=nid,
@@ -1131,6 +1232,9 @@ class AINLGraphMemoryBridge(RuntimeAdapter):
                     pl.setdefault("trait_name", str(n.label).split(":", 1)[-1])
                 traits.append(PersonaNode.from_payload(pl))
             traits.sort(key=lambda p: -p.strength)
+            cap_tr = max_persona_traits()
+            if len(traits) > cap_tr:
+                traits = traits[:cap_tr]
             trait_dicts = [p.to_payload() for p in traits]
             persona_context = {p.trait_name: float(p.strength) for p in traits if p.strength >= 0.1}
             return {"traits": trait_dicts, "persona_context": persona_context}

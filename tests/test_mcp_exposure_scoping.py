@@ -115,6 +115,7 @@ class TestExposureProfiles:
         assert tools == {
             "ainl_get_started",
             "ainl_step_examples",
+            "ainl_wizard_checkpoint",
             "ainl_adapter_contract",
             "ainl_validate",
             "ainl_compile",
@@ -126,6 +127,7 @@ class TestExposureProfiles:
         assert tools == {
             "ainl_get_started",
             "ainl_step_examples",
+            "ainl_wizard_checkpoint",
             "ainl_adapter_contract",
             "ainl_validate",
             "ainl_compile",

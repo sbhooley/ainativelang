@@ -269,3 +269,49 @@ def test_bundle_round_trip_preserves_non_persona_memory(tmp_path: Path, monkeypa
         got = bridge_b._store.get_node(nid)
         assert got is not None, nid
         assert got.agent_id == "rt_ag"
+
+
+def test_graph_store_refuses_oversize_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """GraphStore skips json.loads when file exceeds AINL_GRAPH_MEMORY_MAX_JSON_BYTES."""
+    gp = tmp_path / "huge.json"
+    gp.write_text(" " * 80, encoding="utf-8")
+    monkeypatch.setenv("AINL_GRAPH_MEMORY_MAX_JSON_BYTES", "10")
+    store = GraphStore(path=gp)
+    assert len(store._nodes) == 0
+
+
+def test_export_graph_truncates_with_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("AINL_GRAPH_EXPORT_MAX_NODES", "2")
+    monkeypatch.setenv("AINL_GRAPH_EXPORT_MAX_EDGES", "50")
+    gp = tmp_path / "exp.json"
+    ts = time.time()
+    store = GraphStore(path=gp)
+    for i in range(5):
+        store.write_node(
+            MemoryNode(
+                id=f"n{i}",
+                node_type=NodeType.SEMANTIC.value,
+                agent_id="a",
+                label=f"L{i}",
+                payload={"i": i},
+                tags=[],
+                created_at=ts + float(i),
+            ),
+            persist=False,
+        )
+    out = store.export_graph()
+    assert out.get("export_truncated") is True
+    assert len(out["nodes"]) == 2
+    assert out.get("export_total_nodes") == 5
+
+
+def test_boot_skips_bundle_over_file_cap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    bundle_path = tmp_path / "big.ainlbundle"
+    bundle_path.write_text("x" * 400, encoding="utf-8")
+    monkeypatch.setenv("AINL_BUNDLE_PATH", str(bundle_path))
+    monkeypatch.setenv("AINL_BUNDLE_MAX_FILE_BYTES", "200")
+    gp = tmp_path / "g.json"
+    bridge = AINLGraphMemoryBridge(GraphStore(path=gp))
+    bridge.boot(agent_id="cap_ag")
+    traits = bridge._store.find_by_type(NodeType.PERSONA.value, agent_id="cap_ag")
+    assert traits == []

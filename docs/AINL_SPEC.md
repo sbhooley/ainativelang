@@ -613,5 +613,102 @@ bridge.memory_patch(
 
 ---
 
+## 7. ToolRegistry & ToolPatch — Capability Registry and Active Patch
+
+This section gives **the same registry/patch discipline** as §6—**ToolRegistry** (what may exist), **ToolPatch** (bounded active subset), **PatchRegistry** (host enforcement)—applied to **tool and adapter capabilities**. Naming aligns with [`architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md`](architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md).
+
+**Relationship to §6 GraphPatch (important):**
+
+| §6 **GraphPatch** | §7 **ToolPatch** |
+|-------------------|------------------|
+| Promotes **PROCEDURAL memory → live IR labels**; **`R memory.patch`**; structural change to **callable graph**. | Constrains **which adapter/tool ids** may run **for a scope**; does **not** install new labels from memory. |
+| **PatchRegistry** stores **`PATCH`** nodes (graph store), reinstalls labels at boot. | **PatchRegistry** (same enforcement *idea*) gates **dispatch**: allowed **`R adapter.op`** / tool names ⊆ **ToolPatch**. |
+
+So: ToolPatch **follows the same architectural pattern** as GraphPatch (registry ⊇ patch ⊇ enforcement), and **tools are part of the execution graph** (each `R` step is a graph transition)—§7 patches **that transition set**, not the **label-installation** mechanics of §6. Treat §6 and §7 as **sibling patch families** under one **AINL patch taxonomy**, not as §7 being a special case *inside* the §6 memory-patch opcode.
+
+**Relationship to §6 (one line):** §6 patches **what labels exist** from memory; §7 patches **which capabilities are legal** for invocation—not replacing `R http.GET` syntax, but constraining **whether** a given op is allowed **for this scope**.
+
+### 7.1 Concepts (normative vocabulary)
+
+| Concept | Meaning |
+|---------|---------|
+| **ToolRegistry** | Canonical **allowlist** of tool identifiers (+ optional argument/result contracts) for a **scope** (session, agent, compiled graph run, org bundle). |
+| **ToolPatch** | **Active subset** of **ToolRegistry** for the current **mode** or **turn**. Invariant: **`ToolPatch ⊆ ToolRegistry`**. |
+| **PatchRegistry** (host) | Execution gate: reject or no-op calls whose tool id **∉ ToolPatch** (and usual policy), even if a model proposed them. |
+
+**Two surfaces, same §7 vocabulary:**
+
+1. **Compiled IR** — Adapters referenced by `R adapter.op` remain **IR-declared**; **ToolPatch** may further narrow **which** adapter verbs are in play when the host overlays session/manifest policy (intersects with existing host adapter allowlists).
+2. **Agent / MCP tools** — Named tools (`file_read`, `mcp_ainl_validate`, …) are registry entries; **ToolPatch** selects the subset exposed to planning/LLM surfaces.
+
+### 7.2 IR representation (target)
+
+Compiled IR **may** carry optional structured hooks (exact JSON shape is versioned; hosts must ignore unknown keys):
+
+```json
+"services": {
+  "tool_surface": {
+    "registry_ref": "session-or-bundle-id",
+    "patch_profile": "deterministic|heuristic|freestyle",
+    "explicit_allow": ["file_read", "mcp_ainl_validate"],
+    "schema_version": 1
+  }
+}
+```
+
+- **`explicit_allow`** — When present, defines **ToolPatch** as a set of names (must each resolve against **ToolRegistry** for that scope).
+- **`patch_profile`** — Named profile resolved by host / control plane to an allowlist (product-defined).
+
+Hosts **merge** §7 data with manifest and security policy; **narrowing** wins over widening.
+
+### 7.3 Surface syntax (design preview — not yet required to compile)
+
+> **⚠️ DESIGN PREVIEW:** Until listed in `STATUS.yaml` / compiler release notes, compact/opcode forms below are **aspirational**. Validators may reject them unless `strict_mode` allows experimental ops. Prefer IR `services.tool_surface` from emitters or host injection until syntax lands.
+
+**Target compact declarations (illustrative):**
+
+```ainl
+# Illustrative only — routing TBD in compiler_v2 / preprocessor
+config tool_surface:
+  registry inline_or_ref
+  patch_profile deterministic
+```
+
+**Target opcode-style invocation (illustrative):**
+
+```ainl
+# Illustrative: set active patch for remainder of scope / label
+R tool_patch.SetAllowlist ["file_read", "mcp_ainl_compile"] ->_
+```
+
+Exact verb names and adapter namespace (`tool_patch.*` vs `tool_registry.*`) are **reserved** pending [`architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md`](architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md) implementation phases.
+
+### 7.4 Compiler & runtime obligations (roadmap)
+
+| Layer | Obligation |
+|-------|------------|
+| **Compiler** | Preserve `services.tool_surface` in IR; optional static check: every `R adapter.op` in IR references adapters **compatible** with declared patch when patch is statically known. |
+| **Runtime** | Intersect **ToolPatch** with **host adapter registry** before dispatch; emit structured **`TOOL_PATCH_DENY`** (or host equivalent) when a call would violate patch. |
+| **Emitters** | May omit §7 blocks when target has no tool surface; ArmaraOS / control-plane emitters should populate from session bundles. |
+
+### 7.5 Cross-document references
+
+- Platform vocabulary and phased adoption: [`architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md`](architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md).  
+- Control-plane wire formats (HTTP session, router JSON): sibling **[ainl-inference-server](https://github.com/sbhooley/ainl-inference-server)** `docs/architecture/TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md`, `INFER_SESSION_PROTOCOL_AND_CACHE_PLAN.md`.  
+- Trust boundary (infer does not execute tools): `docs/PLANNER_HOST_BOUNDARIES.md` in that repo.
+
+### 7.6 Implementation status
+
+| Item | Status |
+|------|--------|
+| Vocabulary in spec (this §7) | **Current** |
+| IR `services.tool_surface` | **Roadmap** — schema negotiation with ArmaraOS / control plane |
+| Compact / `R tool_patch.*` syntax | **Design preview** — requires `compiler_v2` + opcode registry work |
+| Host PatchRegistry enforcement | **Roadmap** — ArmaraOS tool runner |
+
+**Implementation backlog:** [`architecture/TOOL_SURFACE_CANONICALIZATION_CHECKLIST.md`](architecture/TOOL_SURFACE_CANONICALIZATION_CHECKLIST.md) — schemas, compiler preservation/checks, runtime dispatch guard, tests, cross-repo alignment.
+
+---
+
 **Note:** GraphPatch is **experimental** and under active development. The API may change in minor versions. Production use should pin to specific patch versions and test reinstall behavior thoroughly.
 

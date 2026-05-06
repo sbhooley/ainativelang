@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainl.dev/schemas/tool_surface_v1.schema.json",
+  "title": "AINL services.tool_surface v1",
+  "description": "ToolPatch / PatchRegistry carrier embedded under IR[\"services\"][\"tool_surface\"]. Registry keys match AdapterRegistry names after routing (e.g. ainl_graph_memory for memory.recall). See docs/architecture/TOOL_SURFACE_CANONICALIZATION_CHECKLIST.md.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": ["integer", "string"],
+      "description": "Schema revision for forward-compatible hosts."
+    },
+    "registry_ref": {
+      "type": "string",
+      "description": "Optional URI or pointer to a ToolRegistry bundle."
+    },
+    "patch_profile": {
+      "type": "string",
+      "description": "Named patch profile (resolved by host / session hydrator)."
+    },
+    "adapter_allow": {
+      "type": "array",
+      "description": "Nonempty allowlist of AdapterRegistry adapter names (after routing). Omit or leave unset for no IR-level narrowing.",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "explicit_allow": {
+      "type": "array",
+      "description": "Host/agent tool ids (OpenFang / MCP names); not used by the Python runtime R-step gate in v1.",
+      "items": { "type": "string" }
+    },
+    "contract_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

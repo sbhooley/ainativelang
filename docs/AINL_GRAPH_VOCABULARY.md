@@ -10,4 +10,4 @@ This repository uses **three distinct graph concepts**. Confusing them causes in
 
 **Rule of thumb:** *Repo intelligence MCP* answers “where in the codebase?” — AINL answers “what does this workflow *do* when run?”
 
-See also: [`CONTEXT_FRESHNESS.md`](CONTEXT_FRESHNESS.md). ArmaraOS policy boundaries: sibling repo `armaraos/docs/POLICY_BOUNDARIES.md`.
+See also: [`CONTEXT_FRESHNESS.md`](CONTEXT_FRESHNESS.md). ArmaraOS policy boundaries: sibling repo `armaraos/docs/POLICY_BOUNDARIES.md`. **Capability patching vocabulary** (ToolRegistry / ToolPatch / host PatchRegistry): [`architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md`](architecture/TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md).

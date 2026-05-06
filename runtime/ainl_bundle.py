@@ -20,10 +20,13 @@ whitepaper and arXiv preprint.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger("ainl.bundle")
 
 BUNDLE_VERSION = "1.0"
 
@@ -157,6 +160,15 @@ class AINLBundleBuilder:
             out = graph_bridge.call("export_graph", [], {})
             if not isinstance(out, dict):
                 return []
+            if out.get("export_truncated"):
+                logger.warning(
+                    "bundle snapshot used truncated graph export "
+                    "(total_nodes=%s returned_nodes=%s total_edges=%s returned_edges=%s)",
+                    out.get("export_total_nodes"),
+                    out.get("export_returned_nodes"),
+                    out.get("export_total_edges"),
+                    out.get("export_returned_edges"),
+                )
             nodes = out.get("nodes") or []
             if not isinstance(nodes, list):
                 return []

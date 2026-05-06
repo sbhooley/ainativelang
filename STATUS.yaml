@@ -4,13 +4,13 @@
 real_and_working:
   compiler:
     file: compiler_v2.py
-    lines: 6864
+    lines: 6943
     status: production
     notes: "Parses .ainl → IR. Multiple emitters. Fully tested."
 
   runtime:
     file: runtime/engine.py
-    lines: 3075
+    lines: 3106
     status: production
     notes: "Executes IR graphs. Async support. Observability."
 
@@ -54,12 +54,12 @@ real_and_working:
       test_named_py_files: "Files named test_*.py under tests/ (pytest test modules)."
       lines_python_under_tests: "Sum of lines of all *.py under tests/."
       pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
-    py_files_under_tests: 1054
-    test_named_py_files: 219
-    lines_python_under_tests: 307391
-    lines_python_under_tests_rounded: "~307k"
-    pytest_collect_only_selected: 1406
-    pytest_collect_only_total: 1445
+    py_files_under_tests: 1055
+    test_named_py_files: 220
+    lines_python_under_tests: 307517
+    lines_python_under_tests_rounded: "~308k"
+    pytest_collect_only_selected: 1415
+    pytest_collect_only_total: 1454
     pytest_deselected: 39
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 

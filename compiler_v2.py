@@ -3349,6 +3349,80 @@ class AICodeCompiler:
             "avm_policy_fragment": avm_fragment,
         }
 
+    def _merge_preserved_services(self, preserved: Optional[Dict[str, Any]]) -> None:
+        """Host-injected services (e.g. session ToolPatch) merged before IR emit."""
+        if not preserved:
+            return
+        ts = preserved.get("tool_surface")
+        if isinstance(ts, dict):
+            self.services["tool_surface"] = copy.deepcopy(ts)
+
+    def _finalize_tool_surface(self) -> None:
+        """Resolve ``patch_profile``, validate shape, emit strict unknown-profile errors."""
+        from tooling.tool_surface import (
+            effective_tool_surface,
+            validate_patch_profile_known,
+            validate_tool_surface_shape,
+        )
+
+        ts = self.services.get("tool_surface")
+        if isinstance(ts, dict):
+            resolved = effective_tool_surface(ts)
+            if resolved is not None:
+                self.services["tool_surface"] = resolved
+        ts2 = self.services.get("tool_surface")
+        for msg in validate_tool_surface_shape(ts2):
+            self._errors.append(msg)
+        pname: Optional[str] = None
+        if isinstance(ts2, dict):
+            pp = ts2.get("patch_profile")
+            if pp is not None:
+                pname = str(pp).strip() or None
+        for msg in validate_patch_profile_known(pname, strict=self.strict_mode):
+            self._errors.append(msg)
+
+    def _validate_tool_surface_r_steps(self, _context: Optional[CompilerContext]) -> None:
+        from tooling.tool_surface import (
+            adapter_allow_set,
+            registry_dispatch_key_for_step,
+        )
+
+        ts = self.services.get("tool_surface")
+        allow = adapter_allow_set(ts)
+        if not allow or not self.strict_mode:
+            return
+
+        def _emit(msg: str) -> None:
+            self._errors.append(msg)
+
+        for lid, body in (self.labels or {}).items():
+            legacy = (body or {}).get("legacy") or {}
+            for step in (legacy.get("steps") or []):
+                if not isinstance(step, dict):
+                    continue
+                key = registry_dispatch_key_for_step(step, MODULE_ALIASES)
+                if not key or key in allow:
+                    continue
+                op = str(step.get("op") or "").strip()
+                _emit(
+                    f"Label {lid!r}: step op={op!r} resolves to registry key {key!r}, "
+                    f"not allowed by services.tool_surface.adapter_allow={sorted(allow)!r}",
+                )
+            for n in (body or {}).get("nodes") or []:
+                if not isinstance(n, dict):
+                    continue
+                st = n.get("data") or {}
+                gop = str(st.get("op") or n.get("op") or "").strip()
+                row = dict(st) if isinstance(st, dict) else {}
+                row["op"] = gop
+                key = registry_dispatch_key_for_step(row, MODULE_ALIASES)
+                if not key or key in allow:
+                    continue
+                _emit(
+                    f"Label {lid!r}: graph node op={gop!r} resolves to registry key {key!r}, "
+                    f"not allowed by services.tool_surface.adapter_allow={sorted(allow)!r}",
+                )
+
     def compile(
         self,
         code: str,
@@ -3357,6 +3431,7 @@ class AICodeCompiler:
         context: Optional[CompilerContext] = None,
         source_path: Optional[str] = None,
         include_ancestors: Optional[Set[str]] = None,
+        preserved_services: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         from ainl_preprocess import preprocess as _compact_preprocess
         code = _compact_preprocess(code)
@@ -5318,6 +5393,10 @@ class AICodeCompiler:
 
         # Add fuzzy suggestions to errors before returning IR
         self._augment_errors_with_suggestions()
+
+        self._merge_preserved_services(preserved_services)
+        self._finalize_tool_surface()
+        self._validate_tool_surface_r_steps(context)
 
         if context is not None:
             # Phase 2–3: merge native diagnostics (rich spans/suggestions) with string-derived

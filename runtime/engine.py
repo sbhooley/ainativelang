@@ -20,6 +20,7 @@ from compiler_v2 import (
     _steps_to_nodes_edges,
 )
 from tooling.graph_normalize import normalize_labels
+from tooling.tool_surface import dispatch_registry_key, effective_tool_surface, narrow_allowed_adapters
 from runtime.values import compare, deep_get, deep_put, json_safe, stable_sort, truthy
 from runtime.adapters.base import AdapterRegistry, AdapterError
 from runtime.adapters.builtins import CoreBuiltinAdapter
@@ -245,6 +246,7 @@ ERROR_CODE_ERR_HANDLER_RECURSION = "RUNTIME_ERR_HANDLER_RECURSION"
 ERROR_CODE_GRAPH_EXEC_GUARD = "RUNTIME_GRAPH_EXEC_GUARD"
 ERROR_CODE_ADAPTER_ERROR = "RUNTIME_ADAPTER_ERROR"
 ERROR_CODE_RUNTIME_OP_ERROR = "RUNTIME_OP_ERROR"
+ERROR_CODE_TOOL_PATCH_DENY = "RUNTIME_TOOL_PATCH_DENY"
 
 
 class RuntimeEngine:
@@ -318,6 +320,9 @@ class RuntimeEngine:
         if effective_deny:
             deny_set = set(effective_deny)
             allowed = [a for a in allowed if a not in deny_set]
+        _ts = (ir.get("services") or {}).get("tool_surface")
+        _ts_eff = effective_tool_surface(_ts) if isinstance(_ts, dict) else None
+        allowed, self._tool_surface_allow = narrow_allowed_adapters(allowed, _ts_eff if _ts_eff is not None else _ts)
         if adapters is not None:
             self.adapters = adapters
             for name in allowed:
@@ -379,6 +384,29 @@ class RuntimeEngine:
         except Exception:
             pass
 
+    def _tool_patch_guard(self, adapter: str, lid: str, idx: int, op: str, stack: List[str]) -> None:
+        """Enforce ``services.tool_surface.adapter_allow`` before adapter dispatch."""
+        allow = self._tool_surface_allow
+        if not allow:
+            return
+        key = dispatch_registry_key(str(adapter or ""), MODULE_ALIASES)
+        if not key or key in allow:
+            return
+        raise AinlRuntimeError(
+            f"adapter registry key {key!r} denied by services.tool_surface.adapter_allow "
+            f"(allowed={sorted(allow)!r})",
+            lid,
+            idx,
+            op,
+            stack,
+            code=ERROR_CODE_TOOL_PATCH_DENY,
+            data={
+                "dispatch_key": key,
+                "adapter": str(adapter or ""),
+                "adapter_allow": sorted(allow),
+            },
+        )
+
     @classmethod
     def from_code(
         cls,
@@ -401,6 +429,7 @@ class RuntimeEngine:
         observability_jsonl_path: Optional[str] = None,
         host_adapter_allowlist: Optional[List[str]] = None,
         host_adapter_denylist: Optional[List[str]] = None,
+        preserved_services: Optional[Dict[str, Any]] = None,
     ) -> "RuntimeEngine":
         if source_path:
             try:
@@ -420,7 +449,7 @@ class RuntimeEngine:
             except Exception:
                 pass
         c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
-        ir = c.compile(code, emit_graph=True, source_path=source_path)
+        ir = c.compile(code, emit_graph=True, source_path=source_path, preserved_services=preserved_services)
         if ir.get("errors"):
             raise RuntimeError("compile failed: " + "; ".join(ir.get("errors", [])[:5]))
         return cls(
@@ -998,6 +1027,7 @@ class RuntimeEngine:
     def _exec_r_call(
         self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
     ) -> Any:
+        self._tool_patch_guard(adapter, lid, idx, op, stack)
         self._count_adapter_call(lid, idx, op, stack)
         started = time.perf_counter()
         if "." in adapter:
@@ -1149,6 +1179,7 @@ class RuntimeEngine:
     async def _exec_r_call_async(
         self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
     ) -> Any:
+        self._tool_patch_guard(adapter, lid, idx, op, stack)
         self._count_adapter_call(lid, idx, op, stack)
         started = time.perf_counter()
         call_ctx = dict(frame)
