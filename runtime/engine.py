@@ -1692,50 +1692,9 @@ class RuntimeEngine:
             return {"action": "continue", "out": None}
         return None
 
-    def _source_context(self, lineno: Optional[int]) -> Dict[str, Any]:
-        if not lineno or lineno < 1:
-            return {}
-        line = self._source_lines[lineno - 1] if lineno - 1 < len(self._source_lines) else ""
-        cst = self._cst_by_line.get(lineno, {})
-        op_tok = None
-        for t in (cst.get("tokens") or []):
-            if t.get("kind") in ("bare", "string"):
-                op_tok = t
-                break
-        return {"lineno": lineno, "line": line, "op_span": op_tok.get("span") if isinstance(op_tok, dict) else None}
-
-    def _raise_runtime_error(
-        self,
-        err: Exception,
-        lid: str,
-        idx: int,
-        op: str,
-        stack: List[str],
-        frame: Dict[str, Any],
-        step: Dict[str, Any],
-        *,
-        node_id: Optional[str] = None,
-    ) -> None:
-        self._emit_trajectory_fail(lid, op, frame, step, err, node_id=node_id)
-        public_lid = stack[-2] if lid == "__tmp__" and len(stack) >= 2 else lid
-        ctx = self._source_context(step.get("lineno"))
-        msg = str(err)
-        if ctx:
-            msg = f"{msg} [line={ctx.get('lineno')} source={ctx.get('line')!r}]"
-        data = {
-            "cause_type": type(err).__name__,
-            "cause_message": str(err),
-            "lineno": ctx.get("lineno") if ctx else None,
-            "source": ctx.get("line") if ctx else None,
-        }
-        code = ERROR_CODE_ADAPTER_ERROR if isinstance(err, AdapterError) else ERROR_CODE_RUNTIME_OP_ERROR
-        if isinstance(err, AdapterError) and "capability gate" in str(err):
-            data["user_hint"] = (
-                "This step needs an adapter your host has not enabled. "
-                "See the error text for AINL_HOST_ADAPTER_ALLOWLIST, AINL_HOST_ADAPTER_DENYLIST, "
-                "AINL_STRICT_MODE, and AINL_SECURITY_PROFILE."
-            )
-        raise AinlRuntimeError(msg, public_lid, idx, op, stack, code=code, data=data)
+    # _source_context and _raise_runtime_error live in
+    # runtime/error_handler.py and are attached at the bottom of this
+    # module (search for ``_install_error_handler_methods``).
 
     def _next_linear_node_edge(
         self, out_edges: List[Dict[str, Any]], lid: str, idx: int, op: str, stack: List[str]
@@ -1782,54 +1741,9 @@ class RuntimeEngine:
             code=ERROR_CODE_GRAPH_AMBIGUOUS_NEXT,
         )
 
-    def _route_graph_error(
-        self,
-        err: Exception,
-        *,
-        cur: Optional[str],
-        out_by_from: Dict[str, List[Dict[str, Any]]],
-        node_by_id: Dict[str, Dict[str, Any]],
-        active_err_handler: Optional[str],
-        lid: str,
-        idx: int,
-        op: str,
-        stack: List[str],
-        frame: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        err_edge = next((ed for ed in out_by_from.get(cur, []) if ed.get("port") == "err"), None)
-        handler: Optional[str] = None
-        if err_edge and err_edge.get("to_kind") == "node":
-            err_node = node_by_id.get(err_edge.get("to"))
-            h_step = (err_node or {}).get("data", {})
-            if h_step.get("op") == "Err":
-                handler = _norm_lid(h_step.get("handler"))
-        if not handler:
-            handler = active_err_handler
-        if not handler:
-            return {"handled": False}
-        if handler in stack:
-            raise AinlRuntimeError(
-                f"error handler recursion detected: handler={handler} failing_op={op}",
-                lid,
-                idx,
-                op,
-                stack,
-                code=ERROR_CODE_ERR_HANDLER_RECURSION,
-            )
-        frame["_error"] = str(err)
-        step_data = (node_by_id.get(cur or "") or {}).get("data")
-        if not isinstance(step_data, dict):
-            step_data = {"op": op}
-        if self._trajectory_log_path:
-            self._emit_trajectory_fail(lid, op, frame, step_data, err, node_id=cur)
-        if self.trace_enabled:
-            self.trace_events.append(
-                {"err_routed": True, "from_node": cur, "handler": handler, "label": lid}
-            )
-            if self.trace_sink is not None:
-                self.trace_sink(self.trace_events[-1])
-        out = self._run_label(handler, frame, stack, force_steps=False)
-        return {"handled": True, "out": out}
+    # _route_graph_error lives in runtime/error_handler.py and is
+    # attached at the bottom of this module (search for
+    # ``_install_error_handler_methods``).
 
     def _node_index_map_for_steps(self, steps: List[Dict[str, Any]]) -> Dict[str, int]:
         """Mirror compiler steps_to_graph node numbering: nth step op => n<nth>."""
@@ -3121,13 +3035,20 @@ def run_with_debug(
 
 # --- late-bound module splits --------------------------------------------
 #
-# GraphPatch dispatch + boot-time reinstall machinery lives in
-# runtime/graph_engine.py (see sbhooley/ainativelang#39 P1-7). Attaching
-# the functions onto RuntimeEngine here avoids a module-import cycle:
-# graph_engine.py imports OverwriteGuardError / _LOG / _norm_lid from
-# this module, which are already defined by the time this block runs.
-# Callers continue to use ``self._memory_patch_dispatch(...)`` /
-# ``self._reinstall_patches()`` exactly as before.
+# Two extracted modules attach onto RuntimeEngine here:
+#
+# - runtime/graph_engine.py: GraphPatch dispatch + boot-time reinstall
+#   (see sbhooley/ainativelang#39 P1-7).
+# - runtime/error_handler.py: source-context helper, runtime-error
+#   shaping, and graph error routing (same audit ref).
+#
+# Both modules import names from this module (OverwriteGuardError,
+# AinlRuntimeError, AdapterError, error-code constants, _LOG,
+# _norm_lid). Importing them here -- at the very bottom -- ensures
+# those names are already in scope before the cyclic import resolves.
+# Callers continue to use the original ``self.X(...)`` shape exactly
+# as before; Python's descriptor protocol turns regular functions into
+# bound methods when accessed via the class.
 def _install_graph_engine_methods() -> None:
     from runtime.graph_engine import (
         _memory_patch_dispatch as _gp_memory_patch_dispatch,
@@ -3138,4 +3059,17 @@ def _install_graph_engine_methods() -> None:
     RuntimeEngine._reinstall_patches = _gp_reinstall_patches
 
 
+def _install_error_handler_methods() -> None:
+    from runtime.error_handler import (
+        _source_context as _eh_source_context,
+        _raise_runtime_error as _eh_raise_runtime_error,
+        _route_graph_error as _eh_route_graph_error,
+    )
+
+    RuntimeEngine._source_context = _eh_source_context
+    RuntimeEngine._raise_runtime_error = _eh_raise_runtime_error
+    RuntimeEngine._route_graph_error = _eh_route_graph_error
+
+
 _install_graph_engine_methods()
+_install_error_handler_methods()
