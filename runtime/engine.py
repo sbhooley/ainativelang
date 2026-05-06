@@ -2917,6 +2917,7 @@ class RuntimeEngine:
     async def _run_label_async(self, label_id: str, frame: Dict[str, Any], stack: List[str], force_steps: bool = False) -> Any:
         if not stack:
             self._start_run()
+            frame['_run_id'] = str(uuid.uuid4())
         lid = self._resolve_label_key(label_id, stack)
         stack = stack + [lid]
         self._guard_depth(stack)
@@ -2983,6 +2984,9 @@ class RuntimeEngine:
                     body_l = _norm_lid(s.get("body"))
                     after = _norm_lid(s.get("after"))
                     arr = ref if isinstance(ref, list) else []
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None and len(arr) > max_loop_iters:
+                        raise AinlRuntimeError("max_loop_iters exceeded", lid, i, op, stack, code=ERROR_CODE_MAX_LOOP_ITERS)
                     for it in arr:
                         frame[item_var] = it
                         out = await self._run_label_async(body_l, frame, stack, force_steps=False)
@@ -3000,6 +3004,9 @@ class RuntimeEngine:
                     body_l = _norm_lid(s.get("body"))
                     after = _norm_lid(s.get("after"))
                     limit = int(s.get("limit", 10000))
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None:
+                        limit = min(limit, max_loop_iters)
                     n = 0
                     while self._eval_cond(cond_tok, frame):
                         out = await self._run_label_async(body_l, frame, stack, force_steps=False)
@@ -3059,6 +3066,15 @@ class RuntimeEngine:
         guard = 0
         while cur and cur in node_by_id:
             guard += 1
+            if guard > 100000:
+                raise AinlRuntimeError(
+                    "graph execution guard exceeded",
+                    lid,
+                    guard,
+                    "GRAPH",
+                    stack,
+                    code=ERROR_CODE_GRAPH_EXEC_GUARD,
+                )
             n = node_by_id[cur]
             step = n.get("data") or {}
             op = step.get("op", n.get("op", ""))
@@ -3093,6 +3109,9 @@ class RuntimeEngine:
                     body_edge = edge_by_from_port_kind.get((cur, "body", "label"))
                     after_edge = edge_by_from_port_kind.get((cur, "after", "label"))
                     arr = ref if isinstance(ref, list) else []
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None and len(arr) > max_loop_iters:
+                        raise AinlRuntimeError("max_loop_iters exceeded", lid, idx, op, stack, code=ERROR_CODE_MAX_LOOP_ITERS)
                     for it in arr:
                         frame[item_var] = it
                         if body_edge:
@@ -3111,6 +3130,9 @@ class RuntimeEngine:
                     body_edge = edge_by_from_port_kind.get((cur, "body", "label"))
                     after_edge = edge_by_from_port_kind.get((cur, "after", "label"))
                     limit = int(step.get("limit", 10000))
+                    max_loop_iters = self._limit_int("max_loop_iters")
+                    if max_loop_iters is not None:
+                        limit = min(limit, max_loop_iters)
                     n_iter = 0
                     while self._eval_cond(cond_tok, frame):
                         n_iter += 1
