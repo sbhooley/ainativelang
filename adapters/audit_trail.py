@@ -1,4 +1,6 @@
-"""Audit trail adapter for AINL — compliance-grade append-only event log.
+"""Audit trail adapter for AINL — append-only JSONL event log for operator retention and SIEM mapping.
+
+See ``docs/operations/AUDIT_AND_TELEMETRY_MAP.md`` for how this surface relates to HTTP runner audit, CLI trajectory, and runtime observability metrics.
 
 Additive v1.3.4. Follows the exact pattern of other AINL adapters.
 Non-destructive, sandbox-safe, thread-safe.

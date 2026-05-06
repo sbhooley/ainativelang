@@ -3330,6 +3330,28 @@ def main() -> None:
     prf_emit.add_argument("profile_id")
     prf_emit.set_defaults(func=cmd_profile)
 
+    def cmd_audit(args: argparse.Namespace) -> int:
+        from tooling.audit_jsonl_verify import verify_jsonl_file
+
+        ac = getattr(args, "audit_cmd", None)
+        if ac == "verify-jsonl":
+            return verify_jsonl_file(Path(args.audit_jsonl_path), verbose=bool(args.audit_verbose))
+        raise SystemExit(f"unknown audit subcommand: {ac!r}")
+
+    aud = sub.add_parser("audit", help="Audit JSONL helpers (integrity checks for audit_trail lines)")
+    aud_sub = aud.add_subparsers(dest="audit_cmd", required=True)
+    aud_v = aud_sub.add_parser(
+        "verify-jsonl",
+        help="Verify audit_trail adapter lines (event_hash) in a JSONL file; other lines skipped",
+    )
+    aud_v.add_argument(
+        "audit_jsonl_path",
+        metavar="PATH",
+        help="Path to .jsonl file",
+    )
+    aud_v.add_argument("-v", "--verbose", action="store_true", dest="audit_verbose")
+    aud_v.set_defaults(func=cmd_audit)
+
     gld = sub.add_parser("golden", help="Run golden fixtures from examples")
     gld.add_argument("--examples-dir", default=str(Path(__file__).resolve().parent.parent / "examples"))
     gld.add_argument("--trace", action="store_true")
