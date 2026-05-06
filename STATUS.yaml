@@ -54,12 +54,12 @@ real_and_working:
       test_named_py_files: "Files named test_*.py under tests/ (pytest test modules)."
       lines_python_under_tests: "Sum of lines of all *.py under tests/."
       pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
-    py_files_under_tests: 1052
-    test_named_py_files: 217
-    lines_python_under_tests: 307036
+    py_files_under_tests: 1053
+    test_named_py_files: 218
+    lines_python_under_tests: 307125
     lines_python_under_tests_rounded: "~307k"
-    pytest_collect_only_selected: 1390
-    pytest_collect_only_total: 1429
+    pytest_collect_only_selected: 1395
+    pytest_collect_only_total: 1434
     pytest_deselected: 39
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 

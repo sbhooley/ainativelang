@@ -10,10 +10,23 @@ This document describes the **deterministic authoring wizard** (`tooling/ainl_ge
 
 | Tool | Role |
 |------|------|
-| **`ainl_get_started`** | Maps a natural-language `goal` to a **wizard** payload (`wizard_state`, checkpoints, `recommended_next_tools`, etc.). Pass **`wizard_state_json`** (string) on follow-up calls to continue the same session. |
+| **`ainl_get_started`** | Maps a natural-language `goal` to a **wizard** payload (`wizard_state`, checkpoints, `recommended_next_tools`, etc.). Pass **`wizard_state_json`** on follow-up calls to continue the same session. |
 | **`ainl_step_examples`** | Returns **snippet examples** and optional **strict-valid corpus paths** for a step or topic (`request_examples_for`, e.g. `http`, `fs`, `queue`) without advancing wizard state. Response includes `ok: true` and `schema_version`. |
-| **`ainl_adapter_contract`** | Per-adapter contract slice (complements `ainl://adapter-contracts`). |
-| **`ainl_validate`** / **`ainl_compile`** | On **successful** graph compile, include **`contract_validation_status`** and **`contract_alignment`** (see below). |
+| **`ainl_adapter_contract`** | Per-adapter contract slice (complements `ainl://adapter-contracts`). Accepts optional **`wizard_state_json`**. |
+| **`ainl_validate`** / **`ainl_compile`** | On **successful** graph compile, include **`contract_validation_status`** and **`contract_alignment`** (see below). Accept optional **`wizard_state_json`**; responses echo updated **`wizard_state_json`** and **`wizard_checkpoints_complete`** when provided. |
+| **`ainl_capabilities`** | Optional **`wizard_state_json`** — advances **`capabilities_inspected`** when present. |
+| **`ainl_run`** | Optional **`wizard_state_json`** — advances **`run_succeeded`** and marks **`adapters_configured`** complete when the **`adapters.enable`** list covers **`pending_mcp_adapters`** from the last compile (see `tooling/ainl_get_started.py`). |
+| **`ainl_wizard_checkpoint`** | Operator/agent attestation for checklist steps not tied to another tool (e.g. **`checkpoint_id`** **`strict_examples_reviewed`** after reading **`ainl://strict-valid-examples`**). |
+
+## Observable checkpoints (MCP hosts)
+
+The deterministic state machine in **`tooling/ainl_get_started.py`** tracks checkpoints (`wizard_state_json`). **To make progression observable across tool calls**, MCP hosts should thread the latest **`wizard_state_json`** from each response into the next **`ainl_validate` / `ainl_compile` / `ainl_capabilities` / `ainl_adapter_contract` / `ainl_run`** invocation. The compile envelope uses **`ir.labels`** (MCP returns **`ir`**), so **`ir_compiled`** advances correctly. **`ainl_run`** additionally needs the **`adapters`** dict you passed at invoke time (the server injects it into the wizard proof path). Set **`AINL_MCP_WIZARD_DEBUG=1`** to log failures inside wizard augmentation ( **`scripts/ainl_mcp_server.py`** **`_augment_with_wizard_state`** ).
+
+**ArmaraOS embedded chat** applies the same rule automatically for **`mcp_ainl_ainl_*`** tools when the model omits **`wizard_state_json`** (session-scoped cache in **`openfang-runtime`** **`mcp_ainl_session`** / **`tool_runner`**); other hosts must still pass it explicitly.
+
+**`side_effects_verified`** remains **manual** (operator judgment or a future attestation); there is no resource-read hook. If checkpoint hashes feel noisy in production, prefer tightening **`_result_hash`** input (normalized subset) only after you confirm flakiness—see plan notes in repo history.
+
+**Team prompt / runbook line:** *After every `ainl_get_started` / validate / compile / capabilities / adapter_contract / run / `ainl_wizard_checkpoint` response, pass **`wizard_state_json`** from that JSON into the next call in the chain (unless the host injects it for you).*
 
 ## MCP resources (corpus and cheatsheets)
 
@@ -46,7 +59,7 @@ Re-run these after large changes to **`strict-valid`** example sets or when exte
 
 ## MCP exposure profiles (`AINL_MCP_EXPOSURE_PROFILE`)
 
-Named profiles in **`tooling/mcp_exposure_profiles.json`** control which tools and **`ainl://…`** resources the stdio server registers. **`ainl_step_examples`** and **`ainl://strict-valid-families`** are included in **`design_impact_first`**, **`inspect_only`**, **`safe_workflow`**, and **`full`**. **`validate_only`** exposes **`ainl_step_examples`** but keeps **`resources`** empty (no `ainl://` URIs), matching the narrow validation-only posture.
+Named profiles in **`tooling/mcp_exposure_profiles.json`** control which tools and **`ainl://…`** resources the stdio server registers. **`ainl_wizard_checkpoint`** is included in every profile so strict-example attestation works under narrow exposure. **`ainl_step_examples`** and **`ainl://strict-valid-families`** are included in **`design_impact_first`**, **`inspect_only`**, **`safe_workflow`**, and **`full`**. **`validate_only`** exposes **`ainl_step_examples`** and **`ainl_wizard_checkpoint`** but keeps **`resources`** empty (no `ainl://` URIs), matching the narrow validation-only posture.
 
 ## See also
 

@@ -41,6 +41,7 @@ import argparse
 import copy
 import hashlib
 import json
+import logging
 import os
 import re
 import threading
@@ -51,6 +52,8 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
+
+_logger = logging.getLogger(__name__)
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -154,17 +157,25 @@ def _augment_with_wizard_state(
     result: Dict[str, Any],
     tool_name: str,
     wizard_state_json: Optional[Dict[str, Any]] = None,
+    *,
+    run_adapters: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Augment a tool result with updated wizard state if provided.
 
     If ``wizard_state_json`` is provided, updates the wizard state based on
     the tool result and includes the updated state in the response.
+
+    For ``ainl_run``, pass ``run_adapters`` so the state machine can verify
+    ``adapters_configured`` against ``pending_mcp_adapters`` from the last compile.
     """
     if wizard_state_json is None:
         return result
     try:
+        proof = dict(result)
+        if tool_name == "ainl_run" and run_adapters is not None:
+            proof["_wizard_ainl_run_adapters"] = run_adapters
         state = WizardState.from_dict(wizard_state_json)
-        state = wizard_state_from_tool_result(state, tool_name, result)
+        state = wizard_state_from_tool_result(state, tool_name, proof)
         result["wizard_state_json"] = state.to_dict()
         result["wizard_stage"] = state.stage.value
         result["wizard_checkpoints_complete"] = [
@@ -172,8 +183,9 @@ def _augment_with_wizard_state(
             if v.status.value == "complete"
         ]
         result["wizard_blocking_checkpoints"] = state.blocking_checkpoints
-    except Exception:
-        pass
+    except Exception as exc:
+        if env_truthy(os.environ.get("AINL_MCP_WIZARD_DEBUG")):
+            _logger.warning("wizard_state augmentation failed for %s: %s", tool_name, exc)
     return result
 
 
@@ -251,6 +263,7 @@ _DEFAULT_LIMITS: Dict[str, Any] = dict(_MCP_DEFAULT_LIMITS)
 ALL_TOOL_NAMES: List[str] = [
     "ainl_get_started",
     "ainl_step_examples",
+    "ainl_wizard_checkpoint",
     "ainl_adapter_contract",
     "ainl_validate",
     "ainl_compile",
@@ -907,6 +920,9 @@ if _HAS_MCP:
             "ainl_import_clawflow, ainl_import_agency_agent, and ainl_import_markdown "
             "fetch Markdown and return deterministic .ainl source (network). "
             "Call ainl_get_started before writing unfamiliar adapter-heavy AINL. "
+            "Thread wizard_state_json from each response into ainl_validate, ainl_compile, ainl_capabilities, "
+            "ainl_adapter_contract, and ainl_run so checkpoints advance; use ainl_wizard_checkpoint for attestations "
+            "such as strict_examples_reviewed after reading ainl://strict-valid-examples without another tool proof. "
             "Pass full program text in validate/compile/run `code` (string); legacy `ainl` alias is accepted. "
             "MCP resource ainl://strict-authoring-cheatsheet is the strict-mode syntax contract; "
             "ainl://authoring-cheatsheet adds HTTP machine-payment / R-line integration notes; "
@@ -1722,22 +1738,33 @@ def ainl_get_started(
 
 
 @_register_tool
-def ainl_adapter_contract(adapter: str, detail_level: str = "standard") -> dict:
+def ainl_adapter_contract(
+    adapter: str,
+    detail_level: str = "standard",
+    wizard_state_json: Optional[dict] = None,
+) -> dict:
     """Return the known argument/runtime contract for an AINL adapter.
 
     Use this after ``ainl_get_started`` / ``ainl_capabilities`` and before
     writing adapter-specific AINL. Known contracts cover common adapters such as
     ``http``, ``browser``, ``fs``, ``cache``, ``core``, and composite choices
     like ``http_or_browser``.
+
+    Pass ``wizard_state_json`` from prior wizard responses to advance checkpoints.
     """
     if not isinstance(adapter, str) or not adapter.strip():
-        return {
-            "ok": False,
-            "error": "missing required argument: adapter",
-            "tool_call_error": True,
-            "next_step": "Call ainl_adapter_contract with an adapter name, e.g. {'adapter': 'http'} or {'adapter': 'http_or_browser'}.",
-        }
-    return ainl_adapter_contract_payload(adapter, detail_level=detail_level)
+        return _augment_with_wizard_state(
+            {
+                "ok": False,
+                "error": "missing required argument: adapter",
+                "tool_call_error": True,
+                "next_step": "Call ainl_adapter_contract with an adapter name, e.g. {'adapter': 'http'} or {'adapter': 'http_or_browser'}.",
+            },
+            "ainl_adapter_contract",
+            wizard_state_json,
+        )
+    out = ainl_adapter_contract_payload(adapter, detail_level=detail_level)
+    return _augment_with_wizard_state(out, "ainl_adapter_contract", wizard_state_json)
 
 
 @_register_tool
@@ -1778,7 +1805,12 @@ def ainl_step_examples(
 
 
 @_register_tool
-def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optional[str] = None) -> dict:
+def ainl_validate(
+    code: Optional[str] = None,
+    strict: bool = True,
+    ainl: Optional[str] = None,
+    wizard_state_json: Optional[dict] = None,
+) -> dict:
     """Validate AINL source code without executing it.
 
     Returns whether the code compiles successfully, along with any errors
@@ -1799,10 +1831,17 @@ def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optiona
     ``recommended_resources`` lists ``ainl://strict-authoring-cheatsheet`` first,
     then optional ``ainl://authoring-cheatsheet`` for HTTP/R-line issues) filtered
     by MCP exposure. Failures also include a deterministic ``repair_recipe``.
+
+    When using the authoring wizard, pass ``wizard_state_json`` from the prior
+    tool response so checkpoints advance on each validate/compile/run call.
     """
     source = _resolve_code_arg(code, ainl)
     if not source:
-        return _missing_source_tool_error("ainl_validate")
+        return _augment_with_wizard_state(
+            _missing_source_tool_error("ainl_validate"),
+            "ainl_validate",
+            wizard_state_json,
+        )
     ir = _compile(source, strict=strict)
     fb = _enriched_compile_feedback(ir)
     ok = len(fb["errors"]) == 0
@@ -1833,11 +1872,16 @@ def ainl_validate(code: Optional[str] = None, strict: bool = True, ainl: Optiona
         _add_recommended_next_steps(out, "validate_fail", failure_tags=tags)
         out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
     _attach_strict_mode_annotation(out, strict)
-    return out
+    return _augment_with_wizard_state(out, "ainl_validate", wizard_state_json)
 
 
 @_register_tool
-def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional[str] = None) -> dict:
+def ainl_compile(
+    code: Optional[str] = None,
+    strict: bool = True,
+    ainl: Optional[str] = None,
+    wizard_state_json: Optional[dict] = None,
+) -> dict:
     """Compile AINL source code to canonical graph IR.
 
     Returns the full IR JSON on success, plus a ``frame_hints`` list that
@@ -1857,10 +1901,16 @@ def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional
 
     Success and failure responses include ``recommended_next_tools`` (and
     failure may add ``recommended_resources`` / ``repair_recipe``) like ``ainl_validate``.
+
+    Pass ``wizard_state_json`` from prior wizard/tool responses to advance checkpoints.
     """
     source = _resolve_code_arg(code, ainl)
     if not source:
-        return _missing_source_tool_error("ainl_compile")
+        return _augment_with_wizard_state(
+            _missing_source_tool_error("ainl_compile"),
+            "ainl_compile",
+            wizard_state_json,
+        )
     ir = _compile(source, strict=strict)
     errors = ir.get("errors") or []
     if errors:
@@ -1878,7 +1928,7 @@ def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional
         _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
         out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
         _attach_strict_mode_annotation(out, strict)
-        return out
+        return _augment_with_wizard_state(out, "ainl_compile", wizard_state_json)
     _on_compile_finished(True, source)
     frame_hints = _extract_frame_hints(source, ir)
     out_ok: Dict[str, Any] = {"ok": True, "ir": ir, "frame_hints": frame_hints}
@@ -1890,11 +1940,11 @@ def ainl_compile(code: Optional[str] = None, strict: bool = True, ainl: Optional
     )
     _add_recommended_next_steps(out_ok, "compile_ok")
     _attach_strict_mode_annotation(out_ok, strict)
-    return out_ok
+    return _augment_with_wizard_state(out_ok, "ainl_compile", wizard_state_json)
 
 
 @_register_tool
-def ainl_capabilities() -> dict:
+def ainl_capabilities(wizard_state_json: Optional[dict] = None) -> dict:
     """Discover runtime adapter capabilities, privilege tiers, and metadata.
 
     Returns available adapters with their verbs, support tiers, effect
@@ -1902,8 +1952,10 @@ def ainl_capabilities() -> dict:
     ``mcp_telemetry`` (per-process counters for validate/compile/run) and
     ``mcp_resources`` (integration doc URIs exposed for this process).  No side
     effects beyond bump-free read of those counters.
+
+    Pass ``wizard_state_json`` from prior wizard responses to advance checkpoints.
     """
-    return _load_capabilities()
+    return _augment_with_wizard_state(_load_capabilities(), "ainl_capabilities", wizard_state_json)
 
 
 @_register_tool
@@ -1936,6 +1988,7 @@ def ainl_run(
     label: Optional[str] = None,
     adapters: Optional[dict] = None,
     ainl: Optional[str] = None,
+    wizard_state_json: Optional[dict] = None,
 ) -> dict:
     """Compile, validate policy, and execute an AINL workflow.
 
@@ -2016,14 +2069,24 @@ def ainl_run(
     with ``suggested_adapters`` **before** starting the runtime (no partial run).
 
     Pass full source in ``code`` (``ainl`` alias accepted).
+
+    Pass ``wizard_state_json`` from prior wizard/tool responses so checkpoints
+    advance; the server records the ``adapters`` payload against ``pending_mcp_adapters``.
     """
     trace_id = str(uuid.uuid4())
+    run_adapters_arg: Optional[Dict[str, Any]] = adapters if isinstance(adapters, dict) else None
+
+    def _wiz(out: Dict[str, Any]) -> Dict[str, Any]:
+        return _augment_with_wizard_state(
+            out, "ainl_run", wizard_state_json, run_adapters=run_adapters_arg
+        )
+
     source = _resolve_code_arg(code, ainl)
     if not source:
         out_ms = _missing_source_tool_error("ainl_run")
         out_ms["trace_id"] = trace_id
         out_ms["error"] = "missing required argument: code"
-        return _annotate_run_return(out_ms, strict)
+        return _wiz(_annotate_run_return(out_ms, strict))
     _on_run_started(source)
     run_warnings: List[str] = []
 
@@ -2047,19 +2110,21 @@ def ainl_run(
         )
         _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
         out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
-        return _annotate_run_return(out, strict)
+        return _wiz(_annotate_run_return(out, strict))
 
     merged_policy = _merge_policy(policy)
     policy_result = validate_ir_against_policy(ir, merged_policy)
     if not policy_result["ok"]:
-        return _annotate_run_return(
-            {
-                "ok": False,
-                "trace_id": trace_id,
-                "error": "policy_violation",
-                "policy_errors": policy_result["errors"],
-            },
-            strict,
+        return _wiz(
+            _annotate_run_return(
+                {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": "policy_violation",
+                    "policy_errors": policy_result["errors"],
+                },
+                strict,
+            )
         )
 
     # Item 9: Per-workspace limits override.
@@ -2102,14 +2167,16 @@ def ainl_run(
             h = adapters.get("http") or {}
             allow_hosts = h.get("allow_hosts") or []
             if not isinstance(allow_hosts, list) or not allow_hosts:
-                return _annotate_run_return(
-                    {
-                        "ok": False,
-                        "trace_id": trace_id,
-                        "error": "adapter_config_error",
-                        "details": "http adapter enabled but adapters.http.allow_hosts must be a non-empty list",
-                    },
-                    strict,
+                return _wiz(
+                    _annotate_run_return(
+                        {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": "http adapter enabled but adapters.http.allow_hosts must be a non-empty list",
+                        },
+                        strict,
+                    )
                 )
             reg.register(
                 "http",
@@ -2125,14 +2192,16 @@ def ainl_run(
             f = adapters.get("fs") or {}
             root = f.get("root")
             if not root:
-                return _annotate_run_return(
-                    {
-                        "ok": False,
-                        "trace_id": trace_id,
-                        "error": "adapter_config_error",
-                        "details": "fs adapter enabled but adapters.fs.root is missing",
-                    },
-                    strict,
+                return _wiz(
+                    _annotate_run_return(
+                        {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": "fs adapter enabled but adapters.fs.root is missing",
+                        },
+                        strict,
+                    )
                 )
             reg.register(
                 "fs",
@@ -2148,28 +2217,32 @@ def ainl_run(
             c = adapters.get("cache") or {}
             cache_path = c.get("path")
             if not cache_path:
-                return _annotate_run_return(
-                    {
-                        "ok": False,
-                        "trace_id": trace_id,
-                        "error": "adapter_config_error",
-                        "details": "cache adapter enabled but adapters.cache.path is missing",
-                    },
-                    strict,
+                return _wiz(
+                    _annotate_run_return(
+                        {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": "cache adapter enabled but adapters.cache.path is missing",
+                        },
+                        strict,
+                    )
                 )
             reg.register("cache", LocalFileCacheAdapter(path=str(cache_path)))
         if "sqlite" in enabled:
             s = adapters.get("sqlite") or {}
             db_path = s.get("db_path")
             if not db_path:
-                return _annotate_run_return(
-                    {
-                        "ok": False,
-                        "trace_id": trace_id,
-                        "error": "adapter_config_error",
-                        "details": "sqlite adapter enabled but adapters.sqlite.db_path is missing",
-                    },
-                    strict,
+                return _wiz(
+                    _annotate_run_return(
+                        {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": "sqlite adapter enabled but adapters.sqlite.db_path is missing",
+                        },
+                        strict,
+                    )
                 )
             reg.register(
                 "sqlite",
@@ -2185,24 +2258,28 @@ def ainl_run(
             allow_hosts = a2.get("allow_hosts") or []
             allow_insecure = bool(a2.get("allow_insecure_local", False))
             if not allow_hosts and not allow_insecure:
-                return _annotate_run_return(
-                    {
-                        "ok": False,
-                        "trace_id": trace_id,
-                        "error": "adapter_config_error",
-                        "details": "a2a adapter: set adapters.a2a.allow_hosts and/or allow_insecure_local",
-                    },
-                    strict,
+                return _wiz(
+                    _annotate_run_return(
+                        {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": "a2a adapter: set adapters.a2a.allow_hosts and/or allow_insecure_local",
+                        },
+                        strict,
+                    )
                 )
             if not isinstance(allow_hosts, list):
-                return _annotate_run_return(
-                    {
-                        "ok": False,
-                        "trace_id": trace_id,
-                        "error": "adapter_config_error",
-                        "details": "a2a: adapters.a2a.allow_hosts must be a list when set",
-                    },
-                    strict,
+                return _wiz(
+                    _annotate_run_return(
+                        {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": "a2a: adapters.a2a.allow_hosts must be a list when set",
+                        },
+                        strict,
+                    )
                 )
             reg.register(
                 "a2a",
@@ -2235,14 +2312,16 @@ def ainl_run(
                         if raw.strip():
                             json.loads(raw)
                     except json.JSONDecodeError as e:
-                        return _annotate_run_return(
-                            {
-                                "ok": False,
-                                "trace_id": trace_id,
-                                "error": "adapter_config_error",
-                                "details": f"cache.json at {_cp} is not valid JSON: {e}",
-                            },
-                            strict,
+                        return _wiz(
+                            _annotate_run_return(
+                                {
+                                    "ok": False,
+                                    "trace_id": trace_id,
+                                    "error": "adapter_config_error",
+                                    "details": f"cache.json at {_cp} is not valid JSON: {e}",
+                                },
+                                strict,
+                            )
                         )
                     reg.register("cache", LocalFileCacheAdapter(path=str(_cp)))
                     break
@@ -2262,7 +2341,7 @@ def ainl_run(
 
     miss = _mcp_configurable_adapters_missing_from_registry(reg, ir)
     if miss:
-        return _envelope_adapter_registration_error(trace_id, ir, miss, strict=strict)
+        return _wiz(_envelope_adapter_registration_error(trace_id, ir, miss, strict=strict))
 
     try:
         eng = RuntimeEngine(
@@ -2285,15 +2364,17 @@ def ainl_run(
             )
             if out_err:
                 out_err["error_structured"] = e.to_dict()
-                return out_err
-        return _annotate_run_return(
-            {
-                "ok": False,
-                "trace_id": trace_id,
-                "error": err_text,
-                "error_structured": e.to_dict(),
-            },
-            strict,
+                return _wiz(out_err)
+        return _wiz(
+            _annotate_run_return(
+                {
+                    "ok": False,
+                    "trace_id": trace_id,
+                    "error": err_text,
+                    "error_structured": e.to_dict(),
+                },
+                strict,
+            )
         )
     except Exception as e:
         err_text = str(e)
@@ -2303,8 +2384,8 @@ def ainl_run(
                 trace_id, ir, [missing_adapter], error_text=err_text, strict=strict
             )
             if out_err:
-                return out_err
-        return _annotate_run_return({"ok": False, "trace_id": trace_id, "error": err_text}, strict)
+                return _wiz(out_err)
+        return _wiz(_annotate_run_return({"ok": False, "trace_id": trace_id, "error": err_text}, strict))
 
     out_run: Dict[str, Any] = {
         "ok": True,
@@ -2316,7 +2397,32 @@ def ainl_run(
     }
     if run_warnings:
         out_run["warnings"] = run_warnings
-    return _annotate_run_return(out_run, strict)
+    return _wiz(_annotate_run_return(out_run, strict))
+
+
+@_register_tool
+def ainl_wizard_checkpoint(
+    checkpoint_id: str,
+    wizard_state_json: Optional[dict] = None,
+) -> dict:
+    """Acknowledge a wizard checklist checkpoint (operator/agent attestation).
+
+    Use for steps that are not tied to a single MCP tool result, e.g.
+    ``strict_examples_reviewed`` after reading ``ainl://strict-valid-examples``.
+    """
+    cid = str(checkpoint_id or "").strip()
+    if not cid:
+        return _augment_with_wizard_state(
+            {
+                "ok": False,
+                "error": "missing required argument: checkpoint_id",
+                "tool_call_error": True,
+            },
+            "ainl_wizard_checkpoint",
+            wizard_state_json,
+        )
+    out = {"ok": True, "checkpoint_id": cid}
+    return _augment_with_wizard_state(out, "ainl_wizard_checkpoint", wizard_state_json)
 
 
 @_register_tool

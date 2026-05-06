@@ -32,6 +32,39 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 # Wizard State Machine Types
 # ---------------------------------------------------------------------------
 
+# Adapters that MCP `ainl_run` can register per-run (mirrors scripts/ainl_mcp_server).
+_MCP_CONFIGURABLE_ADAPTERS: Set[str] = {"http", "fs", "cache", "sqlite", "a2a"}
+
+
+def _compile_result_has_ir_labels(result: Dict[str, Any]) -> bool:
+    """True if a compile tool result carries labels (MCP uses ``ir.labels``; flat IR is legacy)."""
+    ir = result.get("ir")
+    if isinstance(ir, dict) and isinstance(ir.get("labels"), dict) and ir["labels"]:
+        return True
+    if isinstance(result.get("labels"), dict) and result["labels"]:
+        return True
+    return False
+
+
+def _wizard_digest_validate(result: Dict[str, Any]) -> str:
+    """Stable digest for validate/strict checkpoint hashes (ignores volatile telemetry)."""
+    base = {
+        "ok": result.get("ok"),
+        "strict": result.get("strict"),
+        "req": tuple(result.get("required_adapters") or ()),
+    }
+    return hashlib.sha256(
+        json.dumps(base, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:12]
+
+
+def _pending_mcp_from_compile_result(result: Dict[str, Any]) -> List[str]:
+    """IR-required adapters that need MCP per-run registration (non-core, configurable)."""
+    req = result.get("required_adapters")
+    if not isinstance(req, list):
+        return []
+    return sorted({str(a).strip().lower() for a in req if str(a).strip().lower() in _MCP_CONFIGURABLE_ADAPTERS})
+
 
 class CheckpointStatus(Enum):
     """Status of a wizard checkpoint."""
@@ -88,6 +121,8 @@ class WizardState:
     contracts_loaded: Dict[str, Any] = field(default_factory=dict)
     run_succeeded: bool = False
     side_effects_verified: bool = False
+    # Subset of IR required_adapters that need MCP `ainl_run` registration (http/fs/cache/sqlite/a2a).
+    pending_mcp_adapters: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -116,6 +151,7 @@ class WizardState:
             "contracts_loaded": self.contracts_loaded,
             "run_succeeded": self.run_succeeded,
             "side_effects_verified": self.side_effects_verified,
+            "pending_mcp_adapters": self.pending_mcp_adapters,
         }
 
     @classmethod
@@ -146,6 +182,7 @@ class WizardState:
             contracts_loaded=data.get("contracts_loaded", {}),
             run_succeeded=data.get("run_succeeded", False),
             side_effects_verified=data.get("side_effects_verified", False),
+            pending_mcp_adapters=list(data.get("pending_mcp_adapters") or []),
         )
 
 
@@ -423,7 +460,7 @@ def wizard_state_from_tool_result(
                     tool_used=tool_name,
                     result=result,
                 )
-            state.slices_validated.append(_result_hash(result))
+            state.slices_validated.append(_wizard_digest_validate(result))
             if len(state.slices_validated) >= 1:
                 state = advance_checkpoint(
                     state,
@@ -434,26 +471,58 @@ def wizard_state_from_tool_result(
 
     elif tool_name == "ainl_compile":
         ok = result.get("ok", True)
-        if ok and "labels" in result:
+        if ok and _compile_result_has_ir_labels(result):
             state = advance_checkpoint(
                 state,
                 "ir_compiled",
                 tool_used=tool_name,
                 result=result,
             )
-            state = advance_checkpoint(
-                state,
-                "adapters_configured",
-                status=CheckpointStatus.IN_PROGRESS,
-            )
+            pending_mcp = _pending_mcp_from_compile_result(result)
+            state.pending_mcp_adapters = list(pending_mcp)
+            if pending_mcp:
+                state = advance_checkpoint(
+                    state,
+                    "adapters_configured",
+                    status=CheckpointStatus.IN_PROGRESS,
+                )
+            else:
+                state = advance_checkpoint(
+                    state,
+                    "adapters_configured",
+                    tool_used=tool_name,
+                    result=result,
+                )
 
     elif tool_name == "ainl_run":
         ok = result.get("ok", False)
+        proof_adapters = result.get("_wizard_ainl_run_adapters")
         if ok:
             state.run_succeeded = True
             state = advance_checkpoint(
                 state,
                 "run_succeeded",
+                tool_used=tool_name,
+                result=result,
+            )
+            pend = list(state.pending_mcp_adapters or [])
+            if pend and isinstance(proof_adapters, dict):
+                enabled = {str(x).strip().lower() for x in (proof_adapters.get("enable") or []) if str(x).strip()}
+                need = {str(x).strip().lower() for x in pend}
+                if need <= enabled:
+                    state = advance_checkpoint(
+                        state,
+                        "adapters_configured",
+                        tool_used=tool_name,
+                        result=result,
+                    )
+
+    elif tool_name == "ainl_wizard_checkpoint":
+        cid = str(result.get("checkpoint_id") or "").strip()
+        if result.get("ok") and cid == "strict_examples_reviewed":
+            state = advance_checkpoint(
+                state,
+                "strict_examples_reviewed",
                 tool_used=tool_name,
                 result=result,
             )
