@@ -69,6 +69,8 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - MCP agent tool contracts (`ainl_compile` **`frame_hints`**, `ainl_run` workspace limits + auto-cache): `docs/operations/MCP_RESEARCH_CONTRACT.md` · tests `tests/test_mcp_frame_hints.py`, `tests/test_mcp_workspace_limits.py`, `tests/test_mcp_auto_cache_adapter.py`
 - **MCP authoring wizard, `ainl://strict-valid-families`, contract alignment (`contract_validation_status` / `mismatched_calls`):** `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md` · Python `tooling/ainl_get_started.py`, `tooling/corpus_mining.py`, `scripts/ainl_mcp_server.py` · ArmaraOS `mcp_ainl_wizard_state_hint` / `mcp:ainl:wizard_state` — `armaraos/docs/mcp-a2a.md`
 - Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
+- **Audit and telemetry map** (runner vs CLI trajectory vs adapter vs metrics JSONL; `STATUS.yaml`): `docs/operations/AUDIT_AND_TELEMETRY_MAP.md`
+- **Enterprise shared responsibility + evidence bundle recipe:** `docs/enterprise/SHARED_RESPONSIBILITY.md`, `docs/enterprise/EVIDENCE_BUNDLE_RECIPE.md`, index `docs/enterprise/README.md`
 - **CLI trajectory JSONL** (`ainl run --log-trajectory`, `AINL_LOG_TRAJECTORY`): `docs/trajectory.md` (per-step trace beside the `.ainl` source; not runner HTTP audit)
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md` — includes MCP agent role templates, desktop-safe recipe, end-to-end validator/inspector/runner example, and Claude Code / Cowork / Dispatch guidance
@@ -144,6 +146,8 @@ entry point for new users or unsupervised agents.
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
 - Capability grant model (host handshake): `docs/operations/CAPABILITY_GRANT_MODEL.md`
 - Structured audit logging: `docs/operations/AUDIT_LOGGING.md`
+- **Audit and telemetry map:** `docs/operations/AUDIT_AND_TELEMETRY_MAP.md`
+- **Enterprise shared responsibility + evidence bundle recipe:** `docs/enterprise/SHARED_RESPONSIBILITY.md`, `docs/enterprise/EVIDENCE_BUNDLE_RECIPE.md`, index `docs/enterprise/README.md`
 - **CLI trajectory JSONL:** `docs/trajectory.md`
 - Runtime container guide: `docs/operations/RUNTIME_CONTAINER_GUIDE.md`
 - External orchestration guide: `docs/operations/EXTERNAL_ORCHESTRATION_GUIDE.md`

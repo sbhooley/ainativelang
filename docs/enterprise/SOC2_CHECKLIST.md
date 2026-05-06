@@ -2,6 +2,8 @@
 
 This document helps security and GRC teams map AINL deployments to common **SOC 2 (Trust Services Criteria)** expectations. It is **not legal or compliance advice**. Final control design, evidence collection, and auditor sign-off are your organization’s responsibility.
 
+**Execution tape (step-level JSONL)** in this checklist means **CLI trajectory logging** from `ainl run`: use **`--trace-jsonl PATH`** or **`--log-trajectory`** / **`AINL_LOG_TRAJECTORY`** (same `RuntimeEngine` sink; see [`../trajectory.md`](../trajectory.md)). **Runner HTTP structured audit** (`run_start`, `adapter_call`, …) is a **separate** deployment shape (`ainl-runner-service`); see [`../operations/AUDIT_LOGGING.md`](../operations/AUDIT_LOGGING.md). Full surface inventory: [`../operations/AUDIT_AND_TELEMETRY_MAP.md`](../operations/AUDIT_AND_TELEMETRY_MAP.md).
+
 ## Purpose
 
 - Give security and GRC teams a structured starting point when AINL sits inside the control boundary.
@@ -11,6 +13,13 @@ This document helps security and GRC teams map AINL deployments to common **SOC 
 ## Hosted runner and support
 
 For SLA-backed execution, priority support, or managed runner options, see **[COMMERCIAL.md](../../COMMERCIAL.md)** and your order form. Open-source AINL remains the reference compiler and runtime; commercial offerings address operational and support expectations that auditors often ask about for production workloads.
+
+## Procurement and evidence pointers
+
+- **Shared responsibility (canonical one-pager):** [`SHARED_RESPONSIBILITY.md`](SHARED_RESPONSIBILITY.md)
+- **Copy-paste evidence folder recipe (strict check, traces, runner logs, `audit_trail`, `ainl audit verify-jsonl`):** [`EVIDENCE_BUNDLE_RECIPE.md`](EVIDENCE_BUNDLE_RECIPE.md)
+- **Enterprise FAQ (aligned with repo honesty contract):** [`ENTERPRISE_FAQ.md`](ENTERPRISE_FAQ.md)
+- **Telemetry surface inventory:** [`../operations/AUDIT_AND_TELEMETRY_MAP.md`](../operations/AUDIT_AND_TELEMETRY_MAP.md)
 
 ---
 

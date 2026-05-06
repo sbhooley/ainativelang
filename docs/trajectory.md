@@ -1,5 +1,7 @@
 # Trajectory logging (CLI / RuntimeEngine)
 
+**See also:** [Audit and telemetry map](operations/AUDIT_AND_TELEMETRY_MAP.md) — runner audit vs trajectory vs `audit_trail` vs metrics.
+
 Optional **structured step traces** for `ainl run`: each executed step appends one JSON line to `<source-stem>.trajectory.jsonl` beside the `.ainl` file (same directory as the source path passed to the CLI).
 
 ## Enable

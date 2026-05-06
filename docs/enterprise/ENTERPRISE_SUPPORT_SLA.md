@@ -1,5 +1,7 @@
 # Enterprise Support SLA
 
+> **Contract reality:** SLAs and hosted-runtime commitments apply only when **sold and stated in your order form**—see [`../../COMMERCIAL.md`](../../COMMERCIAL.md). Open-source repo [`STATUS.yaml`](../../STATUS.yaml) lists several **hosted / SaaS** directions as **`aspirational_not_built`**; treat this document as a **template**, not a guarantee from the OSS project alone.
+
 **Service**: AINL Hosted Runtime & Enterprise Features  
 **Effective Date**: March 2026  
 **Last Updated**: March 30, 2026  

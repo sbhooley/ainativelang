@@ -1,6 +1,8 @@
 # Enterprise AINL: Frequently Asked Questions
 
-**Last updated**: March 2026
+**Last updated**: May 2026
+
+**Enterprise index:** [`README.md`](README.md) · **Shared responsibility (canonical):** [`SHARED_RESPONSIBILITY.md`](SHARED_RESPONSIBILITY.md) · **Evidence bundle recipe:** [`EVIDENCE_BUNDLE_RECIPE.md`](EVIDENCE_BUNDLE_RECIPE.md) · **Telemetry surfaces:** [`../operations/AUDIT_AND_TELEMETRY_MAP.md`](../operations/AUDIT_AND_TELEMETRY_MAP.md) · **Repo reality vs design:** [`../../STATUS.yaml`](../../STATUS.yaml)
 
 ---
 
@@ -8,20 +10,20 @@
 
 ### Q: What is AINL?
 
-AINL (AI Native Language) is a programming language for deterministic AI workflows. It compiles to validated graphs with immutable audit trails, making it suitable for regulated industries.
+AINL (AI Native Language) is a programming language for deterministic AI workflows. It compiles to validated intermediate representation (IR) with **explicit, reviewable** execution paths. For **structured execution evidence** (JSONL traces, optional audit adapter, HTTP runner logs), see the telemetry map and shared-responsibility doc—retention and immutability are **operator-owned** when you self-host.
 
 ### Q: How does AINL differ from LangGraph or Temporal?
 
 - **Deterministic by default** – same input always produces same execution path
 - **Compile-time validation** – catch graph errors before runtime
 - **Token efficient** – 90-95% reduction in orchestration tokens
-- **Audit-ready** – JSONL execution tapes for compliance
+- **Audit-ready (technical)** – optional **CLI trajectory JSONL**, optional **`audit_trail`** adapter, and **HTTP runner** structured logs; see [`../operations/AUDIT_AND_TELEMETRY_MAP.md`](../operations/AUDIT_AND_TELEMETRY_MAP.md)
 
 ### Q: Is AINL open-source?
 
 Yes. The core language, compiler, runtime, and adapters are Apache 2.0 licensed.
 
-We offer **commercial extensions** (hosted runtimes, enterprise support, compliance tooling) under separate terms.
+**Commercial** offerings, support SLAs, and any managed services are described separately—see [`COMMERCIAL.md`](../../COMMERCIAL.md). Several **hosted / marketplace** concepts are **not** shipped as open-source product surfaces today; see **`aspirational_not_built`** in [`STATUS.yaml`](../../STATUS.yaml) for the honesty contract.
 
 ---
 
@@ -58,12 +60,12 @@ node api: HTTP("call-service") {
 }
 ```
 
-Enterprise cloud supports Vault, AWS Secrets Manager, Azure Key Vault integrations.
+Secrets are consumed from **your** environment (env vars, secret managers, orchestrator-injected files). AINL does not replace Vault, AWS Secrets Manager, or Azure Key Vault—**you** wire those into the process.
 
 ### Q: What are the resource requirements?
 
-- **CLI/runner**: ~200MB RAM, minimal CPU
-- **Hosted runtime**: Scales horizontally; each tenant isolated
+- **CLI / self-hosted runner**: ~200MB RAM, minimal CPU (workload-dependent)
+- **Managed / hosted runtime** (if offered under commercial terms): sizing and isolation are per order form—**not** part of the OSS repo’s shipped surface; see [`STATUS.yaml`](../../STATUS.yaml) and [`COMMERCIAL.md`](../../COMMERCIAL.md)
 - **Local models** (Ollama): 8GB+ RAM recommended for 70B parameter models
 
 ---
@@ -72,12 +74,9 @@ Enterprise cloud supports Vault, AWS Secrets Manager, Azure Key Vault integratio
 
 ### Q: Is AINL SOC 2 compliant?
 
-AINL's design aligns with SOC 2 Trust Services Criteria:
-- **CC6.1** – Logical access controls (RBAC)
-- **CC7.2** – Monitoring of system operations (execution traces)
-- **CC8.1** – Integrity of data processing (deterministic graphs)
+**No**—SOC 2 is an **organizational attestation**, not a property of a language runtime. AINL’s **design and shipped logs** can **support evidence** that your team maps to common TSC themes (see [`SOC2_CHECKLIST.md`](SOC2_CHECKLIST.md) and [`../operations/AINL_SOC2_CONTROL_MAPPING.md`](../operations/AINL_SOC2_CONTROL_MAPPING.md)). **You** run the audit program, SIEM, retention, and access control.
 
-Our **enterprise offering** provides automated evidence bundles for auditors. The open-core version provides the tools; you're responsible for your SOC 2 audit.
+**Open-core:** use [`EVIDENCE_BUNDLE_RECIPE.md`](EVIDENCE_BUNDLE_RECIPE.md) to assemble artifacts (strict check output, traces, optional `audit_trail`, runner logs). **Commercial** packaging of evidence or managed services—if offered—is described in [`COMMERCIAL.md`](../../COMMERCIAL.md), not implied by the OSS repo alone.
 
 ### Q: Can AINL handle HIPAA-protected information (PHI)?
 
@@ -87,23 +86,21 @@ Yes, with proper configuration:
 - Store PHI only in compliant databases with access controls
 - Enable strict mode to prevent accidental data leakage
 
-Enterprise support includes HIPAA Business Associate Agreement (BAA) addendum.
+HIPAA-aligned deployments require **your** BAA coverage, PHI handling in logs, and infrastructure choices. AINL documentation does not constitute a BAA; engage legal and commercial channels if you need contractual HIPAA terms.
 
 ### Q: What about GDPR?
 
-AINL supports GDPR through:
-- **Right to erasure** – delete execution traces on request
-- **Data minimization** – explicit data flow; no hidden LLM storage
-- **Controller/processor distinction** – you are data controller; AINL is processor (in hosted model)
+GDPR compliance is **program + deployment** work. AINL can help with **data minimization in design** (explicit graph data flow) and **deletion of artifacts you control** (trace files, databases you configure). **Controller vs processor** roles depend on **how** you deploy (self-hosted vs any future hosted offering). See [`SHARED_RESPONSIBILITY.md`](SHARED_RESPONSIBILITY.md).
 
 ### Q: How do you ensure immutable audit logs?
 
-Execution traces (`--trace-jsonl`) can be:
-- Written to append-only storage (WORM, S3 Object Lock)
-- Hash-chained for tamper evidence
-- Forwarded to SIEM (Splunk, Datadog, Elastic)
+**Immutability is not automatic.** Execution traces (`--trace-jsonl` / `--log-trajectory`) and `audit_trail` JSONL are **files or streams you operate**:
 
-Enterprise cloud includes tamper-evident audit log service out of the box.
+- You may write them to **append-only** or **WORM** storage (S3 Object Lock, etc.).
+- `audit_trail` records include an **`event_hash`**; verify with `ainl audit verify-jsonl` (see [`EVIDENCE_BUNDLE_RECIPE.md`](EVIDENCE_BUNDLE_RECIPE.md)).
+- Forward to your **SIEM** (Splunk, Datadog, Elastic, …).
+
+**Managed** tamper-evident log SaaS is **not** claimed as an open-source shipped product; see [`STATUS.yaml`](../../STATUS.yaml) and [`COMMERCIAL.md`](../../COMMERCIAL.md) for what may exist commercially.
 
 ---
 
@@ -111,9 +108,7 @@ Enterprise cloud includes tamper-evident audit log service out of the box.
 
 ### Q: What is the uptime SLA for hosted runtimes?
 
-Enterprise tier SLA: **99.9%** monthly uptime (excluding planned maintenance).
-
-This applies to the hosted runtime service only. You are responsible for your graph logic.
+SLA-backed hosted offerings—if and when purchased—are governed by **your order form** and [`COMMERCIAL.md`](../../COMMERCIAL.md), not this FAQ. Self-hosted open-core has **no** uptime SLA from the repo.
 
 ### Q: How do you handle node failures?
 
@@ -127,13 +122,9 @@ Enterprise customers get PagerDuty/Opsgenie integration.
 
 ### Q: What about performance at scale?
 
-Hosted runtimes support:
-- **Autoscaling** – Add workers based on queue depth
-- **Priority queues** – Critical graphs run first
-- **Rate limiting** – Per-tenant quotas
-- **Cold start mitigation** – Keep workers warm (configurable)
+**Self-hosted:** scale your runner processes, queues, and infra like any service. **Commercial hosted** shapes (if offered) may include autoscaling and quotas per contract—see [`COMMERCIAL.md`](../../COMMERCIAL.md).
 
-Typical latencies:
+Typical latencies (indicative, not a guarantee):
 - LLM node: 1–5s (depending on model)
 - HTTP node: &lt;100ms (local services), 200–1000ms (external APIs)
 - Internal nodes: &lt;10ms
@@ -144,12 +135,7 @@ Typical latencies:
 
 ### Q: How much does enterprise AINL cost?
 
-Pricing is usage-based:
-- **Managed Runtime**: $0.15 per 1,000 graph executions + compute time
-- **Enterprise Governance**: $2,000/mo base fee (includes RBAC, compliance tooling)
-- **Premium Support**: $5,000/mo for 24/7 SLA with 2-hour response
-
-Exact pricing depends on volume and commitment term. [Contact sales](/contact?topic=enterprise) for a quote.
+Illustrative figures may appear in older collateral; **authoritative** commercial terms are in [`COMMERCIAL.md`](../../COMMERCIAL.md) and your quote. [Contact sales](/contact?topic=enterprise) for current pricing.
 
 ### Q: What support tiers are available?
 
@@ -173,12 +159,12 @@ Enterprise support and hosted runtimes are optional paid services.
 | CLI & local runner | ✅ | ✅ |
 | Basic adapters | ✅ | ✅ |
 | Self-hosted deployment | ✅ | ✅ |
-| Hosted runtimes (SaaS) | ❌ | ✅ |
-| SSO / SAML | ❌ | ✅ |
-| RBAC & audit logs | ❌ (you build) | ✅ (out of box) |
-| Compliance automation | ❌ (you configure) | ✅ (generated) |
-| SLA-backed support | ❌ | ✅ |
-| 24/7 phone support | ❌ | ✅ |
+| Structured execution evidence (trajectory, runner audit, `audit_trail`) | ✅ (you operate log path / SIEM) | May include packaged support—see [`COMMERCIAL.md`](../../COMMERCIAL.md) |
+| Hosted runtimes (SaaS) | ❌ in OSS repo ([`STATUS.yaml`](../../STATUS.yaml)) | If offered—see [`COMMERCIAL.md`](../../COMMERCIAL.md) |
+| SSO / SAML | ❌ in OSS | If offered—commercial |
+| Central RBAC for AINL product | ❌ (your IdP + deployment) | If offered—commercial |
+| SLA-backed support | ❌ | If purchased |
+| 24/7 phone support | ❌ | If purchased |
 
 ---
 
@@ -286,7 +272,7 @@ By default, AINL tries to continue on node failure if possible. Use `strict` mod
 ainl run graph.ainl --strict
 ```
 
-In production, always use `--trace-jsonl` to see what happened.
+In production, enable **trajectory logging** (`--trace-jsonl PATH` or `--log-trajectory` / `AINL_LOG_TRAJECTORY`) when you need per-step JSONL; see [`../trajectory.md`](../trajectory.md).
 
 ---
 

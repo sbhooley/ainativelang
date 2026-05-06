@@ -1,5 +1,7 @@
 # Production runs: static cost estimates and the audit trail adapter
 
+**See also:** [Audit and telemetry map](../operations/AUDIT_AND_TELEMETRY_MAP.md) — how `audit_trail` fits next to runner audit and CLI trajectory.
+
 > v1.3.4 feature guide. Covers `--estimate` on `check`/`inspect`/`status` and the `audit_trail` adapter.
 
 ## Overview

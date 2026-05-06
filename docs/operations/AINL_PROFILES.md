@@ -43,6 +43,10 @@ eval "$(ainl profile emit-shell openclaw-default)"
 - **Isolation** = separate DBs and workspaces per tenant/user; see [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md).
 - **Agent + AINL** = who owns what and the default loop; see [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md).
 
+## Enterprise evidence defaults (documentation)
+
+Profiles in `tooling/ainl_profiles.json` today focus on **startup tokens**, **embedding mode**, and **bridge caps**—not on forcing trajectory or observability JSONL. For **production evidence** (CLI trajectory, `AINL_OBSERVABILITY_JSONL`, HTTP runner log capture), use the runbook [`../enterprise/EVIDENCE_BUNDLE_RECIPE.md`](../enterprise/EVIDENCE_BUNDLE_RECIPE.md) and set env in your supervisor or container spec (or add a **new** profile id in a follow-up change if you want a named `enterprise-evidence` bundle).
+
 ## See also
 
 - [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) — full OpenClaw install/upgrade checklist (profiles, caps, cron, verification)
@@ -50,3 +54,4 @@ eval "$(ainl profile emit-shell openclaw-default)"
 - [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md)
 - [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md)
 - [`../getting_started/HOST_MCP_INTEGRATIONS.md`](../getting_started/HOST_MCP_INTEGRATIONS.md)
+- [`../enterprise/SHARED_RESPONSIBILITY.md`](../enterprise/SHARED_RESPONSIBILITY.md) — enterprise boundary narrative

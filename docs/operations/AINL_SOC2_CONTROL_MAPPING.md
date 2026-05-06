@@ -2,7 +2,7 @@
 
 This document maps common **AICPA Trust Services Criteria (TSC)** control themes to **what the AI Native Lang (AINL) language, compiler, and Python runtime provide** versus **what deployers and enterprises must own** in their environment, process, and monitoring stack. It is the **AINL** counterpart to **host-level** control mapping for [ArmaraOS](https://github.com/sbhooley/armaraos/blob/main/docs/operations/SOC2_CONTROL_MAPPING.md) (the agent operating system). Use this for **shared responsibility** statements and customer questionnaires. Align criterion IDs to the exact **TSC** publication year your auditor uses; numbering and labels can differ slightly by edition.
 
-**Related in-repo:** [`AUDIT_LOGGING.md`](AUDIT_LOGGING.md) (HTTP runner JSON audit) · [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md) · [`CAPABILITY_GRANT_MODEL.md`](CAPABILITY_GRANT_MODEL.md) · [`../trajectory.md`](../trajectory.md) (CLI JSONL) · **Root** [`../SECURITY.md`](../SECURITY.md) (reporting policy) when present.
+**Related in-repo:** [`AUDIT_AND_TELEMETRY_MAP.md`](AUDIT_AND_TELEMETRY_MAP.md) (inventory: runner vs CLI vs adapter vs metrics) · [`AUDIT_LOGGING.md`](AUDIT_LOGGING.md) (HTTP runner JSON audit) · [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md) · [`CAPABILITY_GRANT_MODEL.md`](CAPABILITY_GRANT_MODEL.md) · [`../trajectory.md`](../trajectory.md) (CLI JSONL) · **Root** [`../SECURITY.md`](../SECURITY.md) (reporting policy) when present.
 
 ---
 
