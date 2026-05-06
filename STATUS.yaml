@@ -16,7 +16,7 @@ real_and_working:
 
   cli:
     file: cli/main.py
-    lines: 3376
+    lines: 3398
     status: production
     commands:
       - "ainl run"
@@ -54,13 +54,11 @@ real_and_working:
       test_named_py_files: "Files named test_*.py under tests/ (pytest test modules)."
       lines_python_under_tests: "Sum of lines of all *.py under tests/."
       pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
-    py_files_under_tests: 1048
-    test_named_py_files: 213
-    lines_python_under_tests: 306293
+    py_files_under_tests: 1049
+    test_named_py_files: 214
+    lines_python_under_tests: 306366
     lines_python_under_tests_rounded: "~306k"
-    pytest_collect_only_selected: 1333
-    pytest_collect_only_total: 1372
-    pytest_deselected: 39
+    pytest_collect_only: "unavailable — could not parse pytest collection output"
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 
   examples:
@@ -88,6 +86,21 @@ real_and_working:
       and non-strict modes supported. 66% token reduction vs raw opcodes.
     examples: "examples/compact/"
 
+
+telemetry_and_audit_surfaces:
+  map_doc: docs/operations/AUDIT_AND_TELEMETRY_MAP.md
+  runner_structured_audit:
+    status: shipped
+    notes: "HTTP runner service (scripts/runtime_runner_service.py); ainl.runner JSON — docs/operations/AUDIT_LOGGING.md"
+  cli_trajectory_jsonl:
+    status: shipped
+    notes: "RuntimeEngine per-step JSONL via ainl run --trace-jsonl or --log-trajectory / AINL_LOG_TRAJECTORY — docs/trajectory.md"
+  audit_trail_adapter:
+    status: shipped
+    notes: "Opt-in adapter; AINL_AUDIT_SINK / --audit-sink — docs/tutorials/production_with_estimates_and_audit.md"
+  runtime_observability_jsonl:
+    status: shipped
+    notes: "Optional metrics JSONL (AINL_OBSERVABILITY, AINL_OBSERVABILITY_JSONL) — runtime/observability.py"
 aspirational_not_built:
   graph_block_syntax:
     description: "graph X { node Y: LLM(...) { ... } } verbose block syntax in tutorials"

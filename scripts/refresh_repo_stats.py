@@ -331,6 +331,25 @@ def refresh_agents_md(root: Path, s: RepoStats) -> str:
     return text
 
 
+# Preserved between real_and_working and aspirational_not_built (do not move into render_status_real_section).
+STATUS_TELEMETRY_AND_AUDIT_SURFACES = """
+telemetry_and_audit_surfaces:
+  map_doc: docs/operations/AUDIT_AND_TELEMETRY_MAP.md
+  runner_structured_audit:
+    status: shipped
+    notes: "HTTP runner service (scripts/runtime_runner_service.py); ainl.runner JSON — docs/operations/AUDIT_LOGGING.md"
+  cli_trajectory_jsonl:
+    status: shipped
+    notes: "RuntimeEngine per-step JSONL via ainl run --trace-jsonl or --log-trajectory / AINL_LOG_TRAJECTORY — docs/trajectory.md"
+  audit_trail_adapter:
+    status: shipped
+    notes: "Opt-in adapter; AINL_AUDIT_SINK / --audit-sink — docs/tutorials/production_with_estimates_and_audit.md"
+  runtime_observability_jsonl:
+    status: shipped
+    notes: "Optional metrics JSONL (AINL_OBSERVABILITY, AINL_OBSERVABILITY_JSONL) — runtime/observability.py"
+"""
+
+
 def refresh_status_yaml(root: Path, s: RepoStats) -> str:
     path = root / "STATUS.yaml"
     text = path.read_text(encoding="utf-8")
@@ -339,7 +358,7 @@ def refresh_status_yaml(root: Path, s: RepoStats) -> str:
         raise ValueError(f"{path}: missing {key!r}")
     idx = text.index(key)
     aspirational = text[idx:]
-    return render_status_real_section(s) + aspirational
+    return render_status_real_section(s) + STATUS_TELEMETRY_AND_AUDIT_SURFACES + aspirational
 
 
 def main() -> int:
