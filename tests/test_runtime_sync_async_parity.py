@@ -206,6 +206,47 @@ def test_async_runtime_while_clamps_by_max_loop_iters_like_sync():
         )
 
 
+def test_max_loop_iters_error_code_preserved_in_async_steps():
+    """Drift pin: when async hits ``max_loop_iters``, the raised
+    ``AinlRuntimeError`` must keep its ``RUNTIME_MAX_LOOP_ITERS`` code.
+
+    Without a dedicated ``except AinlRuntimeError: raise`` clause in
+    ``_run_label_async``, the broad ``except Exception`` rewraps the
+    AinlRuntimeError via ``_raise_runtime_error`` which assigns
+    ``RUNTIME_OP_ERROR``. Sync preserves the code via its own
+    ``except AinlRuntimeError`` handler at L2297 -- async must match
+    so the agent/MCP error contract stays consistent across paths.
+
+    Discovered by Codex review on PR #45."""
+    from runtime.engine import AinlRuntimeError, ERROR_CODE_MAX_LOOP_ITERS
+
+    code = "L1: X arr arr 1 2 3 Loop arr it ->L2 ->L3\nL2: J null\nL3: J done\n"
+    limits = {"max_loop_iters": 2}
+
+    eng_sync = RuntimeEngine.from_code(code, strict=False, limits=limits)
+    sync_err: Any = None
+    try:
+        eng_sync.run_label("1", frame={})
+    except AinlRuntimeError as e:
+        sync_err = e
+    assert sync_err is not None
+    assert sync_err.to_dict().get("code") == ERROR_CODE_MAX_LOOP_ITERS, (
+        f"sync error code: {sync_err.to_dict().get('code')!r}"
+    )
+
+    eng_async = RuntimeEngine.from_code(code, strict=False, limits=limits)
+    async_err: Any = None
+    try:
+        asyncio.run(eng_async.run_label_async("1", frame={}))
+    except AinlRuntimeError as e:
+        async_err = e
+    assert async_err is not None
+    assert async_err.to_dict().get("code") == ERROR_CODE_MAX_LOOP_ITERS, (
+        f"async error code: {async_err.to_dict().get('code')!r} "
+        "(Codex review #45 fix: must not be rewrapped to RUNTIME_OP_ERROR)"
+    )
+
+
 def test_async_graph_raises_on_guard_exceedance_like_sync():
     """Drift pin: both ``_run_label_graph`` and ``_run_label_graph_async``
     must reference ``ERROR_CODE_GRAPH_EXEC_GUARD`` so a runaway graph

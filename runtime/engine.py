@@ -3044,6 +3044,13 @@ class RuntimeEngine:
                     return shared.get("out")
                 self._emit_trace(lid, op, i, t0, frame, shared.get("out") if shared else None, trajectory_step=s)
                 i += 1
+            except AinlRuntimeError:
+                # Preserve structured error codes (e.g. RUNTIME_MAX_LOOP_ITERS,
+                # RUNTIME_WHILE_LIMIT) the agent/MCP contract relies on. The
+                # broad except below would otherwise rewrap as RUNTIME_OP_ERROR.
+                # See sync sibling at L2297.
+                self._emit_trajectory_fail(lid, op, frame, s, None)
+                raise
             except Exception as e:
                 self._raise_runtime_error(e, lid, i, op, stack, frame, s)
         return None
@@ -3167,6 +3174,14 @@ class RuntimeEngine:
                         return shared.get("out")
                 nxt = self._next_linear_node_edge(out_by_from.get(cur, []), lid, idx, op, stack)
                 cur = nxt.get("to") if nxt else None
+            except AinlRuntimeError as e:
+                # Preserve structured error codes (e.g. RUNTIME_MAX_LOOP_ITERS,
+                # RUNTIME_WHILE_LIMIT, RUNTIME_GRAPH_EXEC_GUARD) the
+                # agent/MCP contract relies on. The broad except below would
+                # otherwise rewrap as RUNTIME_OP_ERROR. See sync sibling at
+                # L2848.
+                self._emit_trajectory_fail(lid, op, frame, step, e, node_id=cur)
+                raise
             except Exception as e:
                 self._raise_runtime_error(e, lid, idx, op, stack, frame, step, node_id=cur)
         return None
