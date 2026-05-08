@@ -121,27 +121,78 @@ def _count_adapter_py(root: Path) -> int:
     return n
 
 
+def _pytest_python_candidates(root: Path) -> list[Path]:
+    """Interpreters to try for ``python -m pytest`` when refreshing stats.
+
+    Prefer the repo virtualenv (``.venv-ainl``) even if the script was started
+    with system Python, so ``python3 scripts/refresh_repo_stats.py`` works
+    without activation as long as dev deps were installed into ``.venv-ainl``.
+    """
+    candidates: list[Path] = []
+    seen: set[str] = set()
+
+    def add(p: Path) -> None:
+        if not p.is_file():
+            return
+        # Use `.absolute()` (no symlink expansion) for dedupe keys so a venv
+        # launcher like `.venv-ainl/bin/python` stays distinct from the real
+        # interpreter binary `sys.executable` may point at after `.resolve()`.
+        key = str(p.absolute())
+        if key not in seen:
+            seen.add(key)
+            candidates.append(p.absolute())
+
+    # Unix layout
+    add(root / ".venv-ainl" / "bin" / "python")
+    add(root / ".venv" / "bin" / "python")
+    # Windows layout (same ordering)
+    add(root / ".venv-ainl" / "Scripts" / "python.exe")
+    add(root / ".venv" / "Scripts" / "python.exe")
+    add(Path(sys.executable).absolute())
+    return candidates
+
+
 def _run_pytest_collect(root: Path) -> tuple[int | None, int | None, int | None, str | None]:
-    cmd = [sys.executable, "-m", "pytest", "--collect-only", "-q"]
-    try:
-        proc = subprocess.run(
-            cmd,
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=180,
-            env=os.environ.copy(),
+    summary_re = re.compile(r"(\d+)/(\d+)\s+tests\s+collected")
+    desel_re = re.compile(r"\((\d+)\s+deselected\)")
+
+    last_detail: str | None = None
+    for py in _pytest_python_candidates(root):
+        cmd = [str(py), "-m", "pytest", "--collect-only", "-q"]
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=180,
+                env=os.environ.copy(),
+            )
+        except (subprocess.TimeoutExpired, OSError) as e:
+            return None, None, None, str(e)
+        combined = (proc.stdout or "") + (proc.stderr or "")
+        if "No module named pytest" in combined:
+            last_detail = f"{py.name}: No module named pytest (try .venv-ainl + pip install -e '.[dev]')"
+            continue
+        m = summary_re.search(combined)
+        if m:
+            selected, total = int(m.group(1)), int(m.group(2))
+            dm = desel_re.search(combined)
+            desel = int(dm.group(1)) if dm else 0
+            return selected, total, desel, None
+        tail = (
+            "\n".join(combined.strip().splitlines()[-5:])
+            if combined.strip()
+            else "(empty output)"
         )
-    except (subprocess.TimeoutExpired, OSError) as e:
-        return None, None, None, str(e)
-    combined = (proc.stdout or "") + (proc.stderr or "")
-    m = re.search(r"(\d+)/(\d+) tests collected", combined)
-    if not m:
-        return None, None, None, "could not parse pytest collection output"
-    selected, total = int(m.group(1)), int(m.group(2))
-    dm = re.search(r"\((\d+) deselected\)", combined)
-    desel = int(dm.group(1)) if dm else 0
-    return selected, total, desel, None
+        last_detail = (
+            f"{py.name}: exit {proc.returncode}; expected "
+            r"'N/M tests collected' in pytest output; tail:\n{tail}"
+        )
+
+    if last_detail:
+        return None, None, None, last_detail
+    return None, None, None, "could not parse pytest collection output"
 
 
 def collect_stats(root: Path) -> RepoStats:

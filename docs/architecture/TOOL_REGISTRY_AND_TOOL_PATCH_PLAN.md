@@ -97,11 +97,38 @@ Product embeddings may label patches:
 
 | Mode | Typical ToolPatch |
 |------|-------------------|
+| **Conversation** (chat default) | **Narrow** subset ⊆ registry: natural dialogue + lightweight collaboration (e.g. A2A / agent messaging / channels / notifications **if** product enables them by default)—**omit AINL MCP** unless escalated. Goal: avoid exposing the **full** toolbox on benign turns. |
 | **Deterministic** | Minimal **floor** (files, shell policy, web as needed, **MCP AINL** cluster, …)—see **[ToolPatch architecture](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md)** §6 |
 | **Heuristic** | Dynamic subset ⊆ registry (router / policy hints) |
 | **Freestyle** | Largest honest subset ⊆ registry for the agent |
 
 Exact tool ids remain **host-defined strings**—AINL does not mint new ids from prose.
+
+### 7.1 Default production posture (recommended)
+
+For production UX and safety, **prefer Conversation as the default mode** (bounded **ToolPatch**), not **Freestyle with all tools**. **ToolRegistry** still holds the session’s **canonical** names + contracts (bootstrap + host **`PATCH`**); only the **active patch** changes per turn. Widen to **Deterministic** when an **AINL / workflow** signal applies (host **pre-filter** or policy); widen to **Freestyle** only when the product explicitly escalates or policy demands the widest honest subset. This preserves lifecycle §6—**narrow first**, **mutate registry** only via approved deltas.
+
+### 7.2 Pre-filter, D-gate, and router (aligned vocabulary)
+
+Keep three layers distinct so implementers do not merge “cheap keyword” with “infer routing”:
+
+| Layer | Role |
+|-------|------|
+| **Pre-filter (keyword)** | Fast host-side check (e.g. `ainl`, `.ainl`, `mcp_ainl`, …) to pick **host mode** / **ToolPatch** (e.g. jump into deterministic AINL workflow vs stay in conversation). **Not** the same symbol as the infer control plane’s D-gate env wiring—same *idea* (cheap signal), different **call site**. |
+| **D-gate (determining gate)** | On the **infer pipeline**: **signal only**—**never widens** capabilities; **routes** which refinement runs next (e.g. call HTTP **router** tier vs skip small model vs conservative patch). Invariant: **determining gate + decomposition** — D-gate only **routes** refinement paths, including “skip small model” fallback (see sibling **[`TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md)** §4.2 and §14.6). |
+| **Router (small model)** | Optional **HTTP** refinement **after** D-gate allows it: suggests mode / ToolPatch profile / confidence; still **⊆ ToolRegistry**. |
+
+Cross-repo detail, fallback matrix, indexer preemption, and **RouterOutput** schema: sibling **[`TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md)** (§4–§5, §8, §14).
+
+**AINL `services.tool_surface` (compile/runtime deny path):** **[`TOOL_SURFACE_CANONICALIZATION_CHECKLIST.md`](TOOL_SURFACE_CANONICALIZATION_CHECKLIST.md)** §9 — same vocabulary table + links to infer-server docs.
+
+### 7.3 Per-turn snap-back (default) vs sticky workflow (opt-in)
+
+Reference host behavior (**ArmaraOS**) recomputes effective **ToolPatch** **each turn** from the latest user text and classifiers so users can **just talk** after finishing AINL- or tool-heavy work—the next benign message **snaps back** toward **Conversation** unless signals say otherwise (with or without **`ainl-inference-server`** on the path). **Product default remains snap-back.**
+
+**Opt-in sticky workflow ceiling** (session-scoped “stay narrowed until cleared”) is implemented as an **explicit contract** on the host + infer wire (`WorkflowStickyState`, persisted session JSON, slash commands, metrics) — see **[`STICKY_WORKFLOW_MODE.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/STICKY_WORKFLOW_MODE.md)**. Treating sticky as the **default for all users** (vs slash/opt-in only) is still a **product decision**: UX escape hatches, A/B or usability evidence, telemetry review — before flipping defaults.
+
+Canonical narrative: **[`PLANNER_HOST_BOUNDARIES.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/PLANNER_HOST_BOUNDARIES.md)** (*Conversation-first UX and per-turn snap-back*); **[`TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/TOOL_PATCH_AND_ROUTER_ARCHITECTURE.md)** (snap-back subsection under §1). **Checklist:** [`INFER_SESSION_ACTIVE_TODOS.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/INFER_SESSION_ACTIVE_TODOS.md) §N (sticky **opt-in v1** + product backlog).
 
 ---
 
@@ -129,6 +156,7 @@ A **small classifier model** or **structured router** may suggest **which ToolPa
 
 | Document | Role |
 |----------|------|
+| **[`TOOL_SURFACE_CANONICALIZATION_CHECKLIST.md`](TOOL_SURFACE_CANONICALIZATION_CHECKLIST.md)** | IR `tool_surface`, runtime **`RUNTIME_TOOL_PATCH_DENY`**; **§9** cross-repo vocabulary index |
 | **[`AINL_GRAPH_VOCABULARY.md`](../AINL_GRAPH_VOCABULARY.md)** | Three-graph discipline; avoid confusing repo vs IR vs memory graphs |
 | **[`operations/CAPABILITY_GRANT_MODEL.md`](../operations/CAPABILITY_GRANT_MODEL.md)** | Host grants intersect registry membership |
 | **[`ARMARAOS_INTEGRATION.md`](../ARMARAOS_INTEGRATION.md)** | Desktop shell integration hub |
