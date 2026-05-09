@@ -59,6 +59,7 @@
 - [x] **ArmaraOS (partial)** — Native infer/planner path sets `InferRequest.tool_surface` from agent manifest metadata keys **`ainl_tool_surface`** or **`tool_surface`**. Host-side `ainl run` enforcement unchanged.
 - [x] **ainl-inference-server** — Same `InferRequest.tool_surface` field (JSON passthrough for future session hydrate).
 - [x] **Vocabulary index (ToolPatch layers)** — See **§9** below + **[`TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md`](TOOL_REGISTRY_AND_TOOL_PATCH_PLAN.md) §7.2–7.3** (pre-filter vs D-gate vs router; Conversation default; per-turn snap-back vs **opt-in** sticky ceiling — [`STICKY_WORKFLOW_MODE.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/STICKY_WORKFLOW_MODE.md)).
+- [x] **Track 7 — indexer ADR (infer-server)** — **[`0007-indexer-chunk-record-and-pattern-indexer.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/adr/0007-indexer-chunk-record-and-pattern-indexer.md)** freezes **`IndexerChunkRecord`** + **`pattern_indexer`** checkout/checkpoint (§8.4); checklist **[`INFER_SESSION_ACTIVE_TODOS.md`](https://github.com/sbhooley/ainl-inference-server/blob/main/docs/architecture/INFER_SESSION_ACTIVE_TODOS.md)** §N frozen-interface row updated.
 
 ---
 
@@ -102,4 +103,4 @@ Changing **manifest tool lists**, **`RUNTIME_TOOL_PATCH_DENY`** expectations, or
 
 ---
 
-_Last updated: 2026-05-08 (§9 dual-surface table + sticky opt-in links; §7 cross-repo row)_
+_Last updated: 2026-05-09 (§7 Track 7 / ADR 0007 indexer link)_
