@@ -547,14 +547,98 @@ def _missing_source_tool_error(tool: str) -> Dict[str, Any]:
         ),
         "next_step": (
             f"Read the target `.ainl` / `.lang` file (or your editor buffer) and pass the **full source** "
-            f"into `{tool}(code=...)` as a string. Legacy alias `ainl=` is accepted."
+            f"into `{tool}(code=...)` as a string, **or** pass `path` to a UTF-8 workflow file (absolute or "
+            "relative to the process cwd, or under `AINL_MCP_WORKFLOW_ROOT` when set). Legacy alias `ainl=` "
+            "is accepted for inline source."
         ),
-        "copy_paste_next_call": {"tool": tool, "args": {"code": "<paste full AINL source here>", "strict": True}},
+        "copy_paste_next_call": {
+            "tool": tool,
+            "args": {"path": "/absolute/path/to/workflow.ainl", "strict": True},
+        },
         "recommended_resources": [u for u in ("ainl://strict-authoring-cheatsheet",) if u in _ALLOWED_RESOURCES],
         "recommended_next_tools": [t for t in ("ainl_get_started", tool) if t in _ALLOWED_TOOLS],
     }
     _attach_policy_contract_hints(out_ms)
     return out_ms
+
+
+def _classify_source_arg(code: Optional[str], ainl: Optional[str]) -> str:
+    """Return why a source argument is unusable, or ``"ok"`` if usable.
+
+    - ``"missing_arg"`` — neither ``code`` nor ``ainl`` was provided (or both are non-strings).
+    - ``"empty"`` — at least one was provided but contains only whitespace (e.g. a 0-byte file
+      whose contents the host read into ``code=""``). This is the case where the agent should
+      stop retrying ``ainl_compile`` and either ask the user or scaffold via ``ainl_get_started``.
+    - ``"ok"`` — at least one argument has non-whitespace content.
+    """
+    has_string = False
+    for raw in (code, ainl):
+        if isinstance(raw, str):
+            has_string = True
+            if raw.strip():
+                return "ok"
+    return "empty" if has_string else "missing_arg"
+
+
+_EMPTY_SOURCE_SCAFFOLD = (
+    "S app core noop\n\nL_main:\n  R core.NOW ->ts\n  J ts\n"
+)
+
+
+def _empty_source_tool_error(tool: str) -> Dict[str, Any]:
+    """Payload when ``code`` / ``ainl`` is present but empty / whitespace-only.
+
+    Distinct from ``_missing_source_tool_error``: the host *did* read the file (or send the
+    string), but it had no content. Common cause: a 0-byte ``.ainl`` workflow that was never
+    populated (or truncated). The right repair is to stop retrying ``ainl_compile`` with the
+    same empty buffer and either scaffold via ``ainl_get_started`` or ask the user.
+    """
+    out_es: Dict[str, Any] = {
+        "ok": False,
+        "errors": ["empty AINL source"],
+        "error_kind": "empty_source",
+        "tool_call_error": False,
+        "why_this_matters": (
+            "The source you passed is empty (0 non-whitespace characters). The compiler has nothing to "
+            "validate, compile, or run. Retrying with the same empty buffer will keep failing — fix the "
+            "source first."
+        ),
+        "next_step": (
+            f"Stop calling `{tool}` with this buffer. Most likely the target `.ainl` file is 0 bytes (check "
+            "with `file_read` / `stat`). Either scaffold a strict-valid graph for the user's goal via "
+            "`ainl_get_started`, or ask the user what the workflow should do before writing any source."
+        ),
+        "minimal_strict_valid_example": _EMPTY_SOURCE_SCAFFOLD,
+        "copy_paste_next_call": {
+            "tool": "ainl_get_started",
+            "args": {"goal": "<plain-language description of what this workflow should do>"},
+        },
+        "repair_recipe": {
+            "resources": [
+                u
+                for u in ("ainl://strict-authoring-cheatsheet", "ainl://strict-valid-examples")
+                if u in _ALLOWED_RESOURCES
+            ],
+            "recommended_tools": [
+                t for t in ("ainl_get_started", "ainl_step_examples", "ainl_validate") if t in _ALLOWED_TOOLS
+            ],
+            "steps": [
+                "Confirm the target file is empty (use `file_read` / `stat`); if so, surface that to the user instead of retrying.",
+                "Call `ainl_get_started` with the user's goal in plain language to scaffold a strict-valid graph.",
+                "Validate the scaffolded source with `ainl_validate(code=..., strict=True)` before writing it back.",
+            ],
+        },
+        "recommended_resources": [
+            u
+            for u in ("ainl://strict-authoring-cheatsheet", "ainl://strict-valid-examples")
+            if u in _ALLOWED_RESOURCES
+        ],
+        "recommended_next_tools": [
+            t for t in ("ainl_get_started", "ainl_step_examples") if t in _ALLOWED_TOOLS
+        ],
+    }
+    _attach_policy_contract_hints(out_es)
+    return out_es
 
 
 def _csv_set(val: Optional[str]) -> Set[str]:
@@ -1652,6 +1736,167 @@ def _resolve_code_arg(code: Optional[str], ainl: Optional[str] = None) -> str:
     return ""
 
 
+def _expand_workflow_path(raw: str) -> Path:
+    """Resolve a filesystem path for MCP workflow loading (mirrors CLI ``Path(args.file).resolve()`` behavior).
+
+    - Expands ``~`` via :meth:`pathlib.Path.expanduser`.
+    - Absolute paths resolve normally.
+    - Relative paths resolve against ``AINL_MCP_WORKFLOW_ROOT`` when set (ArmaraOS / OpenClaw workspaces),
+      otherwise against :func:`os.getcwd` (same as ``ainl run ./foo.ainl`` from the shell).
+    """
+    p = Path(str(raw).strip()).expanduser()
+    if p.is_absolute():
+        return p.resolve()
+    root = (os.environ.get("AINL_MCP_WORKFLOW_ROOT") or "").strip()
+    if root:
+        return (Path(root).expanduser() / p).resolve()
+    return (Path.cwd() / p).resolve()
+
+
+def _list_sibling_workflows(parent: Path, *, limit: int = 20) -> List[str]:
+    """Return up to ``limit`` ``.ainl`` / ``.lang`` siblings, sorted, for ``path_not_found`` hints."""
+    if not parent.is_dir():
+        return []
+    out: List[str] = []
+    try:
+        for p in sorted(parent.iterdir()):
+            if p.is_file() and p.suffix in {".ainl", ".lang"}:
+                out.append(p.name)
+                if len(out) >= limit:
+                    break
+    except OSError:
+        return []
+    return out
+
+
+def _empty_source_path_error(p: Path) -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "error": "empty_source",
+        "error_kind": "empty_source",
+        "path": str(p),
+        "why_this_matters": (
+            f"`{p.name}` is empty (0 non-whitespace bytes). The compiler has nothing to process — "
+            "retrying validate/compile/run against the same path will keep failing. Fix the source first."
+        ),
+        "next_step": (
+            "Tell the user the file is empty (or scaffold a strict-valid graph for their goal via the "
+            "`ainl_get_started` MCP tool). Do not re-run until the file has content."
+        ),
+        "minimal_strict_valid_example": (
+            "S app core noop\n\nL_main:\n  R core.NOW ->ts\n  J ts\n"
+        ),
+        "recommended_next_tools": [
+            t for t in ("ainl_get_started", "ainl_step_examples") if t in _ALLOWED_TOOLS
+        ],
+        "recommended_resources": [
+            u for u in ("ainl://strict-authoring-cheatsheet", "ainl://strict-valid-examples") if u in _ALLOWED_RESOURCES
+        ],
+        "sibling_workflows": _list_sibling_workflows(p.parent),
+    }
+
+
+def _preflight_workflow_path(src_path: str) -> Optional[Dict[str, Any]]:
+    """Detect ``path_not_found`` / ``empty_source`` before compile — mirrors ``cli/main.py``."""
+    p = Path(src_path)
+    if not p.exists():
+        parent = p.parent
+        return {
+            "ok": False,
+            "error": "path_not_found",
+            "error_kind": "path_not_found",
+            "path": str(p),
+            "why_this_matters": (
+                f"The workflow file does not exist at {p}. Retrying with the same path will fail identically — "
+                "confirm the path with the user or pick a sibling workflow."
+            ),
+            "next_step": (
+                "List the directory or ask the user for the correct path. The `sibling_workflows` field "
+                "lists nearby `.ainl` / `.lang` files for quick selection."
+            ),
+            "sibling_workflows": _list_sibling_workflows(parent),
+            "recommended_next_tools": [t for t in ("ainl_get_started",) if t in _ALLOWED_TOOLS],
+            "recommended_resources": [u for u in ("ainl://strict-authoring-cheatsheet",) if u in _ALLOWED_RESOURCES],
+        }
+    if not p.is_file():
+        return {
+            "ok": False,
+            "error": "path_not_a_file",
+            "error_kind": "path_not_a_file",
+            "path": str(p),
+            "next_step": "Pass an `.ainl` / `.lang` file path, not a directory or special file.",
+        }
+    try:
+        size = p.stat().st_size
+    except OSError as e:
+        return {
+            "ok": False,
+            "error": "stat_failed",
+            "error_kind": "stat_failed",
+            "path": str(p),
+            "details": str(e),
+        }
+    if size == 0:
+        return _empty_source_path_error(p)
+    try:
+        text = p.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return None
+    if not text.strip():
+        return _empty_source_path_error(p)
+    return None
+
+
+def _filter_preflight_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure preflight dicts respect MCP exposure lists."""
+    rt = payload.get("recommended_next_tools")
+    if isinstance(rt, list):
+        payload["recommended_next_tools"] = [t for t in rt if t in _ALLOWED_TOOLS]
+    rr = payload.get("recommended_resources")
+    if isinstance(rr, list):
+        payload["recommended_resources"] = [u for u in rr if u in _ALLOWED_RESOURCES]
+    return payload
+
+
+def _resolve_workflow_source(
+    code: Optional[str],
+    ainl: Optional[str],
+    path: Optional[str],
+) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
+    """Resolve program text from inline ``code``/``ainl`` or a filesystem ``path``.
+
+    Returns ``(source, resolved_absolute_path_or_None, preflight_error_or_None)``.
+    Non-whitespace inline source wins over ``path`` (same buffer semantics as ``ainl_get_started``).
+    """
+    inline = _resolve_code_arg(code, ainl)
+    if inline:
+        return inline, None, None
+    raw_path = (path or "").strip() if isinstance(path, str) else ""
+    if not raw_path:
+        return "", None, None
+    resolved = _expand_workflow_path(raw_path)
+    abs_s = str(resolved)
+    pre = _preflight_workflow_path(abs_s)
+    if pre is not None:
+        _filter_preflight_payload(pre)
+        _attach_policy_contract_hints(pre)
+        return "", abs_s, pre
+    try:
+        text = resolved.read_text(encoding="utf-8")
+    except UnicodeDecodeError as e:
+        err = {
+            "ok": False,
+            "error": "unicode_decode_error",
+            "error_kind": "unicode_decode_error",
+            "path": abs_s,
+            "details": str(e),
+            "next_step": "Ensure the workflow file is valid UTF-8 text.",
+        }
+        _attach_policy_contract_hints(err)
+        return "", abs_s, err
+    return text, abs_s, None
+
+
 # ---------------------------------------------------------------------------
 # MCP Tools
 # ---------------------------------------------------------------------------
@@ -1809,6 +2054,7 @@ def ainl_validate(
     code: Optional[str] = None,
     strict: bool = True,
     ainl: Optional[str] = None,
+    path: Optional[str] = None,
     wizard_state_json: Optional[dict] = None,
 ) -> dict:
     """Validate AINL source code without executing it.
@@ -1818,10 +2064,10 @@ def ainl_validate(
 
     Pass the **full** program source in the ``code`` argument (UTF-8 string).
     The legacy ``ainl`` parameter name is accepted as an alias for ``code``.
-    An empty call (e.g. ``{}``) or omitted ``code``/``ainl`` is a **tool wiring** error
+    Alternatively, pass ``path`` to a readable ``.ainl`` / ``.lang`` file; non-whitespace
+    inline ``code``/``ainl`` takes precedence over ``path``.
+    An empty call (e.g. ``{}``) or omitted ``code``/``ainl``/``path`` is a **tool wiring** error
     (``error`` / ``tool_call_error``) — fix the MCP invocation, not the graph source.
-    Do not pass only a filesystem path unless your host reads the file into
-    ``code`` for you.
 
     On failure, ``primary_diagnostic`` and per-row ``source_context`` (snippet +
     caret) point at the first error to fix; ``agent_repair_steps`` suggests a
@@ -1835,13 +2081,17 @@ def ainl_validate(
     When using the authoring wizard, pass ``wizard_state_json`` from the prior
     tool response so checkpoints advance on each validate/compile/run call.
     """
-    source = _resolve_code_arg(code, ainl)
+    source, resolved_path, path_err = _resolve_workflow_source(code, ainl, path)
+    if path_err is not None:
+        return _augment_with_wizard_state(path_err, "ainl_validate", wizard_state_json)
     if not source:
-        return _augment_with_wizard_state(
-            _missing_source_tool_error("ainl_validate"),
-            "ainl_validate",
-            wizard_state_json,
+        kind = _classify_source_arg(code, ainl)
+        err = (
+            _empty_source_tool_error("ainl_validate")
+            if kind == "empty"
+            else _missing_source_tool_error("ainl_validate")
         )
+        return _augment_with_wizard_state(err, "ainl_validate", wizard_state_json)
     ir = _compile(source, strict=strict)
     fb = _enriched_compile_feedback(ir)
     ok = len(fb["errors"]) == 0
@@ -1862,6 +2112,8 @@ def ainl_validate(
             "Compiler success under the requested strict flag does **not** imply `ainl_run` is ready: "
             "check `required_adapters` / `runtime_readiness` and register adapters per-run in MCP."
         )
+    if resolved_path:
+        out["source_path"] = resolved_path
     if ok:
         _add_recommended_next_steps(out, "validate_ok")
     else:
@@ -1880,6 +2132,7 @@ def ainl_compile(
     code: Optional[str] = None,
     strict: bool = True,
     ainl: Optional[str] = None,
+    path: Optional[str] = None,
     wizard_state_json: Optional[dict] = None,
 ) -> dict:
     """Compile AINL source code to canonical graph IR.
@@ -1892,7 +2145,8 @@ def ainl_compile(
     2. Variables referenced in the IR that are never assigned (heuristic).
 
     Pass the **full** program source in ``code`` (string); ``ainl`` is a legacy
-    alias for ``code``.
+    alias for ``code``. Alternatively pass ``path`` to a UTF-8 workflow file;
+    non-whitespace inline source takes precedence over ``path``.
 
     No execution, no side effects.
 
@@ -1904,13 +2158,17 @@ def ainl_compile(
 
     Pass ``wizard_state_json`` from prior wizard/tool responses to advance checkpoints.
     """
-    source = _resolve_code_arg(code, ainl)
+    source, resolved_path, path_err = _resolve_workflow_source(code, ainl, path)
+    if path_err is not None:
+        return _augment_with_wizard_state(path_err, "ainl_compile", wizard_state_json)
     if not source:
-        return _augment_with_wizard_state(
-            _missing_source_tool_error("ainl_compile"),
-            "ainl_compile",
-            wizard_state_json,
+        kind = _classify_source_arg(code, ainl)
+        err = (
+            _empty_source_tool_error("ainl_compile")
+            if kind == "empty"
+            else _missing_source_tool_error("ainl_compile")
         )
+        return _augment_with_wizard_state(err, "ainl_compile", wizard_state_json)
     ir = _compile(source, strict=strict)
     errors = ir.get("errors") or []
     if errors:
@@ -1928,6 +2186,8 @@ def ainl_compile(
         _add_recommended_next_steps(out, "compile_fail", failure_tags=tags)
         out["repair_recipe"] = _repair_recipe_from_failure(out.get("primary_diagnostic"), tags)
         _attach_strict_mode_annotation(out, strict)
+        if resolved_path:
+            out["source_path"] = resolved_path
         return _augment_with_wizard_state(out, "ainl_compile", wizard_state_json)
     _on_compile_finished(True, source)
     frame_hints = _extract_frame_hints(source, ir)
@@ -1938,6 +2198,8 @@ def ainl_compile(
         "IR is canonical for this compile; `ainl_run` still needs per-run `adapters` registration in MCP "
         "when the graph uses http/fs/cache/sqlite/a2a."
     )
+    if resolved_path:
+        out_ok["source_path"] = resolved_path
     _add_recommended_next_steps(out_ok, "compile_ok")
     _attach_strict_mode_annotation(out_ok, strict)
     return _augment_with_wizard_state(out_ok, "ainl_compile", wizard_state_json)
@@ -1959,23 +2221,41 @@ def ainl_capabilities(wizard_state_json: Optional[dict] = None) -> dict:
 
 
 @_register_tool
-def ainl_security_report(code: Optional[str] = None, ainl: Optional[str] = None) -> dict:
+def ainl_security_report(
+    code: Optional[str] = None,
+    ainl: Optional[str] = None,
+    path: Optional[str] = None,
+) -> dict:
     """Generate a security/privilege map for an AINL workflow.
 
     Shows which adapters, verbs, and privilege tiers the workflow uses,
     broken down per label and in aggregate.  No execution, no side effects.
 
-    Pass full source in ``code`` (``ainl`` alias accepted).
+    Pass full source in ``code`` (``ainl`` alias accepted), or ``path`` to a UTF-8 workflow file;
+    non-whitespace inline source takes precedence over ``path``.
     """
-    source = _resolve_code_arg(code, ainl)
+    source, resolved_path, path_err = _resolve_workflow_source(code, ainl, path)
+    if path_err is not None:
+        return path_err
     if not source:
-        return _missing_source_tool_error("ainl_security_report")
+        kind = _classify_source_arg(code, ainl)
+        return (
+            _empty_source_tool_error("ainl_security_report")
+            if kind == "empty"
+            else _missing_source_tool_error("ainl_security_report")
+        )
     ir = _compile(source, strict=False)
     errors = ir.get("errors") or []
     if errors:
-        return {"ok": False, "errors": errors}
+        out_err: Dict[str, Any] = {"ok": False, "errors": errors}
+        if resolved_path:
+            out_err["source_path"] = resolved_path
+        return out_err
     report = analyze_ir(ir)
-    return {"ok": True, "report": report}
+    out_ok: Dict[str, Any] = {"ok": True, "report": report}
+    if resolved_path:
+        out_ok["source_path"] = resolved_path
+    return out_ok
 
 
 @_register_tool
@@ -1988,6 +2268,7 @@ def ainl_run(
     label: Optional[str] = None,
     adapters: Optional[dict] = None,
     ainl: Optional[str] = None,
+    path: Optional[str] = None,
     wizard_state_json: Optional[dict] = None,
 ) -> dict:
     """Compile, validate policy, and execute an AINL workflow.
@@ -2068,7 +2349,8 @@ def ainl_run(
     register them on ``reg``, the server returns ``error_kind: adapter_registration``
     with ``suggested_adapters`` **before** starting the runtime (no partial run).
 
-    Pass full source in ``code`` (``ainl`` alias accepted).
+    Pass full source in ``code`` (``ainl`` alias accepted), or ``path`` to a UTF-8 workflow file
+    (non-whitespace inline source takes precedence). Matches CLI ``ainl run /path/to/graph.ainl`` ergonomics.
 
     Pass ``wizard_state_json`` from prior wizard/tool responses so checkpoints
     advance; the server records the ``adapters`` payload against ``pending_mcp_adapters``.
@@ -2076,17 +2358,33 @@ def ainl_run(
     trace_id = str(uuid.uuid4())
     run_adapters_arg: Optional[Dict[str, Any]] = adapters if isinstance(adapters, dict) else None
 
+    source, resolved_path, path_err = _resolve_workflow_source(code, ainl, path)
+
     def _wiz(out: Dict[str, Any]) -> Dict[str, Any]:
+        if resolved_path:
+            out = {**out, "source_path": resolved_path}
         return _augment_with_wizard_state(
             out, "ainl_run", wizard_state_json, run_adapters=run_adapters_arg
         )
 
-    source = _resolve_code_arg(code, ainl)
+    if path_err is not None:
+        pe = dict(path_err)
+        pe["trace_id"] = trace_id
+        return _wiz(_annotate_run_return(pe, strict))
     if not source:
-        out_ms = _missing_source_tool_error("ainl_run")
-        out_ms["trace_id"] = trace_id
-        out_ms["error"] = "missing required argument: code"
+        kind = _classify_source_arg(code, ainl)
+        if kind == "empty":
+            out_ms = _empty_source_tool_error("ainl_run")
+            out_ms["trace_id"] = trace_id
+            out_ms["error"] = "empty_source"
+        else:
+            out_ms = _missing_source_tool_error("ainl_run")
+            out_ms["trace_id"] = trace_id
+            out_ms["error"] = "missing required argument: code"
         return _wiz(_annotate_run_return(out_ms, strict))
+    if resolved_path and "intelligence" in Path(resolved_path).parts:
+        if "AINL_ALLOW_IR_DECLARED_ADAPTERS" not in os.environ:
+            os.environ["AINL_ALLOW_IR_DECLARED_ADAPTERS"] = "1"
     _on_run_started(source)
     run_warnings: List[str] = []
 

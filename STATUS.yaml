@@ -1,5 +1,5 @@
 # STATUS.yaml — What is real vs aspirational
-# stats_refreshed: 2026-05-08 (UTC) — run: python scripts/refresh_repo_stats.py
+# stats_refreshed: 2026-05-09 (UTC) — run: python scripts/refresh_repo_stats.py
 
 real_and_working:
   compiler:

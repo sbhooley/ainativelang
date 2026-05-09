@@ -210,6 +210,30 @@ class TestValidate:
         assert "copy_paste_next_call" in result
         assert result["copy_paste_next_call"]["tool"] == "ainl_validate"
 
+    def test_empty_code_returns_empty_source_recovery(self):
+        # File-was-0-bytes path: host read the file, got "", and passed it through verbatim.
+        # Must surface a structured `empty_source` recovery (not a tool-wiring fix), so the
+        # agent stops retrying and pivots to `ainl_get_started`.
+        result = ainl_validate(code="", strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "empty_source"
+        assert result.get("tool_call_error") is False
+        assert "minimal_strict_valid_example" in result
+        assert "S app core noop" in result["minimal_strict_valid_example"]
+        assert "ainl_get_started" in result.get("recommended_next_tools", [])
+        recipe = result.get("repair_recipe") or {}
+        assert "ainl_get_started" in (recipe.get("recommended_tools") or [])
+
+    def test_whitespace_only_code_returns_empty_source_recovery(self):
+        result = ainl_validate(code="   \n  \t  \n", strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "empty_source"
+
+    def test_legacy_ainl_alias_empty_returns_empty_source_recovery(self):
+        result = ainl_validate(ainl="", strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "empty_source"
+
     def test_valid_code_returns_ok(self):
         result = ainl_validate(VALID_CODE, strict=True)
         assert result["ok"] is True
@@ -334,12 +358,65 @@ class TestValidate:
         steps = (result.get("repair_recipe") or {}).get("steps") or []
         assert any("Do not remove non-core" in s for s in steps)
 
+    def test_validate_from_path_ok(self, tmp_path):
+        wf = tmp_path / "hello.ainl"
+        wf.write_text(VALID_CODE, encoding="utf-8")
+        result = ainl_validate(path=str(wf), strict=True)
+        assert result["ok"] is True
+        assert result.get("source_path") == str(wf.resolve())
+
+    def test_validate_path_not_found(self, tmp_path):
+        missing = tmp_path / "nope.ainl"
+        result = ainl_validate(path=str(missing), strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "path_not_found"
+        assert "sibling_workflows" in result
+
+    def test_validate_empty_file_path(self, tmp_path):
+        wf = tmp_path / "empty.ainl"
+        wf.write_text("", encoding="utf-8")
+        result = ainl_validate(path=str(wf), strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "empty_source"
+
+    def test_validate_whitespace_only_file_path(self, tmp_path):
+        wf = tmp_path / "ws.ainl"
+        wf.write_text("  \n\t\n", encoding="utf-8")
+        result = ainl_validate(path=str(wf), strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "empty_source"
+
+    def test_validate_inline_source_wins_over_path(self, tmp_path):
+        bad = tmp_path / "bad.ainl"
+        bad.write_text(INVALID_CODE, encoding="utf-8")
+        result = ainl_validate(code=VALID_CODE, path=str(bad), strict=True)
+        assert result["ok"] is True
+        assert result.get("source_path") is None
+
+    def test_validate_relative_path_uses_mcp_workflow_root(self, tmp_path, monkeypatch):
+        sub = tmp_path / "w"
+        sub.mkdir()
+        wf = sub / "rel.ainl"
+        wf.write_text(VALID_CODE, encoding="utf-8")
+        monkeypatch.setenv("AINL_MCP_WORKFLOW_ROOT", str(sub))
+        monkeypatch.chdir(tmp_path)
+        result = ainl_validate(path="rel.ainl", strict=True)
+        assert result["ok"] is True
+        assert result.get("source_path") == str(wf.resolve())
+
 
 # ---------------------------------------------------------------------------
 # ainl-compile
 # ---------------------------------------------------------------------------
 
 class TestCompile:
+    def test_compile_empty_code_returns_empty_source_recovery(self):
+        result = ainl_compile(code="", strict=True)
+        assert result["ok"] is False
+        assert result.get("error_kind") == "empty_source"
+        assert "ainl_get_started" in result.get("recommended_next_tools", [])
+        assert "S app core noop" in result.get("minimal_strict_valid_example", "")
+
     def test_compile_valid_returns_ir(self):
         result = ainl_compile(VALID_CODE, strict=True)
         assert result["ok"] is True
@@ -401,6 +478,14 @@ class TestCompile:
         assert ainl_compile(VALID_CODE, strict=True)["ok"] is True
         after = ainl_capabilities()["mcp_telemetry"].get("compile_cache_hits", 0)
         assert after >= before + 1
+
+    def test_compile_from_path_ok(self, tmp_path):
+        wf = tmp_path / "c.ainl"
+        wf.write_text(VALID_CODE, encoding="utf-8")
+        result = ainl_compile(path=str(wf), strict=True)
+        assert result["ok"] is True
+        assert "ir" in result
+        assert result.get("source_path") == str(wf.resolve())
 
 
 # ---------------------------------------------------------------------------
@@ -541,12 +626,27 @@ class TestSecurityReport:
         assert result["ok"] is True
         assert "report" in result
 
+    def test_security_report_from_path(self, tmp_path):
+        wf = tmp_path / "sec.ainl"
+        wf.write_text(VALID_CODE, encoding="utf-8")
+        result = ainl_security_report(path=str(wf))
+        assert result["ok"] is True
+        assert result.get("source_path") == str(wf.resolve())
+
 
 # ---------------------------------------------------------------------------
 # ainl-run
 # ---------------------------------------------------------------------------
 
 class TestRun:
+    def test_run_empty_code_returns_empty_source_recovery(self):
+        result = ainl_run(code="", strict=True)
+        assert result["ok"] is False
+        assert result.get("error") == "empty_source"
+        assert result.get("error_kind") == "empty_source"
+        assert "trace_id" in result
+        assert "ainl_get_started" in result.get("recommended_next_tools", [])
+
     def test_authoring_workflow_validate_compile_run_smoke(self):
         r_bad = ainl_validate(INVALID_CODE, strict=True)
         assert r_bad["ok"] is False
@@ -572,6 +672,14 @@ class TestRun:
         assert "runtime_version" in result
         assert result.get("strict") is True
         assert "strict_mode_note" not in result
+
+    def test_run_from_path_ok(self, tmp_path):
+        wf = tmp_path / "run_path.ainl"
+        wf.write_text(VALID_CODE, encoding="utf-8")
+        result = ainl_run(path=str(wf), strict=True)
+        assert result["ok"] is True
+        assert result.get("source_path") == str(wf.resolve())
+        assert "trace_id" in result
 
     def test_run_nonstrict_includes_mode_note(self):
         result = ainl_run(VALID_CODE, strict=False)

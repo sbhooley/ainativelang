@@ -655,12 +655,136 @@ def _parse_frame_json_arg(raw: str) -> Dict[str, Any]:
     return json.loads(s)
 
 
+def _list_sibling_workflows(parent: Path, *, limit: int = 20) -> List[str]:
+    """Return up to ``limit`` `.ainl` / `.lang` siblings, sorted, for path_not_found hints."""
+    if not parent.is_dir():
+        return []
+    out: List[str] = []
+    try:
+        for p in sorted(parent.iterdir()):
+            if p.is_file() and p.suffix in {".ainl", ".lang"}:
+                out.append(p.name)
+                if len(out) >= limit:
+                    break
+    except OSError:
+        return []
+    return out
+
+
+def _preflight_workflow_path(src_path: str) -> Optional[Dict[str, Any]]:
+    """Detect path_not_found / empty_source before compile so the agent gets actionable JSON.
+
+    Returns ``None`` when the file is fine to compile. Otherwise returns a structured payload
+    with ``error_kind``, ``next_step``, ``recommended_next_tools``, and (for path_not_found)
+    a sibling listing so a model can pick a real workflow without re-globbing.
+    """
+    p = Path(src_path)
+    if not p.exists():
+        parent = p.parent
+        return {
+            "ok": False,
+            "error": "path_not_found",
+            "error_kind": "path_not_found",
+            "path": str(p),
+            "why_this_matters": (
+                f"`ainl run {p}` cannot proceed because that file does not exist. Retrying with the same "
+                "path will fail identically — confirm the path with the user or pick a sibling workflow."
+            ),
+            "next_step": (
+                "List the directory or ask the user for the correct path. The `sibling_workflows` field "
+                "below contains nearby `.ainl` / `.lang` files for quick selection."
+            ),
+            "sibling_workflows": _list_sibling_workflows(parent),
+            "recommended_next_tools": ["ainl_get_started"],
+            "recommended_resources": ["ainl://strict-authoring-cheatsheet"],
+        }
+    if not p.is_file():
+        return {
+            "ok": False,
+            "error": "path_not_a_file",
+            "error_kind": "path_not_a_file",
+            "path": str(p),
+            "next_step": "Pass an `.ainl` / `.lang` file path, not a directory or special file.",
+        }
+    try:
+        size = p.stat().st_size
+    except OSError as e:
+        return {
+            "ok": False,
+            "error": "stat_failed",
+            "error_kind": "stat_failed",
+            "path": str(p),
+            "details": str(e),
+        }
+    if size == 0:
+        return _empty_source_path_error(p)
+    try:
+        text = p.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return None  # let the parser report it; not the failure mode this preflight targets
+    if not text.strip():
+        return _empty_source_path_error(p)
+    return None
+
+
+def _empty_source_path_error(p: Path) -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "error": "empty_source",
+        "error_kind": "empty_source",
+        "path": str(p),
+        "why_this_matters": (
+            f"`{p.name}` is empty (0 non-whitespace bytes). The compiler has nothing to process — "
+            "retrying `ainl run` against the same buffer will keep failing. Fix the source first."
+        ),
+        "next_step": (
+            "Tell the user the file is empty (or scaffold a strict-valid graph for their goal via the "
+            "`ainl_get_started` MCP tool). Do not re-run `ainl run` until the file has content."
+        ),
+        "minimal_strict_valid_example": (
+            "S app core noop\n\nL_main:\n  R core.NOW ->ts\n  J ts\n"
+        ),
+        "recommended_next_tools": ["ainl_get_started", "ainl_step_examples"],
+        "recommended_resources": [
+            "ainl://strict-authoring-cheatsheet",
+            "ainl://strict-valid-examples",
+        ],
+        "sibling_workflows": _list_sibling_workflows(p.parent),
+    }
+
+
+def _pretty_preflight_error(pre: Dict[str, Any]) -> str:
+    """Human-readable rendering of preflight errors for non-JSON CLI output."""
+    kind = str(pre.get("error_kind") or pre.get("error") or "preflight_error")
+    path = pre.get("path") or ""
+    lines = [f"ainl run: {kind} ({path})"]
+    why = pre.get("why_this_matters")
+    if why:
+        lines.append(f"  why: {why}")
+    nxt = pre.get("next_step")
+    if nxt:
+        lines.append(f"  next: {nxt}")
+    siblings = pre.get("sibling_workflows") or []
+    if siblings:
+        preview = ", ".join(siblings[:8])
+        more = "" if len(siblings) <= 8 else f", … (+{len(siblings) - 8} more)"
+        lines.append(f"  siblings: {preview}{more}")
+    return "\n".join(lines)
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     if args.self_test_graph:
         return cmd_self_test_graph(args)
     if not args.file:
         raise SystemExit("run requires <file> unless --self-test-graph is set")
     src_path = str(Path(args.file).resolve())
+    pre = _preflight_workflow_path(src_path)
+    if pre is not None:
+        if getattr(args, "json", False):
+            print(json.dumps(pre, indent=2))
+        else:
+            print(_pretty_preflight_error(pre), file=sys.stderr)
+        return 1
     # Operator workflows under intelligence/ expect web/tiktok/cache/queue; many hosts export a
     # narrow AINL_HOST_ADAPTER_ALLOWLIST — allow IR-declared adapters unless explicitly opted out.
     if "intelligence" in Path(src_path).parts and "AINL_ALLOW_IR_DECLARED_ADAPTERS" not in os.environ:

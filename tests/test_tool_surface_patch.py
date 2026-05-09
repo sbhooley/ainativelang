@@ -6,7 +6,12 @@ import pytest
 
 from compiler_v2 import AICodeCompiler
 from runtime.adapters.base import AdapterRegistry
-from runtime.engine import AinlRuntimeError, RuntimeEngine, ERROR_CODE_TOOL_PATCH_DENY
+from runtime.engine import (
+    AinlRuntimeError,
+    RuntimeEngine,
+    ERROR_CODE_ADAPTER_ERROR,
+    ERROR_CODE_TOOL_PATCH_DENY,
+)
 
 
 def test_runtime_tool_patch_denies_r_when_adapter_not_in_allowlist():
@@ -67,6 +72,28 @@ def test_strict_unknown_patch_profile_errors():
         preserved_services={"tool_surface": {"patch_profile": "no_such_profile_v1"}},
     )
     assert ir.get("errors")
+
+
+def test_host_adapter_denylist_wins_over_tool_surface_allowing_http():
+    """Intersect path: ToolPatch allows http, host deny removes http before dispatch (host wins)."""
+    code = """
+L1:
+R http.GET "http://example.com" ->r
+J r
+"""
+    ir = AICodeCompiler(strict_mode=False).compile(code)
+    assert not ir.get("errors"), ir.get("errors")
+    ir.setdefault("services", {})["tool_surface"] = {"adapter_allow": ["http"], "schema_version": 1}
+    eng = RuntimeEngine(
+        ir,
+        AdapterRegistry(allowed=["core", "http"]),
+        execution_mode="steps-only",
+        host_adapter_denylist=["http"],
+    )
+    with pytest.raises(AinlRuntimeError) as ei:
+        eng.run_label("1", {})
+    assert ei.value.code == ERROR_CODE_ADAPTER_ERROR
+    assert "http" in str(ei.value).lower()
 
 
 def test_strict_compile_errors_when_tool_surface_excludes_required_adapter():
