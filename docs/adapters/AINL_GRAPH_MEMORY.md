@@ -35,6 +35,8 @@ Dashboard chat persists graph memory to **SQLite** at `~/.armaraos/agents/{uuid}
 
 Correlation fields on exported nodes include **`agent_id`** on every row; orchestration **`trace_id`** is attached on episodic **`trace_event`** JSON and as semantic fact tags (`trace_id:…`) when the turn had an orchestration context.
 
+**Prompt token accounting (ArmaraOS):** the daemon also persists per-turn **`graph_memory_prompt_accounting`** on **`data/openfang.db`** — **metered** totals when linked to **`usage_events`**, plus **local estimates** in **`receipt_json`** (not a second provider meter). Operators: **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md) (*Prompt accounting: metered vs estimated*) and [`docs/plans/GRAPH_MEMORY_EFFICIENCY_AND_TOKEN_SAVINGS_PLAN.md`](https://github.com/sbhooley/armaraos/blob/main/docs/plans/GRAPH_MEMORY_EFFICIENCY_AND_TOKEN_SAVINGS_PLAN.md).
+
 **Rust-written `tags` on episodes:** the ArmaraOS daemon may also populate episodic **`tags`** (and extend semantic **`tags`**) with deterministic **`ainl-semantic-tagger`** strings when the binary is built with **`ainl-tagger`** and the process sets **`AINL_TAGGER_ENABLED=1`** (exactly that literal). Export / Python hydration then sees the same `tags` arrays as on inbox-imported nodes. See **armaraos** [`docs/graph-memory.md`](https://github.com/sbhooley/armaraos/blob/main/docs/graph-memory.md) (*Optional extraction and tagging*).
 
 #### Env: **`AINL_GRAPH_MEMORY_ARMARAOS_EXPORT`** + **`ARMARAOS_AGENT_ID`**
