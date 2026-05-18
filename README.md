@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  Find Us on X: <a href="https://x.com/ainativelang">@ainativelang</a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+" />
   <a href="https://github.com/sbhooley/ainativelang/tags">
     <img src="https://img.shields.io/github/v/tag/sbhooley/ainativelang?label=release" alt="Latest tag" />
