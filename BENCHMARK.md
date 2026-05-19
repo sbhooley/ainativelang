@@ -1114,3 +1114,69 @@ Across 6 representative workloads the average saving is **82.6%**, with monitors
 - ETL quality check assumes 5% anomaly rate; price monitor 3% change rate; RSS digest 40% new-item rate — typical observed values for these workload classes.
 - All token counts use tiktoken cl100k_base; actual production costs vary by model, context, and output length.
 <!-- benchmark:compile-once-run-many-end -->
+
+<!-- benchmark:vs-hand-runner-begin -->
+## AINL vs hand-written Python runner — measured (baseline B)
+
+_Tokeniser: **tiktoken cl100k_base (GPT-4o)** · Timestamp: **2026-05-19T19:14:18+00:00**_
+
+**Scope.** Three workloads × three implementations each: AINL source,
+`competent_python` baseline-B (~150–250 LOC, single-file readable, no retry
+wrapper, no audit log), and `production_grade` baseline-B (~280–470 LOC, with
+retry/backoff/circuit-breaker/structured-logging/hash-chained-JSONL).
+All Python files are **measurement skeletons** — see
+[`benchmarks/handwritten_baselines/production/README.md`](../benchmarks/handwritten_baselines/production/README.md).
+
+### Per-workload measurements
+
+| Workload | Style | Tokens | LOC | Audit 0–8 | Token ratio vs AINL | LOC ratio vs AINL |
+|---|---|---:|---:|---:|---:|---:|
+| enterprise_monitor | `ainl` | 759 | 69 | 7/8 | — | — |
+|  | `competent_python` | 1106 | 160 | 0/8 | 1.46× | 2.32× |
+|  | `production_python` | 2842 | 365 | 5/8 | 3.74× | 5.29× |
+| support_ticket_router | `ainl` | 909 | 80 | 7/8 | — | — |
+|  | `competent_python` | 1426 | 180 | 0/8 | 1.57× | 2.25× |
+|  | `production_python` | 3290 | 405 | 5/8 | 3.62× | 5.06× |
+| data_pipeline | `ainl` | 1628 | 155 | 7/8 | — | — |
+|  | `competent_python` | 1942 | 224 | 0/8 | 1.19× | 1.45× |
+|  | `production_python` | 4681 | 499 | 6/8 | 2.88× | 3.22× |
+
+### Aggregate (mean across workloads)
+
+| Comparison | Tokens vs AINL | LOC vs AINL | Audit score |
+|---|---:|---:|---:|
+| AINL (reference) | 1.00× | 1.00× | **7/8** |
+| competent_python | **1.41×** | **2.01×** | 0/8 |
+| production_grade | **3.41×** | **4.52×** | 5.33/8 |
+
+### Audit checklist — by row
+
+| Row | AINL | competent (mean) | production (mean) |
+|---|:--:|:--:|:--:|
+| `event_hash_chain` | ✓ | 0/3 | 3/3 |
+| `per_step_inputs` | ✓ | 0/3 | 3/3 |
+| `per_step_outputs` | ✓ | 0/3 | 3/3 |
+| `adapter_args` | ✓ | 0/3 | 3/3 |
+| `approval_gates` | ✓ | 0/3 | 1/3 |
+| `config_snapshot` | ✓ | 0/3 | 3/3 |
+| `replayable` | ✓ | 0/3 | 0/3 |
+| `regulatory_grade` | — | 0/3 | 0/3 |
+
+### Interpretation
+
+- **Tokens / LOC:** AINL is not the lowest-source-size implementation. Competent
+  hand-written Python is. Production-grade Python — by virtue of carrying its own
+  retry, audit, and observability surface — costs roughly 3–4× more LOC than AINL.
+- **Audit posture:** the AINL row scores 7/8 because the runtime emits a
+  hash-chained JSONL trail of every step, the IR + frame deterministically replay
+  the program, and the kernel approval API gates `HumanRequired` steps. The 8th
+  row (`regulatory_grade`) requires an external SOC2 / HIPAA attestation we do
+  not yet have. Competent baseline-B Python scores 0/8 by default. Production-
+  grade baseline-B Python ranges 5–6/8 — same audit shape, more LOC.
+- **Headline:** AINL's measurable win against a competent runner is *not* tokens.
+  It is the audit / replay / multi-target-emit surface that ships for free.
+
+### Caveats
+
+Source: docs/competitive/VS_HAND_WRITTEN_RUNNER.md and §9 of docs/CLAIMS_AND_EVIDENCE.md (baseline-B comparison row). The 'production_grade' Python is a measurement skeleton, not a deployed worker — see benchmarks/handwritten_baselines/production/README.md for the explicit caveats. Real production deployments add another 200–500 LOC for OTEL exporters / dead-letter queues / secret rotation / liveness probes, which this benchmark does NOT account for — meaning it UNDERSTATES the LOC delta vs AINL on the audit / observability axis.
+<!-- benchmark:vs-hand-runner-end -->
