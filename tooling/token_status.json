@@ -1,0 +1,92 @@
+{
+  "$schema": "https://ainl.dev/token-status/v1",
+  "last_verified": "2026-05-19T20:44:15.216325+00:00",
+  "token": {
+    "symbol": "$AINL",
+    "mint_address": "56hrCR3n7danhHNjWaU4VeUHpE1eRE9VRBWpHRPKpump",
+    "chain": "solana",
+    "decimals_nominal": 6,
+    "pumpfun_url": "https://pump.fun/coin/56hrCR3n7danhHNjWaU4VeUHpE1eRE9VRBWpHRPKpump"
+  },
+  "onchain": {
+    "_status": "skipped"
+  },
+  "repos": [
+    {
+      "repo": "sbhooley/ainativelang",
+      "_status": "skipped"
+    },
+    {
+      "repo": "sbhooley/ainativelangweb",
+      "_status": "skipped"
+    },
+    {
+      "repo": "sbhooley/armaraos",
+      "_status": "skipped"
+    },
+    {
+      "repo": "sbhooley/ainl-inference-server",
+      "_status": "skipped"
+    }
+  ],
+  "contributors_local_git": {
+    "all_time": {
+      "window": "all_time",
+      "repo": "sbhooley/ainativelang",
+      "humans": {
+        "Steven B Hooley": 301,
+        "Terrance Schonleber": 17,
+        "Kobe Welker": 2,
+        "claysauruswrecks (external)": 2
+      },
+      "humans_distinct": 4,
+      "ai_authors": {
+        "hermes_ainl": 142,
+        "ainl king": 25,
+        "plushify": 4,
+        "ainl agent": 1
+      },
+      "ai_authors_distinct": 4,
+      "unknown_authors": [],
+      "_status": "ok"
+    },
+    "last_90d": {
+      "window": "90 days ago",
+      "repo": "sbhooley/ainativelang",
+      "humans": {
+        "Steven B Hooley": 301,
+        "Terrance Schonleber": 17,
+        "Kobe Welker": 2,
+        "claysauruswrecks (external)": 2
+      },
+      "humans_distinct": 4,
+      "ai_authors": {
+        "hermes_ainl": 142,
+        "ainl king": 25,
+        "plushify": 4,
+        "ainl agent": 1
+      },
+      "ai_authors_distinct": 4,
+      "unknown_authors": [],
+      "_status": "ok"
+    }
+  },
+  "aspirational_goals": {
+    "_explanation": "Originally-published targets from the v1.0 token utility design. Kept here as a fixed baseline so the gap to current reality is explicit. We do not edit these numbers; we report current values alongside and let readers see the gap themselves.",
+    "token_holders_initial_target": 1500,
+    "token_holders_stretch_target": 5000,
+    "template_marketplace_status": "planned",
+    "contributor_reward_payouts_status": "planned",
+    "governance_snapshot_space_status": "planned",
+    "treasury_wallet_status": "planned",
+    "premium_template_gating_status": "planned",
+    "earliest_publication_dates_observed": {
+      "champions_program": "docs/community/CHAMPIONS_PROGRAM.md (initial publish)",
+      "template_marketplace_submission": "docs/learning/intermediate/patterns/template-marketplace-submission.md (initial publish)"
+    }
+  },
+  "narrative": {
+    "_disclosure": "Headline numbers on the $AINL token page should source from this file. Where a current value is null with a non-'ok' _status, the marketing page should display 'pending verification' rather than the aspirational target. Git history is public; the gap between aspirational goals and current reality is intentional and visible.",
+    "enterprise_token_free": "Enterprise customers do not need to hold $AINL tokens. Enterprise billing is via invoice or credit card. The token powers community features only."
+  }
+}

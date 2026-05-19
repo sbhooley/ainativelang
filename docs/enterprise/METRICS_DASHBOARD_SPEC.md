@@ -21,7 +21,7 @@ Track **business outcomes** (adoption, retention, revenue) alongside **technical
 | **Average users** | Distinct email logins to docs/site | 200 → 1,000 | Google Analytics |
 | **Enterprise leads** | Form submissions at /enterprise/contact | 10/mo → 50/mo | CRM |
 | **OpenClaw integrations** | Active OpenClaw agents using AINL | 50 → 200 | OpenClaw telemetry |
-| **Token holders** | Unique $AINL wallet holders | 1,500 → 5,000 | Solana RPC |
+| **Token holders** *(community metric — not an enterprise health signal)* | Unique $AINL wallet holders. Current live value: see [`tooling/token_status.json`](../../tooling/token_status.json) `onchain.largest_accounts`. | 1,500 → 5,000 *(aspirational targets from v1.0 launch; verifiable progress in the JSON above)* | Solana RPC (`getTokenLargestAccounts`) |
 | **Revenue** | MRR from Enterprise SaaS | $0 → $50k/mo | Stripe |
 
 ---
