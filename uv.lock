@@ -67,6 +67,10 @@ openclaw = [
     { name = "mcp", extra = ["cli"] },
     { name = "requests" },
 ]
+pggraph = [
+    { name = "psycopg", extra = ["binary"] },
+    { name = "psycopg-pool" },
+]
 postgres = [
     { name = "psycopg", extra = ["binary"] },
     { name = "psycopg-pool" },
@@ -110,7 +114,9 @@ requires-dist = [
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.7.0" },
     { name = "prometheus-client", marker = "extra == 'dev'", specifier = ">=0.19.0" },
     { name = "psutil", marker = "extra == 'benchmark'", specifier = ">=5.9.0" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'pggraph'", specifier = ">=3.2.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2.0" },
+    { name = "psycopg-pool", marker = "extra == 'pggraph'", specifier = ">=3.2.0" },
     { name = "psycopg-pool", marker = "extra == 'postgres'", specifier = ">=3.2.0" },
     { name = "pyairtable", marker = "extra == 'airtable'", specifier = ">=2.0.0" },
     { name = "pymysql", marker = "extra == 'mysql'", specifier = ">=1.1.0" },
@@ -134,7 +140,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'dev'" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'" },
 ]
-provides-extras = ["benchmark", "interop", "dev", "web", "mcp", "openclaw", "postgres", "mysql", "redis", "dynamodb", "airtable", "supabase", "anthropic", "solana"]
+provides-extras = ["benchmark", "interop", "dev", "web", "mcp", "openclaw", "postgres", "pggraph", "mysql", "redis", "dynamodb", "airtable", "supabase", "anthropic", "solana"]
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -3022,7 +3028,7 @@ wheels = [
 
 [[package]]
 name = "requests"
-version = "2.32.5"
+version = "2.34.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -3030,9 +3036,9 @@ dependencies = [
     { name = "idna" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/b8/7a707d60fea4c49094e40262cc0e2ca6c768cca21587e34d3f705afec47e/requests-2.34.0.tar.gz", hash = "sha256:7d62fe92f50eb82c529b0916bb445afa1531a566fc8f35ffdc64446e771b856a", size = 142436, upload-time = "2026-05-11T19:29:51.717Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6", size = 64738, upload-time = "2025-08-18T20:46:00.542Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/e6/e300fce5fe83c30520607a015dabd985df3251e188d234bfe9492e17a389/requests-2.34.0-py3-none-any.whl", hash = "sha256:917520a21b767485ce7c588f4ebb917c436b24a31231b44228715eaeb5a52c60", size = 73021, upload-time = "2026-05-11T19:29:49.923Z" },
 ]
 
 [[package]]
