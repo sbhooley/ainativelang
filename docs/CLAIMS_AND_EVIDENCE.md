@@ -163,17 +163,29 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 **Baseline required:** **B** (deterministic runner + LLM only at judgment gates). This is the comparison sophisticated platform engineers will demand.
 
-**Status:** Companion doc [`competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) exists and explicitly concedes the token point. Implementing script: [`competitive/LONG_TERM_FIXES_TRACKER.md`](competitive/LONG_TERM_FIXES_TRACKER.md) row **T2.3** (`benchmark_vs_hand_runner.py`).
+**Status:** **Measured** as of 2026-05-19. Companion doc: [`competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md). Implementing script: [`../scripts/benchmark_vs_hand_runner.py`](../scripts/benchmark_vs_hand_runner.py). Committed data: [`../tooling/benchmark_vs_hand_runner.json`](../tooling/benchmark_vs_hand_runner.json). Sources measured: AINL `.ainl` + competent baseline-B + production-grade baseline-B for three workloads (`enterprise_monitor`, `support_ticket_router`, `data_pipeline`).
 
-**What we expect to find when measured:**
+**Measured results (mean across the three workloads):**
 
-- Tokens per run: **tie** (both 0 on healthy runs)
-- Source tokens: **AINL slightly ahead** (matches §3 mean ~1.7×)
-- LLM-authored first-run correctness: **AINL ahead** (compiler rejects broken graphs at `ainl validate --strict`; Python runs until the bad branch is hit)
-- Lift to Temporal LOC: **AINL ahead by orders of magnitude** (`--emit temporal` vs hand-port)
-- Audit trail: **AINL ahead** (hash-chained JSONL vs application logs)
+| Comparison | Source tokens vs AINL | Source LOC vs AINL | Audit checklist (0–8) |
+|---|---:|---:|---:|
+| AINL (reference)                       | 1.00× | 1.00× | **7/8** |
+| `competent_python` (no audit surface)  | **1.41×** | **2.01×** | 0/8 |
+| `production_grade` (retry/breaker/hash-chained JSONL) | **3.41×** | **4.52×** | 5.33/8 |
 
-**What we will NOT claim:** that AINL saves tokens vs a competent hand-written runner. It does not, and pretending it does loses sophisticated reviewers permanently.
+**Per-run tokens (modeled, identical across all three Python variants):** ties AINL at 0 on healthy runs and ~50 on incident runs (single summary LLM call). The wedge is **not** runtime tokens.
+
+**What this row claims:**
+
+- Tokens per run: **tie** (confirmed: 0 on healthy runs in all three implementations).
+- Source tokens: **AINL ahead** but only ~1.4× vs a competent runner; ~3.4× vs a production-grade runner with audit surface.
+- LLM-authored first-run correctness: **AINL ahead** (compiler rejects broken graphs at `ainl validate --strict`; Python runs until the bad branch is hit). This dimension is qualitative — not quantified in the benchmark.
+- Lift to Temporal LOC: **AINL ahead by orders of magnitude** (`--emit temporal` vs hand-port). Not quantified in this benchmark yet; tracked at T2.2.
+- Audit posture: **AINL ahead by construction** — 7/8 vs `competent_python` 0/8 vs `production_grade` 5.33/8 mean. The 8th row (`regulatory_grade`) requires an external attestation we do not yet have.
+
+**What we will NOT claim:** that AINL saves tokens vs a competent hand-written runner. It does not, and pretending it does loses sophisticated reviewers permanently. The measured ratio is a small source-size win, **not a runtime cost moat**.
+
+**Caveats:** the `production_grade` Python variants are measurement skeletons (retry/breaker/audit surface; no OTEL exporter, no Prometheus, no DLQ, no Kubernetes liveness). A real production deployment adds another 200–500 LOC for those concerns — meaning this benchmark **understates** AINL's LOC advantage on the observability axis. See [`../benchmarks/handwritten_baselines/production/README.md`](../benchmarks/handwritten_baselines/production/README.md) for the explicit caveat list.
 
 ## See also
 

@@ -20,37 +20,79 @@ If none of those are pain points for you, **you are not our ICP** — and that i
 
 ## The workload
 
-We compare the same task three ways: **AINL**, **hand-written Python runner**, and (for context) **prompt-loop agent**.
+We measure the same three workloads across three implementation styles:
+**AINL**, **`competent_python`** baseline-B (the runner a senior engineer
+writes in an afternoon), and **`production_grade`** baseline-B (with the
+retry / structured-logging / circuit-breaker / hash-chained-audit surface a
+production deployment needs). For runtime per-run token cost see the
+"Prompt-loop agent" column on the right — it is the **baseline A** number
+we are *not* claiming a moat against here.
 
-**Task:** HTTP health check every 5 minutes. If response is non-200 or latency > 2s, escalate via Slack. Log every run for audit.
+**Tasks:**
+
+1. HTTP health check + IR-routed severity + LLM alert only on incident.
+2. Support-ticket triage (2 classify calls + 1 draft call, IR routing).
+3. Multi-source order-processing pipeline (8 IR branches, 0–1 LLM call).
 
 **Source paths**
 
-| Implementation | Path |
-|----------------|------|
-| AINL graph | [`examples/benchmark/enterprise_monitor.ainl`](../../examples/benchmark/enterprise_monitor.ainl) |
-| Hand-written Python runner | [`benchmarks/handwritten_baselines/competitive/runner/enterprise_monitor_runner.py`](../../benchmarks/handwritten_baselines/competitive/runner/enterprise_monitor_runner.py) *(TBD — see tracker)* |
-| LangGraph (authoring baseline) | [`benchmarks/handwritten_baselines/competitive/langgraph/enterprise_monitor_langgraph.py`](../../benchmarks/handwritten_baselines/competitive/langgraph/enterprise_monitor_langgraph.py) |
-| Prompt-loop baseline (modeled) | `scripts/benchmark_compile_once_run_many.py` → `enterprise_monitor` scenario |
+| Style | Files | Note |
+|---|---|---|
+| **AINL** | [`examples/benchmark/enterprise_monitor.ainl`](../../examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/support_ticket_router.ainl`](../../examples/workflows/support_ticket_router.ainl), [`examples/workflows/data_pipeline.ainl`](../../examples/workflows/data_pipeline.ainl) | strict-valid; CI enforces |
+| **`competent_python`** (baseline B) | [`benchmarks/handwritten_baselines/authoring_density/`](../../benchmarks/handwritten_baselines/authoring_density/) — `enterprise_monitor.py`, `support_ticket_router.py`, `data_pipeline_competent.py` | runnable; no audit surface |
+| **`production_grade`** (baseline B + ops surface) | [`benchmarks/handwritten_baselines/production/`](../../benchmarks/handwritten_baselines/production/) — `enterprise_monitor.py`, `support_ticket_router.py`, `data_pipeline.py` | measurement skeletons with retry/breaker/audit — see that folder's `README.md` |
 
 ---
 
-## The five-axis comparison
+## The five-axis comparison — measured
 
-| Axis | AINL | Hand-written runner | Prompt-loop agent |
-|------|------|---------------------|-------------------|
-| **Tokens per healthy run** | 0 | 0 | ~107 (modeled, [`compile_once_run_many_results.json`](../../tooling/compile_once_run_many_results.json)) |
-| **Tokens per incident run** | ~50 (one alert summary call) | ~50 (one alert summary call) | ~157 (orchestrate + summarize) |
-| **Source tokens (authoring)** | 759 tk ([`competitor_baseline_tokens.json`](../../tooling/competitor_baseline_tokens.json)) | ~1,106 tk (hand-optimized Python baseline) | n/a (prose spec) |
-| **First-run correctness when an LLM authors the source** | High (`ainl validate --strict` rejects broken graphs at compile time) | Low–Medium (Python runs until it hits the bad branch in production) | Low (no compile step at all) |
-| **Audit trail** | JSONL with hash-chained `event_hash` per step (`ainl audit verify-jsonl`) | `print()` / `logger.info` text logs | Best-case structured logs in agent harness |
-| **Lift to Temporal for durability** | `ainl emit --target temporal` — zero LOC | Hand-port: rewrite as `@workflow.defn` worker, add activities, signals, retries | Hand-port from scratch |
-| **Lift to LangGraph for streaming UI** | `ainl emit --target langgraph` — zero LOC | Hand-port | Hand-port |
-| **Maintenance when adding a new branch** | Edit `.ainl`, re-run `ainl validate --strict`, re-deploy | Edit Python, hope test coverage is good | Edit prompt template, hope few-shot still works |
+All numbers in this section are emitted by `scripts/benchmark_vs_hand_runner.py` and committed to [`tooling/benchmark_vs_hand_runner.json`](../../tooling/benchmark_vs_hand_runner.json). Re-run with `python scripts/benchmark_vs_hand_runner.py`.
 
-**Token-cost conclusion:** On the steady-state runtime cost dimension, **AINL ties the hand-written runner**. On per-run tokens both are 0 on healthy runs and equivalent on incident runs (assuming both call the LLM at the same gate). The ~1.3–1.5× routing edge from the benchmark suite applies only when the runner still has 1–2 routing LLM calls left to eliminate.
+<!-- benchmark:vs-hand-runner-begin -->
+### Per-workload measurements
 
-**Where AINL pulls ahead:** the non-token axes — compile-time correctness, multi-target emit, and hash-chained audit. **These are the only three things you should be selling against baseline B.**
+| Workload | Style | Tokens | LOC | Audit 0–8 | Token ratio vs AINL | LOC ratio vs AINL |
+|---|---|---:|---:|---:|---:|---:|
+| enterprise_monitor | `ainl` | 759 | 69 | 7/8 | — | — |
+|  | `competent_python` | 1106 | 160 | 0/8 | 1.46× | 2.32× |
+|  | `production_python` | 2842 | 365 | 5/8 | 3.74× | 5.29× |
+| support_ticket_router | `ainl` | 909 | 80 | 7/8 | — | — |
+|  | `competent_python` | 1426 | 180 | 0/8 | 1.57× | 2.25× |
+|  | `production_python` | 3290 | 405 | 5/8 | 3.62× | 5.06× |
+| data_pipeline | `ainl` | 1628 | 155 | 7/8 | — | — |
+|  | `competent_python` | 1942 | 224 | 0/8 | 1.19× | 1.45× |
+|  | `production_python` | 4681 | 499 | 6/8 | 2.88× | 3.22× |
+
+### Audit checklist — by row
+
+| Row | AINL | competent (mean) | production (mean) |
+|---|:--:|:--:|:--:|
+| `event_hash_chain` | ✓ | 0/3 | 3/3 |
+| `per_step_inputs` | ✓ | 0/3 | 3/3 |
+| `per_step_outputs` | ✓ | 0/3 | 3/3 |
+| `adapter_args` | ✓ | 0/3 | 3/3 |
+| `approval_gates` | ✓ | 0/3 | 1/3 |
+| `config_snapshot` | ✓ | 0/3 | 3/3 |
+| `replayable` | ✓ | 0/3 | 0/3 |
+| `regulatory_grade` | — | 0/3 | 0/3 |
+<!-- benchmark:vs-hand-runner-end -->
+
+### Aggregate (mean across three workloads)
+
+| Axis | AINL | `competent_python` | `production_grade` | Prompt-loop (baseline A) |
+|---|---:|---:|---:|---:|
+| **Source tokens** (tiktoken cl100k_base) | 1× | 1.41× | 3.41× | n/a (prose spec) |
+| **Source LOC** | 1× | 2.01× | 4.52× | n/a |
+| **Audit posture** (8-row checklist; see [`benchmark_vs_hand_runner.json`](../../tooling/benchmark_vs_hand_runner.json) → `audit_rows`) | **7/8** | 0/8 | **5.33/8** | 0/8 |
+| **Per-run tokens, healthy path** (modeled) | 0 | 0 | 0 | ~107 ([`compile_once_run_many_results.json`](../../tooling/compile_once_run_many_results.json)) |
+| **Per-run tokens, incident path** | ~50 (1 summary call) | ~50 (1 summary call) | ~50 (1 summary call) | ~157 |
+| **First-run correctness when an LLM authors the source** | `ainl validate --strict` rejects broken graphs | Python runs until it hits the bad branch | same as `competent_python` | no compile step at all |
+| **Lift to Temporal worker** | `ainl emit --target temporal` — zero LOC | hand-port | hand-port | hand-port |
+| **Lift to LangGraph node** | `ainl emit --target langgraph` — zero LOC | hand-port | hand-port | hand-port |
+
+**Token-cost conclusion (unchanged from the qualitative argument):** at runtime, AINL ties a hand-written runner on a per-run basis. The wedge is *not* tokens.
+
+**Source-cost story (measured, new):** the `competent_python` baseline is ~1.4× more source tokens than AINL for ~0/8 audit posture. The `production_grade` baseline is ~3.4× more source tokens to reach 5.33/8 audit posture — comparable to AINL's posture, at 3.4× the LOC. **AINL's measurable win against a competent runner is the audit / replay / multi-target-emit surface that ships at zero authoring cost, not raw tokens.**
 
 ---
 
@@ -80,6 +122,12 @@ If your stack is 5 cron entries in a tidy `monitors/` Python package with a CI t
 ## Reproducing the comparison
 
 ```bash
+# Five-axis baseline-B comparison (AINL vs competent_python vs production_grade)
+python scripts/benchmark_vs_hand_runner.py
+# → tooling/benchmark_vs_hand_runner.json
+# → BENCHMARK.md vs-hand-runner section is rewritten in place
+# → use --no-benchmark-md to skip the BENCHMARK.md rewrite
+
 # Source-token comparison (AINL vs hand-written Python vs LangGraph)
 python scripts/benchmark_competitor_baselines.py
 # → tooling/competitor_baseline_tokens.json
@@ -94,12 +142,13 @@ python scripts/benchmark_compile_once_run_many.py
 # → tooling/compile_once_run_many_results.json
 ```
 
-Pending additions (tracked in [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md)):
+### What `production_grade` covers (and what it deliberately leaves out)
 
-- `benchmarks/handwritten_baselines/competitive/runner/enterprise_monitor_runner.py` — the hand-written Python runner baseline this doc references.
-- `scripts/benchmark_vs_hand_runner.py` — script that scores **AINL vs hand-written runner** on the five axes above (tokens, source size, compile-time error catch rate when LLM-authored, emit lift time, audit completeness).
+The `production_grade` baseline files are **measurement skeletons**, not deployed code. They were written to make the LOC / token / audit-checklist measurement defensible against the "you only counted skeleton code" critique — they ship the structural surface a senior engineer writes before going to production (typed retry/backoff, structured logging, circuit breaker, hash-chained audit JSONL, env-driven config) but they do *not* ship OTEL exporters, dead-letter queues, secret rotation, or liveness probes. A real deployment adds another 200–500 LOC for those concerns, which means this benchmark **understates** the source-size delta vs AINL on the observability axis. See [`benchmarks/handwritten_baselines/production/README.md`](../../benchmarks/handwritten_baselines/production/README.md) for the full caveat list.
 
-When those land, this doc will be updated with concrete numbers in the table above; the qualitative `LOC` / `Lift` cells will become measured `≈ N hours` / `≈ N LOC` cells.
+### How the audit checklist is scored
+
+The 8-row audit checklist is declared per-file in a `__benchmark_audit_checklist__` module constant (read via `ast.literal_eval`). The harness will not catch a lie there — the checklist is the declared score, not a static-analysis result. The rows are: `event_hash_chain`, `per_step_inputs`, `per_step_outputs`, `adapter_args`, `approval_gates`, `config_snapshot`, `replayable`, `regulatory_grade`. AINL is hard-coded to 7/8 (everything except `regulatory_grade`, which would require an external SOC 2 / HIPAA attestation we do not yet have) reflecting the runtime audit-trail guarantees in `runtime/engine.py` and the `ainl audit verify-jsonl` chain check.
 
 ---
 

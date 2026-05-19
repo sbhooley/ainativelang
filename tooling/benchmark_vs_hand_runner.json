@@ -1,0 +1,209 @@
+{
+  "schema_version": "1.0",
+  "methodology": "Static measurement of three sources per workload (AINL .ainl, competent_python baseline-B .py, production_grade baseline-B .py). Token counts use tiktoken cl100k_base (GPT-4o tokeniser); LOC is raw line count including comments and blank lines. Audit checklist scores read the `__benchmark_audit_checklist__` constant via ast.literal_eval; missing/malformed constants score 0/8. AINL audit posture is hard-coded against the AINL runtime audit-trail guarantees (see AINL_AUDIT_DEFAULTS in this script). No live LLM calls; results are fully reproducible from source text.",
+  "tokenizer": "tiktoken cl100k_base (GPT-4o)",
+  "timestamp_utc": "2026-05-19T19:14:18+00:00",
+  "audit_rows": [
+    "event_hash_chain",
+    "per_step_inputs",
+    "per_step_outputs",
+    "adapter_args",
+    "approval_gates",
+    "config_snapshot",
+    "replayable",
+    "regulatory_grade"
+  ],
+  "ainl_audit_defaults": {
+    "event_hash_chain": true,
+    "per_step_inputs": true,
+    "per_step_outputs": true,
+    "adapter_args": true,
+    "approval_gates": true,
+    "config_snapshot": true,
+    "replayable": true,
+    "regulatory_grade": false
+  },
+  "aggregate": {
+    "competent_token_ratio_mean": 1.41,
+    "competent_loc_ratio_mean": 2.01,
+    "production_token_ratio_mean": 3.41,
+    "production_loc_ratio_mean": 4.52,
+    "competent_audit_score_mean": 0,
+    "production_audit_score_mean": 5.33,
+    "ainl_audit_score": 7
+  },
+  "workloads": [
+    {
+      "name": "enterprise_monitor",
+      "description": "Infrastructure health monitor (HTTP poll, IR routing, 0\u20131 LLM calls, cache state)",
+      "implementations": [
+        {
+          "style": "ainl",
+          "path": "examples/benchmark/enterprise_monitor.ainl",
+          "tokens": 759,
+          "loc": 69,
+          "audit_checklist": {
+            "event_hash_chain": true,
+            "per_step_inputs": true,
+            "per_step_outputs": true,
+            "adapter_args": true,
+            "approval_gates": true,
+            "config_snapshot": true,
+            "replayable": true,
+            "regulatory_grade": false
+          },
+          "audit_score": 7
+        },
+        {
+          "style": "competent_python",
+          "path": "benchmarks/handwritten_baselines/authoring_density/enterprise_monitor.py",
+          "tokens": 1106,
+          "loc": 160,
+          "audit_checklist": {
+            "event_hash_chain": false,
+            "per_step_inputs": false,
+            "per_step_outputs": false,
+            "adapter_args": false,
+            "approval_gates": false,
+            "config_snapshot": false,
+            "replayable": false,
+            "regulatory_grade": false
+          },
+          "audit_score": 0
+        },
+        {
+          "style": "production_python",
+          "path": "benchmarks/handwritten_baselines/production/enterprise_monitor.py",
+          "tokens": 2842,
+          "loc": 365,
+          "audit_checklist": {
+            "event_hash_chain": true,
+            "per_step_inputs": true,
+            "per_step_outputs": true,
+            "adapter_args": true,
+            "approval_gates": false,
+            "config_snapshot": true,
+            "replayable": false,
+            "regulatory_grade": false
+          },
+          "audit_score": 5
+        }
+      ]
+    },
+    {
+      "name": "support_ticket_router",
+      "description": "Support ticket triage (LLM classify \u00d7 2, IR routing \u00d7 4, LLM draft)",
+      "implementations": [
+        {
+          "style": "ainl",
+          "path": "examples/workflows/support_ticket_router.ainl",
+          "tokens": 909,
+          "loc": 80,
+          "audit_checklist": {
+            "event_hash_chain": true,
+            "per_step_inputs": true,
+            "per_step_outputs": true,
+            "adapter_args": true,
+            "approval_gates": true,
+            "config_snapshot": true,
+            "replayable": true,
+            "regulatory_grade": false
+          },
+          "audit_score": 7
+        },
+        {
+          "style": "competent_python",
+          "path": "benchmarks/handwritten_baselines/authoring_density/support_ticket_router.py",
+          "tokens": 1426,
+          "loc": 180,
+          "audit_checklist": {
+            "event_hash_chain": false,
+            "per_step_inputs": false,
+            "per_step_outputs": false,
+            "adapter_args": false,
+            "approval_gates": false,
+            "config_snapshot": false,
+            "replayable": false,
+            "regulatory_grade": false
+          },
+          "audit_score": 0
+        },
+        {
+          "style": "production_python",
+          "path": "benchmarks/handwritten_baselines/production/support_ticket_router.py",
+          "tokens": 3290,
+          "loc": 405,
+          "audit_checklist": {
+            "event_hash_chain": true,
+            "per_step_inputs": true,
+            "per_step_outputs": true,
+            "adapter_args": true,
+            "approval_gates": false,
+            "config_snapshot": true,
+            "replayable": false,
+            "regulatory_grade": false
+          },
+          "audit_score": 5
+        }
+      ]
+    },
+    {
+      "name": "data_pipeline",
+      "description": "Multi-source order processing (8 IR branches, 5 adapters, 0\u20131 LLM calls)",
+      "implementations": [
+        {
+          "style": "ainl",
+          "path": "examples/workflows/data_pipeline.ainl",
+          "tokens": 1628,
+          "loc": 155,
+          "audit_checklist": {
+            "event_hash_chain": true,
+            "per_step_inputs": true,
+            "per_step_outputs": true,
+            "adapter_args": true,
+            "approval_gates": true,
+            "config_snapshot": true,
+            "replayable": true,
+            "regulatory_grade": false
+          },
+          "audit_score": 7
+        },
+        {
+          "style": "competent_python",
+          "path": "benchmarks/handwritten_baselines/authoring_density/data_pipeline_competent.py",
+          "tokens": 1942,
+          "loc": 224,
+          "audit_checklist": {
+            "event_hash_chain": false,
+            "per_step_inputs": false,
+            "per_step_outputs": false,
+            "adapter_args": false,
+            "approval_gates": false,
+            "config_snapshot": false,
+            "replayable": false,
+            "regulatory_grade": false
+          },
+          "audit_score": 0
+        },
+        {
+          "style": "production_python",
+          "path": "benchmarks/handwritten_baselines/production/data_pipeline.py",
+          "tokens": 4681,
+          "loc": 499,
+          "audit_checklist": {
+            "event_hash_chain": true,
+            "per_step_inputs": true,
+            "per_step_outputs": true,
+            "adapter_args": true,
+            "approval_gates": true,
+            "config_snapshot": true,
+            "replayable": false,
+            "regulatory_grade": false
+          },
+          "audit_score": 6
+        }
+      ]
+    }
+  ],
+  "notes": "Source: docs/competitive/VS_HAND_WRITTEN_RUNNER.md and \u00a79 of docs/CLAIMS_AND_EVIDENCE.md (baseline-B comparison row). The 'production_grade' Python is a measurement skeleton, not a deployed worker \u2014 see benchmarks/handwritten_baselines/production/README.md for the explicit caveats. Real production deployments add another 200\u2013500 LOC for OTEL exporters / dead-letter queues / secret rotation / liveness probes, which this benchmark does NOT account for \u2014 meaning it UNDERSTATES the LOC delta vs AINL on the audit / observability axis."
+}
