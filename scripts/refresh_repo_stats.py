@@ -72,12 +72,51 @@ def _count_lines(path: Path) -> int:
     return n
 
 
+_TESTS_IGNORED_DIR_NAMES = frozenset(
+    {
+        "__pycache__",
+        "node_modules",
+        "data",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+    }
+)
+
+
+def _is_ignored_tests_dir_segment(seg: str) -> bool:
+    """Return True for path segments that should never be walked when counting
+    test sources.
+
+    Filters cover:
+      * cache / tooling dirs (``__pycache__``, ``.pytest_cache``, …)
+      * nested virtualenvs inside the tests tree (``.venv``, ``venv``,
+        ``.venv-ainl``, ``tests/emits/server/.venv``, …) — these are not source
+        but `Path.rglob` would otherwise count every stdlib + site-packages
+        ``*.py`` under them, inflating local counts by ~800–1000 files and
+        causing the Repo stats CI workflow to flap (CI has no nested venv, so
+        committed snapshots written from a polluted local tree never match
+        ``--check`` on Ubuntu).
+      * data fixtures dir (``tests/data``) — ignored in .gitignore, not source.
+    """
+    if seg in _TESTS_IGNORED_DIR_NAMES:
+        return True
+    if seg.startswith(".") and (
+        "venv" in seg or seg in {".direnv", ".git"}
+    ):
+        return True
+    if seg.startswith("venv") or seg == "env" or seg.startswith("env-"):
+        return True
+    return False
+
+
 def _iter_tests_py(root: Path):
     tests = root / "tests"
     if not tests.is_dir():
         return
     for p in tests.rglob("*.py"):
-        if "__pycache__" in p.parts:
+        if any(_is_ignored_tests_dir_segment(seg) for seg in p.parts):
             continue
         yield p
 
