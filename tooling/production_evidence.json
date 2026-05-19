@@ -1,11 +1,29 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "kind": "production_evidence",
   "generated_at_utc": "2026-05-19T00:00:00+00:00",
   "methodology_doc": "docs/competitive/PRODUCTION_EVIDENCE.md",
+  "honesty_disclosure": {
+    "external_paying_customer_count": 0,
+    "external_paying_customer_count_last_verified_utc": "2026-05-19T00:00:00+00:00",
+    "classification_scheme": {
+      "a": "Third-party paying customer deployment with measurable $/token outcome",
+      "b": "Operator (project author or close collaborator) deployment with real logs / accounting",
+      "c": "Modeled / analytical scenario authored as a reference case",
+      "d": "Marketing narrative without a specific deployment"
+    },
+    "tracker_doc": "docs/competitive/LONG_TERM_FIXES_TRACKER.md",
+    "class_a_tracker_row": "T2.7",
+    "notes": [
+      "All committed cases below are class (b) or (c). No class (a) row exists yet.",
+      "Class (c) rows are reproducible via the benchmark_*.py scripts and are not a substitute for class (a).",
+      "When the first class (a) row lands, bump external_paying_customer_count and update the PRODUCTION_EVIDENCE.md disclosure."
+    ]
+  },
   "cases": [
     {
       "id": "openclaw_token_budget_alert",
+      "classification": "b",
       "workload_class": "Daily token/cache budget digest + optional prune",
       "host": "OpenClaw bridge cron",
       "source_path": "openclaw/bridge/wrappers/token_budget_alert.ainl",
@@ -17,10 +35,12 @@
       "delta_tokens_per_week_approx": 0,
       "delta_incidents_per_month": null,
       "evidence_type": "shipped_wrapper",
-      "report_path": null
+      "report_path": null,
+      "last_verified_utc": "2026-05-19T00:00:00+00:00"
     },
     {
       "id": "openclaw_gateway_lifetime",
+      "classification": "b",
       "workload_class": "User-facing LLM traffic (chat, tools, recurring tasks)",
       "host": "OpenClaw + OpenRouter + AINL orchestration",
       "source_path": null,
@@ -34,14 +54,19 @@
       "measured_total_tokens": 10501100,
       "measured_input_tokens": 2097000,
       "measured_output_tokens": 8404100,
+      "actual_cost_usd": 0.0,
       "counterfactual_cost_usd_openrouter_opus": 220.59,
       "counterfactual_cost_usd_anthropic_direct_opus": 661.77,
+      "counterfactual_classification": "c",
       "architectural_efficiency_multiplier": 2.5,
-      "evidence_type": "field_report",
-      "report_path": "agent_reports/2026-03-27-ainl-cost-savings.md"
+      "evidence_type": "field_report_plus_counterfactual_pricing",
+      "report_path": "agent_reports/2026-03-27-ainl-cost-savings.md",
+      "caveat": "Mixes model-choice savings (free tier) with architectural efficiency. Not an isolated A/B of a single cron job. See PRODUCTION_EVIDENCE.md Case 2.",
+      "last_verified_utc": "2026-05-19T00:00:00+00:00"
     },
     {
       "id": "enterprise_monitor_modeled",
+      "classification": "c",
       "workload_class": "HTTP health check every 5 min; LLM alert on incident only",
       "host": "ainl run / runner / ArmaraOS scheduled Hand",
       "source_path": "examples/benchmark/enterprise_monitor.ainl",
@@ -50,10 +75,12 @@
       "llm_orchestration_tokens_per_run": 0,
       "recurring_runs_per_month": 2880,
       "orchestration_savings_pct_vs_prompt_loop": 96.2,
+      "baseline_qualifier": "vs baseline A (prompt-loop). Not valid vs baseline B (hand-written runner).",
       "monthly_cost_usd_ainl_modeled": 0.04,
       "monthly_cost_usd_prompt_loop_modeled": 0.92,
       "evidence_type": "analytical",
-      "report_path": "tooling/compile_once_run_many_results.json"
+      "report_path": "tooling/compile_once_run_many_results.json",
+      "last_verified_utc": "2026-05-19T00:00:00+00:00"
     }
   ]
 }

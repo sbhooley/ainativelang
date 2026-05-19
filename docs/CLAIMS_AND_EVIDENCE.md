@@ -2,6 +2,12 @@
 
 This document maps **public-facing statements** in this repository to **defensible, reproducible artifacts**. It does **not** replace narrative reports or field analyses; it shows where numbers can be re-derived locally.
 
+> **Mandatory baseline qualifier.** Every numeric claim below is tagged with the baseline it requires. **Do not** quote any percentage / multiplier without the baseline tag. See [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) for the A/B/C definitions and [`docs/competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) for the explicit B-comparison.
+>
+> - **Baseline A** — LLM re-prompts routing/state on every cron/webhook (prompt-loop agent)
+> - **Baseline B** — Hand-optimized scripts + LLM only at judgment gates (competent platform team)
+> - **Baseline C** — Pure deterministic runners, zero LLM in loop
+
 **Quick rerun (updates sections in `BENCHMARK.md`):**
 
 ```bash
@@ -35,6 +41,8 @@ Other JSON under **`tooling/`** (for example **`artifact_profiles.json`**, **`mc
 
 ## 1. Orchestration tokens: compile-once vs prompt-loop (recurring jobs)
 
+**Baseline required:** **A** (prompt-loop agent re-invokes LLM on every run). **Not valid vs B or C.**
+
 **Claims elsewhere:** “90–95% fewer tokens” vs prompt-loop agents on **recurring monitors, digests, scheduled jobs**; similar figures in OpenClaw bridge / cap-tuner docs for **stable paths**.
 
 **Evidence:**
@@ -47,9 +55,13 @@ Other JSON under **`tooling/`** (for example **`artifact_profiles.json`**, **`mc
 
 **Honest scope:** Savings are **largest** when most runs need **no LLM** (healthy polls, cache hits, deterministic routing). Workloads that **invoke an LLM every run** (e.g. classify + draft) still gain from IR routing but show **smaller** ratios — see scenario tables in **`BENCHMARK.md`**.
 
+**What this is NOT:** It is **not** a saving vs a hand-written Python runner that already only calls the LLM at the judgment gate. That comparison is **baseline B**, which yields ~1.3–1.5× — see [`competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md).
+
 ---
 
 ## 2. Routing / classification: LLM-first vs compiled IR (“2–5×” class statements)
+
+**Baseline required:** **A vs C** (LLM-first vanilla vs compiled AINL) for the **2–7×** range. **B vs C** (hand-optimized vs compiled) is **~1.3–1.5×** — the irreducible compiler benefit. **Do not** quote 2–5× when talking to teams who already do baseline B.
 
 **Claims elsewhere:** Multi-step pipelines spend fewer tokens when routing lives in **IR branches** instead of repeated LLM orchestration.
 
@@ -59,9 +71,13 @@ Other JSON under **`tooling/`** (for example **`artifact_profiles.json`**, **`mc
 |----------|------|
 | [`scripts/benchmark_token_savings.py`](../scripts/benchmark_token_savings.py) | Three-way comparison (vanilla LLM-first, hand-optimized Python, compiled AINL); routing-depth sensitivity; injects **`BENCHMARK.md`**. |
 
+**Honest scope:** The `doc_processing` compiled path uses `doc_type_hint` from the frame (i.e. assumes upstream metadata supplies document type). In production, baseline B may still need one classify LLM call unless the type is guaranteed from upstream. The `support_triage` scenario uses **3** focused AINL calls vs **1** fat prompt-loop call — savings come from per-call prompt size, not call count. See module docstring in [`benchmark_token_savings.py`](../scripts/benchmark_token_savings.py) for details.
+
 ---
 
 ## 3. Authoring density: AINL vs Python/TypeScript (“3–5×” class statements)
+
+**Baseline required:** Source-file tokens vs **LLM-style verbose Python** (for `data_pipeline`) or **idiomatic hand-written Python** (for simple programs). Mean across 4 programs is **~1.71×**; only the complex LLM-style-verbose comparison reaches the **2.5×** band; **3–5×** band is **line counts**, not tokens.
 
 **Claims elsewhere:** Compact `.ainl` authoring vs equivalent imperative code **generated or written** for the same workflow.
 
@@ -72,11 +88,13 @@ Other JSON under **`tooling/`** (for example **`artifact_profiles.json`**, **`mc
 | [`scripts/benchmark_authoring_density.py`](../scripts/benchmark_authoring_density.py) | Token and line counts for paired programs; injects **`BENCHMARK.md`**. |
 | Complex reference | [`examples/workflows/data_pipeline.ainl`](../examples/workflows/data_pipeline.ainl) vs verbose baselines under [`benchmarks/handwritten_baselines/authoring_density/`](../benchmarks/handwritten_baselines/authoring_density/). |
 
-**Honest scope:** Line-count ratios for **complex** graphs reach the **3–5×** band vs LLM-style verbose Python; simple programs show lower token ratios — see interpretation block in **`BENCHMARK.md`**.
+**Honest scope:** Line-count ratios for **complex** graphs reach the **3–5×** band vs LLM-style verbose Python; simple programs show lower token ratios — see interpretation block in **`BENCHMARK.md`**. This is an **authoring/generation** cost, not a runtime cost.
 
 ---
 
 ## 4. Emit / artifact size (“~1.02×”, “minimal_emit”, viable subset)
+
+**Baseline required:** **Emit-size leverage**, not LLM tokens. This is a *generation expansion* metric, not a savings metric.
 
 **Claims elsewhere:** README / integration docs cite **~1.02×** leverage on tokenizer-aligned **viable subset** workloads vs unstructured baselines.
 
@@ -93,6 +111,8 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 ## 5. Session bootstrap / bridge / startup context (“85–95%” class statements)
 
+**Baseline required:** Different surface from §1. Compares **session bootstrap context** vs full memory dumps in the OpenClaw integration path. **Do not** present alongside §1 percentages as if they were the same quantity.
+
 **Claims elsewhere:** Golden-path OpenClaw integration ([`docs/openclaw/AINL_INTEGRATION_GOLDEN.md`](openclaw/AINL_INTEGRATION_GOLDEN.md)), embedding pilots, startup clamps — **session** token footprint vs full memory dumps.
 
 **Evidence:** Operational worksheets and live metering — [`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md); bridge sizing [`docs/openclaw/AINL_AUTO_TUNER.md`](openclaw/AINL_AUTO_TUNER.md). This is a **different surface** from §1 (scheduled graph execution). Where both appear, they are **complementary**, not duplicate proofs of the same quantity.
@@ -101,17 +121,21 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 ## 6. Field analyses, consultant reports, and agent_reports
 
-**Role:** Narrative validation, operator experience, and third-party write-ups ([`agent_reports/`](../agent_reports/), [`AI_CONSULTANT_REPORT_APOLLO.md`](../AI_CONSULTANT_REPORT_APOLLO.md), etc.).
+**Classification:** Operator field reports (project author / close collaborators) — **Class (b)** per [`competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) honesty disclosure. **Not Class (a)** third-party paying customer evidence.
+
+**Role:** Narrative validation, operator experience, and write-ups ([`agent_reports/`](../agent_reports/), [`AI_CONSULTANT_REPORT_APOLLO.md`](../AI_CONSULTANT_REPORT_APOLLO.md), etc.).
 
 **Relationship to §1–4:** Useful context and quotes; **auditable reproduction** for headline economics should cite **`BENCHMARK.md`** and the **`scripts/benchmark_*.py`** family above.
 
-**Committed operator tables:** [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) + [`tooling/production_evidence.json`](../tooling/production_evidence.json) — anonymized OpenClaw / modeled deployment rows for public review.
+**Committed operator tables:** [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) + [`tooling/production_evidence.json`](../tooling/production_evidence.json) — anonymized OpenClaw / modeled deployment rows for public review. **Current Class (a) row count: 0** — tracked in [`competitive/LONG_TERM_FIXES_TRACKER.md`](competitive/LONG_TERM_FIXES_TRACKER.md) row **T2.7**.
 
-**Honest ICP filter:** [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) — when hand-optimized runners already capture most value (~**1.3–1.5×** routing win only).
+**Honest ICP filter:** [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) — when hand-optimized runners already capture most value (~**1.3–1.5×** routing win vs baseline B). Companion: [`competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) — five-axis comparison conceding tokens and selling compile/audit/emit.
 
 ---
 
 ## 7. LangGraph authoring baselines (reference workloads)
+
+**Baseline required:** **Authoring tokens only** (source-file tiktoken counts on hand-written LangGraph Python vs `.ainl`). **Not** a runtime / per-execution token comparison. Runtime LangGraph token series remain **TBD** — tracker row **T2.1**.
 
 **Claims elsewhere:** AINL source is more compact than hand-written LangGraph for the same semantics.
 
@@ -125,13 +149,41 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 **Honest scope:** Authoring size only — not LangGraph worker runtime latency vs AINL runtime.
 
+---
+
+## 8. Temporal comparisons (pending)
+
+**Baseline required:** Authoring-only (per planned methodology). **No** Temporal runtime comparison planned — Temporal's value is durability, not per-step orchestration cost. AINL `--emit temporal` produces Temporal workflows; AINL does not replace Temporal's worker engine.
+
+**Status:** **TBD.** Hand-written Temporal baselines for `enterprise_monitor` and `support_ticket_router` are tracked at [`competitive/LONG_TERM_FIXES_TRACKER.md`](competitive/LONG_TERM_FIXES_TRACKER.md) row **T2.2**. Scaffold: [`scripts/benchmark_temporal_authoring.py`](../scripts/benchmark_temporal_authoring.py).
+
+---
+
+## 9. AINL vs hand-written Python runner (the baseline B comparison)
+
+**Baseline required:** **B** (deterministic runner + LLM only at judgment gates). This is the comparison sophisticated platform engineers will demand.
+
+**Status:** Companion doc [`competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) exists and explicitly concedes the token point. Implementing script: [`competitive/LONG_TERM_FIXES_TRACKER.md`](competitive/LONG_TERM_FIXES_TRACKER.md) row **T2.3** (`benchmark_vs_hand_runner.py`).
+
+**What we expect to find when measured:**
+
+- Tokens per run: **tie** (both 0 on healthy runs)
+- Source tokens: **AINL slightly ahead** (matches §3 mean ~1.7×)
+- LLM-authored first-run correctness: **AINL ahead** (compiler rejects broken graphs at `ainl validate --strict`; Python runs until the bad branch is hit)
+- Lift to Temporal LOC: **AINL ahead by orders of magnitude** (`--emit temporal` vs hand-port)
+- Audit trail: **AINL ahead** (hash-chained JSONL vs application logs)
+
+**What we will NOT claim:** that AINL saves tokens vs a competent hand-written runner. It does not, and pretending it does loses sophisticated reviewers permanently.
+
 ## See also
 
 - [`BENCHMARK.md`](../BENCHMARK.md) — regenerated tables and caveats  
 - [`docs/benchmarks.md`](benchmarks.md) — commands, CI, glossary  
 - [`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](architecture/COMPILE_ONCE_RUN_MANY.md) — minimal deterministic proof pack  
 - [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) — baseline A/B/C honest filter  
-- [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) — committed operator cases  
+- [`docs/competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) — five-axis baseline B comparison (concedes tokens)  
+- [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) — committed operator cases + Class (a) gap disclosure  
+- [`docs/competitive/LONG_TERM_FIXES_TRACKER.md`](competitive/LONG_TERM_FIXES_TRACKER.md) — visible roadmap for evidence + scope work  
 - [`docs/competitive/ARMARAOS_GTM.md`](competitive/ARMARAOS_GTM.md) — primary product wedge  
 - [`docs/competitive/README.md`](competitive/README.md) — comparative hub  
 - [`docs/competitive/COMPARISON_TABLE.md`](competitive/COMPARISON_TABLE.md) — committed numbers + LangGraph baselines  

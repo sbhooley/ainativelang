@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1.0-todo",
+  "status": "not_implemented",
+  "generated_at_utc": "2026-05-19T18:51:13.505680+00:00",
+  "tracker_row": "T2.1",
+  "tracker_doc": "docs/competitive/LONG_TERM_FIXES_TRACKER.md",
+  "rationale": "Closes the runtime-side gap in benchmark_competitor_baselines.py (which only measures authoring tokens). Will produce a per-run LangGraph vs AINL token comparison on the same workload.",
+  "workloads_planned": [
+    {
+      "name": "enterprise_monitor",
+      "source_ainl": "examples/benchmark/enterprise_monitor.ainl",
+      "source_langgraph": "benchmarks/handwritten_baselines/competitive/langgraph/enterprise_monitor_langgraph.py",
+      "scenario_notes": "Health check every 5 min; 90% healthy / 10% incident; incident path calls LLM once for alert summary."
+    },
+    {
+      "name": "support_ticket_router",
+      "source_ainl": "examples/workflows/support_ticket_router.ainl",
+      "source_langgraph": "benchmarks/handwritten_baselines/competitive/langgraph/support_ticket_router_langgraph.py",
+      "scenario_notes": "Three-tier triage. LangGraph agentic routing vs AINL IR branches. Baseline LangGraph should be agent-style (not hard-coded edges) to be a fair representative."
+    }
+  ],
+  "methodology_notes_when_implemented": [
+    "Wrap LangGraph LLM calls with a token-counting callback.",
+    "Mock the same LLM provider in both stacks; identical prompts.",
+    "Run N=100 invocations per workload; report mean + p95 tokens/run.",
+    "Always tag the result with baseline (A/B per WHEN_AINL_DOES_NOT_HELP.md).",
+    "Do NOT claim AINL beats LangGraph on streaming/HITL/etc."
+  ],
+  "next_action": "Implement LangGraph wrappers + token callback; rerun this script; replace status with 'implemented'."
+}

@@ -28,10 +28,45 @@ SAVINGS ATTRIBUTION
   The 2–5× product claim is the A vs C comparison for standard pipelines.
   The routing-depth sensitivity table shows how the ratio scales with more routing steps.
 
+  When citing externally, ALWAYS tag the baseline. "2.08×" is A vs C only.
+  Mature platform teams ("baseline B") see ~1.43× — see docs/competitive/
+  VS_HAND_WRITTEN_RUNNER.md for the honest sales conversation against B.
+
+HONEST METHODOLOGY NUANCES (read before citing externally)
+----------------------------------------------------------
+  1. ``doc_processing`` compiled path receives ``doc_type`` from
+     ``DocPipelineInput.doc_type_hint`` (see ``pure_async_python.py``
+     ``run_compiled_pipeline``). This models the realistic case where
+     upstream metadata supplies document type to the AINL graph (e.g.
+     from S3 prefix, mime type, or webhook field). It does NOT model
+     "AINL magically infers the type with no input." If your production
+     comparison has no upstream metadata, baseline B may need one
+     classify LLM call — eroding part of the A-vs-C delta but NOT the
+     B-vs-C delta (which is the irreducible compiler benefit).
+
+  2. ``support_triage`` scenario: AINL uses THREE focused LLM calls
+     (extract structured fields, classify priority, draft response).
+     Prompt-loop baseline uses ONE FAT prompt that does all three.
+     AINL still wins ~52% on tokens because each focused prompt is
+     much smaller than the fat prompt — savings come from prompt
+     SIZE, not call COUNT. Some critics will (reasonably) ask why
+     AINL "uses more calls"; the answer is per-call prompt economy,
+     not orchestration elimination.
+
+  3. The routing-depth sensitivity formula (``routing_depth_sensitivity``)
+     is a pure analytical model, NOT mock-LLM calls:
+     ``vanilla = N×370 + 3×350``, ``compiled = 3×270``. This shows the
+     ratio scaling with routing depth; do not present it as if it were
+     a measured benchmark scenario.
+
 TOKEN COUNTING
 --------------
   tiktoken cl100k_base on the actual prompt strings in pure_async_python.py.
   No live LLM API calls; fully reproducible on any machine with ainativelang[benchmark].
+  Mock LLM outputs are fixed strings sized to roughly match real model
+  outputs; real-world extraction outputs can be 2-5× larger, which
+  reduces the doc_processing ratio to ~1.8-1.95× (script notes this
+  in the methodology section of the JSON output).
 
 USAGE
 -----
