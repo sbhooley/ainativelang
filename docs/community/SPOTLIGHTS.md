@@ -26,9 +26,9 @@ Monthly highlights of real AINL programs, contributors, and outcomes. Entries ar
 
 **Project:** Routine monitoring workflow that checks inbox volume, applies policy gates, and escalates when thresholds are exceeded — compiled once, no orchestration LLM at runtime.
 
-**Savings / outcome:** ~7.2× lower aggregate cost vs equivalent agent-loop monitoring (see cost report); JSONL execution tape for audit.
+**Savings / outcome:** Operator-scope (Class **b**) deployment of 17 cron jobs on the project author's OpenClaw stack. Cost framing in the original "7.2×" report has been **deprecated** because the methodology mixed modeled prompt-loop baselines with operator scenario math; for the defensible numbers see [`docs/competitive/PRODUCTION_EVIDENCE.md`](../competitive/PRODUCTION_EVIDENCE.md) (Cases 1–2) and [`docs/CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md). JSONL execution tape for audit is real and verifiable via `ainl audit verify-jsonl`.
 
-**Link:** [`examples/monitor_escalation.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/monitor_escalation.ainl) · [`openclaw/bridge/wrappers/email_monitor.ainl`](https://github.com/sbhooley/ainativelang/blob/main/openclaw/bridge/wrappers/email_monitor.ainl) · [AINL_COST_SAVINGS_REPORT.md](https://github.com/sbhooley/ainativelang/blob/main/AINL_COST_SAVINGS_REPORT.md)
+**Link:** [`examples/monitor_escalation.ainl`](https://github.com/sbhooley/ainativelang/blob/main/examples/monitor_escalation.ainl) · [`openclaw/bridge/wrappers/email_monitor.ainl`](https://github.com/sbhooley/ainativelang/blob/main/openclaw/bridge/wrappers/email_monitor.ainl) · [PRODUCTION_EVIDENCE.md](../competitive/PRODUCTION_EVIDENCE.md) · (legacy: [`archive/legacy_savings_reports/AINL_COST_SAVINGS_REPORT.md`](https://github.com/sbhooley/ainativelang/blob/main/archive/legacy_savings_reports/AINL_COST_SAVINGS_REPORT.md))
 
 **Contributor:** AINL team (internal dogfood) — story: [Built with AINL: OpenClaw monitoring](https://ainativelang.com/blog/built-with-ainl-openclaw-monitoring-cheaper) (when published on site)
 

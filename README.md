@@ -71,6 +71,22 @@ Design: [`docs/architecture/2026-05-05-agent-install-simplification.md`](docs/ar
 
 ---
 
+## Is AINL for you? (60-second filter)
+
+Before the install commands, here is who AINL is and is not for. We would rather you self-select out in 60 seconds than spend a week on a tool that does not fit.
+
+| ✅ AINL is for you if… | ❌ AINL is *not* for you if… |
+|:----------------------|:----------------------------|
+| Your agents (Cursor, Claude Code, autonomous loops) **author runner / orchestration code** and have shipped broken Python more than once | You write all your runners by hand and your CI test suite catches the bugs |
+| You run **20+ recurring monitor / digest / scheduled jobs** that currently **re-prompt an LLM on every run** to decide routing | You already have deterministic runners with the LLM only at judgment gates — congrats, you are baseline **B** below and AINL gives you ~1.3–1.5× on routing only |
+| You need **the same workflow source** to emit to LangGraph **and** Temporal **and** FastAPI without re-authoring | One target is fine for you forever |
+| You have **compliance audit needs** (SOC 2 / HIPAA / similar) that want tamper-evident execution traces, not application logs | `logger.info` is enough for your team |
+| You want **strict compile-time validation** of agent workflows before they hit production | Runtime exceptions are fine, you have alerting |
+
+If you tick two or more left-column rows, keep reading. If you tick zero, **[`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)** explains why and saves you the install. We mean it.
+
+---
+
 ## Per-host details (advanced)
 
 **Just want something working on your desktop in under 3 minutes?**
@@ -108,19 +124,33 @@ After install, ask your agent: *"Use AINL to build this workflow"* — it compil
 | **B.** Hand-optimized scripts + LLM only at judgment gates | **~1.3–1.5×** on routing tokens ([`token_savings_results.json`](tooling/token_savings_results.json)) | **Usually no** — consider audit, MCP safety, emit, or ArmaraOS |
 | **C.** Pure deterministic runners (no LLM in loop) | **~0%** | **No** |
 
-Full honest filter: **[`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)**.
+Full honest filter: **[`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)** · **[`docs/competitive/VS_HAND_WRITTEN_RUNNER.md`](docs/competitive/VS_HAND_WRITTEN_RUNNER.md)** (five-axis comparison vs a hand-written Python runner — concedes the token point on baseline B).
 
-| Workload (baseline A) | Typical savings |
-|:----------------------|:----------------|
-| Recurring monitors, digests, scheduled jobs | [**90–95% fewer orchestration tokens** vs prompt loops](agent_reports/Grok-analysis-as-of-March-25-2026–v1-2-8-Token-Cost-Savings.md) — **reproducible:** [`BENCHMARK.md`](BENCHMARK.md) (`benchmark_compile_once_run_many.py`) |
-| Multi-step automations (LLM-first routing) | [**2–5× reduction** vs LLM-first](agent_reports/2026-03-27-ainl-cost-savings.md) — **reproducible:** [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py) |
-| Operator field notes | [OpenClaw examples](agent_reports/plushifier-openclaw-2026-03-18.md) · [committed production rows](docs/competitive/PRODUCTION_EVIDENCE.md) |
+| Workload (**baseline A** — prompt-loop today) | Typical savings | Reproducible via |
+|:----------------------------------------------|:----------------|:-----------------|
+| Recurring monitors, digests, scheduled jobs | **~90–95% fewer orchestration tokens** vs prompt loops | [`scripts/benchmark_compile_once_run_many.py`](scripts/benchmark_compile_once_run_many.py) → [`tooling/compile_once_run_many_results.json`](tooling/compile_once_run_many_results.json) |
+| Multi-step automations (LLM-first routing) | **~2–7× reduction** vs LLM-first (A vs C); **~1.3–1.5×** vs hand-optimized (B vs C) | [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py) → [`tooling/token_savings_results.json`](tooling/token_savings_results.json) |
+| Authoring density (LLM-style verbose Python) | **~1.7× mean / up to 2.5×** fewer source tokens vs verbose baselines | [`scripts/benchmark_authoring_density.py`](scripts/benchmark_authoring_density.py) → [`tooling/authoring_density_results.json`](tooling/authoring_density_results.json) |
+| Authoring vs hand-written LangGraph | **~1.9–2.0×** fewer source tokens (authoring only, not runtime) | [`scripts/benchmark_competitor_baselines.py`](scripts/benchmark_competitor_baselines.py) → [`tooling/competitor_baseline_tokens.json`](tooling/competitor_baseline_tokens.json) |
 
-**Reproducible repo evidence (deterministic scripts, no live LLM):** claim-to-artifact map **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)**; regenerated sections in **[`BENCHMARK.md`](BENCHMARK.md)**; LangGraph authoring baselines: **`python scripts/benchmark_competitor_baselines.py`** → [`tooling/competitor_baseline_tokens.json`](tooling/competitor_baseline_tokens.json). Reference workflows (strict-valid): [`examples/benchmark/enterprise_monitor.ainl`](examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](examples/workflows/data_pipeline.ainl), [`examples/workflows/lead_enrichment.ainl`](examples/workflows/lead_enrichment.ainl), [`examples/workflows/support_ticket_router.ainl`](examples/workflows/support_ticket_router.ainl).
+> **Important:** every percentage / multiplier above is **vs baseline A** (prompt-loop) or labeled with its baseline pair. Against **baseline B** (hand-optimized runner with LLM only at judgment gates), the irreducible token win is **~1.3–1.5×** on routing only — see [`VS_HAND_WRITTEN_RUNNER.md`](docs/competitive/VS_HAND_WRITTEN_RUNNER.md). Against **baseline C** (pure deterministic, no LLM in loop), it is **~0%**.
 
-The reason: AINL compiles your workflow once. The runtime executes it deterministically — no LLM re-generation on each run for graph routing and adapter orchestration. The model authors the graph once; the runtime runs it on every invocation.
+The reason: AINL compiles your workflow once. The runtime executes it deterministically — no LLM re-generation on each run for graph routing and adapter orchestration. The model authors the graph once; the runtime runs it on every invocation. **That mechanism produces token savings only when the counterfactual was actually re-prompting on every run.**
 
 > **[Token savings breakdown and benchmarks →](https://ainativelang.com/benchmark)** · **[`BENCHMARK.md`](BENCHMARK.md)** (source tables + methodology) · **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)** (claim crosswalk) · **[When AINL does not help →](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)**
+
+### Current evidence (honest scope)
+
+We classify every public evidence row by source so reviewers can tell field reports from modeled scenarios:
+
+| Class | What it means | Where it lives |
+|-------|---------------|----------------|
+| **(a)** Third-party paying customer deployment | Independent company runs AINL, reports measurable token / dollar outcome | **0 rows today.** Tracked: [`LONG_TERM_FIXES_TRACKER.md`](docs/competitive/LONG_TERM_FIXES_TRACKER.md) row **T2.7** |
+| **(b)** Operator deployment (project author / close collaborator) | Real logs, real workload, on author's stack — not yet an external customer | **2 rows.** [`PRODUCTION_EVIDENCE.md`](docs/competitive/PRODUCTION_EVIDENCE.md) Cases 1, 2 |
+| **(c)** Modeled / analytical scenario | Reproducible benchmark on synthetic workload — no live LLM | **1 row + 4 benchmark scripts.** `scripts/benchmark_*.py`, `tooling/*_results.json` |
+| **(d)** Marketing narrative | Story without specific deployment behind it | Flagged for audit + removal — see tracker **T1.10** |
+
+**We do not yet have a Class (a) deployment publicly committed.** If your team would consider being the first, the pilot kit (tracked T2.5) is small. Until then we ask reviewers to **read `WHEN_AINL_DOES_NOT_HELP.md` first**, run the benchmarks, and judge on the published Class (b)/(c) evidence with the baseline qualifier attached.
 
 ---
 

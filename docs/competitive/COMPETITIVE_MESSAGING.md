@@ -133,45 +133,45 @@ While tools like LangGraph and Temporal start with general workflow engines and 
 
 ## 📈 Competitive Proof Points
 
-### Token Savings Data
+### Token Savings Data — TBD (do NOT cite the previous table)
 
-From benchmark suite (2026-03):
-
-| Workflow Type | LangGraph (tokens) | AINL (tokens) | Savings |
-|---------------|--------------------|---------------|---------|
-| Email classification | 1,200 | 85 | 93% |
-| Data validation | 800 | 42 | 95% |
-| API orchestration | 650 | 78 | 88% |
-| RAG retrieval | 1,500 | 180 | 88% |
-| **Average** | | | **91%** |
-
-Source: `docs/benchmarks/RUNTIME_BENCHMARKS.md`
-
----
-
-### Adoption Metrics
-
-- **2,500+** GitHub stars
-- **120+** contributors
-- **59** example AINL programs in repo
-- **Weekly releases** (**v1.8.0** target line; PyPI after publish — **`docs/RELEASING.md`**)
-- **Enterprise customers**: 12+ (Stealth mode: FinTech, Healthcare, SaaS)
+> **2026-05 audit:** The previous version of this section listed four "Workflow Type" rows with savings percentages (93% / 95% / 88% / 88% averaging 91%) under a `docs/benchmarks/RUNTIME_BENCHMARKS.md` citation. **None of those specific numbers trace to a committed benchmark JSON file.** They have been removed pending real data.
+>
+> **What we can defensibly cite today:**
+>
+> | Workload | Baseline | AINL win | Source |
+> |----------|----------|---------|--------|
+> | enterprise_monitor (modeled) | **A** (prompt-loop) | **96.2%** orchestration tokens | [`tooling/compile_once_run_many_results.json`](../../tooling/compile_once_run_many_results.json) |
+> | doc_processing (3-doc batch) | **A vs C** | **2.08×** | [`tooling/token_savings_results.json`](../../tooling/token_savings_results.json) |
+> | doc_processing (3-doc batch) | **B vs C** | **1.43×** | Same JSON, `methodology.savings_attribution.routing_elimination` |
+> | enterprise_monitor authoring | LangGraph hand-written source | **2.04×** fewer tokens | [`tooling/competitor_baseline_tokens.json`](../../tooling/competitor_baseline_tokens.json) |
+>
+> **What is missing:** per-workflow runtime LangGraph token series — tracked at [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) row **T2.1** (`scripts/benchmark_langgraph_runtime.py`).
 
 ---
 
-### Validation Efficacy
+### Adoption Metrics — TBD (do NOT cite the previous numbers)
 
-```
-Before AINL (manual testing):
-- Production incidents: 2-3 / month
-- Average fix time: 4 hours
-- Cost per incident: ~$500 in LLM tokens
+> **2026-05 audit:** Previous version of this section listed "2,500+ GitHub stars", "120+ contributors", "12+ enterprise customers (stealth FinTech, Healthcare, SaaS)". **None of those numbers were sourced.** They have been removed.
+>
+> **Defensible adoption signals (verify before quoting):**
+>
+> - **GitHub stars / forks / contributors:** check `https://github.com/sbhooley/ainativelang` directly — do not hardcode a number that will go stale.
+> - **Example AINL programs:** see `STATUS.yaml` (`real_and_working.examples`) — value refreshed by `scripts/refresh_repo_stats.py`.
+> - **Releases:** see `pyproject.toml` and `docs/CHANGELOG.md` for the actual cadence; do not claim "weekly" without verification.
+> - **Customers:** **0 Class (a) third-party paying customers committed publicly.** See [`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md) honesty disclosure.
 
-With AINL strict validation:
-- Production incidents: 0.1 / month (caught at deploy)
-- Average fix time: 30 minutes (dev time only)
-- Cost per incident: $0 (caught before run)
-```
+---
+
+### Validation Efficacy — TBD (do NOT cite the previous code block)
+
+> **2026-05 audit:** Previous version of this section claimed "2-3 production incidents / month at $500 each in LLM tokens, reduced to 0.1 / month at $0 with AINL strict validation." **No source for those numbers exists in the repo.** They have been removed.
+>
+> **What we can defensibly say:**
+>
+> - `ainl validate --strict` rejects graphs with undefined adapters, type mismatches, missing labels, and ~30 other strict-mode checks at compile time. See `compiler_v2.py` strict diagnostics + `tests/test_strict_*.py`.
+> - Reducing post-deployment incidents requires before/after instrumentation **on a customer workload**. Tracked: [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) row **T2.5** (pilot instrumentation kit).
+> - When the first Class (a) deployment lands with measured incident-rate deltas, this section will be filled with sourced numbers.
 
 ---
 
@@ -192,18 +192,18 @@ With AINL strict validation:
 
 ---
 
-### 2. "How AINL Saves 95% on Orchestration Tokens"
+### 2. "How AINL Saves Orchestration Tokens (vs Baseline A)" — REVISED
 
 **Length**: 10 minutes  
 **Format**: Animated data visualization  
 **Script outline**:
-- Show typical LangGraph agent replaying prompts each step
+- **Open with the qualifier:** "This video is about baseline A — prompt-loop agents that re-invoke an LLM every run. If you already write deterministic runners, see our [`VS_HAND_WRITTEN_RUNNER.md`](VS_HAND_WRITTEN_RUNNER.md) video instead."
+- Show typical prompt-loop agent replaying prompts each step
 - Show AINL compiling graph to deterministic execution
-- Breakdown of token counts by node type
-- Real benchmark data from email-escalator example
-- Cost calculation: "$2,100/mo → $105/mo"
+- Breakdown of token counts by node type — sourced from `tooling/compile_once_run_many_results.json`
+- Cost calculation: **use the actual `enterprise_monitor` modeled scenario** (`~$0.04/mo` AINL vs `~$0.92/mo` prompt-loop). **Do NOT use unsourced "$2,100/mo → $105/mo" — the previous version of this script did that and got correctly called out for it.**
 
-**Key message**: "You're overpaying for orchestration. AINL fixes that."
+**Key message**: "If your agents re-prompt every run, AINL replaces those orchestration calls with a compiled graph. If they don't, this isn't the win we're selling — see baseline B."
 
 ---
 
@@ -252,11 +252,11 @@ With AINL strict validation:
 - Show before/after: graph with errors caught by compiler
 - Emphasize cost savings
 
-### Week 3: "From LangGraph to AINL: A Migration Story"
+### Week 3: "From LangGraph to AINL: A Migration Story" — TBD
 
-- Guest post from FinTech engineer
-- Step-by-step migration
-- Results: 94% cost reduction, zero incidents
+- **Status:** Pending a real Class (a) migration. **Do NOT** invent a "FinTech engineer" testimonial.
+- When a real migration story exists, this slot becomes a guest post with measured before/after on `tooling/production_evidence.json` cited.
+- Until then: lean on [`FROM_LANGGRAPH_TO_AINL.md`](FROM_LANGGRAPH_TO_AINL.md) — onboarding doc, no fake numbers.
 
 ### Week 4: "Compliance-Grade AI Workflows"
 
@@ -296,23 +296,27 @@ Update quarterly.
 
 ---
 
-## ✅ Immediate Actions
+## ✅ Immediate Actions (2026-05 revised)
 
-1. **Publish comparison table** to website `/compare` page
-2. **Add testimonial** from FinTech customer about LangGraph migration
-3. **Record first video** (AINL vs LangGraph build-off)
-4. **Create one-pager** for sales team with battle cards
-5. **Update website hero** to highlight "90% token savings" claim with proof link
+1. **Publish comparison table** to website `/compare` page — sourced from committed JSON only ([`COMPARISON_TABLE.md`](COMPARISON_TABLE.md), [`tooling/competitor_baseline_tokens.json`](../../tooling/competitor_baseline_tokens.json))
+2. **Get first Class (a) testimonial** — tracked at [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) row **T2.7**. Do NOT fabricate one.
+3. **Record first video** (AINL vs LangGraph build-off) — script must include baseline qualifier
+4. **Create one-pager** for sales team with battle cards — every numeric claim sourced
+5. **Update website hero** to highlight savings claim **with baseline A qualifier and a link to [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)**
 
 ---
 
 ## 🔗 Related Resources
 
-- [Technical comparison table](../competitive/COMPARISON_TABLE.md)
-- [Token savings benchmarks](../benchmarks/RUNTIME_BENCHMARKS.md)
-- [Customer success stories](../case-studies/)
+- [Technical comparison table](COMPARISON_TABLE.md)
+- [`CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md) — claim crosswalk
+- [`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md) — committed cases + Class (a) gap disclosure
+- [`VS_HAND_WRITTEN_RUNNER.md`](VS_HAND_WRITTEN_RUNNER.md) — five-axis comparison vs baseline B
+- [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md) — baseline A/B/C honest filter
+- [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) — visible roadmap
 
 ---
 
-**Last updated**: 2026-03-30  
-**Owner**: Marketing + Engineering
+**Last updated**: 2026-05-19 (audit pass removing unsourced numbers; tracker row **T1.10**)  
+**Owner**: Marketing + Engineering  
+**Quality bar going forward:** every percentage / multiplier in this file must trace to a committed JSON under `tooling/` or be marked **TBD** with a tracker row.

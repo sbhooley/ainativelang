@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1.0-todo",
+  "status": "not_implemented",
+  "generated_at_utc": "2026-05-19T18:51:13.543608+00:00",
+  "tracker_row": "T2.2",
+  "tracker_doc": "docs/competitive/LONG_TERM_FIXES_TRACKER.md",
+  "scope": "authoring_tokens_only",
+  "explicitly_not_claiming": "Runtime parity with Temporal. Temporal's value is durability and worker history. AINL emits TO Temporal; it does not compete with the durability layer.",
+  "tokenizer": "tiktoken cl100k_base",
+  "workloads_planned": [
+    {
+      "name": "enterprise_monitor",
+      "source_ainl": "examples/benchmark/enterprise_monitor.ainl",
+      "source_temporal_planned": "benchmarks/handwritten_baselines/competitive/temporal/enterprise_monitor_temporal.py",
+      "notes": "Hand-written Temporal worker, idiomatic activities + workflow."
+    },
+    {
+      "name": "support_ticket_router",
+      "source_ainl": "examples/workflows/support_ticket_router.ainl",
+      "source_temporal_planned": "benchmarks/handwritten_baselines/competitive/temporal/support_ticket_router_temporal.py",
+      "notes": "Activities per integration (Zendesk/Stripe/Clearbit), workflow for orchestration."
+    }
+  ],
+  "qualitative_axes_when_implemented": [
+    "activity_boundary_count",
+    "determinism_gotchas_avoided_by_emit",
+    "lift_from_ainl_emit_to_running_worker_loc"
+  ],
+  "next_action": "Hand-write Temporal workers for the two workloads above; count source tokens; commit JSON; update COMPARISON_TABLE.md \u00a7A."
+}

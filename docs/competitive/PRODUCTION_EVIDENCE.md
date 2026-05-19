@@ -8,7 +8,30 @@ Anonymized **field** evidence for public review. This is not a substitute for **
 
 ---
 
+## Honest scope disclosure (read this first)
+
+We classify every row below using a four-class scheme so reviewers can tell field reports from modeled scenarios at a glance:
+
+| Class | Meaning |
+|-------|---------|
+| **(a)** | Third-party paying customer deployment with measurable $/token outcome |
+| **(b)** | Operator (project author or close collaborator) deployment with real logs / accounting |
+| **(c)** | Modeled / analytical scenario authored as a reference case |
+| **(d)** | Marketing narrative without a specific deployment |
+
+**Class (a) third-party customer deployments: 0 (none committed yet, as of 2026-05-19).**
+
+The three rows below are honestly labeled with their class. We are actively working to land the first **Class (a)** row — tracked publicly in [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) row **T2.7**. Pilot template and instrumentation kit are tracked under **T2.4–T2.6**.
+
+If you are reading this looking for "show me a customer who saved $X" and the table below does not yet contain a Class (a) row: **we agree that gap matters and we are not pretending it is filled.** Please open a conversation if you want to be the first published deployment — instrumentation cost is small and we will help.
+
+The companion benchmark scenarios in `BENCHMARK.md` and [`tooling/compile_once_run_many_results.json`](../../tooling/compile_once_run_many_results.json) are **Class (c)** modeled work — reproducible on any machine, honest about assumptions ([`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md) baseline A/B/C). They are not a substitute for Class (a) and we do not present them as one.
+
+---
+
 ## Case 1 — OpenClaw daily token budget monitor (deterministic runtime)
+
+**Classification:** **(b)** Operator deployment — shipped and running, but on the project author's own OpenClaw stack, not an external paying customer.
 
 | Field | Value |
 |-------|-------|
@@ -30,6 +53,8 @@ Anonymized **field** evidence for public review. This is not a substitute for **
 
 ## Case 2 — OpenClaw gateway lifetime usage (architectural efficiency)
 
+**Classification:** **(b)** Operator deployment — real measured tokens on the project author's OpenClaw gateway, paired with **(c)** counterfactual pricing. **Actual cash spent: $0.00** (free-tier OpenRouter routing). The "$220.59" and "$661.77" figures are *avoided* counterfactual costs at Opus rates, not money that changed hands.
+
 | Field | Value |
 |-------|-------|
 | **Workload** | User-facing LLM traffic via OpenClaw gateway (chat, tools, recurring agent tasks) |
@@ -47,6 +72,8 @@ Anonymized **field** evidence for public review. This is not a substitute for **
 ---
 
 ## Case 3 — Enterprise HTTP monitor (modeled production scale)
+
+**Classification:** **(c)** Modeled / analytical scenario. Reproducible via `python scripts/benchmark_compile_once_run_many.py`. This row is **not** a deployment — it is a benchmark scenario that demonstrates what *would* happen if a hypothetical operator with the workload below adopted AINL vs a prompt-loop baseline.
 
 | Field | Value |
 |-------|-------|
@@ -66,9 +93,10 @@ Anonymized **field** evidence for public review. This is not a substitute for **
 ## How to add a row
 
 1. Copy the table block in [`OPENCLAW_PRODUCTION_SAVINGS.md`](OPENCLAW_PRODUCTION_SAVINGS.md).
-2. Append to this file and [`tooling/production_evidence.json`](../../tooling/production_evidence.json).
+2. Append to this file and [`tooling/production_evidence.json`](../../tooling/production_evidence.json) — **include `classification` field (a/b/c/d)**.
 3. Update [`COMPARISON_TABLE.md`](COMPARISON_TABLE.md) §G.
 4. Link from [`CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md) §6.
+5. **If the row is Class (a):** bump `external_paying_customer_count` in `tooling/production_evidence.json` and update the disclosure block at the top of this file.
 
 **Do not** commit customer PII, API keys, or raw logs.
 
@@ -76,6 +104,8 @@ Anonymized **field** evidence for public review. This is not a substitute for **
 
 ## Related
 
-- **[`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)**
-- **[`ARMARAOS_GTM.md`](ARMARAOS_GTM.md)**
-- **[`CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md)**
+- **[`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)** — baseline A/B/C honest filter
+- **[`VS_HAND_WRITTEN_RUNNER.md`](VS_HAND_WRITTEN_RUNNER.md)** — five-axis comparison vs a hand-written Python runner
+- **[`ARMARAOS_GTM.md`](ARMARAOS_GTM.md)** — primary GTM wedge when raw AINL vs cron is a weak sell
+- **[`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md)** — visible roadmap for the Class (a) gap
+- **[`CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md)** — claim crosswalk
