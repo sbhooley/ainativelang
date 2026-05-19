@@ -12,7 +12,7 @@ Comparative docs should be grounded in **shipped** behavior (compiler, runtime, 
 
 ## Guides (v1.2.5+ baseline; **v1.8.0** target line — PyPI after publish — **`docs/RELEASING.md`**)
 
-- **[`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)** — honest ICP filter and baseline A/B/C matrix (read before citing savings).
+- **[`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)** — canonical ICP, anti-ICP, baseline A/B/C matrix, decision tree (read before citing savings). The former `WHEN_AINL_DOES_NOT_HELP.md` is now a pointer stub to this canonical doc.
 - **[`ARMARAOS_GTM.md`](ARMARAOS_GTM.md)** — primary product wedge: Hands, MCP, dashboard (not "replace your cron").
 - **[`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md)** — committed operator case tables + JSON mirror.
 - **[`FROM_LANGGRAPH_TO_AINL.md`](FROM_LANGGRAPH_TO_AINL.md)** — 15-minute onboarding from graph-first Python to AINL + optional `--emit langgraph`.

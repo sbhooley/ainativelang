@@ -83,7 +83,7 @@ Before the install commands, here is who AINL is and is not for. We would rather
 | You have **compliance audit needs** (SOC 2 / HIPAA / similar) that want tamper-evident execution traces, not application logs | `logger.info` is enough for your team |
 | You want **strict compile-time validation** of agent workflows before they hit production | Runtime exceptions are fine, you have alerting |
 
-If you tick two or more left-column rows, keep reading. If you tick zero, **[`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)** explains why and saves you the install. We mean it.
+If you tick two or more left-column rows, keep reading. The long-form answer — three baselines, four anti-fit workload patterns, decision tree, honest reviewer Q&A, persona-to-product mapping — lives in **[`docs/WHO_IS_THIS_FOR.md`](docs/WHO_IS_THIS_FOR.md)** (canonical). If you tick zero, that page explains why and saves you the install. We mean it.
 
 ---
 

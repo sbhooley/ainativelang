@@ -1,6 +1,8 @@
 # ArmaraOS go-to-market wedge (when raw AINL vs cron is weak)
 
-Many mature teams already run **deterministic scripts + LLM at judgment gates**. For them, pitching "AINL saves 80% vs your cron job" fails — see **[`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)**.
+> **Canonical ICP lives elsewhere.** The "who is this for" question for AINL as a whole is answered in **[`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)** — this document is **ArmaraOS-specific product positioning**: the stack diagram, install paths, persona-to-message mapping, and reference Hands. Read the canonical ICP doc first if you're trying to decide whether AINL fits your workload; come here for the *product* angle once you've decided AINL is in the running.
+
+Many mature teams already run **deterministic scripts + LLM at judgment gates**. For them, pitching "AINL saves 80% vs your cron job" fails — see [`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md) for the full anti-pitch.
 
 **ArmaraOS is the primary product wedge:** packaged agent OS + dashboard + validated **Hands** — not "replace your bash monitor with a compiler."
 
@@ -12,16 +14,9 @@ Many mature teams already run **deterministic scripts + LLM at judgment gates**.
 
 ---
 
-## Who this is for
+## Who this is for (canonical version)
 
-| Persona | Pain | ArmaraOS + AINL answer |
-|---------|------|------------------------|
-| **Solo operator / creator** | Agents burn tokens re-planning monitors and digests | **Hands** + scheduled **`ainl run`** — zero orchestration LLM on healthy paths |
-| **Agent-heavy shop** | MCP tools ship broken orchestration | **Strict validate → compile → run** wizard; loop recovery seeds in chat |
-| **Small team needing audit** | Scripts with no unified trace | JSONL execution tapes + dashboard usage/analytics |
-| **Temporal-curious** | Don't want to hand-write worker boilerplate | Author **`.ainl`**, **`--emit temporal`** when durability is required |
-
-**Not primary ICP:** Platform teams with mature runner fleets and zero LLM in deterministic paths (they are baseline B/C in **`WHEN_AINL_DOES_NOT_HELP.md`**).
+The full persona table — solo operators, agent-heavy shops, small teams needing audit, Temporal-curious teams, compliance-led shops, researchers — and the "not primary ICP" boundary live in [`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md#personas-where-ainl-fits-today). What this doc adds on top of that is the **product mapping** below: which ArmaraOS capability each persona reaches for first.
 
 ---
 
@@ -101,7 +96,7 @@ Hub docs: **[`docs/ARMARAOS_INTEGRATION.md`](../ARMARAOS_INTEGRATION.md)**, **`a
 
 ## Related
 
-- **[`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)**
+- **[`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)** — canonical ICP and anti-ICP
 - **[`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md)**
 - **[`FROM_LANGGRAPH_TO_AINL.md`](FROM_LANGGRAPH_TO_AINL.md)**
 - **[`AINL_AND_TEMPORAL.md`](AINL_AND_TEMPORAL.md)**

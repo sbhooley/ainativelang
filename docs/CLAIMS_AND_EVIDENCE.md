@@ -2,7 +2,7 @@
 
 This document maps **public-facing statements** in this repository to **defensible, reproducible artifacts**. It does **not** replace narrative reports or field analyses; it shows where numbers can be re-derived locally.
 
-> **Mandatory baseline qualifier.** Every numeric claim below is tagged with the baseline it requires. **Do not** quote any percentage / multiplier without the baseline tag. See [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) for the A/B/C definitions and [`docs/competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) for the explicit B-comparison.
+> **Mandatory baseline qualifier.** Every numeric claim below is tagged with the baseline it requires. **Do not** quote any percentage / multiplier without the baseline tag. See [`docs/WHO_IS_THIS_FOR.md`](WHO_IS_THIS_FOR.md#the-three-baselines-the-most-important-framing-in-this-document) for the A/B/C definitions and [`docs/competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) for the explicit B-comparison.
 >
 > - **Baseline A** — LLM re-prompts routing/state on every cron/webhook (prompt-loop agent)
 > - **Baseline B** — Hand-optimized scripts + LLM only at judgment gates (competent platform team)
@@ -129,7 +129,7 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 **Committed operator tables:** [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) + [`tooling/production_evidence.json`](../tooling/production_evidence.json) — anonymized OpenClaw / modeled deployment rows for public review. **Current Class (a) row count: 0** — tracked in [`competitive/LONG_TERM_FIXES_TRACKER.md`](competitive/LONG_TERM_FIXES_TRACKER.md) row **T2.7**.
 
-**Honest ICP filter:** [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) — when hand-optimized runners already capture most value (~**1.3–1.5×** routing win vs baseline B). Companion: [`competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) — five-axis comparison conceding tokens and selling compile/audit/emit.
+**Honest ICP filter:** [`docs/WHO_IS_THIS_FOR.md`](WHO_IS_THIS_FOR.md) — when hand-optimized runners already capture most value (~**1.3–1.5×** routing win vs baseline B). Companion: [`competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) — five-axis comparison conceding tokens and selling compile/audit/emit.
 
 ---
 
@@ -192,7 +192,7 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 - [`BENCHMARK.md`](../BENCHMARK.md) — regenerated tables and caveats  
 - [`docs/benchmarks.md`](benchmarks.md) — commands, CI, glossary  
 - [`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](architecture/COMPILE_ONCE_RUN_MANY.md) — minimal deterministic proof pack  
-- [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) — baseline A/B/C honest filter  
+- [`docs/WHO_IS_THIS_FOR.md`](WHO_IS_THIS_FOR.md) — canonical ICP, baseline A/B/C, decision tree  
 - [`docs/competitive/VS_HAND_WRITTEN_RUNNER.md`](competitive/VS_HAND_WRITTEN_RUNNER.md) — five-axis baseline B comparison (concedes tokens)  
 - [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) — committed operator cases + Class (a) gap disclosure  
 - [`docs/competitive/LONG_TERM_FIXES_TRACKER.md`](competitive/LONG_TERM_FIXES_TRACKER.md) — visible roadmap for evidence + scope work  
