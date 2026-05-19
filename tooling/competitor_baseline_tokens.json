@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "kind": "competitor_baseline_tokens",
+  "generated_at_utc": "2026-05-19T18:20:49.580246+00:00",
+  "token_counting_method": "tiktoken_cl100k_base",
+  "methodology_doc": "docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md",
+  "workloads": [
+    {
+      "id": "enterprise_monitor",
+      "paths": {
+        "ainl": "examples/benchmark/enterprise_monitor.ainl",
+        "python_hand_optimized": "benchmarks/handwritten_baselines/authoring_density/enterprise_monitor.py",
+        "langgraph": "benchmarks/handwritten_baselines/competitive/langgraph/enterprise_monitor_langgraph.py"
+      },
+      "tiktoken_cl100k_base": {
+        "ainl": 759,
+        "python_hand_optimized": 1106,
+        "langgraph": 1548
+      },
+      "ratios_vs_ainl": {
+        "python_hand_optimized_div_ainl": 1.46,
+        "langgraph_div_ainl": 2.04
+      },
+      "notes": "Authoring token counts on source files. LangGraph includes StateGraph boilerplate; python_hand_optimized is baseline B (competent engineer, no compiler)."
+    },
+    {
+      "id": "support_ticket_router",
+      "paths": {
+        "ainl": "examples/workflows/support_ticket_router.ainl",
+        "python_hand_optimized": "benchmarks/handwritten_baselines/authoring_density/support_ticket_router.py",
+        "langgraph": "benchmarks/handwritten_baselines/competitive/langgraph/support_ticket_router_langgraph.py"
+      },
+      "tiktoken_cl100k_base": {
+        "ainl": 909,
+        "python_hand_optimized": 1426,
+        "langgraph": 1752
+      },
+      "ratios_vs_ainl": {
+        "python_hand_optimized_div_ainl": 1.57,
+        "langgraph_div_ainl": 1.93
+      },
+      "notes": "Authoring token counts on source files. LangGraph includes StateGraph boilerplate; python_hand_optimized is baseline B (competent engineer, no compiler)."
+    }
+  ]
+}

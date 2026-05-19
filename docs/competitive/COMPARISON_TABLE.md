@@ -2,9 +2,9 @@
 
 Figures below are copied from **committed** artifacts only — **`BENCHMARK.md`**, **`tooling/benchmark_size.json`**, **`tooling/benchmark_runtime_results.json`**. **No hand-written baselines** for LangGraph / Temporal / prompt-loop columns exist in-repo; those cells stay **—** or **TBD**. **Do not** treat blank competitor columns as zero.
 
-**Methodology:** [`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
+**Methodology:** [`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md) · **Honest ICP filter:** [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)
 
-**Benchmark refresh (UTC, from JSON):** `tooling/benchmark_size.json` → `generated_at_utc` **2026-03-24T03:24:27.395076+00:00**; `tooling/benchmark_runtime_results.json` → `generated_at_utc` **2026-03-24T03:24:29.102226+00:00**.
+**Benchmark refresh (UTC, from JSON):** `tooling/benchmark_size.json` → `generated_at_utc` **2026-03-24T03:24:27.395076+00:00**; `tooling/benchmark_runtime_results.json` → `generated_at_utc` **2026-03-24T03:24:29.102226+00:00**; `tooling/competitor_baseline_tokens.json` → regenerate with `python scripts/benchmark_competitor_baselines.py`.
 
 ## Takeaways
 
@@ -21,18 +21,25 @@ Full raw benchmark data, detailed tables, and methodology live in [BENCHMARK.md]
 
 ## A. Authoring compactness (tiktoken cl100k_base)
 
-*Metric: `tiktoken` **cl100k_base** (`tooling/benchmark_size.json` → `metric`). Per-artifact field: `ainl_source_size`.*
+*Metric: `tiktoken` **cl100k_base**. Hybrid slice rows from `tooling/benchmark_size.json`; reference workload rows from `tooling/competitor_baseline_tokens.json` (hand-written LangGraph baselines).*
 
-| Metric | AINL (strict-valid `.ainl`) | LangGraph (Python) | Temporal (TypeScript/Python SDK) | Prompt-loop spec (e.g. JSON / prose) |
-|--------|------------------------------|--------------------|-----------------------------------|----------------------------------------|
-| Tokens (authoring) — **hybrid LangGraph slice** | **99** | — | — | — |
-| Tokens (authoring) — **hybrid Temporal slice** | **85** | — | — | — |
-| Tokens (authoring) — **headline set sum** | **2590** (sum of 19 paths) | — | — | — |
-| Source file(s) | `examples/hybrid/langgraph_outer_ainl_core/monitoring_escalation.ainl`; `examples/hybrid/temporal_durable_ainl/monitoring_durable.ainl`; profile `canonical_strict_valid` artifact list in JSON | — | — | — |
-| JSON path | `modes.full_multitarget.profiles[name=canonical_strict_valid].artifacts[].ainl_source_size` | — | — | — |
-| Headline ratios (viable, tk) | **full_multitarget_core ~3.21×**; **full_multitarget ~362.44×**; **minimal_emit ~0.76×**; **19/19** viable | — | — | — |
-| `BENCHMARK.md` anchor | [Mode Comparison (Headline + Mixed)](../../BENCHMARK.md#mode-comparison-headline--mixed) table row `canonical_strict_valid` | — | — | — |
-| Notes | Competitor authoring tokens are **not** tracked in this repo. | — | — | — |
+| Workload | AINL (tk) | Hand-optimized Python (tk) | LangGraph Python (tk) | LangGraph ÷ AINL | Python ÷ AINL |
+|----------|----------:|---------------------------:|----------------------:|-----------------:|--------------:|
+| **enterprise_monitor** | **759** | **1106** | **1548** | **2.04×** | **1.46×** |
+| **support_ticket_router** | **909** | **1426** | **1752** | **1.93×** | **1.57×** |
+| Hybrid LangGraph slice (`monitoring_escalation.ainl`) | **99** | — | — (emit bundle **12440** tk) | — | — |
+| Hybrid Temporal slice (`monitoring_durable.ainl`) | **85** | — | — (emit bundle **12223** tk) | — | — |
+| Headline strict-valid set sum (19 paths) | **2590** | — | — | — | — |
+
+| Source | Path |
+|--------|------|
+| AINL enterprise monitor | `examples/benchmark/enterprise_monitor.ainl` |
+| LangGraph baseline | `benchmarks/handwritten_baselines/competitive/langgraph/enterprise_monitor_langgraph.py` |
+| Hand-optimized Python | `benchmarks/handwritten_baselines/authoring_density/enterprise_monitor.py` |
+| JSON (reference workloads) | `tooling/competitor_baseline_tokens.json` → `workloads[]` |
+| Regenerate | `python scripts/benchmark_competitor_baselines.py` |
+
+**Notes:** LangGraph counts are **authoring** size (source files), not emitted `--emit langgraph` wrapper bundles. Temporal SDK hand-written baselines remain **TBD**. Prompt-loop prose specs remain **TBD**.
 
 ---
 
@@ -104,11 +111,15 @@ Full raw benchmark data, detailed tables, and methodology live in [BENCHMARK.md]
 
 ## G. OpenClaw / MCP production (anonymized)
 
-*Worksheet: [`OPENCLAW_PRODUCTION_SAVINGS.md`](OPENCLAW_PRODUCTION_SAVINGS.md). No committed numeric rows in-repo.*
+*Worksheet: [`OPENCLAW_PRODUCTION_SAVINGS.md`](OPENCLAW_PRODUCTION_SAVINGS.md). Committed rows: [`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md) · [`tooling/production_evidence.json`](../../tooling/production_evidence.json).*
 
-| Workload class | Host | Before | After (AINL + MCP) | Δ tokens/week (approx.) | Δ incidents/month |
-|----------------|------|--------|--------------------|-------------------------|-------------------|
-| — | — | — | — | **TBD** | **TBD** |
+| Workload class | Host | Before | After (AINL) | Orchestration LLM tokens/run | Evidence |
+|----------------|------|--------|--------------|------------------------------|----------|
+| Daily token/cache budget digest | OpenClaw bridge cron | Prompt-loop daily agent | `token_budget_alert.ainl` | **0** | Shipped wrapper + Case 1 |
+| Gateway lifetime (user-facing LLM) | OpenClaw + OpenRouter | Modeled prompt-loop on Opus | AINL workflows + free-tier routing | N/A (10.5M user tokens measured) | [`agent_reports/2026-03-27-ainl-cost-savings.md`](../../agent_reports/2026-03-27-ainl-cost-savings.md) |
+| HTTP health monitor (modeled 2880/mo) | ainl run / Hand | Modeled prompt-loop (2 LLM calls/healthy poll) | `enterprise_monitor.ainl` | **0** on healthy path | Analytical — `compile_once_run_many_results.json` (**96.2%** vs prompt-loop) |
+
+**Caveat:** Case 2 mixes free-model routing with architectural efficiency; Case 3 is reproducible modeling, not a third-party production deployment audit. See [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md) for baseline B/C teams.
 
 ---
 
@@ -118,6 +129,8 @@ Full raw benchmark data, detailed tables, and methodology live in [BENCHMARK.md]
 |----------|------|
 | `tooling/benchmark_size.json` | `schema_version` **3.5**, `metric` **tiktoken**, `generated_at_utc` above; modes **`full_multitarget`**, **`minimal_emit`**; profile **`canonical_strict_valid`**. |
 | `tooling/benchmark_runtime_results.json` | `schema_version` **1.2**, `generated_at_utc` above; mode **`full_multitarget`**, profile **`canonical_strict_valid`**. |
+| `tooling/competitor_baseline_tokens.json` | Hand-written LangGraph + Python baselines vs reference `.ainl` ( **`scripts/benchmark_competitor_baselines.py`** ). |
+| `tooling/production_evidence.json` | Committed operator case metadata for §G. |
 | `BENCHMARK.md` (repo root) | § **Mode Comparison (Headline + Mixed)**; § **Size Drivers** (top targets/artifacts, tk). |
 
 When you regenerate benchmarks locally, **re-run extraction** (or update this file from fresh JSON) and bump the **Benchmark refresh** line at the top.

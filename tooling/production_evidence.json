@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "kind": "production_evidence",
+  "generated_at_utc": "2026-05-19T00:00:00+00:00",
+  "methodology_doc": "docs/competitive/PRODUCTION_EVIDENCE.md",
+  "cases": [
+    {
+      "id": "openclaw_token_budget_alert",
+      "workload_class": "Daily token/cache budget digest + optional prune",
+      "host": "OpenClaw bridge cron",
+      "source_path": "openclaw/bridge/wrappers/token_budget_alert.ainl",
+      "before_summary": "Prompt-loop agent re-invoked daily for thresholds, prune policy, digest, notify",
+      "after_summary": "Compiled AINL graph via bridge; deterministic adapter execution",
+      "llm_orchestration_tokens_per_run": 0,
+      "llm_content_tokens_per_run": 0,
+      "recurring_runs_per_month": 30,
+      "delta_tokens_per_week_approx": 0,
+      "delta_incidents_per_month": null,
+      "evidence_type": "shipped_wrapper",
+      "report_path": null
+    },
+    {
+      "id": "openclaw_gateway_lifetime",
+      "workload_class": "User-facing LLM traffic (chat, tools, recurring tasks)",
+      "host": "OpenClaw + OpenRouter + AINL orchestration",
+      "source_path": null,
+      "before_summary": "Equivalent prompt-loop agent architecture on paid Claude Opus",
+      "after_summary": "AINL compile-once workflows + free-tier model routing",
+      "llm_orchestration_tokens_per_run": null,
+      "llm_content_tokens_per_run": null,
+      "recurring_runs_per_month": null,
+      "delta_tokens_per_week_approx": null,
+      "delta_incidents_per_month": null,
+      "measured_total_tokens": 10501100,
+      "measured_input_tokens": 2097000,
+      "measured_output_tokens": 8404100,
+      "counterfactual_cost_usd_openrouter_opus": 220.59,
+      "counterfactual_cost_usd_anthropic_direct_opus": 661.77,
+      "architectural_efficiency_multiplier": 2.5,
+      "evidence_type": "field_report",
+      "report_path": "agent_reports/2026-03-27-ainl-cost-savings.md"
+    },
+    {
+      "id": "enterprise_monitor_modeled",
+      "workload_class": "HTTP health check every 5 min; LLM alert on incident only",
+      "host": "ainl run / runner / ArmaraOS scheduled Hand",
+      "source_path": "examples/benchmark/enterprise_monitor.ainl",
+      "before_summary": "Modeled prompt-loop: 2 LLM orchestration calls/run even when healthy",
+      "after_summary": "Compiled AINL: 0 LLM tokens on healthy polls (~90% of runs)",
+      "llm_orchestration_tokens_per_run": 0,
+      "recurring_runs_per_month": 2880,
+      "orchestration_savings_pct_vs_prompt_loop": 96.2,
+      "monthly_cost_usd_ainl_modeled": 0.04,
+      "monthly_cost_usd_prompt_loop_modeled": 0.92,
+      "evidence_type": "analytical",
+      "report_path": "tooling/compile_once_run_many_results.json"
+    }
+  ]
+}

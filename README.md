@@ -86,7 +86,7 @@ Autonomous agents, 7 pre-built Hands (researcher, lead gen, clip editor, and mor
 
 **Already have an AI agent? Add AINL in one command.**
 
-AINL installs directly into OpenClaw, ZeroClaw, Hermes, Claude Code, and any MCP-compatible agent. After install your agent gets deterministic, reusable workflows — and you get real token savings immediately.
+AINL installs directly into OpenClaw, ZeroClaw, Hermes, Claude Code, and any MCP-compatible agent. After install your agent can **author, validate, and run** deterministic workflows — with the largest token wins when you are still on **LLM prompt-loop orchestration** (baseline A below).
 
 | Your agent | Install command | How-to guide |
 |:-----------|:----------------|:-------------|
@@ -96,21 +96,31 @@ AINL installs directly into OpenClaw, ZeroClaw, Hermes, Claude Code, and any MCP
 | **Claude Code** | `pip install 'ainativelang[mcp]'` → add `ainl-mcp` to MCP config | [ainativelang.com/mcp](https://ainativelang.com/mcp) |
 | **Any MCP host** | `pip install 'ainativelang[mcp]'` → run `ainl-mcp` (stdio) | [ainativelang.com/mcp](https://ainativelang.com/mcp) |
 
-After install, ask your agent: *"Use AINL to build this workflow"* — it compiles once, runs many times without re-spending tokens on orchestration.
+After install, ask your agent: *"Use AINL to build this workflow"* — it compiles once, runs many times without re-spending tokens on orchestration **when the workload was previously prompt-loop driven**.
 
-**Token savings at a glance:**
+**Primary product path:** **[ArmaraOS](https://ainativelang.com/armaraos)** — desktop agent OS with dashboard, **Hands**, scheduled **`ainl run`**, and MCP authoring. See **[`docs/competitive/ARMARAOS_GTM.md`](docs/competitive/ARMARAOS_GTM.md)**.
 
-| Workload | Typical savings |
-|:---------|:----------------|
-| Recurring monitors, digests, scheduled jobs | [**90–95% fewer tokens** vs prompt loops](agent_reports/Grok-analysis-as-of-March-25-2026–v1-2-8-Token-Cost-Savings.md) — field analysis (OpenClaw monitors, compile-once / run-many); **reproducible tables:** [`BENCHMARK.md`](BENCHMARK.md) (compile-once / run-many scenarios) |
-| Multi-step automations and workflows | [**2–5× reduction** per task](agent_reports/2026-03-27-ainl-cost-savings.md) — Apollo cost report (OpenRouter lifetime usage, architectural efficiency); **reproducible:** [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py) → [`BENCHMARK.md`](BENCHMARK.md) |
-| Simple one-off tasks | [Smaller but still positive](agent_reports/plushifier-openclaw-2026-03-18.md) — early OpenClaw operator field report (Plushify) |
+**Token savings — pick your baseline:**
 
-**Reproducible repo evidence (deterministic scripts, no live LLM):** claim-to-artifact map **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)**; regenerated sections in **[`BENCHMARK.md`](BENCHMARK.md)** from [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py) (routing vs LLM-first), [`scripts/benchmark_compile_once_run_many.py`](scripts/benchmark_compile_once_run_many.py) (recurring-run orchestration tokens), and [`scripts/benchmark_authoring_density.py`](scripts/benchmark_authoring_density.py) (`.ainl` vs Python/TS authoring density). Reference workflows (strict-valid): [`examples/benchmark/enterprise_monitor.ainl`](examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](examples/workflows/data_pipeline.ainl), [`examples/workflows/lead_enrichment.ainl`](examples/workflows/lead_enrichment.ainl), [`examples/workflows/support_ticket_router.ainl`](examples/workflows/support_ticket_router.ainl).
+| Your baseline today | Typical AINL win | Worth it for tokens alone? |
+|:--------------------|:-----------------|:---------------------------|
+| **A.** LLM re-prompts routing/state on every cron/webhook | **~90–95%** fewer *orchestration* tokens on recurring monitors ([`BENCHMARK.md`](BENCHMARK.md), `benchmark_compile_once_run_many.py`) | **Often yes** |
+| **B.** Hand-optimized scripts + LLM only at judgment gates | **~1.3–1.5×** on routing tokens ([`token_savings_results.json`](tooling/token_savings_results.json)) | **Usually no** — consider audit, MCP safety, emit, or ArmaraOS |
+| **C.** Pure deterministic runners (no LLM in loop) | **~0%** | **No** |
 
-The reason: AINL compiles your workflow once. The runtime executes it deterministically — no LLM re-generation on each run, no prompt bloat, no orchestration chatter. The model authors the graph once; the runtime runs it on every invocation.
+Full honest filter: **[`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)**.
 
-> **[Token savings breakdown and benchmarks →](https://ainativelang.com/benchmark)** · **[`BENCHMARK.md`](BENCHMARK.md)** (source tables + methodology) · **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)** (claim crosswalk)
+| Workload (baseline A) | Typical savings |
+|:----------------------|:----------------|
+| Recurring monitors, digests, scheduled jobs | [**90–95% fewer orchestration tokens** vs prompt loops](agent_reports/Grok-analysis-as-of-March-25-2026–v1-2-8-Token-Cost-Savings.md) — **reproducible:** [`BENCHMARK.md`](BENCHMARK.md) (`benchmark_compile_once_run_many.py`) |
+| Multi-step automations (LLM-first routing) | [**2–5× reduction** vs LLM-first](agent_reports/2026-03-27-ainl-cost-savings.md) — **reproducible:** [`scripts/benchmark_token_savings.py`](scripts/benchmark_token_savings.py) |
+| Operator field notes | [OpenClaw examples](agent_reports/plushifier-openclaw-2026-03-18.md) · [committed production rows](docs/competitive/PRODUCTION_EVIDENCE.md) |
+
+**Reproducible repo evidence (deterministic scripts, no live LLM):** claim-to-artifact map **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)**; regenerated sections in **[`BENCHMARK.md`](BENCHMARK.md)**; LangGraph authoring baselines: **`python scripts/benchmark_competitor_baselines.py`** → [`tooling/competitor_baseline_tokens.json`](tooling/competitor_baseline_tokens.json). Reference workflows (strict-valid): [`examples/benchmark/enterprise_monitor.ainl`](examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](examples/workflows/data_pipeline.ainl), [`examples/workflows/lead_enrichment.ainl`](examples/workflows/lead_enrichment.ainl), [`examples/workflows/support_ticket_router.ainl`](examples/workflows/support_ticket_router.ainl).
+
+The reason: AINL compiles your workflow once. The runtime executes it deterministically — no LLM re-generation on each run for graph routing and adapter orchestration. The model authors the graph once; the runtime runs it on every invocation.
+
+> **[Token savings breakdown and benchmarks →](https://ainativelang.com/benchmark)** · **[`BENCHMARK.md`](BENCHMARK.md)** (source tables + methodology) · **[`docs/CLAIMS_AND_EVIDENCE.md`](docs/CLAIMS_AND_EVIDENCE.md)** (claim crosswalk) · **[When AINL does not help →](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)**
 
 ---
 

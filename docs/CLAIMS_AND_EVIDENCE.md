@@ -26,6 +26,8 @@ These files are **committed** so diffs and CI can compare runs. They are the com
 | [`tooling/benchmark_runtime_results.json`](../tooling/benchmark_runtime_results.json) | [`scripts/benchmark_runtime.py`](../scripts/benchmark_runtime.py) |
 | [`tooling/benchmark_runtime_ci.json`](../tooling/benchmark_runtime_ci.json) | CI runtime slice |
 | [`tooling/benchmark_manifest.json`](../tooling/benchmark_manifest.json) | Profile/mode registry consumed by size benchmarking — not a “result” row, but versioned config |
+| [`tooling/competitor_baseline_tokens.json`](../tooling/competitor_baseline_tokens.json) | [`scripts/benchmark_competitor_baselines.py`](../scripts/benchmark_competitor_baselines.py) — hand-written LangGraph + Python vs reference `.ainl` authoring tokens |
+| [`tooling/production_evidence.json`](../tooling/production_evidence.json) | Committed operator case metadata — see [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) |
 
 Other JSON under **`tooling/`** (for example **`artifact_profiles.json`**, **`mcp_exposure_profiles.json`**) support compiler and product defaults; they are **not** benchmark run outputs.
 
@@ -103,11 +105,33 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 **Relationship to §1–4:** Useful context and quotes; **auditable reproduction** for headline economics should cite **`BENCHMARK.md`** and the **`scripts/benchmark_*.py`** family above.
 
+**Committed operator tables:** [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) + [`tooling/production_evidence.json`](../tooling/production_evidence.json) — anonymized OpenClaw / modeled deployment rows for public review.
+
+**Honest ICP filter:** [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) — when hand-optimized runners already capture most value (~**1.3–1.5×** routing win only).
+
 ---
+
+## 7. LangGraph authoring baselines (reference workloads)
+
+**Claims elsewhere:** AINL source is more compact than hand-written LangGraph for the same semantics.
+
+**Evidence:**
+
+| Artifact | Role |
+|----------|------|
+| [`benchmarks/handwritten_baselines/competitive/langgraph/`](../benchmarks/handwritten_baselines/competitive/langgraph/) | Hand-written LangGraph for `enterprise_monitor` and `support_ticket_router` |
+| [`scripts/benchmark_competitor_baselines.py`](../scripts/benchmark_competitor_baselines.py) | tiktoken counts → [`tooling/competitor_baseline_tokens.json`](../tooling/competitor_baseline_tokens.json) |
+| [`docs/competitive/COMPARISON_TABLE.md`](competitive/COMPARISON_TABLE.md) §A | Published ratios (LangGraph ÷ AINL ≈ **1.9–2.0×** on reference workloads) |
+
+**Honest scope:** Authoring size only — not LangGraph worker runtime latency vs AINL runtime.
 
 ## See also
 
 - [`BENCHMARK.md`](../BENCHMARK.md) — regenerated tables and caveats  
 - [`docs/benchmarks.md`](benchmarks.md) — commands, CI, glossary  
 - [`docs/architecture/COMPILE_ONCE_RUN_MANY.md`](architecture/COMPILE_ONCE_RUN_MANY.md) — minimal deterministic proof pack  
-- [`docs/competitive/README.md`](competitive/README.md) — comparative messaging + qualifier on matrix rows  
+- [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md) — baseline A/B/C honest filter  
+- [`docs/competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) — committed operator cases  
+- [`docs/competitive/ARMARAOS_GTM.md`](competitive/ARMARAOS_GTM.md) — primary product wedge  
+- [`docs/competitive/README.md`](competitive/README.md) — comparative hub  
+- [`docs/competitive/COMPARISON_TABLE.md`](competitive/COMPARISON_TABLE.md) — committed numbers + LangGraph baselines  

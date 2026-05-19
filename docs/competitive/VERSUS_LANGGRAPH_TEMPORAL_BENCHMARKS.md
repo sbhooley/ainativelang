@@ -41,6 +41,16 @@ This document names **commands and artifacts** so you can run **head-to-head sty
 
 Record means on a quiet machine; commit methodology, not one-off magic numbers.
 
+## LangGraph reference workloads (authoring tokens)
+
+Hand-written baselines live under **`benchmarks/handwritten_baselines/competitive/langgraph/`**. Regenerate committed counts:
+
+```bash
+python scripts/benchmark_competitor_baselines.py
+```
+
+Output: **`tooling/competitor_baseline_tokens.json`** — consumed by **`docs/competitive/COMPARISON_TABLE.md`** §A.
+
 ## Honest boundaries
 
 - **LangGraph** and **Temporal** excel at **their** runtime guarantees and ecosystems; AINL’s claim is **portable authoring + strict compile + multi-target emit**, not “faster worker RPCs than Temporal.”

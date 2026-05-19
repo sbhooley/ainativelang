@@ -2,6 +2,10 @@
 
 Strategic messaging framework for positioning AINL against LangGraph, Temporal, and other AI workflow tools.
 
+**Read first:** **[`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)** — baseline A (prompt-loop), B (hand-optimized scripts), C (pure deterministic). **Do not cite savings without naming the baseline.**
+
+**Primary GTM wedge:** **[`ARMARAOS_GTM.md`](ARMARAOS_GTM.md)** — ArmaraOS + Hands + MCP, not "replace your bash monitor."
+
 ---
 
 ## 🎯 Core Positioning Statement
@@ -10,7 +14,7 @@ Strategic messaging framework for positioning AINL against LangGraph, Temporal, 
 
 While tools like LangGraph and Temporal start with general workflow engines and add AI capabilities, AINL is *purpose-built* for deterministic AI workflows from the ground up.
 
----
+**For mature ops teams:** AINL formalizes discipline you may already have (deterministic runners + LLM at gates). Lead with **strict validation, audit JSONL, MCP authoring safety, and emit portability** — not raw token math vs cron.
 
 ## 📊 Comparison Matrix
 
@@ -18,7 +22,7 @@ While tools like LangGraph and Temporal start with general workflow engines and 
 |---------|------|-----------|----------|-----------|
 | **Compile-time validation** | ✅ Strict type/schema checks | ❌ Runtime only | ⚠️ Limited (workflow definitions) | ❌ |
 | **Deterministic execution** | ✅ Same input → same output | ❌ Prompt-based branching | ✅ If code deterministic | ❌ |
-| **Token efficiency** | **Up to ~90–95%** fewer orchestration tokens vs prompt-loop agents on recurring monitors / digests / schedulers (compile-once IR routing); smaller gains when every run needs LLM classification or drafting | ❌ High (re-prompt on every step) | ✅ Low (code execution) | ⚠️ Low-cost APIs |
+| **Token efficiency** | **Up to ~90–95%** fewer *orchestration* tokens vs **prompt-loop agents** on recurring monitors / digests (baseline **A**); **~1.3–1.5×** vs **hand-optimized scripts** (baseline **B**); **~0%** vs pure deterministic runners (baseline **C**) | ❌ High (re-prompt on every step) | ✅ Low (code execution) | ⚠️ Low-cost APIs |
 | **Audit trail** | ✅ JSONL immutable traces | ⚠️ Manual logging | ⚠️ Need custom implementation | ❌ |
 | **Learning curve** | Low (declarative language) | Medium (Python state machines) | High (Docker, workers) | Very low |
 | **Portability** | ✅ Emit to multiple targets | ❌ Locked to LangChain | ✅ Code is portable | ❌ |

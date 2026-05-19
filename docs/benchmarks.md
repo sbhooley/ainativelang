@@ -37,18 +37,24 @@ These scripts measure **LLM token counts** with **tiktoken** (`cl100k_base`) for
 | [`scripts/benchmark_token_savings.py`](../scripts/benchmark_token_savings.py) | Doc-style pipeline: LLM-first vs hand-optimized vs compiled AINL; routing-depth sensitivity |
 | [`scripts/benchmark_compile_once_run_many.py`](../scripts/benchmark_compile_once_run_many.py) | Compile-once / run-many: per-run tokens across recurring-job scenarios (monitors, enrichment, triage, …) |
 | [`scripts/benchmark_authoring_density.py`](../scripts/benchmark_authoring_density.py) | DSL authoring density: `.ainl` source vs equivalent Python / TypeScript |
+| [`scripts/benchmark_competitor_baselines.py`](../scripts/benchmark_competitor_baselines.py) | Hand-written LangGraph + Python vs reference `.ainl` (authoring tiktoken) → `tooling/competitor_baseline_tokens.json` |
 
 ```bash
 python scripts/benchmark_token_savings.py
 python scripts/benchmark_compile_once_run_many.py
 python scripts/benchmark_authoring_density.py
+python scripts/benchmark_competitor_baselines.py
 ```
 
 Reference **strict-valid** workflow examples used in density / scenario modeling: [`examples/benchmark/enterprise_monitor.ainl`](../examples/benchmark/enterprise_monitor.ainl), [`examples/workflows/data_pipeline.ainl`](../examples/workflows/data_pipeline.ainl), [`examples/workflows/lead_enrichment.ainl`](../examples/workflows/lead_enrichment.ainl), [`examples/workflows/support_ticket_router.ainl`](../examples/workflows/support_ticket_router.ainl).
 
 ## Comparative methodology (LangGraph, Temporal, others)
 
-Head-to-head **commands**, suggested table rows, and scope boundaries (what we do and do not claim) live in **[`competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**. Use it with the tables in **[`BENCHMARK.md`](../BENCHMARK.md)** so published numbers stay reproducible.
+Head-to-head **commands**, suggested table rows, and scope boundaries (what we do and do not claim) live in **[`competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**. Use it with the tables in **[`BENCHMARK.md`](../BENCHMARK.md)** and **[`competitive/COMPARISON_TABLE.md`](competitive/COMPARISON_TABLE.md)** so published numbers stay reproducible.
+
+**Honest ICP:** **[`competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md)** — cite baseline A/B/C before savings claims.
+
+**LangGraph authoring baselines:** `python scripts/benchmark_competitor_baselines.py` → `tooling/competitor_baseline_tokens.json`.
 
 ### Competitive Context
 

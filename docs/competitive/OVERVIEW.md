@@ -12,11 +12,14 @@ Comparative framing and **AINL vs X** materials, grounded in shipped compiler/ru
 
 ## Guides
 
+- **[When AINL does not help](WHEN_AINL_DOES_NOT_HELP.md)** — baseline A/B/C and honest ICP filter
+- **[ArmaraOS go-to-market wedge](ARMARAOS_GTM.md)** — Hands, MCP, dashboard (primary product path)
+- **[Production evidence (committed)](PRODUCTION_EVIDENCE.md)**
 - **[From LangGraph to AINL in 15 minutes](FROM_LANGGRAPH_TO_AINL.md)**
 - **[AINL + Temporal: best of both worlds](AINL_AND_TEMPORAL.md)**
-- **[OpenClaw production savings (worksheet)](OPENCLAW_PRODUCTION_SAVINGS.md)** — fill with anonymized numbers only.
+- **[OpenClaw production savings (worksheet + examples)](OPENCLAW_PRODUCTION_SAVINGS.md)**
 - **[Versus LangGraph / Temporal: benchmark methodology](VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**
-- **[Comparison tables](COMPARISON_TABLE.md)** — benchmark-backed cells from committed `tooling/benchmark_*.json` and `BENCHMARK.md`, with **TBD** rows where data is not in-repo yet.
+- **[Comparison tables](COMPARISON_TABLE.md)** — LangGraph authoring baselines + production §G from committed JSON
 
 ## Maintainer note
 
