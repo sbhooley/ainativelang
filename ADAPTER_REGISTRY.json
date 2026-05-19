@@ -153,7 +153,8 @@
           "pure": true,
           "notes": "Identity / object literal materialization (same as echo for values)."
         }
-      }
+      },
+      "tier": "core"
     },
     "http": {
       "description": "HTTP client with host allowlist and response size limits",
@@ -232,7 +233,8 @@
       "notes": [
         "Performs up to 3 attempts with small exponential backoff on transport errors (URLError/timeouts) and 5xx HTTP status codes.",
         "Does not retry 4xx client errors; those fail immediately with a status error."
-      ]
+      ],
+      "tier": "core"
     },
     "a2a": {
       "description": "Agent-to-Agent (A2A) client — Agent Card discovery and JSON-RPC tasks/send, tasks/get (ArmaraOS-compatible wire)",
@@ -302,7 +304,8 @@
         "When allow_hosts is non-empty, hostname must be listed before outbound calls.",
         "strict_ssrf: resolve DNS; reject if any address is private/loopback unless allow_insecure_local (see docs/integrations/A2A_ADAPTER.md).",
         "follow_redirects false by default; when true each redirect is re-validated."
-      ]
+      ],
+      "tier": "core"
     },
     "sqlite": {
       "description": "SQLite database access with optional table allowlist",
@@ -334,7 +337,8 @@
         "query target requires SELECT statements",
         "execute target requires DML/DDL",
         "table allowlist enforced by regex"
-      ]
+      ],
+      "tier": "core"
     },
     "postgres": {
       "description": "PostgreSQL database access with allowlist and transaction support",
@@ -390,7 +394,8 @@
         "execute target requires DML/DDL and allow_write=true",
         "transaction executes ordered query/execute operations atomically",
         "parameterized queries are required for untrusted inputs"
-      ]
+      ],
+      "tier": "core"
     },
     "mysql": {
       "description": "MySQL database access with allowlist and transaction support",
@@ -445,7 +450,8 @@
         "execute target requires DML/DDL and allow_write=true",
         "transaction executes ordered query/execute operations atomically",
         "parameterized queries are required for untrusted inputs"
-      ]
+      ],
+      "tier": "core"
     },
     "redis": {
       "description": "Redis cache/session/queue/pubsub access with optional key-prefix policy",
@@ -455,25 +461,151 @@
       "sandbox_safe": false,
       "async_capable": true,
       "targets": {
-        "get": {"args": ["key"], "returns": "string|null", "pure": false},
-        "set": {"args": ["key", "value", "ttl_s?"], "returns": "{ok}", "pure": false},
-        "delete": {"args": ["key"], "returns": "{deleted}", "pure": false},
-        "incr": {"args": ["key", "amount?"], "returns": "number", "pure": false},
-        "decr": {"args": ["key", "amount?"], "returns": "number", "pure": false},
-        "hget": {"args": ["key", "field"], "returns": "string|null", "pure": false},
-        "hset": {"args": ["key", "field", "value"], "returns": "{updated}", "pure": false},
-        "hdel": {"args": ["key", "field"], "returns": "{deleted}", "pure": false},
-        "hmget": {"args": ["key", "[fields]"], "returns": "[value]", "pure": false},
-        "lpush": {"args": ["key", "value"], "returns": "number", "pure": false},
-        "rpush": {"args": ["key", "value"], "returns": "number", "pure": false},
-        "lpop": {"args": ["key"], "returns": "value|null", "pure": false},
-        "rpop": {"args": ["key"], "returns": "value|null", "pure": false},
-        "llen": {"args": ["key"], "returns": "number", "pure": false},
-        "publish": {"args": ["channel", "message"], "returns": "{subscribers}", "pure": false},
-        "subscribe": {"args": ["channel", "timeout_s?", "max_messages?"], "returns": "{channel, messages}", "pure": false},
-        "ping": {"args": [], "returns": "bool|string", "pure": false},
-        "info": {"args": ["section?"], "returns": "{...}", "pure": false},
-        "transaction": {"args": ["[{verb, args}]"], "returns": "{ok, results}", "pure": false}
+        "get": {
+          "args": [
+            "key"
+          ],
+          "returns": "string|null",
+          "pure": false
+        },
+        "set": {
+          "args": [
+            "key",
+            "value",
+            "ttl_s?"
+          ],
+          "returns": "{ok}",
+          "pure": false
+        },
+        "delete": {
+          "args": [
+            "key"
+          ],
+          "returns": "{deleted}",
+          "pure": false
+        },
+        "incr": {
+          "args": [
+            "key",
+            "amount?"
+          ],
+          "returns": "number",
+          "pure": false
+        },
+        "decr": {
+          "args": [
+            "key",
+            "amount?"
+          ],
+          "returns": "number",
+          "pure": false
+        },
+        "hget": {
+          "args": [
+            "key",
+            "field"
+          ],
+          "returns": "string|null",
+          "pure": false
+        },
+        "hset": {
+          "args": [
+            "key",
+            "field",
+            "value"
+          ],
+          "returns": "{updated}",
+          "pure": false
+        },
+        "hdel": {
+          "args": [
+            "key",
+            "field"
+          ],
+          "returns": "{deleted}",
+          "pure": false
+        },
+        "hmget": {
+          "args": [
+            "key",
+            "[fields]"
+          ],
+          "returns": "[value]",
+          "pure": false
+        },
+        "lpush": {
+          "args": [
+            "key",
+            "value"
+          ],
+          "returns": "number",
+          "pure": false
+        },
+        "rpush": {
+          "args": [
+            "key",
+            "value"
+          ],
+          "returns": "number",
+          "pure": false
+        },
+        "lpop": {
+          "args": [
+            "key"
+          ],
+          "returns": "value|null",
+          "pure": false
+        },
+        "rpop": {
+          "args": [
+            "key"
+          ],
+          "returns": "value|null",
+          "pure": false
+        },
+        "llen": {
+          "args": [
+            "key"
+          ],
+          "returns": "number",
+          "pure": false
+        },
+        "publish": {
+          "args": [
+            "channel",
+            "message"
+          ],
+          "returns": "{subscribers}",
+          "pure": false
+        },
+        "subscribe": {
+          "args": [
+            "channel",
+            "timeout_s?",
+            "max_messages?"
+          ],
+          "returns": "{channel, messages}",
+          "pure": false
+        },
+        "ping": {
+          "args": [],
+          "returns": "bool|string",
+          "pure": false
+        },
+        "info": {
+          "args": [
+            "section?"
+          ],
+          "returns": "{...}",
+          "pure": false
+        },
+        "transaction": {
+          "args": [
+            "[{verb, args}]"
+          ],
+          "returns": "{ok, results}",
+          "pure": false
+        }
       },
       "config": {
         "url_env": "AINL_REDIS_URL",
@@ -493,7 +625,8 @@
         "optional allow_prefixes policy scopes keys/channels",
         "transaction executes ordered redis operations atomically",
         "native async mode uses redis.asyncio for full verb parity with bounded subscribe polling"
-      ]
+      ],
+      "tier": "core"
     },
     "dynamodb": {
       "description": "AWS DynamoDB access for item, query/scan, batch, and transactional operations",
@@ -503,20 +636,129 @@
       "sandbox_safe": false,
       "async_capable": true,
       "targets": {
-        "get": {"args": ["table", "key", "consistent_read?"], "returns": "{item}", "pure": false},
-        "put": {"args": ["table", "item", "return_values?"], "returns": "{attributes}", "pure": false},
-        "update": {"args": ["table", "key", "update_expression", "expression_attribute_values?", "expression_attribute_names?", "return_values?"], "returns": "{attributes}", "pure": false},
-        "delete": {"args": ["table", "key", "return_values?"], "returns": "{attributes}", "pure": false},
-        "query": {"args": ["table", "key_condition_expression", "expression_attribute_values?", "filter_expression?", "limit?", "exclusive_start_key?"], "returns": "{items, count, last_evaluated_key?}", "pure": false},
-        "scan": {"args": ["table", "filter_expression?", "expression_attribute_values?", "limit?", "exclusive_start_key?"], "returns": "{items, count, last_evaluated_key?}", "pure": false},
-        "batch_get": {"args": ["request_items"], "returns": "{responses}", "pure": false},
-        "batch_write": {"args": ["request_items"], "returns": "{ok, unprocessed_items}", "pure": false},
-        "transact_get": {"args": ["transact_items"], "returns": "{ok, results}", "pure": false},
-        "transact_write": {"args": ["transact_items"], "returns": "{ok, results}", "pure": false},
-        "describe_table": {"args": ["table"], "returns": "{table}", "pure": false},
-        "list_tables": {"args": ["limit?", "exclusive_start_table_name?"], "returns": "{tables, last_evaluated_table_name?}", "pure": false},
-        "streams_subscribe": {"args": ["table_name", "shard_iterator_type?", "filter?", "timeout_s?", "max_events?"], "returns": "{table, events, active}", "pure": false},
-        "streams_unsubscribe": {"args": ["table_name"], "returns": "{table, removed}", "pure": false}
+        "get": {
+          "args": [
+            "table",
+            "key",
+            "consistent_read?"
+          ],
+          "returns": "{item}",
+          "pure": false
+        },
+        "put": {
+          "args": [
+            "table",
+            "item",
+            "return_values?"
+          ],
+          "returns": "{attributes}",
+          "pure": false
+        },
+        "update": {
+          "args": [
+            "table",
+            "key",
+            "update_expression",
+            "expression_attribute_values?",
+            "expression_attribute_names?",
+            "return_values?"
+          ],
+          "returns": "{attributes}",
+          "pure": false
+        },
+        "delete": {
+          "args": [
+            "table",
+            "key",
+            "return_values?"
+          ],
+          "returns": "{attributes}",
+          "pure": false
+        },
+        "query": {
+          "args": [
+            "table",
+            "key_condition_expression",
+            "expression_attribute_values?",
+            "filter_expression?",
+            "limit?",
+            "exclusive_start_key?"
+          ],
+          "returns": "{items, count, last_evaluated_key?}",
+          "pure": false
+        },
+        "scan": {
+          "args": [
+            "table",
+            "filter_expression?",
+            "expression_attribute_values?",
+            "limit?",
+            "exclusive_start_key?"
+          ],
+          "returns": "{items, count, last_evaluated_key?}",
+          "pure": false
+        },
+        "batch_get": {
+          "args": [
+            "request_items"
+          ],
+          "returns": "{responses}",
+          "pure": false
+        },
+        "batch_write": {
+          "args": [
+            "request_items"
+          ],
+          "returns": "{ok, unprocessed_items}",
+          "pure": false
+        },
+        "transact_get": {
+          "args": [
+            "transact_items"
+          ],
+          "returns": "{ok, results}",
+          "pure": false
+        },
+        "transact_write": {
+          "args": [
+            "transact_items"
+          ],
+          "returns": "{ok, results}",
+          "pure": false
+        },
+        "describe_table": {
+          "args": [
+            "table"
+          ],
+          "returns": "{table}",
+          "pure": false
+        },
+        "list_tables": {
+          "args": [
+            "limit?",
+            "exclusive_start_table_name?"
+          ],
+          "returns": "{tables, last_evaluated_table_name?}",
+          "pure": false
+        },
+        "streams_subscribe": {
+          "args": [
+            "table_name",
+            "shard_iterator_type?",
+            "filter?",
+            "timeout_s?",
+            "max_events?"
+          ],
+          "returns": "{table, events, active}",
+          "pure": false
+        },
+        "streams_unsubscribe": {
+          "args": [
+            "table_name"
+          ],
+          "returns": "{table, removed}",
+          "pure": false
+        }
       },
       "config": {
         "url_env": "AINL_DYNAMODB_URL (optional, for local endpoint override)",
@@ -534,7 +776,8 @@
         "transact_write and batch_write respect the same write gate",
         "streams.subscribe uses bounded polling with timeout/max_events and follows table allowlist",
         "native async mode supports non-blocking stream batching via background listener tasks"
-      ]
+      ],
+      "tier": "core"
     },
     "airtable": {
       "description": "Airtable REST adapter for no-code style table/record workflows",
@@ -544,20 +787,118 @@
       "sandbox_safe": false,
       "async_capable": true,
       "targets": {
-        "list": {"args": ["table", "params?"], "returns": "{records, offset?}", "pure": false},
-        "find": {"args": ["table", "formula_or_filter"], "returns": "{records, offset?}", "pure": false},
-        "create": {"args": ["table", "record_or_records"], "returns": "{...}", "pure": false},
-        "update": {"args": ["table", "record_or_records"], "returns": "{...}", "pure": false},
-        "delete": {"args": ["table", "record_id_or_ids"], "returns": "{...}", "pure": false},
-        "upsert": {"args": ["table", "key_field", "key_value", "fields"], "returns": "{ok, action, record}", "pure": false},
-        "get_table": {"args": ["table"], "returns": "{table}", "pure": false},
-        "list_tables": {"args": [], "returns": "{tables}", "pure": false},
-        "list_bases": {"args": [], "returns": "{bases, offset?}", "pure": false},
-        "attachment_upload": {"args": ["table", "record_id", "field_name", "file_path_or_bytes_or_url", "filename?"], "returns": "{ok, attachment|record}", "pure": false},
-        "attachment_download": {"args": ["table", "attachment_url", "output_path?"], "returns": "{bytes_b64|path,size}", "pure": false},
-        "webhook_create": {"args": ["table", "table_or_view", "actions", "notification_url"], "returns": "{webhook_id, expiration_time, mac_secret_base64, specification}", "pure": false},
-        "webhook_list": {"args": ["table"], "returns": "{webhooks}", "pure": false},
-        "webhook_delete": {"args": ["table", "webhook_id"], "returns": "{id, deleted}", "pure": false}
+        "list": {
+          "args": [
+            "table",
+            "params?"
+          ],
+          "returns": "{records, offset?}",
+          "pure": false
+        },
+        "find": {
+          "args": [
+            "table",
+            "formula_or_filter"
+          ],
+          "returns": "{records, offset?}",
+          "pure": false
+        },
+        "create": {
+          "args": [
+            "table",
+            "record_or_records"
+          ],
+          "returns": "{...}",
+          "pure": false
+        },
+        "update": {
+          "args": [
+            "table",
+            "record_or_records"
+          ],
+          "returns": "{...}",
+          "pure": false
+        },
+        "delete": {
+          "args": [
+            "table",
+            "record_id_or_ids"
+          ],
+          "returns": "{...}",
+          "pure": false
+        },
+        "upsert": {
+          "args": [
+            "table",
+            "key_field",
+            "key_value",
+            "fields"
+          ],
+          "returns": "{ok, action, record}",
+          "pure": false
+        },
+        "get_table": {
+          "args": [
+            "table"
+          ],
+          "returns": "{table}",
+          "pure": false
+        },
+        "list_tables": {
+          "args": [],
+          "returns": "{tables}",
+          "pure": false
+        },
+        "list_bases": {
+          "args": [],
+          "returns": "{bases, offset?}",
+          "pure": false
+        },
+        "attachment_upload": {
+          "args": [
+            "table",
+            "record_id",
+            "field_name",
+            "file_path_or_bytes_or_url",
+            "filename?"
+          ],
+          "returns": "{ok, attachment|record}",
+          "pure": false
+        },
+        "attachment_download": {
+          "args": [
+            "table",
+            "attachment_url",
+            "output_path?"
+          ],
+          "returns": "{bytes_b64|path,size}",
+          "pure": false
+        },
+        "webhook_create": {
+          "args": [
+            "table",
+            "table_or_view",
+            "actions",
+            "notification_url"
+          ],
+          "returns": "{webhook_id, expiration_time, mac_secret_base64, specification}",
+          "pure": false
+        },
+        "webhook_list": {
+          "args": [
+            "table"
+          ],
+          "returns": "{webhooks}",
+          "pure": false
+        },
+        "webhook_delete": {
+          "args": [
+            "table",
+            "webhook_id"
+          ],
+          "returns": "{id, deleted}",
+          "pure": false
+        }
       },
       "config": {
         "api_key_env": "AINL_AIRTABLE_API_KEY",
@@ -575,7 +916,8 @@
         "attachment download/upload-url can be constrained by allow_attachment_hosts",
         "adapter applies bounded retries for rate-limit/transient http failures",
         "webhook registration returns metadata only; webhook payload processing is external to this adapter"
-      ]
+      ],
+      "tier": "core"
     },
     "supabase": {
       "description": "Supabase convenience wrapper with Postgres delegation and auth/storage/realtime helpers",
@@ -584,30 +926,211 @@
       "network_facing": true,
       "sandbox_safe": false,
       "targets": {
-        "from": {"args": ["table"], "returns": "{ok, table}", "pure": false},
-        "select": {"args": ["table", "where?", "columns?"], "returns": "{data, error?}", "pure": false},
-        "query": {"args": ["table", "where?", "columns?"], "returns": "{data, error?}", "pure": false},
-        "insert": {"args": ["table", "payload"], "returns": "{data, error?}", "pure": false},
-        "update": {"args": ["table", "fields", "where"], "returns": "{data, error?}", "pure": false},
-        "upsert": {"args": ["table", "payload", "key_fields"], "returns": "{ok, action, data, error?}", "pure": false},
-        "delete": {"args": ["table", "where"], "returns": "{data, error?}", "pure": false},
-        "rpc": {"args": ["function_name", "args?"], "returns": "{data, error?}", "pure": false},
-        "auth_sign_up": {"args": ["email", "password"], "returns": "{ok, data, error?}", "pure": false},
-        "auth_sign_in_with_password": {"args": ["email", "password"], "returns": "{ok, data, error?}", "pure": false},
-        "auth_sign_out": {"args": ["access_token?"], "returns": "{ok, data, error?}", "pure": false},
-        "auth_get_user": {"args": ["access_token?"], "returns": "{ok, data, error?}", "pure": false},
-        "auth_reset_password_for_email": {"args": ["email"], "returns": "{ok, data, error?}", "pure": false},
-        "storage_upload": {"args": ["bucket", "path", "content"], "returns": "{ok, data, error?}", "pure": false},
-        "storage_download": {"args": ["bucket", "path"], "returns": "{ok, data, error?}", "pure": false},
-        "storage_list": {"args": ["bucket", "prefix?"], "returns": "{ok, data, error?}", "pure": false},
-        "storage_remove": {"args": ["bucket", "[paths]"], "returns": "{ok, data, error?}", "pure": false},
-        "storage_get_public_url": {"args": ["bucket", "path"], "returns": "{ok, data, error?}", "pure": false},
-        "realtime_subscribe": {"args": ["channel", "table?", "event_types?", "filter?", "timeout_s?", "max_events?", "replay_from?", "fanout_group?", "consumer?"], "returns": "{ok, result:{channel,events,active,fanout_group?,consumer?}}", "pure": false},
-        "realtime_unsubscribe": {"args": ["channel"], "returns": "{ok, result}", "pure": false},
-        "realtime_broadcast": {"args": ["channel", "event", "payload?"], "returns": "{ok, result}", "pure": false},
-        "realtime_replay": {"args": ["channel", "from_sequence_or_timestamp?", "max_events?", "timeout_s?"], "returns": "{ok, result:{channel,events}}", "pure": false},
-        "realtime_get_cursor": {"args": ["channel", "fanout_group?", "consumer?"], "returns": "{ok, result:{channel,group,consumer,cursor}}", "pure": false},
-        "realtime_ack": {"args": ["channel", "cursor", "fanout_group?", "consumer?"], "returns": "{ok, result:{channel,group,consumer,cursor}}", "pure": false}
+        "from": {
+          "args": [
+            "table"
+          ],
+          "returns": "{ok, table}",
+          "pure": false
+        },
+        "select": {
+          "args": [
+            "table",
+            "where?",
+            "columns?"
+          ],
+          "returns": "{data, error?}",
+          "pure": false
+        },
+        "query": {
+          "args": [
+            "table",
+            "where?",
+            "columns?"
+          ],
+          "returns": "{data, error?}",
+          "pure": false
+        },
+        "insert": {
+          "args": [
+            "table",
+            "payload"
+          ],
+          "returns": "{data, error?}",
+          "pure": false
+        },
+        "update": {
+          "args": [
+            "table",
+            "fields",
+            "where"
+          ],
+          "returns": "{data, error?}",
+          "pure": false
+        },
+        "upsert": {
+          "args": [
+            "table",
+            "payload",
+            "key_fields"
+          ],
+          "returns": "{ok, action, data, error?}",
+          "pure": false
+        },
+        "delete": {
+          "args": [
+            "table",
+            "where"
+          ],
+          "returns": "{data, error?}",
+          "pure": false
+        },
+        "rpc": {
+          "args": [
+            "function_name",
+            "args?"
+          ],
+          "returns": "{data, error?}",
+          "pure": false
+        },
+        "auth_sign_up": {
+          "args": [
+            "email",
+            "password"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "auth_sign_in_with_password": {
+          "args": [
+            "email",
+            "password"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "auth_sign_out": {
+          "args": [
+            "access_token?"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "auth_get_user": {
+          "args": [
+            "access_token?"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "auth_reset_password_for_email": {
+          "args": [
+            "email"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "storage_upload": {
+          "args": [
+            "bucket",
+            "path",
+            "content"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "storage_download": {
+          "args": [
+            "bucket",
+            "path"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "storage_list": {
+          "args": [
+            "bucket",
+            "prefix?"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "storage_remove": {
+          "args": [
+            "bucket",
+            "[paths]"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "storage_get_public_url": {
+          "args": [
+            "bucket",
+            "path"
+          ],
+          "returns": "{ok, data, error?}",
+          "pure": false
+        },
+        "realtime_subscribe": {
+          "args": [
+            "channel",
+            "table?",
+            "event_types?",
+            "filter?",
+            "timeout_s?",
+            "max_events?",
+            "replay_from?",
+            "fanout_group?",
+            "consumer?"
+          ],
+          "returns": "{ok, result:{channel,events,active,fanout_group?,consumer?}}",
+          "pure": false
+        },
+        "realtime_unsubscribe": {
+          "args": [
+            "channel"
+          ],
+          "returns": "{ok, result}",
+          "pure": false
+        },
+        "realtime_broadcast": {
+          "args": [
+            "channel",
+            "event",
+            "payload?"
+          ],
+          "returns": "{ok, result}",
+          "pure": false
+        },
+        "realtime_replay": {
+          "args": [
+            "channel",
+            "from_sequence_or_timestamp?",
+            "max_events?",
+            "timeout_s?"
+          ],
+          "returns": "{ok, result:{channel,events}}",
+          "pure": false
+        },
+        "realtime_get_cursor": {
+          "args": [
+            "channel",
+            "fanout_group?",
+            "consumer?"
+          ],
+          "returns": "{ok, result:{channel,group,consumer,cursor}}",
+          "pure": false
+        },
+        "realtime_ack": {
+          "args": [
+            "channel",
+            "cursor",
+            "fanout_group?",
+            "consumer?"
+          ],
+          "returns": "{ok, result:{channel,group,consumer,cursor}}",
+          "pure": false
+        }
       },
       "config": {
         "db_url_env": "AINL_SUPABASE_DB_URL (fallback: AINL_POSTGRES_URL)",
@@ -628,7 +1151,8 @@
         "realtime_broadcast and realtime_ack require allow_write=true",
         "realtime events normalize to {event,schema,table,record,old_record?,sequence?,timestamp?}",
         "realtime replay/fanout/cursor helpers are lightweight in-process primitives"
-      ]
+      ],
+      "tier": "core"
     },
     "pggraph": {
       "description": "Evokoa pgGraph extension — graph search, traversal, and paths via graph.* SQL (Postgres-backed)",
@@ -648,22 +1172,47 @@
           "pure": false
         },
         "search": {
-          "args": ["property_key", "property_value", "table_filter?", "mode?", "max_rows?"],
+          "args": [
+            "property_key",
+            "property_value",
+            "table_filter?",
+            "mode?",
+            "max_rows?"
+          ],
           "returns": "[search_row]",
           "pure": false
         },
         "traverse": {
-          "args": ["seed_table", "seed_id", "max_depth?", "hydrate?", "max_rows?"],
+          "args": [
+            "seed_table",
+            "seed_id",
+            "max_depth?",
+            "hydrate?",
+            "max_rows?"
+          ],
           "returns": "[traverse_row]",
           "pure": false
         },
         "shortest_path": {
-          "args": ["source_table", "source_id", "target_table", "target_id", "max_depth?", "hydrate?"],
+          "args": [
+            "source_table",
+            "source_id",
+            "target_table",
+            "target_id",
+            "max_depth?",
+            "hydrate?"
+          ],
           "returns": "[path_step]",
           "pure": false
         },
         "find_related": {
-          "args": ["property_key", "property_value", "source_table?", "max_depth?", "max_rows?"],
+          "args": [
+            "property_key",
+            "property_value",
+            "source_table?",
+            "max_depth?",
+            "max_rows?"
+          ],
           "returns": "[related_row]",
           "pure": false
         },
@@ -674,7 +1223,9 @@
           "admin": true
         },
         "auto_discover": {
-          "args": ["schema?"],
+          "args": [
+            "schema?"
+          ],
           "returns": "[discover_row]",
           "pure": false,
           "admin": true
@@ -699,7 +1250,8 @@
         "table arguments must be schema.table or table (validated regclass)",
         "build, auto_discover, reset require allow_admin",
         "extension must be installed and graph built on the target database"
-      ]
+      ],
+      "tier": "extended"
     },
     "fs": {
       "description": "Sandboxed file system operations",
@@ -746,7 +1298,8 @@
         "All paths must stay within sandbox_root",
         "Extension allowlist enforced when set",
         "Size limits enforced for read/write"
-      ]
+      ],
+      "tier": "core"
     },
     "email": {
       "description": "Email integration supporting IMAP/SMTP and MCP providers (Gmail, Outlook, etc.)",
@@ -847,7 +1400,8 @@
         "Authentication: Use app-specific passwords for Gmail (not main account password)",
         "Security: All connections use TLS/SSL encryption (STARTTLS for SMTP, SSL for IMAP)",
         "Legacy G target maintained for OpenClaw backward compatibility"
-      ]
+      ],
+      "tier": "extended"
     },
     "calendar": {
       "description": "OpenClaw calendar integration (only G target)",
@@ -859,7 +1413,8 @@
           "side_effect": "reads openclaw calendar"
         }
       },
-      "returns": "List of upcoming calendar events with fields: id, title, start, end, location"
+      "returns": "List of upcoming calendar events with fields: id, title, start, end, location",
+      "tier": "extended"
     },
     "social": {
       "description": "OpenClaw web search for mentions (only G target)",
@@ -875,7 +1430,8 @@
       "config": {
         "query_env": "SOCIAL_MONITOR_QUERY (default: \"Steven Hooley\")",
         "count": 10
-      }
+      },
+      "tier": "extended"
     },
     "svc": {
       "description": "Infrastructure service status checks",
@@ -900,7 +1456,8 @@
           "returns": "\"up\"|\"down\"",
           "pure": true
         }
-      }
+      },
+      "tier": "core"
     },
     "db": {
       "description": "Leads database adapter (CSV source)",
@@ -915,7 +1472,8 @@
       "config": {
         "leads_csv_env": "LEADS_CSV (default: workspace/leads/lead_output.csv)"
       },
-      "returns": "List of lead objects with enriched fields (name, city, phone, website, etc.)"
+      "returns": "List of lead objects with enriched fields (name, city, phone, website, etc.)",
+      "tier": "core"
     },
     "fanout": {
       "description": "Parallel execution of multiple adapter calls via the runtime registry",
@@ -928,7 +1486,8 @@
           "pure": false,
           "notes": "Each plan is [adapter, target, ...args]; requires _adapter_registry in call context."
         }
-      }
+      },
+      "tier": "extended"
     },
     "cache": {
       "description": "Persistent key-value store (JSON file)",
@@ -953,7 +1512,8 @@
       },
       "config": {
         "cache_json_env": "MONITOR_CACHE_JSON (default: /tmp/monitor_state.json)"
-      }
+      },
+      "tier": "core"
     },
     "queue": {
       "description": "Notification queue (sends to self via OpenClaw)",
@@ -970,7 +1530,8 @@
       "rules": [
         "Only queue 'notify' is implemented for the current monitors.",
         "Payload is formatter-driven and tolerant; examples include fields like email_count, cal_count, social_count, leads_count, health_score, failed_services, ts, but this shape is advisory rather than a strict schema."
-      ]
+      ],
+      "tier": "core"
     },
     "wasm": {
       "description": "WebAssembly module execution",
@@ -992,7 +1553,8 @@
           "health"
         ],
         "require_wasmtime": true
-      }
+      },
+      "tier": "core"
     },
     "extras": {
       "description": "Utility health checks: file + Docker + HTTP + backup mtime + metrics summaries",
@@ -1032,7 +1594,8 @@
           "returns": "{run_count, ok_count, error_count, ok_ratio, runtime_versions, result_kinds, trace_op_counts, label_counts, timestamps_present}",
           "pure": false
         }
-      }
+      },
+      "tier": "extended"
     },
     "agent": {
       "description": "Local mailbox coordination for agent-to-agent tasks. Minimal surface: send_task and read_result only; no polling, discovery, or list operations.",
@@ -1060,7 +1623,8 @@
       "notes": [
         "No read_task or list_agents verbs.",
         "Task consumption and result creation are external/orchestrator-driven."
-      ]
+      ],
+      "tier": "extended"
     },
     "tiktok": {
       "description": "TikTok reports from CRM database",
@@ -1085,38 +1649,66 @@
           "side_effect": "reads TiktokVideo table"
         }
       },
-      "returns": "F returns report objects; videos returns video objects with fields: id, tiktokId, title, description, processedAt, createdAt"
+      "returns": "F returns report objects; videos returns video objects with fields: id, tiktokId, title, description, processedAt, createdAt",
+      "tier": "extended"
     },
     "memory": {
       "description": "Extension-level memory adapter for explicit execution-facing records keyed by (namespace, record_kind, record_id).",
       "targets": {
         "put": {
-          "args": ["namespace", "record_kind", "record_id", "payload", "ttl_seconds?"],
+          "args": [
+            "namespace",
+            "record_kind",
+            "record_id",
+            "payload",
+            "ttl_seconds?"
+          ],
           "returns": "{ok, created, updated_at}",
           "pure": false
         },
         "get": {
-          "args": ["namespace", "record_kind", "record_id"],
+          "args": [
+            "namespace",
+            "record_kind",
+            "record_id"
+          ],
           "returns": "{found, record|null}",
           "pure": false
         },
         "append": {
-          "args": ["namespace", "record_kind", "record_id", "entry", "ttl_seconds?"],
+          "args": [
+            "namespace",
+            "record_kind",
+            "record_id",
+            "entry",
+            "ttl_seconds?"
+          ],
           "returns": "{ok, updated_at}",
           "pure": false
         },
         "list": {
-          "args": ["namespace", "record_kind?", "record_id_prefix?", "updated_since?"],
+          "args": [
+            "namespace",
+            "record_kind?",
+            "record_id_prefix?",
+            "updated_since?"
+          ],
           "returns": "{items}",
           "pure": false
         },
         "delete": {
-          "args": ["namespace", "record_kind", "record_id"],
+          "args": [
+            "namespace",
+            "record_kind",
+            "record_id"
+          ],
           "returns": "{ok, deleted}",
           "pure": false
         },
         "prune": {
-          "args": ["namespace?"],
+          "args": [
+            "namespace?"
+          ],
           "returns": "{ok, pruned}",
           "pure": false
         }
@@ -1129,7 +1721,8 @@
         "Records are typed by namespace and record_kind; record_id selects instances.",
         "payload must be a JSON object; ttl_seconds is an advisory hint only.",
         "append is intended for log-like records (e.g. daily_log.note) and will fail on non-log payloads."
-      ]
+      ],
+      "tier": "core"
     },
     "vector_memory": {
       "description": "Local JSON chunk store with keyword overlap scoring (stub semantic search; embeddings can replace scoring later).",
@@ -1139,17 +1732,29 @@
       "sandbox_safe": true,
       "targets": {
         "search": {
-          "args": ["query", "limit?"],
+          "args": [
+            "query",
+            "limit?"
+          ],
           "returns": "[{namespace, kind, id, text, score, payload, ...}]",
           "pure": false
         },
         "list_similar": {
-          "args": ["query", "limit?"],
+          "args": [
+            "query",
+            "limit?"
+          ],
           "returns": "[{namespace, kind, id, text, score, payload, ...}]",
           "pure": false
         },
         "upsert": {
-          "args": ["namespace", "kind", "record_id", "text", "payload_json?"],
+          "args": [
+            "namespace",
+            "kind",
+            "record_id",
+            "text",
+            "payload_json?"
+          ],
           "returns": "{ok, updated}",
           "pure": false
         }
@@ -1160,7 +1765,8 @@
       "notes": [
         "Canonical dotted: R vector_memory.SEARCH \"q\" [limit] ->out; upsert uses split form R vector_memory upsert ... ->out.",
         "No network; no extra dependencies."
-      ]
+      ],
+      "tier": "core"
     },
     "ainl_graph_memory": {
       "description": "JSON-backed graph memory for bridge workflows; runtime dispatches IR MemoryRecall / MemorySearch and GraphPatch (memory.patch) to this adapter namespace.",
@@ -1170,17 +1776,28 @@
       "sandbox_safe": true,
       "targets": {
         "memory_recall": {
-          "args": ["node_id"],
+          "args": [
+            "node_id"
+          ],
           "returns": "object",
           "pure": false
         },
         "memory_search": {
-          "args": ["query", "node_type?", "agent_id?", "limit?"],
+          "args": [
+            "query",
+            "node_type?",
+            "agent_id?",
+            "limit?"
+          ],
           "returns": "list",
           "pure": false
         },
         "memory_patch": {
-          "args": ["memory_node_id", "label_name", "source_episode_ids?"],
+          "args": [
+            "memory_node_id",
+            "label_name",
+            "source_episode_ids?"
+          ],
           "returns": "object",
           "pure": false
         }
@@ -1191,7 +1808,8 @@
       "notes": [
         "Strict dotted verbs: MEMORY_RECALL, MEMORY_SEARCH, MEMORY_PATCH; runtime/engine.py GraphPatch uses adapters.call target graph_patch (bridge also accepts memory_patch as an alias).",
         "Operator contract: docs/adapters/AINL_GRAPH_MEMORY.md."
-      ]
+      ],
+      "tier": "core"
     },
     "tool_registry": {
       "description": "Local JSON registry for named tools (metadata + optional JSON schema).",
@@ -1201,7 +1819,11 @@
       "sandbox_safe": true,
       "targets": {
         "register": {
-          "args": ["name", "description", "schema_json?"],
+          "args": [
+            "name",
+            "description",
+            "schema_json?"
+          ],
           "returns": "{ok, name}",
           "pure": false
         },
@@ -1211,7 +1833,9 @@
           "pure": false
         },
         "get": {
-          "args": ["name"],
+          "args": [
+            "name"
+          ],
           "returns": "{found, tool}",
           "pure": false
         },
@@ -1227,7 +1851,8 @@
       "notes": [
         "DISCOVER returns a TOOL.discover-style envelope.",
         "Use split form: R tool_registry list / discover / get name / register ... ->out."
-      ]
+      ],
+      "tier": "core"
     },
     "audit_trail": {
       "description": "Append-only JSONL audit trail adapter for regulated teams (compliance logging; no network).",
@@ -1237,7 +1862,9 @@
       "sandbox_safe": true,
       "targets": {
         "record": {
-          "args": ["payload_json"],
+          "args": [
+            "payload_json"
+          ],
           "returns": "{ok, event, trace_id}",
           "pure": false
         }
@@ -1249,7 +1876,8 @@
         "This adapter only writes when your graph invokes it (e.g. R audit_trail.record {...}). Enabling the adapter alone is not enough.",
         "Supported sinks: file://, syslog://, stderr://, stdout:// (see adapters/audit_trail.py).",
         "Best-effort redaction: sensitive keys are replaced with [REDACTED]."
-      ]
+      ],
+      "tier": "core"
     },
     "ptc_runner": {
       "description": "Optional external PTC Runner bridge for executing PTC-Lisp snippets from AINL graphs.",
@@ -1259,7 +1887,11 @@
       "sandbox_safe": false,
       "targets": {
         "run": {
-          "args": ["lisp", "signature?", "subagent_budget?"],
+          "args": [
+            "lisp",
+            "signature?",
+            "subagent_budget?"
+          ],
           "returns": "{ok, runtime, status_code?, result, beam_metrics?, traces}",
           "pure": false
         },
@@ -1281,7 +1913,8 @@
         "Health aliases are supported: R ptc_runner health and R ptc_runner status.",
         "For LangGraph hybrids, use intelligence/ptc_to_langgraph_bridge.py to generate thin bridge nodes without modifying the core emitter.",
         "Adapter remains opt-in and is not active unless explicitly enabled."
-      ]
+      ],
+      "tier": "core"
     },
     "llm_query": {
       "description": "Optional ad-hoc LLM query adapter for prompt execution from AINL graph steps.",
@@ -1291,12 +1924,20 @@
       "sandbox_safe": false,
       "targets": {
         "query": {
-          "args": ["prompt", "model?", "max_tokens?"],
+          "args": [
+            "prompt",
+            "model?",
+            "max_tokens?"
+          ],
           "returns": "{ok, runtime, status_code?, result, traces}",
           "pure": false
         },
         "run": {
-          "args": ["prompt", "model?", "max_tokens?"],
+          "args": [
+            "prompt",
+            "model?",
+            "max_tokens?"
+          ],
           "returns": "{ok, runtime, status_code?, result, traces}",
           "pure": false
         }
@@ -1310,7 +1951,8 @@
       "notes": [
         "Supports split and dotted forms: R llm_query query ... and R llm_query.QUERY ...",
         "Underscore-prefixed context keys are filtered before request serialization."
-      ]
+      ],
+      "tier": "extended"
     },
     "solana": {
       "description": "Solana JSON-RPC adapter: native/SPL transfers, raw program invoke, account reads, event listen simulation",
@@ -1320,42 +1962,71 @@
       "sandbox_safe": false,
       "targets": {
         "transfer": {
-          "args": ["to_pubkey", "lamports"],
+          "args": [
+            "to_pubkey",
+            "lamports"
+          ],
           "returns": "{ok, signature?, dry_run?, ...}",
           "network": true
         },
         "transfer_spl": {
-          "args": ["mint", "source_ata", "dest_ata", "owner", "amount", "decimals?"],
+          "args": [
+            "mint",
+            "source_ata",
+            "dest_ata",
+            "owner",
+            "amount",
+            "decimals?"
+          ],
           "returns": "{ok, signature?, ...}",
           "network": true
         },
         "invoke": {
-          "args": ["program_id", "instruction_b64", "accounts_json?", "priority_fee_microlamports?"],
+          "args": [
+            "program_id",
+            "instruction_b64",
+            "accounts_json?",
+            "priority_fee_microlamports?"
+          ],
           "returns": "{ok, signature?, ...}",
           "network": true
         },
         "get_account": {
-          "args": ["pubkey"],
+          "args": [
+            "pubkey"
+          ],
           "returns": "{ok, lamports, owner, ...}",
           "network": true
         },
         "get_balance": {
-          "args": ["pubkey"],
+          "args": [
+            "pubkey"
+          ],
           "returns": "{ok, lamports}",
           "network": true
         },
         "get_token_accounts": {
-          "args": ["owner_pubkey", "mint_pubkey?"],
+          "args": [
+            "owner_pubkey",
+            "mint_pubkey?"
+          ],
           "returns": "{ok, owner, count, accounts}",
           "network": true
         },
         "get_program_accounts": {
-          "args": ["program_id", "filters_json?", "limit?"],
+          "args": [
+            "program_id",
+            "filters_json?",
+            "limit?"
+          ],
           "returns": "{ok, program_id, accounts, truncated?, ...}",
           "network": true
         },
         "get_signatures_for_address": {
-          "args": ["address", "limit?"],
+          "args": [
+            "address",
+            "limit?"
+          ],
           "returns": "{ok, signatures, ...}",
           "network": true
         },
@@ -1365,27 +2036,39 @@
           "network": true
         },
         "get_pyth_price": {
-          "args": ["price_feed_pubkey", "expect_update_account?"],
+          "args": [
+            "price_feed_pubkey",
+            "expect_update_account?"
+          ],
           "returns": "{ok, parser: legacy|v2, price, conf, confidence, timestamp?, ...}",
           "network": true
         },
         "hermes_fallback": {
-          "args": ["feed_id_hex"],
+          "args": [
+            "feed_id_hex"
+          ],
           "returns": "{ok, parser: hermes, price, conf, timestamp, exponent, ...}",
           "network": true
         },
         "derive_pda": {
-          "args": ["seeds_json", "program_id"],
+          "args": [
+            "seeds_json",
+            "program_id"
+          ],
           "returns": "{ok, address, bump, program_id, ...}",
           "network": true
         },
         "get_market_state": {
-          "args": ["market_pubkey"],
+          "args": [
+            "market_pubkey"
+          ],
           "returns": "{ok, lamports, owner, read_as: market_state, ...}",
           "network": true
         },
         "simulate_events": {
-          "args": ["program_id?"],
+          "args": [
+            "program_id?"
+          ],
           "returns": "{ok, mode, events}",
           "network": true
         }
@@ -1406,37 +2089,58 @@
         "HERMES_FALLBACK feed_id_hex (64 hex chars): Hermes /v2/updates/price/latest; optional AINL_PYTH_HERMES_URL base override.",
         "DERIVE_PDA seeds_json (JSON array of UTF-8 strings) + program_id: Pubkey.find_program_address; dry-run returns mock address.",
         "INVOKE optional trailing priority_fee_microlamports: micro-lamports per compute unit (SetComputeUnitPrice), not whole-lamport tips."
-      ]
+      ],
+      "tier": "extended"
     },
     "embedding_memory": {
       "description": "Semantic search with vector embeddings - sidecar index linking to memory adapter records",
       "targets": {
         "UPSERT_REF": {
-          "args": ["namespace", "kind", "record_id", "text"],
+          "args": [
+            "namespace",
+            "kind",
+            "record_id",
+            "text"
+          ],
           "returns": "{ok, embedded}",
           "network": false,
           "side_effect": "writes embedding to SQLite DB"
         },
         "SEARCH": {
-          "args": ["query", "limit?"],
+          "args": [
+            "query",
+            "limit?"
+          ],
           "returns": "[{memory_namespace, memory_kind, memory_record_id, score}]",
           "network": false,
           "side_effect": "reads embeddings from DB"
         },
         "REMOVE_REF": {
-          "args": ["namespace", "kind", "record_id"],
+          "args": [
+            "namespace",
+            "kind",
+            "record_id"
+          ],
           "returns": "{ok, removed}",
           "network": false,
           "side_effect": "deletes embedding from DB"
         },
         "INDEX": {
-          "args": ["namespace", "kind", "record_id", "text"],
+          "args": [
+            "namespace",
+            "kind",
+            "record_id",
+            "text"
+          ],
           "returns": "{ok, embedded}",
           "network": false,
           "side_effect": "alias for UPSERT_REF"
         },
         "QUERY": {
-          "args": ["query", "limit?"],
+          "args": [
+            "query",
+            "limit?"
+          ],
           "returns": "[{memory_namespace, memory_kind, memory_record_id, score}]",
           "network": false,
           "side_effect": "alias for SEARCH"
@@ -1454,43 +2158,60 @@
         "Modes: stub=hash vectors (no network), local=hash-based (better than stub), openai=real embeddings",
         "Returns top-k results by cosine similarity score",
         "Use with memory adapter for RAG: index with UPSERT_REF, search with SEARCH/QUERY"
-      ]
+      ],
+      "tier": "core"
     },
     "code_context": {
       "description": "Code indexing with tiered chunking for LLM context (inspired by ctxzip)",
       "targets": {
         "INDEX": {
-          "args": ["path"],
+          "args": [
+            "path"
+          ],
           "returns": "{ok, chunks, bytes, tier0_tokens}",
           "network": false,
           "side_effect": "indexes codebase to .ainl_code_context.json"
         },
         "QUERY_CONTEXT": {
-          "args": ["query", "max_tier?", "token_budget?"],
+          "args": [
+            "query",
+            "max_tier?",
+            "token_budget?"
+          ],
           "returns": "{tier0, tier1?, tier2?, tokens_used}",
           "network": false,
           "side_effect": "reads from code index"
         },
         "GET_FULL_SOURCE": {
-          "args": ["chunk_id"],
+          "args": [
+            "chunk_id"
+          ],
           "returns": "{source_code, path, start_line, end_line}",
           "network": false,
           "side_effect": "reads full source for chunk"
         },
         "GET_DEPENDENCIES": {
-          "args": ["chunk_id"],
+          "args": [
+            "chunk_id"
+          ],
           "returns": "[dependency_chunk_ids]",
           "network": false,
           "side_effect": "returns import graph dependencies"
         },
         "GET_IMPACT": {
-          "args": ["chunk_id"],
+          "args": [
+            "chunk_id"
+          ],
           "returns": "[impacted_chunk_ids]",
           "network": false,
           "side_effect": "returns reverse dependencies (what imports this)"
         },
         "COMPRESS_CONTEXT": {
-          "args": ["query", "token_budget", "max_tier?"],
+          "args": [
+            "query",
+            "token_budget",
+            "max_tier?"
+          ],
           "returns": "{compressed_context, chunks_selected, tokens_used}",
           "network": false,
           "side_effect": "ranked compression with TF-IDF or embeddings"
@@ -1518,13 +2239,17 @@
         "COMPRESS_CONTEXT uses embedding_memory adapter for semantic ranking if available, else TF-IDF",
         "Import graph dependencies and reverse impact analysis",
         "Inspired by BradyD2003/ctxzip and chrismicah/forgeindex"
-      ]
+      ],
+      "tier": "core"
     },
     "langchain_tool": {
       "description": "Invoke LangChain-compatible tools from AINL programs",
       "targets": {
         "CALL": {
-          "args": ["tool_name", "...tool_args"],
+          "args": [
+            "tool_name",
+            "...tool_args"
+          ],
           "returns": "tool_result",
           "network": false,
           "side_effect": "invokes registered LangChain tool"
@@ -1536,19 +2261,30 @@
         "Requires langchain-core package (optional dependency)",
         "Built-in demo stub: my_search_tool",
         "Enable with --enable-adapter langchain_tool"
-      ]
+      ],
+      "tier": "extended"
     },
     "llm": {
       "description": "LLM provider bridge - unified interface to OpenRouter, Anthropic, OpenAI, Ollama, Cohere",
       "targets": {
         "GENERATE": {
-          "args": ["prompt", "max_tokens?", "temperature?", "model?"],
+          "args": [
+            "prompt",
+            "max_tokens?",
+            "temperature?",
+            "model?"
+          ],
           "returns": "{text, usage{prompt_tokens, completion_tokens, total_cost_usd}}",
           "network": true,
           "side_effect": "calls LLM API, tracks cost"
         },
         "CHAT": {
-          "args": ["messages", "max_tokens?", "temperature?", "model?"],
+          "args": [
+            "messages",
+            "max_tokens?",
+            "temperature?",
+            "model?"
+          ],
           "returns": "{text, usage{prompt_tokens, completion_tokens, total_cost_usd}}",
           "network": true,
           "side_effect": "calls LLM API, tracks cost"
@@ -1560,25 +2296,34 @@
         "Providers: OpenRouter, Anthropic, OpenAI, Ollama (local), Cohere",
         "Circuit breaker for failed providers",
         "Configure via llm.fallback_chain in config"
-      ]
+      ],
+      "tier": "core"
     },
     "ext": {
       "description": "Extensions adapter - echo passthrough and optional subprocess execution",
       "targets": {
         "echo": {
-          "args": ["value"],
+          "args": [
+            "value"
+          ],
           "returns": "value",
           "network": false,
           "pure": true
         },
         "EXEC": {
-          "args": ["command", "...args"],
+          "args": [
+            "command",
+            "...args"
+          ],
           "returns": "{stdout, stderr, returncode, duration_ms}",
           "network": false,
           "side_effect": "executes subprocess (requires AINL_EXT_ALLOW_EXEC=1)"
         },
         "RUN": {
-          "args": ["command", "...args"],
+          "args": [
+            "command",
+            "...args"
+          ],
           "returns": "{stdout, stderr, returncode, duration_ms}",
           "network": false,
           "side_effect": "alias for EXEC"
@@ -1592,7 +2337,8 @@
         "Echo returns args[0] if present, else target (legacy test compatibility)",
         "EXEC/RUN disabled by default for security - requires explicit opt-in",
         "Subprocess timeout configurable via environment"
-      ]
+      ],
+      "tier": "extended"
     },
     "web": {
       "description": "Web scraping and content fetching (OpenClaw integration)",
@@ -1608,13 +2354,17 @@
         "OpenClaw-specific web search integration",
         "Returns web content for AI processing",
         "Requires OpenClaw backend service"
-      ]
+      ],
+      "tier": "extended"
     },
     "tools": {
       "description": "Tool invocation bridge for external tool systems",
       "targets": {
         "invoke": {
-          "args": ["tool_name", "tool_args"],
+          "args": [
+            "tool_name",
+            "tool_args"
+          ],
           "returns": "tool_result",
           "network": false,
           "side_effect": "bridges to external tool registry"
@@ -1624,13 +2374,17 @@
         "Bridge adapter for tool execution systems",
         "Integrates with runtime tool registry",
         "Used by executor bridge for tool calls"
-      ]
+      ],
+      "tier": "core"
     },
     "bridge": {
       "description": "Executor bridge for cross-runtime communication",
       "targets": {
         "call": {
-          "args": ["target", "args"],
+          "args": [
+            "target",
+            "args"
+          ],
           "returns": "result",
           "network": false,
           "side_effect": "bridges to executor runtime"
@@ -1640,34 +2394,54 @@
         "Low-level bridge for runtime interop",
         "Used internally by executor systems",
         "Not typically called directly from AINL programs"
-      ]
+      ],
+      "tier": "core"
     },
     "api": {
       "description": "Generic API adapter for external service calls",
       "targets": {
         "call": {
-          "args": ["endpoint", "method?", "payload?", "headers?"],
+          "args": [
+            "endpoint",
+            "method?",
+            "payload?",
+            "headers?"
+          ],
           "returns": "{status, body, headers}",
           "network": true,
           "side_effect": "makes HTTP API call"
         },
         "get": {
-          "args": ["endpoint", "headers?"],
+          "args": [
+            "endpoint",
+            "headers?"
+          ],
           "returns": "{status, body}",
           "network": true
         },
         "post": {
-          "args": ["endpoint", "payload", "headers?"],
+          "args": [
+            "endpoint",
+            "payload",
+            "headers?"
+          ],
           "returns": "{status, body}",
           "network": true
         },
         "put": {
-          "args": ["endpoint", "payload", "headers?"],
+          "args": [
+            "endpoint",
+            "payload",
+            "headers?"
+          ],
           "returns": "{status, body}",
           "network": true
         },
         "delete": {
-          "args": ["endpoint", "headers?"],
+          "args": [
+            "endpoint",
+            "headers?"
+          ],
           "returns": "{status, body}",
           "network": true
         }
@@ -1676,25 +2450,34 @@
         "Generic HTTP API wrapper",
         "Use http adapter for simple requests",
         "api adapter for structured API calls with authentication"
-      ]
+      ],
+      "tier": "core"
     },
     "auth": {
       "description": "Authentication and session management adapter",
       "targets": {
         "login": {
-          "args": ["username", "password", "provider?"],
+          "args": [
+            "username",
+            "password",
+            "provider?"
+          ],
           "returns": "{ok, token, expires_at}",
           "network": true,
           "side_effect": "authenticates user, stores session"
         },
         "logout": {
-          "args": ["token"],
+          "args": [
+            "token"
+          ],
           "returns": "{ok}",
           "network": true,
           "side_effect": "invalidates session token"
         },
         "verify": {
-          "args": ["token"],
+          "args": [
+            "token"
+          ],
           "returns": "{valid, user_id?, expires_at?}",
           "network": true
         }
@@ -1704,25 +2487,32 @@
         "Provider-specific implementations available",
         "Session token management",
         "Use for multi-step authenticated workflows"
-      ]
+      ],
+      "tier": "extended"
     },
     "txn": {
       "description": "Transaction management adapter for multi-step operations",
       "targets": {
         "begin": {
-          "args": ["context?"],
+          "args": [
+            "context?"
+          ],
           "returns": "{txn_id}",
           "network": false,
           "side_effect": "starts transaction context"
         },
         "commit": {
-          "args": ["txn_id"],
+          "args": [
+            "txn_id"
+          ],
           "returns": "{ok, committed_at}",
           "network": false,
           "side_effect": "commits transaction"
         },
         "rollback": {
-          "args": ["txn_id"],
+          "args": [
+            "txn_id"
+          ],
           "returns": "{ok, rolled_back_at}",
           "network": false,
           "side_effect": "rolls back transaction"
@@ -1732,29 +2522,48 @@
         "Transaction coordination for multi-step operations",
         "Use with database adapters for ACID guarantees",
         "Tracks transaction state across adapter calls"
-      ]
+      ],
+      "tier": "core"
     },
     "github": {
       "description": "GitHub API integration for repository operations",
       "targets": {
         "get_repo": {
-          "args": ["owner", "repo"],
+          "args": [
+            "owner",
+            "repo"
+          ],
           "returns": "{name, description, stars, forks, url}",
           "network": true
         },
         "list_issues": {
-          "args": ["owner", "repo", "state?", "limit?"],
+          "args": [
+            "owner",
+            "repo",
+            "state?",
+            "limit?"
+          ],
           "returns": "[{number, title, state, created_at, user}]",
           "network": true
         },
         "create_issue": {
-          "args": ["owner", "repo", "title", "body?", "labels?"],
+          "args": [
+            "owner",
+            "repo",
+            "title",
+            "body?",
+            "labels?"
+          ],
           "returns": "{number, url, created_at}",
           "network": true,
           "side_effect": "creates GitHub issue"
         },
         "get_pr": {
-          "args": ["owner", "repo", "number"],
+          "args": [
+            "owner",
+            "repo",
+            "number"
+          ],
           "returns": "{title, state, merged, created_at, user}",
           "network": true
         }
@@ -1766,30 +2575,43 @@
         "GitHub REST API v3 integration",
         "Requires GITHUB_TOKEN for authenticated requests",
         "Rate limiting applies (5000 requests/hour authenticated)"
-      ]
+      ],
+      "tier": "extended"
     },
     "crm": {
       "description": "CRM operations for customer relationship management",
       "targets": {
         "create_contact": {
-          "args": ["name", "email", "metadata?"],
+          "args": [
+            "name",
+            "email",
+            "metadata?"
+          ],
           "returns": "{contact_id, created_at}",
           "network": false,
           "side_effect": "creates CRM contact record"
         },
         "get_contact": {
-          "args": ["contact_id"],
+          "args": [
+            "contact_id"
+          ],
           "returns": "{name, email, metadata, created_at, updated_at}",
           "network": false
         },
         "update_contact": {
-          "args": ["contact_id", "updates"],
+          "args": [
+            "contact_id",
+            "updates"
+          ],
           "returns": "{ok, updated_at}",
           "network": false,
           "side_effect": "updates CRM contact"
         },
         "list_contacts": {
-          "args": ["filters?", "limit?"],
+          "args": [
+            "filters?",
+            "limit?"
+          ],
           "returns": "[{contact_id, name, email}]",
           "network": false
         }
@@ -1798,7 +2620,8 @@
         "Generic CRM adapter",
         "Stores data in local database (crm_db.py)",
         "Extensible for external CRM integrations (Salesforce, HubSpot, etc.)"
-      ]
+      ],
+      "tier": "extended"
     }
   },
   "notes": [
@@ -1814,5 +2637,9 @@
       "read_result"
     ],
     "description": "Local mailbox coordination protocol for agent-to-agent tasks. Minimal surface: send_task and read_result only."
+  },
+  "tier_meanings": {
+    "core": "Production-grade adapters on the gold path. Have dedicated docs, test coverage, strict-valid examples in CI, and are the recommended choice for production deployments. Backed by the maintainer team.",
+    "extended": "Supported adapters in the broader catalog. Cover narrower domains (web3, social, browser, niche interop) or are newer additions still growing test coverage. Fully supported alongside Core; no deprecation."
   }
 }
