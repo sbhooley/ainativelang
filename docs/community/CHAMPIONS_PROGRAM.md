@@ -1,19 +1,26 @@
 # AINL Champions Program
 
+> **Status (as of 2026-05-19): planned community program, not yet active.**
+> The Champions Program — including the tier structure, $AINL token rewards, swag packages, free Business support, monthly community calls, and homepage spotlight — is an **aspirational design** from the originally-published v1.0 community strategy. **Quarterly token rewards have not begun, no Champion has been onboarded under this program, and the treasury that would fund payouts has not yet been capitalized.**
+>
+> This document is kept visible (rather than deleted from older drafts) because git history is public and we want readers to see both the original goal and the current gap. Live status, real token metrics, treasury state, and program shipping status are tracked in [`tooling/token_status.json`](../../tooling/token_status.json) and on the public roadmap in [`docs/competitive/LONG_TERM_FIXES_TRACKER.md`](../competitive/LONG_TERM_FIXES_TRACKER.md). Promotion of this program to **shipped** requires: (a) treasury wallet capitalized, (b) Champion application + review process operational, (c) first payout cycle executed.
+>
+> **What's actually live today:** the maintainers (Steven B Hooley, Terrance Schonleber, Kobe Welker — see [`CONTRIBUTORS.md`](../../CONTRIBUTORS.md)) recognize sustained contributors in commit history, the contributors file, and in spotlight posts on the website and X. Contributors who land work during the pre-launch period will be **first in line** for any reward backfill if and when the program above ships, but no commitment has been made on backfill scope.
+
 The AINL Champions Program recognizes and rewards community members who make a significant impact on the ecosystem.
 
 ---
 
 ## 🏆 What is a Champion?
 
-AINL Champions are:
+AINL Champions are intended to be:
 
 - **Recognized leaders** in the AINL community
 - **Active contributors** who help others succeed
 - **Ambassadors** who spread the word responsibly
-- **Earners of $AINL tokens** for their impact
+- *(Planned)* **Earners of $AINL tokens** for their impact (payouts not yet active)
 
-Champions are not employees. They are respected volunteers who receive benefits in exchange for sustained contributions.
+Champions are not employees. They are respected volunteers who receive benefits in exchange for sustained contributions. The benefits described in the tiers below are the **planned** program shape; everything except basic community recognition is currently aspirational.
 
 ---
 
@@ -95,21 +102,23 @@ Banned or suspended users are ineligible. Toxic behavior disqualifies permanentl
 
 ---
 
-## 🎁 Token Rewards
+## 🎁 Token Rewards (planned schedule — not yet active)
 
-$AINL tokens are distributed quarterly to champion wallets. Token economics:
+> **Status: planned.** This is the originally-published quarterly reward schedule. **No payouts have been made under this program.** The treasury wallet that would fund payouts has not yet been capitalized. Numbers below are aspirational targets, kept visible for transparency and to set expectations for any future backfill cycle.
 
-- **Seedling**: 5,000 $AINL / quarter
-- **Grower**: 20,000 $AINL / quarter
-- **Tree**: 50,000 $AINL / quarter
+When the program launches, $AINL tokens would be distributed quarterly to champion wallets per the schedule below:
 
-**Additional bonuses:**
+- **Seedling**: 5,000 $AINL / quarter *(planned)*
+- **Grower**: 20,000 $AINL / quarter *(planned)*
+- **Tree**: 50,000 $AINL / quarter *(planned)*
+
+**Planned additional bonuses:**
 - Template featured on homepage: +10,000 $AINL
 - Tutorial receives >1,000 views: +2,500 $AINL
 - Conference talk: +25,000 $AINL (once per event)
 - Mentorship sprint (10+ mentees in month): +5,000 $AINL
 
-Tokens are vesting over 1 year to encourage sustained participation (25% immediate, 25% each quarter).
+**Planned vesting:** 1-year schedule to encourage sustained participation (25% immediate, 25% each quarter). Vesting only begins once payouts launch — see [`tooling/token_status.json`](../../tooling/token_status.json) for current shipping status.
 
 ---
 
@@ -144,7 +153,7 @@ Include:
 - GitHub username and contribution links
 - Links to tutorials/templates you've created
 - Brief description of how you've helped others
-- Wallet address for token rewards (Solana)
+- Wallet address for *future* token rewards (Solana) — collected now for the planned program; no payouts are being made today
 
 ### Community Nomination
 

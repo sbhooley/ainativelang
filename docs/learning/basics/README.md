@@ -163,7 +163,7 @@ Choose your specialization path.
 - **Developers**: Adapters, emitters, testing
 - **Enterprise**: Compliance, security, SLAs
 - **Research**: Reproducible experiments, evaluation
-- **Community**: Templates, docs, token rewards
+- **Community**: Templates, docs, planned $AINL rewards ([status](../../competitive/LONG_TERM_FIXES_TRACKER.md#tier-3--fix-the-scope-problem-target-36-months))
 
 **Duration**: 5 minutes to read, lifetime to explore
 
@@ -198,12 +198,12 @@ You're now ready to specialize:
 
 ## 📊 Progress Tracking
 
-We're building a **learning progress badge** system (coming soon):
+We're building a **learning progress badge** system (planned, not yet shipped):
 
-- Complete each tutorial → unlock next
-- Submit working agent → earn "First Agent" badge
-- Pass validation challenges → earn "Validation Expert" badge
-- Contribute templates → earn $AINL tokens
+- Complete each tutorial → unlock next *(planned)*
+- Submit working agent → earn "First Agent" badge *(planned)*
+- Pass validation challenges → earn "Validation Expert" badge *(planned)*
+- Contribute templates → planned $AINL token rewards (see [`tooling/token_status.json`](../../../tooling/token_status.json) and [`docs/learning/intermediate/patterns/template-marketplace-submission.md`](../intermediate/patterns/template-marketplace-submission.md) for the originally-published reward schedule and current status — **payouts have not yet begun**)
 
 Watch this space for automated progress tracking via GitHub Discussions.
 
@@ -225,7 +225,7 @@ These tutorials are open-source! Fix them:
 2. **Edit** this file or create improvements
 3. **PR** with your changes (even small fixes help)
 
-Your contribution earns $AINL tokens through our [Token Program](../community/token/).
+Your contribution gets you public attribution in [`CONTRIBUTORS.md`](../../../CONTRIBUTORS.md) on merge. The originally-published Token Program planned $AINL rewards for accepted contributions; **status as of 2026-05-19: the program has not yet launched** — see [`tooling/token_status.json`](../../../tooling/token_status.json) for live status.
 
 ---
 

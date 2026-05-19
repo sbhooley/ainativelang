@@ -235,19 +235,21 @@ Yes:
 
 ### Q: Does enterprise require holding $AINL tokens?
 
-**No.** Enterprise billing is via invoice or credit card. $AINL tokens are for community features only (governance, template marketplace, contributor rewards).
+**No.** Enterprise billing is via invoice or credit card. $AINL tokens are for community features only, and most of those features are **planned and not yet shipped** (governance, template marketplace, contributor reward payouts, premium template gating — see status below).
 
 Our enterprise customers should **not** hold tokens for business operations.
 
 ### Q: What is the token utility?
 
-$AINL token powers:
-- Governance voting (feature prioritization)
-- Access to premium templates (token-gated)
-- Contributor rewards (templates, docs, tutorials)
-- Early feature access (staking)
+$AINL is intended to power community features. **Current shipping status** of each utility:
 
-Token economics are separate from enterprise SaaS revenue.
+- **Token exists on Solana** — ✅ shipped. Mint: `56hrCR3n7danhHNjWaU4VeUHpE1eRE9VRBWpHRPKpump`. Live metrics in [`tooling/token_status.json`](../../tooling/token_status.json).
+- **Governance voting (feature prioritization)** — 📋 planned (no Snapshot space or vote yet).
+- **Access to premium templates (token-gated)** — 📋 planned (no premium-template gating implemented; everything is open-source today).
+- **Contributor rewards (templates, docs, tutorials)** — 📋 planned (originally-published reward schedule in [`docs/learning/intermediate/patterns/template-marketplace-submission.md`](../learning/intermediate/patterns/template-marketplace-submission.md); **payouts have not begun**; treasury wallet not yet capitalized).
+- **Early feature access (staking)** — 📋 planned (no staking contract).
+
+Token economics are entirely separate from enterprise SaaS revenue. Enterprise customers are not exposed to $AINL — none of the planned community features above gate enterprise functionality.
 
 ---
 

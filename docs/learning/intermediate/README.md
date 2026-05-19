@@ -204,7 +204,7 @@ Once you've mastered the core skills, explore **Production Patterns** – real-w
 - ✅ Production considerations
 - ✅ Cost impact analysis
 
-**Earn $AINL**: Submit your own patterns to the [template marketplace](https://github.com/sbhooley/ainativelang/discussions/categories/templates) and earn 5,000–50,000 $AINL per accepted template.
+**Planned: $AINL rewards for templates.** The originally-published reward schedule offers 5,000–50,000 $AINL per accepted template (see [`patterns/template-marketplace-submission.md`](patterns/template-marketplace-submission.md) for the full table). **Status as of 2026-05-19: the marketplace and reward payouts are not yet shipped.** Until they launch, the actionable path is to open a PR against [`examples/`](../../../examples/) — merged contributions get public attribution in [`CONTRIBUTORS.md`](../../../CONTRIBUTORS.md) and first-in-line eligibility for any reward backfill. Live token metrics: [`tooling/token_status.json`](../../../tooling/token_status.json).
 
 See full pattern index in [patterns/README.md](patterns/README.md).
 

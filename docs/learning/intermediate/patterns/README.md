@@ -158,11 +158,11 @@ graph AlertClassifier {
 Found a useful pattern? Share it with the community:
 
 1. Fork the AINL repository
-2. Add your pattern to `docs/learning/intermediate/patterns/`
+2. Add your pattern to `docs/learning/intermediate/patterns/` (or, if shipping as a runnable workflow, to `examples/`)
 3. Include: `.ainl` file + `README.md` explaining the pattern
 4. Submit PR with `pattern` label
 
-**Earn $AINL tokens** for accepted patterns (5,000–20,000 depending on quality and complexity).
+**Planned: $AINL token rewards** for accepted patterns (5,000–20,000 per the originally-published schedule, depending on quality and complexity). **Status as of 2026-05-19: not yet shipped** — the template marketplace and reward payouts are aspirational community features (see [`template-marketplace-submission.md`](template-marketplace-submission.md) for the full planned schedule and current status, and [`tooling/token_status.json`](../../../../tooling/token_status.json) for live token metrics). Until payouts launch, merged patterns earn public attribution in [`CONTRIBUTORS.md`](../../../../CONTRIBUTORS.md) and first-in-line eligibility for any reward backfill.
 
 ---
 

@@ -323,4 +323,4 @@ Continue to **[Validate & Run](03-validate-and-run.md)** to learn about the stri
 
 - **Discussions**: <https://github.com/sbhooley/ainativelang/discussions>
 - ** Issues**: <https://github.com/sbhooley/ainativelang/issues>
-- **Community Token**: Join the $AINL community for support and rewards
+- **Community Token**: $AINL is the community token on Solana (mint `56hrCR3n7danhHNjWaU4VeUHpE1eRE9VRBWpHRPKpump`); contributor reward payouts are **planned, not yet active** — see [`tooling/token_status.json`](../../../tooling/token_status.json) and [`CONTRIBUTORS.md`](../../../CONTRIBUTORS.md)

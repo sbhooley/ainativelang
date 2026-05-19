@@ -131,20 +131,23 @@ You want reproducible experiments and clean evaluation pipelines.
 
 ## 🤝 For Community Contributors
 
-You want to help others and earn $AINL tokens.
+You want to help others and engage with the AINL community. Planned $AINL token rewards exist on paper but are **not yet shipped** — see [`tooling/token_status.json`](../../../tooling/token_status.json) and the originally-published schedules linked below for full status.
 
 ### Community Path
 
-1. **[Token Utility](../community/token)** – Understand how $AINL works
-2. **[Template Marketplace](../how-to/create-template.md)** – Submit reusable templates
+1. **[Token Utility](../community/token)** – Understand how $AINL works (planned features marked with status)
+2. **[Template Marketplace](../how-to/create-template.md)** – Submit reusable templates (current path: PRs against [`examples/`](../../../examples/); planned marketplace UI not yet shipped)
 3. **[Documentation Guide](../reference/contributing.md)** – Write tutorials and examples
-4. **[Champions Program](../community/champions.md)** – Become a recognized leader
+4. **[Champions Program](../../community/CHAMPIONS_PROGRAM.md)** – Recognition tiers (rewards planned, not yet active)
 
-**Earn tokens by:**
-- Submitting high-quality templates (10k–100k $AINL each)
-- Writing tutorials (5k–50k $AINL depending on depth)
-- Answering questions in Discussions (weekly rewards)
+**Planned reward schedule (not yet active — payouts have not begun):**
+
+- Submitting high-quality templates: planned 10k–100k $AINL each *(see [`docs/learning/intermediate/patterns/template-marketplace-submission.md`](../intermediate/patterns/template-marketplace-submission.md) for the canonical schedule)*
+- Writing tutorials: planned 5k–50k $AINL depending on depth
+- Answering questions in Discussions: planned weekly rewards
 - Organizing local meetups or streams
+
+Until reward payouts launch, merged contributions earn public attribution in [`CONTRIBUTORS.md`](../../../CONTRIBUTORS.md) and first-in-line eligibility for any future reward backfill.
 
 ---
 
@@ -186,7 +189,7 @@ Check the **[AINL Blog](https://ainativelang.com/blog)** for:
 - Mondays: Competitive comparisons (AINL vs X)
 - Wednesdays: Real-world case studies
 - Fridays: Deep technical dives
-- Monthly: Community showcase and token rewards
+- Monthly: Community showcase (planned: paired with token rewards once payouts launch)
 
 ### Community Resources
 
