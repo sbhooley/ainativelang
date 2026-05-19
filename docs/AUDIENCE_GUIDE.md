@@ -1,5 +1,7 @@
 # Audience Guide
 
+> **Trying to decide if AINL fits your workload?** This page won't answer that — it's the **entry-point routing map for people who've already decided to read the codebase**, organized by what kind of reader you are. The "who is AINL for?" question is answered in **[`WHO_IS_THIS_FOR.md`](WHO_IS_THIS_FOR.md)** (canonical ICP + anti-ICP). Read that first; come back here once you know which contributor track you're on.
+
 This guide helps different contributor types find the best entry point quickly.
 
 Timeline anchor: Foundational AI research and cross-platform experimentation by

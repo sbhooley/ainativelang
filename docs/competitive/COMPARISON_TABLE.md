@@ -2,7 +2,7 @@
 
 Figures below are copied from **committed** artifacts only — **`BENCHMARK.md`**, **`tooling/benchmark_size.json`**, **`tooling/benchmark_runtime_results.json`**. **No hand-written baselines** for LangGraph / Temporal / prompt-loop columns exist in-repo; those cells stay **—** or **TBD**. **Do not** treat blank competitor columns as zero.
 
-**Methodology:** [`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md) · **Honest ICP filter:** [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)
+**Methodology:** [`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md) · **Canonical ICP:** [`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)
 
 **Benchmark refresh (UTC, from JSON):** `tooling/benchmark_size.json` → `generated_at_utc` **2026-03-24T03:24:27.395076+00:00**; `tooling/benchmark_runtime_results.json` → `generated_at_utc` **2026-03-24T03:24:29.102226+00:00**; `tooling/competitor_baseline_tokens.json` → regenerate with `python scripts/benchmark_competitor_baselines.py`.
 
@@ -119,7 +119,7 @@ Full raw benchmark data, detailed tables, and methodology live in [BENCHMARK.md]
 | Gateway lifetime (user-facing LLM) | OpenClaw + OpenRouter | Modeled prompt-loop on Opus | AINL workflows + free-tier routing | N/A (10.5M user tokens measured) | [`agent_reports/2026-03-27-ainl-cost-savings.md`](../../agent_reports/2026-03-27-ainl-cost-savings.md) |
 | HTTP health monitor (modeled 2880/mo) | ainl run / Hand | Modeled prompt-loop (2 LLM calls/healthy poll) | `enterprise_monitor.ainl` | **0** on healthy path | Analytical — `compile_once_run_many_results.json` (**96.2%** vs prompt-loop) |
 
-**Caveat:** Case 2 mixes free-model routing with architectural efficiency; Case 3 is reproducible modeling, not a third-party production deployment audit. See [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md) for baseline B/C teams.
+**Caveat:** Case 2 mixes free-model routing with architectural efficiency; Case 3 is reproducible modeling, not a third-party production deployment audit. See [`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md) for the canonical ICP + anti-ICP discussion for baseline B/C teams.
 
 ---
 

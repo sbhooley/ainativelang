@@ -1,115 +1,34 @@
-# When AINL does not help (honest ICP filter)
+# When AINL does not help — moved
 
-This page exists so operators, reviewers, and community skeptics can **self-select out** without a sales conversation. It pairs with **[`CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md)** and the three-way benchmark in **[`scripts/benchmark_token_savings.py`](../../scripts/benchmark_token_savings.py)**.
+> **This page has been consolidated.** The full anti-pitch (the three baselines, the four workload patterns where AINL adds little or nothing, the decision tree, and the honest reviewer Q&A) now lives in the canonical ICP doc:
+>
+> **→ [`docs/WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)**
+>
+> The URL of this file is preserved as a pointer so external links and search-engine results still resolve. All previously-existing content has been merged into the canonical page; nothing has been deleted.
 
-**Short answer:** If your team already runs **deterministic scripts or runners** and invokes an LLM **only at genuine judgment gates**, AINL is usually **not** a token-savings play. The irreducible compiler benefit against that baseline is about **1.3–1.5× on routing tokens** — see **`tooling/token_savings_results.json`** → `methodology.savings_attribution.routing_elimination`.
+## What was here
 
----
+This page used to be the standalone "anti-pitch" — the document that let operators, reviewers, and community skeptics self-select **out** of AINL without a sales conversation. Specifically:
 
-## The three baselines (read this before any savings claim)
+- The **three-baseline framework** (LLM-first, hand-optimized, pure-deterministic) and the typical AINL win against each
+- The four workload patterns where AINL adds little or nothing (pure-deterministic automation, judgment-heavy semantic pipelines, already-gated triage, low-volume classifiers)
+- The "what AINL is still good for when tokens aren't the play" table
+- The 30-second decision tree
+- The fair-questions reviewer Q&A
 
-| Baseline | What it looks like | Typical AINL win | Worth adopting for tokens alone? |
-|----------|-------------------|------------------|----------------------------------|
-| **A. LLM-first / prompt-loop** | Agent re-prompts for routing, state, and next-step on every cron/webhook | **~90–95%** orchestration tokens on recurring monitors (see **`benchmark_compile_once_run_many.py`**) | **Often yes** |
-| **B. Hand-optimized** | Deterministic runner + LLM only for classify/draft/content | **~1.3–1.5×** on routing (IR eliminates duplicate classify→route LLM steps) | **Usually no** — see non-token reasons below |
-| **C. Pure deterministic** | Bash/Python/cron, **zero** LLM in the loop | **~0%** | **No** |
+All of it is preserved verbatim or strengthened in [`docs/WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md), which is now the **single source of truth** for AINL's ICP and anti-ICP. The README's [60-second filter](../../README.md#is-ainl-for-you-60-second-filter) is the teaser; the canonical doc is the long answer.
 
-Most experienced platform teams are already **baseline B or C**. That is not a failure of AINL — it means they already applied the engineering discipline AINL formalizes.
+## Why we consolidated
 
----
+Tracker entry: [`docs/competitive/LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) **T3.8** — *Create canonical `docs/WHO_IS_THIS_FOR.md` merging `WHEN_AINL_DOES_NOT_HELP` + `ARMARAOS_GTM` + open-core/sales docs; deprecate overlapping docs with pointers. **Acceptance:** one source of truth; sales/marketing copy points here.*
 
-## Workload patterns where AINL adds little or nothing
-
-### Pure deterministic automation
-
-**Examples:** Jira webhook → pytest runner; CSV diff; board sync; inbound email file check; Notion CRM row updates.
-
-**Why AINL loses:** No LLM orchestration to eliminate. AINL runtime is an extra dependency for the same outcome.
-
-**Better fit:** Keep your runner script. Optionally use AINL only if you need **strict graph validation**, **JSONL audit**, or **emit to Temporal/LangGraph** for durability — not for token math.
-
-### Judgment-heavy semantic pipelines
-
-**Examples:** Multi-phase content synthesis (summarize → critique → cross-link); creative manuscript tooling; outreach drafting.
-
-**Why AINL loses:** The cost is **content LLM calls**, not routing. You cannot compile semantic reasoning into deterministic IR.
-
-**Better fit:** LLM sessions with human review. Use AINL only for **deterministic glue** between phases (webhooks, cache, queue) if you want one auditable artifact.
-
-### Already-gated email / triage pipelines
-
-**Examples:** Runner checks inbox → spawn LLM session only when triage requires it.
-
-**Why AINL loses:** This **is** baseline B. One semantic call at the gate is optimal.
-
-**Better fit:** Keep the gate script. AINL helps only if the **routing tree below the gate** is large, changes often, and is currently maintained by multiple agents without compile-time checks.
-
-### Low-volume ticket classifiers
-
-**Examples:** Support tickets classified a few times per day with a stable category tree.
-
-**Why AINL loses:** A Python `if category == "billing": …` table is fine at low volume. See **`examples/workflows/support_ticket_router.ainl`** — it exists, but the economic case needs **volume + change frequency + agent-authored maintenance**.
-
-**Better fit:** Hand-written router until volume or compliance audit cost justifies a compiled graph.
-
----
-
-## What AINL is still good for (even when tokens are not)
-
-| Need | Why runner scripts fall short | AINL surface |
-|------|------------------------------|--------------|
-| **Agent-authored ops code** | Agents ship broken Python/orchestration | MCP wizard: validate → compile → run with **`ainl validate --strict`** |
-| **Audit / compliance** | Ad-hoc logs across scripts | JSONL trajectory + hash-chained audit patterns |
-| **Portable durability** | Hand-port to Temporal workers | **`--emit temporal`** from same `.ainl` source |
-| **Cross-adapter orchestration** | N scripts + glue | Single IR graph: `http`, `cache`, `queue`, `llm`, … |
-| **ArmaraOS product path** | Custom cron + dashboard glue | **Hands**, scheduled **`ainl run`**, graph memory, App Store |
-
-See **[`ARMARAOS_GTM.md`](ARMARAOS_GTM.md)** for the primary product wedge when raw AINL vs cron is a weak sell.
-
----
-
-## Fair questions from reviewers (and our answers)
-
-### "Show me production where this saved real money vs Temporal or a standard runner."
-
-**Status:** Committed operator evidence lives in **[`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md)** (anonymized OpenClaw / ArmaraOS operator worksheets). **`COMPARISON_TABLE.md`** §G links the same rows.
-
-**Honest scope:** Rows document **orchestration-token elimination** and **architectural efficiency** on OpenClaw-style workloads — not a head-to-head Temporal durability benchmark (different layer).
-
-### "Your competitor table is empty."
-
-**Status:** LangGraph **authoring** baselines for two reference workloads are in **`benchmarks/handwritten_baselines/competitive/langgraph/`**, with token counts in **`tooling/competitor_baseline_tokens.json`**. See **`COMPARISON_TABLE.md`** §A–B (updated from that artifact).
-
-We still do **not** claim parity with Temporal server features or LangGraph streaming UX — see **[`VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**.
-
-### "You're spread across too many domains."
-
-**Public tier-1 surface (marketing + strict-valid references):**
-
-- **`core`**, **`http`**, **`llm/*`**, **`cache`**, **`fs`**, **`memory`**, **`queue`**
-- **MCP authoring** + **ArmaraOS bridge** (`ainl_graph_memory`, scheduled runs, Hands)
-
-Community adapters (Solana, TikTok, CRM, …) remain in-repo for integrators but are **not** the headline ICP story.
-
----
-
-## Decision tree (30 seconds)
-
-```text
-Does this workload call an LLM to decide routing/state on every run?
-  NO  → AINL is unlikely to save tokens. Consider audit/emit/MCP/ArmaraOS only.
-  YES → Is the team willing to compile once and run via ainl run / runner / Hand?
-          NO  → Fix the agent loop first; AINL won't help until execution is deterministic.
-          YES → Measure vs prompt-loop baseline (BENCHMARK.md compile-once scenarios).
-                 If already hand-optimized scripts → expect ~1.3–1.5× routing win max.
-```
-
----
+Having two pages cover the same ICP material made it easy for one to drift out of sync with the other and for new readers to get inconsistent answers depending on where they landed. One canonical page, one set of words.
 
 ## Related
 
-- **[`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md)** — committed operator case blocks
-- **[`OPENCLAW_PRODUCTION_SAVINGS.md`](OPENCLAW_PRODUCTION_SAVINGS.md)** — worksheet template + filled example
-- **[`ARMARAOS_GTM.md`](ARMARAOS_GTM.md)** — product wedge (Hands, MCP, dashboard)
-- **[`COMPETITIVE_MESSAGING.md`](COMPETITIVE_MESSAGING.md)** — persona messaging (includes qualifiers)
-- **[`CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md)** — claim crosswalk
+- **[`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)** — canonical ICP
+- [`ARMARAOS_GTM.md`](ARMARAOS_GTM.md) — ArmaraOS-specific product positioning (kept; covers stack diagram, install paths, persona-to-message mapping beyond ICP)
+- [`COMPETITIVE_MESSAGING.md`](COMPETITIVE_MESSAGING.md) — persona-specific messaging
+- [`../CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md) — what we'll defend with measured artifacts
+- [`VS_HAND_WRITTEN_RUNNER.md`](VS_HAND_WRITTEN_RUNNER.md) — measured AINL vs hand-written Python comparison
+- [`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md) — committed operator case blocks

@@ -52,7 +52,7 @@ Reference **strict-valid** workflow examples used in density / scenario modeling
 
 Head-to-head **commands**, suggested table rows, and scope boundaries (what we do and do not claim) live in **[`competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)**. Use it with the tables in **[`BENCHMARK.md`](../BENCHMARK.md)** and **[`competitive/COMPARISON_TABLE.md`](competitive/COMPARISON_TABLE.md)** so published numbers stay reproducible.
 
-**Honest ICP:** **[`competitive/WHEN_AINL_DOES_NOT_HELP.md`](competitive/WHEN_AINL_DOES_NOT_HELP.md)** — cite baseline A/B/C before savings claims.
+**Canonical ICP:** **[`WHO_IS_THIS_FOR.md`](WHO_IS_THIS_FOR.md)** — cite baseline A/B/C before savings claims.
 
 **LangGraph authoring baselines:** `python scripts/benchmark_competitor_baselines.py` → `tooling/competitor_baseline_tokens.json`.
 

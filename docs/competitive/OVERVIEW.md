@@ -12,7 +12,7 @@ Comparative framing and **AINL vs X** materials, grounded in shipped compiler/ru
 
 ## Guides
 
-- **[When AINL does not help](WHEN_AINL_DOES_NOT_HELP.md)** — baseline A/B/C and honest ICP filter
+- **[Who is AINL for?](../WHO_IS_THIS_FOR.md)** — canonical ICP, anti-ICP, baseline A/B/C, decision tree
 - **[ArmaraOS go-to-market wedge](ARMARAOS_GTM.md)** — Hands, MCP, dashboard (primary product path)
 - **[Production evidence (committed)](PRODUCTION_EVIDENCE.md)**
 - **[From LangGraph to AINL in 15 minutes](FROM_LANGGRAPH_TO_AINL.md)**

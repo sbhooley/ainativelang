@@ -2,7 +2,7 @@
 
 Strategic messaging framework for positioning AINL against LangGraph, Temporal, and other AI workflow tools.
 
-**Read first:** **[`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)** — baseline A (prompt-loop), B (hand-optimized scripts), C (pure deterministic). **Do not cite savings without naming the baseline.**
+**Read first:** **[`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)** — canonical ICP; baseline A (prompt-loop), B (hand-optimized scripts), C (pure deterministic). **Do not cite savings without naming the baseline.**
 
 **Primary GTM wedge:** **[`ARMARAOS_GTM.md`](ARMARAOS_GTM.md)** — ArmaraOS + Hands + MCP, not "replace your bash monitor."
 
@@ -302,7 +302,7 @@ Update quarterly.
 2. **Get first Class (a) testimonial** — tracked at [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) row **T2.7**. Do NOT fabricate one.
 3. **Record first video** (AINL vs LangGraph build-off) — script must include baseline qualifier
 4. **Create one-pager** for sales team with battle cards — every numeric claim sourced
-5. **Update website hero** to highlight savings claim **with baseline A qualifier and a link to [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md)**
+5. **Update website hero** to highlight savings claim **with baseline A qualifier and a link to [`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md)**
 
 ---
 
@@ -312,7 +312,7 @@ Update quarterly.
 - [`CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md) — claim crosswalk
 - [`PRODUCTION_EVIDENCE.md`](PRODUCTION_EVIDENCE.md) — committed cases + Class (a) gap disclosure
 - [`VS_HAND_WRITTEN_RUNNER.md`](VS_HAND_WRITTEN_RUNNER.md) — five-axis comparison vs baseline B
-- [`WHEN_AINL_DOES_NOT_HELP.md`](WHEN_AINL_DOES_NOT_HELP.md) — baseline A/B/C honest filter
+- [`../WHO_IS_THIS_FOR.md`](../WHO_IS_THIS_FOR.md) — canonical ICP, baseline A/B/C, decision tree
 - [`LONG_TERM_FIXES_TRACKER.md`](LONG_TERM_FIXES_TRACKER.md) — visible roadmap
 
 ---

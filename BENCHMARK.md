@@ -40,7 +40,7 @@ The **`benchmark-regression`** workflow compares the freshly generated **CI slic
 Use this repo’s benchmarks to compare **authoring compactness** (tiktoken on `.ainl` vs emitted `--emit langgraph` / `--emit temporal` vs hand-written baselines) and **post-compile runtime** cost — not to claim parity with every hosted feature of other stacks.
 
 - **Step-by-step commands and honest boundaries:** [`docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md`](docs/competitive/VERSUS_LANGGRAPH_TEMPORAL_BENCHMARKS.md)
-- **When AINL does not help (baseline A/B/C):** [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](docs/competitive/WHEN_AINL_DOES_NOT_HELP.md)
+- **Who is AINL for? (canonical ICP + baseline A/B/C + decision tree):** [`docs/WHO_IS_THIS_FOR.md`](docs/WHO_IS_THIS_FOR.md)
 - **Production evidence (committed):** [`docs/competitive/PRODUCTION_EVIDENCE.md`](docs/competitive/PRODUCTION_EVIDENCE.md)
 - **ArmaraOS GTM wedge:** [`docs/competitive/ARMARAOS_GTM.md`](docs/competitive/ARMARAOS_GTM.md)
 - **Onboarding + positioning (no fake numbers):** [`docs/competitive/FROM_LANGGRAPH_TO_AINL.md`](docs/competitive/FROM_LANGGRAPH_TO_AINL.md), [`docs/competitive/AINL_AND_TEMPORAL.md`](docs/competitive/AINL_AND_TEMPORAL.md)
