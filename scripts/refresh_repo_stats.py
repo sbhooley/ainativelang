@@ -459,6 +459,52 @@ def main() -> int:
                 "python scripts/refresh_repo_stats.py",
                 file=sys.stderr,
             )
+            import difflib
+
+            if not status_ok:
+                old_lines = _normalize_status_yaml_for_repo_stats_compare(
+                    old_status
+                ).splitlines(keepends=True)
+                new_lines = _normalize_status_yaml_for_repo_stats_compare(
+                    new_status
+                ).splitlines(keepends=True)
+                diff = "".join(
+                    difflib.unified_diff(
+                        old_lines,
+                        new_lines,
+                        fromfile="STATUS.yaml (committed)",
+                        tofile="STATUS.yaml (would-regenerate)",
+                        n=2,
+                    )
+                )
+                if diff:
+                    print("--- STATUS.yaml diff ---", file=sys.stderr)
+                    print(diff, file=sys.stderr)
+            if not agents_ok:
+                old_lines = old_agents.splitlines(keepends=True)
+                new_lines = new_agents.splitlines(keepends=True)
+                diff = "".join(
+                    difflib.unified_diff(
+                        old_lines,
+                        new_lines,
+                        fromfile="AGENTS.md (committed)",
+                        tofile="AGENTS.md (would-regenerate)",
+                        n=2,
+                    )
+                )
+                if diff:
+                    print("--- AGENTS.md diff ---", file=sys.stderr)
+                    print(diff, file=sys.stderr)
+            print(
+                f"--- stats snapshot ---\n"
+                f"compiler={s.compiler_lines} runtime={s.runtime_lines} cli={s.cli_lines} "
+                f"preprocessor={s.preprocessor_lines} adapters={s.adapter_py_files} "
+                f"examples={s.examples_ainl_files} tests_py={s.tests_py_files} "
+                f"test_named={s.tests_test_named_py} lines_tests={s.tests_python_lines} "
+                f"pytest_selected={s.pytest_selected} pytest_total={s.pytest_total} "
+                f"pytest_deselected={s.pytest_deselected} pytest_err={s.pytest_collect_error}",
+                file=sys.stderr,
+            )
             return 2
         print("repo-stats: STATUS.yaml and AGENTS.md match the working tree.")
         return 0
