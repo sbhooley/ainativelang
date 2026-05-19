@@ -355,6 +355,12 @@
       "path": "examples/benchmark/enterprise_monitor.ainl",
       "primary_pattern": "enterprise_health_monitor_llm",
       "secondary_pattern": "http_latency_escalation"
+    },
+    {
+      "order": 60,
+      "path": "examples/compact/pggraph_status.ainl",
+      "primary_pattern": "pggraph_status_compact",
+      "secondary_pattern": "graph_probe"
     }
   ]
 }
