@@ -52,3 +52,13 @@ runtime_runner.log
 
 # demo/ainl_graph_memory_demo.py export artifact (local JSON graph snapshot)
 demo/ainl_graph_memory_export.json
+
+# Local developer convenience scripts that operate on sibling repos.
+# scripts/publish_ainl_native_pypi.sh is a thin wrapper around `maturin publish`
+# for the `ainl_native` Rust crate. The crate itself lives in
+# `sbhooley/ainl-cortex` (`ainl_native/Cargo.toml`) and the production publish
+# path is its GitHub Actions release workflow (tag `ainl_native-v*`). This
+# script is only the "publish a wheel from my Mac right now" path; it does not
+# build, modify, or release anything in this repo, so it belongs alongside
+# personal `.env`-style configuration rather than in the tracked tree.
+scripts/publish_ainl_native_pypi.sh
