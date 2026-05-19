@@ -88,6 +88,15 @@ def extract_adapters_from_source(source: str) -> tuple[list[str], dict[str, list
             adapter_verbs[adapter] = set()
         adapter_verbs[adapter].add(verb)
 
+    # Two-token R lines: R pggraph STATUS ->rows (no dot between adapter and verb).
+    r_bare_pattern = re.compile(r"^\s*R\s+(\w+)\s+(\w+)", re.MULTILINE)
+    for m in r_bare_pattern.finditer(source):
+        adapter, verb = m.group(1), m.group(2)
+        adapters.add(adapter)
+        if adapter not in adapter_verbs:
+            adapter_verbs[adapter] = set()
+        adapter_verbs[adapter].add(verb)
+
     compact_pattern = re.compile(r"(\w+)\s*=\s*(\w+)\.(\w+)")
     for m in compact_pattern.finditer(source):
         adapter, verb = m.group(2), m.group(3)
@@ -164,6 +173,8 @@ def determine_family(adapters: list[str], path: str) -> str:
         return "filesystem"
     if "cache" in adapters:
         return "cache"
+    if "pggraph" in adapters or "pggraph" in path_lower:
+        return "pggraph"
     if "memory" in adapters:
         return "memory"
     if "queue" in adapters:

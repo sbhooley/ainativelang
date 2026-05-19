@@ -75,6 +75,7 @@ def _adapter_registry_from_args(args: argparse.Namespace):
         "bridge",
         "sqlite",
         "postgres",
+        "pggraph",
         "mysql",
         "redis",
         "dynamodb",
@@ -340,6 +341,19 @@ def _make_airtable(args: argparse.Namespace) -> RuntimeAdapter:
     )
 
 
+def _make_pggraph(args: argparse.Namespace) -> RuntimeAdapter:
+    from adapters.pggraph import PggraphAdapter
+
+    postgres = _make_postgres(args)
+    return PggraphAdapter(
+        postgres,
+        max_depth=getattr(args, "pggraph_max_depth", None),
+        max_rows=getattr(args, "pggraph_max_rows", None),
+        default_schema=(getattr(args, "pggraph_default_schema", None) or "public").strip() or "public",
+        allow_admin=bool(getattr(args, "pggraph_allow_admin", False)),
+    )
+
+
 def _make_supabase(args: argparse.Namespace) -> RuntimeAdapter:
     from adapters.supabase import SupabaseAdapter
 
@@ -518,6 +532,7 @@ _ADAPTER_SPECS: List[_AdapterSpec] = [
     _AdapterSpec("bridge", _make_bridge),
     _AdapterSpec("sqlite", _make_sqlite),
     _AdapterSpec("postgres", _make_postgres),
+    _AdapterSpec("pggraph", _make_pggraph),
     _AdapterSpec("mysql", _make_mysql),
     _AdapterSpec("redis", _make_redis),
     _AdapterSpec("dynamodb", _make_dynamodb),
@@ -2517,6 +2532,7 @@ def main() -> None:
             "bridge",
             "sqlite",
             "postgres",
+            "pggraph",
             "mysql",
             "redis",
             "dynamodb",
@@ -2633,6 +2649,28 @@ def main() -> None:
     runp.add_argument("--postgres-pool-max", type=int, default=5)
     runp.add_argument("--postgres-allow-write", action="store_true")
     runp.add_argument("--postgres-allow-table", action="append", default=[])
+    runp.add_argument(
+        "--pggraph-max-depth",
+        type=int,
+        default=None,
+        help="Default traversal depth cap for pggraph adapter (or AINL_PGGRAPH_MAX_DEPTH, default 10)",
+    )
+    runp.add_argument(
+        "--pggraph-max-rows",
+        type=int,
+        default=None,
+        help="Default row cap for pggraph search/traverse (or AINL_PGGRAPH_MAX_ROWS, default 1000)",
+    )
+    runp.add_argument(
+        "--pggraph-default-schema",
+        default="public",
+        help="Default schema when pggraph table args omit schema (default: public)",
+    )
+    runp.add_argument(
+        "--pggraph-allow-admin",
+        action="store_true",
+        help="Allow pggraph admin verbs: build, auto_discover, reset (or AINL_PGGRAPH_ALLOW_ADMIN=1)",
+    )
     runp.add_argument("--mysql-url", default="", help="MySQL DSN/URL (or set AINL_MYSQL_URL)")
     runp.add_argument("--mysql-host", default="")
     runp.add_argument("--mysql-port", type=int, default=3306)

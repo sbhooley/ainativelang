@@ -1,0 +1,10 @@
+# examples/compact/pggraph_status.ainl
+# Evokoa pgGraph probe: graph.status() row(s) from a built graph index.
+# Prerequisite: PostgreSQL with pgGraph installed (CREATE EXTENSION graph; build/discover).
+# CLI: ainl run examples/compact/pggraph_status.ainl --enable-adapter pggraph --postgres-url $DSN
+# MCP: adapters.enable includes pggraph; adapters.pggraph.url (or AINL_POSTGRES_URL).
+# Note: use "R pggraph STATUS" (two tokens), not "pggraph.STATUS" — strict graph IR needs a target slot.
+
+status:
+  R pggraph STATUS ->rows
+  out rows

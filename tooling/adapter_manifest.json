@@ -417,6 +417,29 @@
       "async_capable": true,
       "notes": "Runtime PostgreSQL adapter namespace (Postgres/Supabase/RDS/Neon-compatible DSN)."
     },
+    "pggraph": {
+      "support_tier": "core",
+      "strict_contract": true,
+      "recommended_lane": "canonical",
+      "verbs": [
+        "TEST_ENABLED",
+        "STATUS",
+        "SEARCH",
+        "TRAVERSE",
+        "SHORTEST_PATH",
+        "FIND_RELATED",
+        "BUILD",
+        "AUTO_DISCOVER",
+        "RESET"
+      ],
+      "effect_default": "io",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "async_capable": false,
+      "notes": "Evokoa pgGraph PostgreSQL extension (graph.*). Requires CREATE EXTENSION graph on the server; uses same DSN as postgres (AINL_POSTGRES_*). Admin verbs gated by allow_admin."
+    },
     "mysql": {
       "support_tier": "core",
       "strict_contract": true,

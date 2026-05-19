@@ -40,7 +40,7 @@ def test_registry_targets_align_with_manifest_verbs_for_overlapping_adapters():
 # are deliberately excluded — they advertise lowercase aliases the
 # runtime accepts.
 _NORMALIZED_ADAPTERS = frozenset({
-    "cache", "queue", "txn", "http", "sqlite", "postgres", "mysql",
+    "cache", "queue", "txn", "http", "sqlite", "postgres", "pggraph", "mysql",
     "redis", "dynamodb", "airtable", "supabase", "fs", "persona", "memory",
 })
 

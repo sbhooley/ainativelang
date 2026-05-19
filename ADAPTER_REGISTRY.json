@@ -630,6 +630,77 @@
         "realtime replay/fanout/cursor helpers are lightweight in-process primitives"
       ]
     },
+    "pggraph": {
+      "description": "Evokoa pgGraph extension — graph search, traversal, and paths via graph.* SQL (Postgres-backed)",
+      "privilege_tier": "network",
+      "destructive": true,
+      "network_facing": true,
+      "sandbox_safe": false,
+      "targets": {
+        "test_enabled": {
+          "args": [],
+          "returns": "{enabled}",
+          "pure": false
+        },
+        "status": {
+          "args": [],
+          "returns": "[status_row]",
+          "pure": false
+        },
+        "search": {
+          "args": ["property_key", "property_value", "table_filter?", "mode?", "max_rows?"],
+          "returns": "[search_row]",
+          "pure": false
+        },
+        "traverse": {
+          "args": ["seed_table", "seed_id", "max_depth?", "hydrate?", "max_rows?"],
+          "returns": "[traverse_row]",
+          "pure": false
+        },
+        "shortest_path": {
+          "args": ["source_table", "source_id", "target_table", "target_id", "max_depth?", "hydrate?"],
+          "returns": "[path_step]",
+          "pure": false
+        },
+        "find_related": {
+          "args": ["property_key", "property_value", "source_table?", "max_depth?", "max_rows?"],
+          "returns": "[related_row]",
+          "pure": false
+        },
+        "build": {
+          "args": [],
+          "returns": "[build_row]",
+          "pure": false,
+          "admin": true
+        },
+        "auto_discover": {
+          "args": ["schema?"],
+          "returns": "[discover_row]",
+          "pure": false,
+          "admin": true
+        },
+        "reset": {
+          "args": [],
+          "returns": "{ok}",
+          "pure": false,
+          "admin": true
+        }
+      },
+      "config": {
+        "connection_env": "AINL_POSTGRES_URL or AINL_POSTGRES_HOST/DB/USER/PASSWORD (same as postgres adapter)",
+        "max_depth_env": "AINL_PGGRAPH_MAX_DEPTH (default 10)",
+        "max_rows_env": "AINL_PGGRAPH_MAX_ROWS (default 1000)",
+        "allow_admin_env": "AINL_PGGRAPH_ALLOW_ADMIN",
+        "default_schema_env": "CLI --pggraph-default-schema (default public)",
+        "prerequisite": "PostgreSQL with Evokoa pgGraph extension installed (CREATE EXTENSION graph)"
+      },
+      "rules": [
+        "Delegates to postgres adapter for connections; no separate pip package",
+        "table arguments must be schema.table or table (validated regclass)",
+        "build, auto_discover, reset require allow_admin",
+        "extension must be installed and graph built on the target database"
+      ]
+    },
     "fs": {
       "description": "Sandboxed file system operations",
       "targets": {

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_from": "artifact_profiles.json",
-  "total_examples": 59,
+  "total_examples": 64,
   "families": {
     "core": [
       {
@@ -198,26 +198,6 @@
         "complexity_tier": "minimal",
         "family": "core",
         "description": "timeout_demo.ainl"
-      },
-      {
-        "path": "examples/timeout_memory_prune_demo.ainl",
-        "adapters": [
-          "core"
-        ],
-        "adapter_verbs": {
-          "core": [
-            "parse"
-          ]
-        },
-        "graph_name": "L1",
-        "inputs": [],
-        "has_branching": false,
-        "has_loop": false,
-        "has_error_handling": false,
-        "line_count": 16,
-        "complexity_tier": "minimal",
-        "family": "core",
-        "description": "examples/timeout_memory_prune_demo.ainl"
       },
       {
         "path": "examples/hybrid/langchain_tool_demo.ainl",
@@ -580,20 +560,6 @@
         "description": "Ticketing: events and tickets"
       },
       {
-        "path": "examples/openclaw/daily_lead_summary.lang",
-        "adapters": [],
-        "adapter_verbs": {},
-        "graph_name": "core",
-        "inputs": [],
-        "has_branching": false,
-        "has_loop": false,
-        "has_error_handling": false,
-        "line_count": 18,
-        "complexity_tier": "minimal",
-        "family": "core",
-        "description": "Daily Lead Summary (simplified)"
-      },
-      {
         "path": "examples/test_if_var.ainl",
         "adapters": [
           "core"
@@ -872,6 +838,122 @@
         "description": "Meta-supervisor sample \u2014 polls health endpoint and writes a status log entry."
       },
       {
+        "path": "examples/workflows/lead_enrichment.ainl",
+        "adapters": [
+          "cache",
+          "core",
+          "http",
+          "llm"
+        ],
+        "adapter_verbs": {
+          "cache": [
+            "GET",
+            "SET"
+          ],
+          "core": [
+            "CONCAT",
+            "GET",
+            "GT",
+            "INT"
+          ],
+          "http": [
+            "GET"
+          ],
+          "llm": [
+            "COMPLETION"
+          ]
+        },
+        "graph_name": "lead_enrichment",
+        "inputs": [
+          "domain",
+          "enrich_url"
+        ],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 79,
+        "complexity_tier": "advanced",
+        "family": "http",
+        "description": "examples/workflows/lead_enrichment.ainl"
+      },
+      {
+        "path": "examples/benchmark/enterprise_monitor.ainl",
+        "adapters": [
+          "cache",
+          "core",
+          "http",
+          "llm"
+        ],
+        "adapter_verbs": {
+          "http": [
+            "GET"
+          ],
+          "core": [
+            "CONCAT",
+            "EQ",
+            "GET",
+            "GT",
+            "STR"
+          ],
+          "llm": [
+            "COMPLETION"
+          ],
+          "cache": [
+            "SET"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 69,
+        "complexity_tier": "advanced",
+        "family": "http",
+        "description": "examples/benchmark/enterprise_monitor.ainl"
+      },
+      {
+        "path": "examples/workflows/data_pipeline.ainl",
+        "adapters": [
+          "cache",
+          "core",
+          "http",
+          "llm",
+          "memory"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "CONCAT",
+            "EQ",
+            "GET",
+            "GT",
+            "INT"
+          ],
+          "cache": [
+            "GET",
+            "SET"
+          ],
+          "http": [
+            "GET"
+          ],
+          "llm": [
+            "COMPLETION"
+          ],
+          "memory": [
+            "APPEND"
+          ]
+        },
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 155,
+        "complexity_tier": "advanced",
+        "family": "http",
+        "description": "examples/workflows/data_pipeline.ainl"
+      },
+      {
         "path": "corpus/example_scraper_daily/program.ainl",
         "adapters": [
           "db",
@@ -993,6 +1075,28 @@
         "complexity_tier": "intermediate",
         "family": "browser",
         "description": "examples/browser/browser_visit_minimal.ainl"
+      }
+    ],
+    "pggraph": [
+      {
+        "path": "examples/compact/pggraph_status.ainl",
+        "adapters": [
+          "pggraph"
+        ],
+        "adapter_verbs": {
+          "pggraph": [
+            "STATUS"
+          ]
+        },
+        "graph_name": "status",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 10,
+        "complexity_tier": "minimal",
+        "family": "pggraph",
+        "description": "examples/compact/pggraph_status.ainl"
       }
     ],
     "filesystem": [
@@ -1234,6 +1338,63 @@
         "description": "examples/prediction_market_demo.ainl"
       }
     ],
+    "memory": [
+      {
+        "path": "examples/timeout_memory_prune_demo.ainl",
+        "adapters": [
+          "core",
+          "memory"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "parse"
+          ],
+          "memory": [
+            "list",
+            "prune",
+            "put"
+          ]
+        },
+        "graph_name": "L1",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 16,
+        "complexity_tier": "minimal",
+        "family": "memory",
+        "description": "examples/timeout_memory_prune_demo.ainl"
+      },
+      {
+        "path": "examples/wishlist/06_feedback_memory.ainl",
+        "adapters": [
+          "core",
+          "memory"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "concat",
+            "parse"
+          ],
+          "memory": [
+            "APPEND",
+            "GET"
+          ]
+        },
+        "graph_name": "wishlist_06_feedback_memory",
+        "inputs": [
+          "session_id",
+          "correction"
+        ],
+        "has_branching": false,
+        "has_loop": true,
+        "has_error_handling": false,
+        "line_count": 17,
+        "complexity_tier": "intermediate",
+        "family": "memory",
+        "description": "6) Persistent learning loop \u2014 memory.APPEND for corrections; memory.GET reads prior turn payload."
+      }
+    ],
     "cache": [
       {
         "path": "examples/wishlist/01_cache_and_memory.ainl",
@@ -1267,6 +1428,42 @@
         "complexity_tier": "intermediate",
         "family": "cache",
         "description": "1) Knowledge caching + structured memory (AINL: cache + memory adapters)."
+      },
+      {
+        "path": "examples/openclaw/daily_lead_summary.lang",
+        "adapters": [
+          "cache",
+          "core",
+          "db",
+          "queue"
+        ],
+        "adapter_verbs": {
+          "core": [
+            "concat",
+            "now",
+            "stringify",
+            "sub"
+          ],
+          "cache": [
+            "get",
+            "set"
+          ],
+          "db": [
+            "F"
+          ],
+          "queue": [
+            "Put"
+          ]
+        },
+        "graph_name": "core",
+        "inputs": [],
+        "has_branching": false,
+        "has_loop": false,
+        "has_error_handling": false,
+        "line_count": 18,
+        "complexity_tier": "intermediate",
+        "family": "cache",
+        "description": "Daily Lead Summary (simplified)"
       }
     ],
     "llm": [
@@ -1322,37 +1519,33 @@
         "complexity_tier": "intermediate",
         "family": "llm",
         "description": "5b) Same routing as 05 \u2014 unified `llm` adapter + config.yaml (see docs/LLM_ADAPTER_USAGE.md)."
-      }
-    ],
-    "memory": [
+      },
       {
-        "path": "examples/wishlist/06_feedback_memory.ainl",
+        "path": "examples/workflows/support_ticket_router.ainl",
         "adapters": [
           "core",
-          "memory"
+          "llm"
         ],
         "adapter_verbs": {
           "core": [
-            "concat",
-            "parse"
+            "CONCAT",
+            "EQ",
+            "GET",
+            "TRIM"
           ],
-          "memory": [
-            "APPEND",
-            "GET"
+          "llm": [
+            "COMPLETION"
           ]
         },
-        "graph_name": "wishlist_06_feedback_memory",
-        "inputs": [
-          "session_id",
-          "correction"
-        ],
-        "has_branching": false,
-        "has_loop": true,
+        "graph_name": "app",
+        "inputs": [],
+        "has_branching": true,
+        "has_loop": false,
         "has_error_handling": false,
-        "line_count": 17,
+        "line_count": 80,
         "complexity_tier": "intermediate",
-        "family": "memory",
-        "description": "6) Persistent learning loop \u2014 memory.APPEND for corrections; memory.GET reads prior turn payload."
+        "family": "llm",
+        "description": "examples/workflows/support_ticket_router.ainl"
       }
     ]
   },
@@ -1383,9 +1576,14 @@
       "examples/wishlist/05b_unified_llm_offline_config.ainl",
       "examples/wishlist/06_feedback_memory.ainl",
       "examples/wishlist/08_code_review_context.ainl",
+      "examples/openclaw/daily_lead_summary.lang",
       "examples/openclaw_full_unification.ainl",
       "examples/test_if_var.ainl",
-      "examples/test_mul.ainl"
+      "examples/test_mul.ainl",
+      "examples/workflows/lead_enrichment.ainl",
+      "examples/workflows/support_ticket_router.ainl",
+      "examples/benchmark/enterprise_monitor.ainl",
+      "examples/workflows/data_pipeline.ainl"
     ],
     "http": [
       "examples/http_get_minimal.ainl",
@@ -1396,6 +1594,9 @@
       "examples/webhook_automation.ainl",
       "examples/cron/monitor_and_alert.ainl",
       "examples/openclaw_full_unification.ainl",
+      "examples/workflows/lead_enrichment.ainl",
+      "examples/benchmark/enterprise_monitor.ainl",
+      "examples/workflows/data_pipeline.ainl",
       "corpus/example_scraper_daily/program.ainl",
       "corpus/example_monitor_alert/corrected_program.ainl",
       "corpus/example_monitor_alert/program.ainl"
@@ -1405,7 +1606,14 @@
     ],
     "cache": [
       "examples/compact/cache_lookup_compact.ainl",
-      "examples/wishlist/01_cache_and_memory.ainl"
+      "examples/wishlist/01_cache_and_memory.ainl",
+      "examples/openclaw/daily_lead_summary.lang",
+      "examples/workflows/lead_enrichment.ainl",
+      "examples/benchmark/enterprise_monitor.ainl",
+      "examples/workflows/data_pipeline.ainl"
+    ],
+    "pggraph": [
+      "examples/compact/pggraph_status.ainl"
     ],
     "shell_exec": [
       "examples/compact/github_raw_fetch_compact.ainl"
@@ -1431,6 +1639,7 @@
       "examples/ecom.lang",
       "examples/internal_tool.lang",
       "examples/ticketing.lang",
+      "examples/openclaw/daily_lead_summary.lang",
       "corpus/example_basic_web_api/program.ainl",
       "corpus/example_scraper_daily/program.ainl",
       "corpus/example_monitor_alert/corrected_program.ainl",
@@ -1445,6 +1654,13 @@
       "examples/solana_demo.ainl",
       "examples/prediction_market_demo.ainl"
     ],
+    "memory": [
+      "examples/timeout_memory_prune_demo.ainl",
+      "examples/wishlist/01_cache_and_memory.ainl",
+      "examples/wishlist/06_feedback_memory.ainl",
+      "examples/openclaw_full_unification.ainl",
+      "examples/workflows/data_pipeline.ainl"
+    ],
     "langchain_tool": [
       "examples/hybrid/langchain_tool_demo.ainl"
     ],
@@ -1456,11 +1672,6 @@
       "examples/code_context_demo.ainl",
       "examples/wishlist/08_code_review_context.ainl"
     ],
-    "memory": [
-      "examples/wishlist/01_cache_and_memory.ainl",
-      "examples/wishlist/06_feedback_memory.ainl",
-      "examples/openclaw_full_unification.ainl"
-    ],
     "fanout": [
       "examples/wishlist/03_parallel_fanout.ainl",
       "examples/wishlist/07_parallel_http.ainl"
@@ -1469,7 +1680,14 @@
       "examples/wishlist/05_route_then_llm_mock.ainl"
     ],
     "llm": [
-      "examples/wishlist/05b_unified_llm_offline_config.ainl"
+      "examples/wishlist/05b_unified_llm_offline_config.ainl",
+      "examples/workflows/lead_enrichment.ainl",
+      "examples/workflows/support_ticket_router.ainl",
+      "examples/benchmark/enterprise_monitor.ainl",
+      "examples/workflows/data_pipeline.ainl"
+    ],
+    "queue": [
+      "examples/openclaw/daily_lead_summary.lang"
     ]
   },
   "by_complexity": {
@@ -1494,6 +1712,8 @@
       "examples/wishlist/05_route_then_llm_mock.ainl",
       "examples/wishlist/05b_unified_llm_offline_config.ainl",
       "examples/wishlist/06_feedback_memory.ainl",
+      "examples/openclaw/daily_lead_summary.lang",
+      "examples/workflows/support_ticket_router.ainl",
       "corpus/example_monitor_alert/corrected_program.ainl",
       "corpus/example_monitor_alert/program.ainl"
     ],
@@ -1501,6 +1721,7 @@
       "examples/http_get_minimal.ainl",
       "examples/compact/hello_compact.ainl",
       "examples/compact/classifier_compact.ainl",
+      "examples/compact/pggraph_status.ainl",
       "examples/compact/openclaw_learning_handoff.ainl",
       "examples/compact/fs_write_compact.ainl",
       "examples/rag_pipeline.ainl",
@@ -1528,13 +1749,17 @@
       "examples/ecom.lang",
       "examples/internal_tool.lang",
       "examples/ticketing.lang",
-      "examples/openclaw/daily_lead_summary.lang",
       "examples/openclaw_full_unification.ainl",
       "examples/test_if_var.ainl",
       "examples/test_mul.ainl",
       "examples/test_X_sub.ainl",
       "corpus/example_basic_web_api/program.ainl",
       "corpus/example_scraper_daily/program.ainl"
+    ],
+    "advanced": [
+      "examples/workflows/lead_enrichment.ainl",
+      "examples/benchmark/enterprise_monitor.ainl",
+      "examples/workflows/data_pipeline.ainl"
     ]
   },
   "all_examples": [
@@ -1692,6 +1917,26 @@
       "complexity_tier": "intermediate",
       "family": "http",
       "description": "examples/compact/cache_lookup_compact.ainl"
+    },
+    {
+      "path": "examples/compact/pggraph_status.ainl",
+      "adapters": [
+        "pggraph"
+      ],
+      "adapter_verbs": {
+        "pggraph": [
+          "STATUS"
+        ]
+      },
+      "graph_name": "status",
+      "inputs": [],
+      "has_branching": false,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 10,
+      "complexity_tier": "minimal",
+      "family": "pggraph",
+      "description": "examples/compact/pggraph_status.ainl"
     },
     {
       "path": "examples/compact/openclaw_learning_handoff.ainl",
@@ -2065,11 +2310,17 @@
     {
       "path": "examples/timeout_memory_prune_demo.ainl",
       "adapters": [
-        "core"
+        "core",
+        "memory"
       ],
       "adapter_verbs": {
         "core": [
           "parse"
+        ],
+        "memory": [
+          "list",
+          "prune",
+          "put"
         ]
       },
       "graph_name": "L1",
@@ -2079,7 +2330,7 @@
       "has_error_handling": false,
       "line_count": 16,
       "complexity_tier": "minimal",
-      "family": "core",
+      "family": "memory",
       "description": "examples/timeout_memory_prune_demo.ainl"
     },
     {
@@ -2679,16 +2930,38 @@
     },
     {
       "path": "examples/openclaw/daily_lead_summary.lang",
-      "adapters": [],
-      "adapter_verbs": {},
+      "adapters": [
+        "cache",
+        "core",
+        "db",
+        "queue"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "concat",
+          "now",
+          "stringify",
+          "sub"
+        ],
+        "cache": [
+          "get",
+          "set"
+        ],
+        "db": [
+          "F"
+        ],
+        "queue": [
+          "Put"
+        ]
+      },
       "graph_name": "core",
       "inputs": [],
       "has_branching": false,
       "has_loop": false,
       "has_error_handling": false,
       "line_count": 18,
-      "complexity_tier": "minimal",
-      "family": "core",
+      "complexity_tier": "intermediate",
+      "family": "cache",
       "description": "Daily Lead Summary (simplified)"
     },
     {
@@ -2773,6 +3046,149 @@
       "complexity_tier": "minimal",
       "family": "core",
       "description": ""
+    },
+    {
+      "path": "examples/workflows/lead_enrichment.ainl",
+      "adapters": [
+        "cache",
+        "core",
+        "http",
+        "llm"
+      ],
+      "adapter_verbs": {
+        "cache": [
+          "GET",
+          "SET"
+        ],
+        "core": [
+          "CONCAT",
+          "GET",
+          "GT",
+          "INT"
+        ],
+        "http": [
+          "GET"
+        ],
+        "llm": [
+          "COMPLETION"
+        ]
+      },
+      "graph_name": "lead_enrichment",
+      "inputs": [
+        "domain",
+        "enrich_url"
+      ],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 79,
+      "complexity_tier": "advanced",
+      "family": "http",
+      "description": "examples/workflows/lead_enrichment.ainl"
+    },
+    {
+      "path": "examples/workflows/support_ticket_router.ainl",
+      "adapters": [
+        "core",
+        "llm"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "CONCAT",
+          "EQ",
+          "GET",
+          "TRIM"
+        ],
+        "llm": [
+          "COMPLETION"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 80,
+      "complexity_tier": "intermediate",
+      "family": "llm",
+      "description": "examples/workflows/support_ticket_router.ainl"
+    },
+    {
+      "path": "examples/benchmark/enterprise_monitor.ainl",
+      "adapters": [
+        "cache",
+        "core",
+        "http",
+        "llm"
+      ],
+      "adapter_verbs": {
+        "http": [
+          "GET"
+        ],
+        "core": [
+          "CONCAT",
+          "EQ",
+          "GET",
+          "GT",
+          "STR"
+        ],
+        "llm": [
+          "COMPLETION"
+        ],
+        "cache": [
+          "SET"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 69,
+      "complexity_tier": "advanced",
+      "family": "http",
+      "description": "examples/benchmark/enterprise_monitor.ainl"
+    },
+    {
+      "path": "examples/workflows/data_pipeline.ainl",
+      "adapters": [
+        "cache",
+        "core",
+        "http",
+        "llm",
+        "memory"
+      ],
+      "adapter_verbs": {
+        "core": [
+          "CONCAT",
+          "EQ",
+          "GET",
+          "GT",
+          "INT"
+        ],
+        "cache": [
+          "GET",
+          "SET"
+        ],
+        "http": [
+          "GET"
+        ],
+        "llm": [
+          "COMPLETION"
+        ],
+        "memory": [
+          "APPEND"
+        ]
+      },
+      "graph_name": "app",
+      "inputs": [],
+      "has_branching": true,
+      "has_loop": false,
+      "has_error_handling": false,
+      "line_count": 155,
+      "complexity_tier": "advanced",
+      "family": "http",
+      "description": "examples/workflows/data_pipeline.ainl"
     },
     {
       "path": "corpus/example_basic_web_api/program.ainl",

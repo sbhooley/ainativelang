@@ -767,9 +767,24 @@ RULE_BUCKETS: Tuple[RuleBucket, ...] = (
         name="state",
         task_type="adapter_workflow",
         subtypes=("stateful_tracking",),
-        terms=("sqlite", "postgres", "mysql", "redis", "cache", "memory", "database", "history", "state"),
-        adapters=("state_or_database",),
-        strict_examples=("cache_lookup", "database_write", "memory_store"),
+        terms=(
+            "sqlite",
+            "postgres",
+            "mysql",
+            "redis",
+            "cache",
+            "memory",
+            "database",
+            "history",
+            "state",
+            "pggraph",
+            "graph",
+            "traverse",
+            "shortest_path",
+            "evokoa",
+        ),
+        adapters=("state_or_database", "pggraph"),
+        strict_examples=("cache_lookup", "database_write", "memory_store", "pggraph_status"),
         readiness=("Persistent store path/connection must be configured before run.",),
         weight=2,
     ),
@@ -816,6 +831,7 @@ ADAPTER_TO_CONTRACT = {
     "llm": "adapter_contract:llm",
     "http_or_provider_adapter": "adapter_contract:provider_or_http",
     "state_or_database": "adapter_contract:state_or_database",
+    "pggraph": "adapter_contract:pggraph",
     "scheduler_or_cron": "scheduler_readiness",
 }
 
@@ -1030,6 +1046,113 @@ ADAPTER_CONTRACTS: Dict[str, Dict[str, Any]] = {
             "Queue adapter must be enabled at runtime.",
         ],
     },
+    "pggraph": {
+        "adapter": "pggraph",
+        "status": "known",
+        "summary": (
+            "Evokoa pgGraph (PostgreSQL extension graph schema): graph.search, graph.traverse, "
+            "graph.shortest_path, and related SQL via a thin wrapper over the postgres adapter."
+        ),
+        "prerequisite": (
+            "Target PostgreSQL must have the pgGraph extension installed "
+            "(CREATE EXTENSION graph; then graph.build() or graph.auto_discover('public'))."
+        ),
+        "runtime_registration": {
+            "enable": ["pggraph"],
+            "pggraph": {
+                "url": "<postgresql-dsn-or-AINL_POSTGRES_URL>",
+                "max_depth": 10,
+                "max_rows": 1000,
+                "default_schema": "public",
+                "allow_admin": False,
+            },
+        },
+        "verbs": {
+            "TEST_ENABLED": {
+                "args": [],
+                "example": "R pggraph TEST_ENABLED ->probe",
+                "returns": ["enabled boolean from graph.test_enabled()"],
+            },
+            "STATUS": {
+                "args": [],
+                "example": "R pggraph STATUS ->rows",
+                "returns": ["rows from graph.status()"],
+            },
+            "SEARCH": {
+                "args": [
+                    "property_key: string",
+                    "property_value: string",
+                    "table_filter?: regclass",
+                    "mode?: string",
+                    "max_rows?: integer",
+                ],
+                "example": 'R pggraph SEARCH "email" "alice@example.com" ->hits',
+                "returns": ["rows from graph.search(...)"],
+            },
+            "TRAVERSE": {
+                "args": [
+                    "seed_table: regclass",
+                    "seed_id: string",
+                    "max_depth?: integer",
+                    "hydrate?: boolean",
+                    "max_rows?: integer",
+                ],
+                "example": 'R pggraph TRAVERSE "public.accounts" "acct-1" ->nodes',
+                "returns": ["rows from graph.traverse(...)"],
+            },
+            "SHORTEST_PATH": {
+                "args": [
+                    "source_table: regclass",
+                    "source_id: string",
+                    "target_table: regclass",
+                    "target_id: string",
+                    "max_depth?: integer",
+                    "hydrate?: boolean",
+                ],
+                "example": (
+                    'R pggraph SHORTEST_PATH "public.accounts" "a1" '
+                    '"public.accounts" "a2" ->path'
+                ),
+                "returns": ["rows from graph.shortest_path(...)"],
+            },
+            "FIND_RELATED": {
+                "args": [
+                    "property_key: string",
+                    "property_value: string",
+                    "source_table?: regclass",
+                    "max_depth?: integer",
+                    "max_rows?: integer",
+                ],
+                "example": 'R pggraph FIND_RELATED "domain" "example.com" ->related',
+                "returns": ["rows from graph.find_related(...)"],
+            },
+            "BUILD": {
+                "args": [],
+                "example": "R pggraph BUILD ->built",
+                "returns": ["rows from graph.build()"],
+                "admin_only": True,
+            },
+            "AUTO_DISCOVER": {
+                "args": ["schema?: string"],
+                "example": 'R pggraph AUTO_DISCOVER "public" ->discovered',
+                "returns": ["rows from graph.auto_discover(schema)"],
+                "admin_only": True,
+            },
+            "RESET": {
+                "args": [],
+                "example": "R pggraph RESET ->_",
+                "returns": ["ok envelope"],
+                "admin_only": True,
+            },
+        },
+        "pitfalls": [
+            "Use two-token R lines: R pggraph STATUS ->rows — not pggraph.STATUS (strict graph IR fails).",
+            "MCP ainl_run must enable pggraph and set adapters.pggraph.url (or AINL_POSTGRES_URL).",
+            "BUILD, AUTO_DISCOVER, and RESET require allow_admin / AINL_PGGRAPH_ALLOW_ADMIN=1.",
+            "Table names must be valid regclass (schema.table or bare table under default_schema).",
+            "This adapter targets Evokoa/pgGraph only — not domclick/pggraph (Python FK tool) or other homonyms.",
+        ],
+    },
     "memory": {
         "adapter": "memory",
         "status": "known",
@@ -1238,6 +1361,16 @@ def _strict_valid_pointers_for_adapter_key(adapter_key: str) -> List[Dict[str, A
                 ),
             }
         )
+    elif key == "pggraph":
+        path = "examples/compact/pggraph_status.ainl"
+        out.append(
+            {
+                "path": path,
+                "in_ci_strict_valid": path in sv,
+                "resource_uri": "ainl://strict-valid-examples",
+                "note": "Minimal `R pggraph STATUS` probe; requires pgGraph extension on the target PostgreSQL server.",
+            }
+        )
     return out
 
 
@@ -1286,8 +1419,23 @@ def adapter_contract(adapter: str, *, detail_level: str = "standard") -> Dict[st
             "schema_version": ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION,
             "adapter": name,
             "status": "composite",
-            "summary": "Use cache for simple key/value state, memory for semantic memory, or a DB adapter for relational state.",
-            "contracts": [ADAPTER_CONTRACTS["cache"]],
+            "summary": (
+                "Use cache for simple key/value state, memory for semantic memory, pggraph for "
+                "PostgreSQL graph indexes (Evokoa extension), or sqlite/postgres for relational state."
+            ),
+            "decision_guide": [
+                {
+                    "if": "You need graph.search / traverse / shortest_path on a built pgGraph index.",
+                    "choose": "pggraph",
+                    "next_contract": "pggraph",
+                },
+                {
+                    "if": "You need simple key/value persistence between runs.",
+                    "choose": "cache",
+                    "next_contract": "cache",
+                },
+            ],
+            "contracts": [ADAPTER_CONTRACTS["cache"], ADAPTER_CONTRACTS["pggraph"]],
         }
     resolved = aliases.get(name, name)
     contract = ADAPTER_CONTRACTS.get(resolved)
@@ -1302,7 +1450,7 @@ def adapter_contract(adapter: str, *, detail_level: str = "standard") -> Dict[st
     out = dict(contract)
     out["ok"] = True
     out["schema_version"] = ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION
-    if resolved in ("http", "fs"):
+    if resolved in ("http", "fs", "pggraph"):
         out["strict_valid_pointers"] = _strict_valid_pointers_for_adapter_key(resolved)
     if detail_level == "brief":
         brief: Dict[str, Any] = {
@@ -2159,6 +2307,12 @@ STEP_EXAMPLE_SNIPPETS: Dict[str, List[Dict[str, Any]]] = {
         {"when_you_need_to": "cache a value", "code": "result = cache.set cache_key value", "requires": ["adapter_contract:cache"]},
         {"when_you_need_to": "retrieve cached value", "code": "cached = cache.get cache_key", "requires": ["adapter_contract:cache"]},
     ],
+    "pggraph": [
+        {"when_you_need_to": "probe pgGraph extension", "code": "R pggraph TEST_ENABLED ->probe", "requires": ["adapter_contract:pggraph"]},
+        {"when_you_need_to": "read graph index status", "code": "R pggraph STATUS ->rows", "requires": ["adapter_contract:pggraph"]},
+        {"when_you_need_to": "search graph properties", "code": 'R pggraph SEARCH "email" "alice@example.com" ->hits', "requires": ["adapter_contract:pggraph"]},
+        {"when_you_need_to": "walk from a seed node", "code": 'R pggraph TRAVERSE "public.accounts" "acct-1" ->nodes', "requires": ["adapter_contract:pggraph"]},
+    ],
     "queue": [
         {"when_you_need_to": "put a message on a queue", "code": 'queued = queue.Put "channel_name" payload', "requires": ["adapter_contract:queue"]},
         {"when_you_need_to": "read from a queue", "code": 'next = queue.get "channel_name"', "requires": ["adapter_contract:queue"]},
@@ -2216,6 +2370,8 @@ def step_examples(
         "memory": "memory", "store": "memory", "recall": "memory",
         "llm": "llm", "classify": "llm", "generate": "llm", "ai": "llm",
         "solana": "solana", "blockchain": "solana", "wallet": "solana", "transfer": "solana",
+        "pggraph": "pggraph", "graph": "pggraph", "traverse": "pggraph", "shortest_path": "pggraph",
+        "postgres": "pggraph", "relational": "pggraph", "evokoa": "pggraph",
     }
 
     matched_adapter = None
@@ -2231,6 +2387,7 @@ def step_examples(
         family_map = {
             "fs": "filesystem", "browser": "browser", "http": "http", "cache": "cache",
             "queue": "queue", "memory": "memory", "llm": "llm", "solana": "blockchain",
+            "pggraph": "pggraph",
         }
         matched_family = family_map.get(matched_adapter, "core")
     else:

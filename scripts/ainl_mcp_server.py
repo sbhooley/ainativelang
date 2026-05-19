@@ -430,6 +430,7 @@ _ADAPTER_CONTRACT_BUNDLE_KEYS: Tuple[str, ...] = (
     "browser",
     "fs",
     "cache",
+    "pggraph",
     "llm",
     "core",
     "http_or_browser",
@@ -1336,7 +1337,7 @@ def _load_capabilities() -> Dict[str, Any]:
     }
 
 
-_MCP_CONFIGURABLE_ADAPTERS: Set[str] = {"http", "fs", "cache", "sqlite", "a2a"}
+_MCP_CONFIGURABLE_ADAPTERS: Set[str] = {"http", "fs", "cache", "sqlite", "pggraph", "a2a"}
 
 
 def _required_adapters_from_ir(ir: Dict[str, Any]) -> List[str]:
@@ -1389,6 +1390,14 @@ def _suggested_adapters_payload(required: List[str], ir: Optional[Dict[str, Any]
             payload["cache"] = {"path": "<absolute-cache-json-path>"}
         elif adapter == "sqlite":
             payload["sqlite"] = {"db_path": "<absolute-sqlite-db-path>", "allow_write": False}
+        elif adapter == "pggraph":
+            payload["pggraph"] = {
+                "url": "<postgresql-dsn-or-set-AINL_POSTGRES_URL>",
+                "max_depth": 10,
+                "max_rows": 1000,
+                "default_schema": "public",
+                "allow_admin": False,
+            }
         elif adapter == "a2a":
             payload["a2a"] = {"allow_hosts": ["<agent-host>"], "timeout_s": 30.0}
     return payload
@@ -1423,7 +1432,15 @@ def _runtime_readiness_from_ir(ir: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # Lightweight contract check (Track 1.2): compare IR `R` lines to `tooling/ainl_get_started` ADAPTER_CONTRACTS.
-_CONTRACT_CHECK_ADAPTERS: Set[str] = {"http", "fs", "cache", "browser", "queue", "memory"}
+_CONTRACT_CHECK_ADAPTERS: Set[str] = {
+    "http",
+    "fs",
+    "cache",
+    "browser",
+    "queue",
+    "memory",
+    "pggraph",
+}
 
 
 class ContractValidationStatus:
@@ -1596,8 +1613,45 @@ def _missing_adapter_from_error_text(text: str) -> Optional[str]:
     return m.group(1).split(".", 1)[0].lower()
 
 
+def _pggraph_adapter_from_mcp_config(g: Dict[str, Any]) -> RuntimeAdapter:
+    """Build :class:`PggraphAdapter` from ``adapters.pggraph`` MCP config (+ postgres env fallbacks)."""
+    from adapters.pggraph import PggraphAdapter
+    from adapters.postgres import PostgresAdapter
+    from runtime.adapters.base import AdapterError
+
+    url = (g.get("url") or g.get("postgres_url") or os.environ.get("AINL_POSTGRES_URL") or "").strip() or None
+    host = (g.get("host") or os.environ.get("AINL_POSTGRES_HOST") or "").strip() or None
+    if not url and not host:
+        raise AdapterError(
+            "pggraph adapter requires adapters.pggraph.url or host "
+            "(or set AINL_POSTGRES_URL / AINL_POSTGRES_HOST)"
+        )
+    postgres = PostgresAdapter(
+        dsn=url,
+        host=host,
+        port=int(g.get("port") or os.environ.get("AINL_POSTGRES_PORT") or 5432),
+        database=(g.get("database") or g.get("dbname") or os.environ.get("AINL_POSTGRES_DB") or "").strip() or None,
+        user=(g.get("user") or os.environ.get("AINL_POSTGRES_USER") or "").strip() or None,
+        password=g.get("password") if "password" in g else os.environ.get("AINL_POSTGRES_PASSWORD"),
+        sslmode=(g.get("sslmode") or os.environ.get("AINL_POSTGRES_SSLMODE") or "require"),
+        sslrootcert=(g.get("sslrootcert") or os.environ.get("AINL_POSTGRES_SSLROOTCERT") or "").strip() or None,
+        timeout_s=float(g.get("timeout_s", 5.0)),
+        statement_timeout_ms=int(g.get("statement_timeout_ms", 5000)),
+        allow_write=False,
+        pool_min_size=int(g.get("pool_min", 1)),
+        pool_max_size=int(g.get("pool_max", 5)),
+    )
+    return PggraphAdapter(
+        postgres,
+        max_depth=g.get("max_depth"),
+        max_rows=g.get("max_rows"),
+        default_schema=str(g.get("default_schema") or "public"),
+        allow_admin=bool(g.get("allow_admin")),
+    )
+
+
 def _mcp_configurable_adapters_missing_from_registry(reg: "AdapterRegistry", ir: Dict[str, Any]) -> List[str]:
-    """IR-required adapters that must be registered in MCP (http/fs/cache/sqlite/a2a) but are absent from ``reg``."""
+    """IR-required adapters that must be registered in MCP (http/fs/cache/sqlite/pggraph/a2a) but are absent from ``reg``."""
     missing: List[str] = []
     for name in _required_adapters_from_ir(ir):
         if name not in _MCP_CONFIGURABLE_ADAPTERS:
@@ -2458,7 +2512,7 @@ def ainl_run(
     # end users to edit global config while still allowing strict, scoped IO.
     #
     # Schema mirrors the runner service:
-    # adapters: { enable: ["http","fs","cache","sqlite"], http: {...}, fs: {...}, cache: {...}, sqlite: {...} }
+    # adapters: { enable: ["http","fs","cache","sqlite","pggraph"], http: {...}, fs: {...}, cache: {...}, sqlite: {...}, pggraph: {...} }
     if isinstance(adapters, dict):
         enabled = set(adapters.get("enable") or [])
         if "http" in enabled:
@@ -2551,6 +2605,22 @@ def ainl_run(
                     timeout_s=float(s.get("timeout_s", 5.0)),
                 ),
             )
+        if "pggraph" in enabled:
+            g = adapters.get("pggraph") or {}
+            try:
+                reg.register("pggraph", _pggraph_adapter_from_mcp_config(g))
+            except Exception as e:
+                return _wiz(
+                    _annotate_run_return(
+                        {
+                            "ok": False,
+                            "trace_id": trace_id,
+                            "error": "adapter_config_error",
+                            "details": str(e),
+                        },
+                        strict,
+                    )
+                )
         if "a2a" in enabled:
             a2 = adapters.get("a2a") or {}
             allow_hosts = a2.get("allow_hosts") or []
