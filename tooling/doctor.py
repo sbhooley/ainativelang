@@ -178,6 +178,25 @@ def run_doctor(*, host: Optional[str] = None, json_output: bool = False, verbose
     else:
         checks.append(_ok("runtime_adapter_lists", "no host adapter allowlist/denylist env (IR-declared adapters allowed unless profile forbids)"))
 
+    # Adapter tier visibility (Core / Extended; both fully supported).
+    try:
+        repo_root = Path(__file__).resolve().parent.parent
+        registry = _read_json(repo_root / "ADAPTER_REGISTRY.json")
+        adapters = registry.get("adapters", {}) if isinstance(registry, dict) else {}
+        core_n = sum(1 for v in adapters.values() if isinstance(v, dict) and v.get("tier") == "core")
+        ext_n = sum(1 for v in adapters.values() if isinstance(v, dict) and v.get("tier") == "extended")
+        untiered = sum(1 for v in adapters.values() if isinstance(v, dict) and "tier" not in v)
+        total = core_n + ext_n + untiered
+        if total == 0:
+            checks.append(_warn("adapter_tiers", "ADAPTER_REGISTRY.json missing or empty; tier info unavailable"))
+        else:
+            detail = f"{core_n} core + {ext_n} extended (all supported; see docs/adapters/ADAPTER_TIERS.md)"
+            if untiered:
+                detail += f"; {untiered} untiered"
+            checks.append(_ok("adapter_tiers", detail))
+    except Exception as exc:  # pragma: no cover
+        checks.append(_warn("adapter_tiers", f"tier scan failed: {exc}"))
+
     user_base = Path(sys.prefix if hasattr(sys, "prefix") else Path.home())
     try:
         user_base = Path(

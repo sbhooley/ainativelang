@@ -81,8 +81,12 @@ def test_emit_solana_client_contains_registry_and_ir_blob():
 
 
 def test_solana_adapter_module_docstring_discoverability():
-    import adapters.solana
-    doc = adapters.solana.__doc__ or ""
+    # Canonical module (adapters.extended.solana) carries the discoverability
+    # docstring. The alias `adapters.solana` re-exports symbols via PEP 562
+    # but has its own short docstring describing the tier model — see
+    # docs/adapters/ADAPTER_TIERS.md.
+    import adapters.extended.solana
+    doc = adapters.extended.solana.__doc__ or ""
     assert "DISCOVERABILITY" in doc
     assert f"v{RUNTIME_VERSION}" in doc
     assert "single-quoted" in doc

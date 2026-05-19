@@ -998,6 +998,7 @@ For implementation and shipped-capability status, see:
 - Runner service with policy-gated `/run`, `/capabilities`, health/metrics: `scripts/runtime_runner_service.py`
 - Adapter privilege-tier metadata and security profiles: `tooling/adapter_manifest.json`, `tooling/security_profiles.json`
 - Security/privilege introspection tooling: `tooling/security_report.py`
+- Adapter tier model — **29 core + 16 extended (all supported, no deprecations)**: `docs/adapters/ADAPTER_TIERS.md`
 
 ### Use with care
 
