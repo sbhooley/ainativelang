@@ -1,0 +1,34 @@
+{
+  "initialized_at": "2026-03-31T06:00:42.283101+00:00",
+  "baselines_count": 3,
+  "comparison_points": {
+    "memory_state": "captured",
+    "cache_metrics": "captured",
+    "system_health": "captured",
+    "drift_indicators": "captured",
+    "module_status": "captured"
+  },
+  "drift_detection": {
+    "enabled": true,
+    "baseline_reference": "2026-04-09T06-00-44-850Z",
+    "last_drift_check": "2026-04-09T06:00:44.850632+00:00",
+    "drift_threshold_pct": 5.0,
+    "current_drift": {
+      "cache_pct": 1.9,
+      "memory_pct": 1.5,
+      "status": "within_threshold"
+    }
+  },
+  "health_trends": {
+    "metric_windows": [
+      "1h",
+      "24h",
+      "7d"
+    ],
+    "tracking_started": "2026-03-31-060042Z",
+    "latest_health_status": "nominal",
+    "alerts_enabled": true
+  },
+  "last_baseline_id": "2026-04-09T06-00-44-850Z",
+  "last_baseline_created": "2026-04-09T06:00:44.850632+00:00"
+}

@@ -6,6 +6,7 @@ Modes:
   - ``AINL_EMBEDDING_MODE=stub`` (default): deterministic hash vectors (no network; intended for tests and safe-default installs).
   - ``AINL_EMBEDDING_MODE=local``: dependency-free local embeddings (hashing-based; better than ``stub`` for rough top-k, still not model-semantic).
   - ``AINL_EMBEDDING_MODE=openai``: ``text-embedding-3-small`` via OpenAI-compatible API (needs ``OPENAI_API_KEY`` or ``LLM_API_KEY``).
+  - ``AINL_EMBEDDING_MODE=voyage``: ``voyage-4-large`` via Voyage AI API (needs ``VOYAGE_API_KEY``). Best-in-class retrieval quality.
 
 Verbs:
   - ``UPSERT_REF`` namespace kind record_id text
@@ -92,6 +93,35 @@ def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
     return dot / (na * nb)
 
 
+def _voyage_embed(text: str, dim: int = 1024) -> List[float]:
+    key = (os.environ.get("VOYAGE_API_KEY") or "").strip()
+    if not key:
+        raise AdapterError("embedding_memory voyage mode requires VOYAGE_API_KEY")
+    model = os.environ.get("AINL_EMBEDDING_MODEL", "voyage-4-large").strip()
+    payload = json.dumps({"model": model, "input": [text[:32000]]}).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.voyageai.com/v1/embeddings",
+        data=payload,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        raise AdapterError(f"embedding_memory voyage HTTP {e.code}: {e.read()[:500]!r}") from e
+    except Exception as e:
+        raise AdapterError(f"embedding_memory voyage request failed: {e}") from e
+    obj = json.loads(raw)
+    data = (obj.get("data") or [{}])[0]
+    emb = data.get("embedding")
+    if not isinstance(emb, list):
+        raise AdapterError("embedding_memory voyage: missing embedding array")
+    out = [float(x) for x in emb]
+    norm = math.sqrt(sum(x * x for x in out)) or 1.0
+    return [x / norm for x in out]
+
+
 def _openai_embed(text: str, dim: int) -> List[float]:
     key = (os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY") or "").strip()
     if not key:
@@ -154,6 +184,8 @@ class EmbeddingMemoryAdapter(RuntimeAdapter):
     def _embed(self, text: str) -> List[float]:
         mode = (os.environ.get("AINL_EMBEDDING_MODE") or "stub").strip().lower()
         dim = _DIM_LOCAL if mode in ("local", "offline") else _DIM_STUB
+        if mode in ("voyage",):
+            return _voyage_embed(text)
         if mode in ("openai", "api"):
             return _openai_embed(text, dim)
         if mode in ("local", "offline"):

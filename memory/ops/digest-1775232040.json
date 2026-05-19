@@ -1,0 +1,24 @@
+{
+  "id": "digest-1775232040",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "payload": {
+    "mention_count": 8,
+    "tiktok_recent": 3,
+    "spike": false,
+    "ts": 1775232040,
+    "readable_ts": "2026-04-03T16:00:40.396415Z",
+    "signals": [
+      "Routine intelligence consolidation"
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1775232040,
+  "run_mode": "normal"
+}

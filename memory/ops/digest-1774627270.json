@@ -1,0 +1,30 @@
+{
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "record_id": "digest-1774627270",
+  "payload": {
+    "mention_count": 1,
+    "tiktok_recent": 0,
+    "spike": false,
+    "ts": 1774627270,
+    "prev_mention_count": 1,
+    "web_search_available": false,
+    "note": "Brave API key unavailable; mention_count held from cache. TikTok monitor active (no new activity in 24h).",
+    "headline_summary": [
+      "Anthropic Claude central to US Iran military campaign (persistent)",
+      "Palantir DHS billion-dollar contract (active)",
+      "ICE airport deployments ongoing",
+      "Oil supply crunch / Iran war volatility (active)",
+      "Federal Reserve rate pressure from Trump (active)"
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1774627270,
+  "created_at": "2026-03-27T16:01:10.098994+00:00"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "digest-1774389945",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "payload": {
+    "mention_count": 8,
+    "tiktok_recent": 0,
+    "spike": true,
+    "ts": 1774389945,
+    "headlines": [
+      "LIVE: Iran fires dozen missile salvos at Israel (AP, 2026-03-24)",
+      "Airstrikes batter Iran as it attacks Israel and Gulf states (AP, 2026-03-24)",
+      "Strait of Hormuz choked \u2014 fuel prices skyrocketing (AP)",
+      "Philippines declares national energy emergency (AP)",
+      "Trump claims US-Iran talks; Iran denies direct negotiations (AP)",
+      "Pakistan offers to host U.S.-Iran talks; Witkoff+Kushner to represent US",
+      "Anthropic: Claude Opus 4.6 launched (Feb 2026)",
+      "Airport disruptions \u2014 DHS/ICE/Homeland Security budget standoff (AP)"
+    ],
+    "sources": [
+      "apnews.com",
+      "bbc.com",
+      "anthropic.com",
+      "dhs.gov"
+    ],
+    "prev_mention_count": null,
+    "is_first_run": true
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1774389945,
+  "created_at": "2026-03-24T22:05:45.795896+00:00"
+}

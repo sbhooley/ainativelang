@@ -1,0 +1,12 @@
+# AINL Store Baseline — Daily State Snapshot for Drift Detection
+# Executes every day at 02:00 UTC (21:00 EST previous day)
+S core cron "0 2 * * *"
+
+# Include baseline execution logic
+include "modules/common/generic_memory.ainl" as genmem
+include "intelligence/store_baseline.lang" as baseline
+
+# Trigger baseline snapshot and comparison
+L0:
+  Call baseline/store_baseline ->result
+  J result

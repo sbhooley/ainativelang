@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-04-01T02:00:36.767458",
+  "baseline_id": "baseline_2026-04-01_02-00",
+  "metrics": {
+    "memory_size_mb": 124.5,
+    "cache_entries": 1247,
+    "session_active": true,
+    "model": "anthropic/claude-haiku-4-5"
+  },
+  "state": {
+    "memory_files": 12,
+    "daily_logs": 19,
+    "total_memory_bytes": 130826240
+  },
+  "comparison_baseline": {
+    "timestamp_prev": "2026-03-31T02:00:00Z",
+    "change_delta": {
+      "memory_growth_bytes": 2048,
+      "new_entries": 2,
+      "stale_entries": 0
+    }
+  }
+}

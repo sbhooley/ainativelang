@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-30T06:52:31.193327",
+  "source": "intelligence/store_baseline.lang",
+  "compilation_status": "success",
+  "ir_metrics": {
+    "labels": 6,
+    "services": 0,
+    "types": 0,
+    "declarations": 0
+  },
+  "source_metrics": {
+    "lines": 19,
+    "bytes": 2154,
+    "tokens": 281
+  }
+}

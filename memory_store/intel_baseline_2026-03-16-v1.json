@@ -1,0 +1,16 @@
+{
+  "namespace": "intel",
+  "kind": "baseline",
+  "record_id": "2026-03-16-v1",
+  "payload": {
+    "text": "Based on current credible reporting, here's the revised outlook:\n\nWar status \u2013 Confirmed: U.S. and Israel began strikes on Iran on Feb 28, 2026; Khamenei killed; Iran retaliating with missiles/drones; Strait of Hormuz effectively blockaded; Kharg Island struck; no ceasefire. China/Russia providing intelligence; NATO not directly involved; Saudi\u2013Pakistan pact active.\n\nOil & economy \u2013 Strait disruption is historic but not a total closure yet. Oil price forecasts average $55\u201364/barrel for 2026, with spike scenarios up to $91 if closure persists. Goldman projects U.S. growth 2.6% in 2026; Fed expected to cut rates 50 bps; inflation around 2.7%. So major recession is not the current base case.\n\nImmigration \u2013 ICE expansion is real and severe: 25% more officers, 40% more arrests, record family separations (600+ children this year), detention at 73,000. This trend will continue; wartime enforcement increases.\n\nSurveillance \u2013 Palantir\u2013Anthropic controversy: DoD wants unrestricted AI use; Anthropic resists domestic surveillance. No Palantir\u2013OpenAI partnership, but Palantir's AIP integrates multiple LLMs (including GPT) for defense. Expect broader government AI deployment, but specific mass-surveillance integration remains debated.\n\nOverall \u2013 The war is real and disruptive, but the worst economic collapse predictions aren't supported by current forecasts. The domestic impact will be more about immigration enforcement and possibly expanded surveillance tools rather than hyperinflation or immediate depression. The Strait remains the key variable; if it fully closes for months, all forecasts worsen."
+  },
+  "ttl": 604800,
+  "source": "intelligence.store_baseline",
+  "tags": [
+    "intelligence",
+    "baseline"
+  ],
+  "valid_at": "2026-03-16T00:00:00Z",
+  "executed_at": "2026-03-27T06:01:56.768923+00:00"
+}

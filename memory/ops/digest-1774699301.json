@@ -1,0 +1,29 @@
+{
+  "id": "digest-1774699301",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "payload": {
+    "mention_count": 8,
+    "tiktok_recent": 0,
+    "spike": true,
+    "ts": 1774699301,
+    "signals": [
+      "Iran war - Trump farm measures referencing Iran war (Reuters)",
+      "DHS - House passed DHS funding bill through May 22",
+      "Immigration enforcement - DHS/border enforcement active",
+      "Consumer sentiment - fell to 3-month low, inflation/war worries (Reuters)",
+      "Anthropic - Claude Opus 4.6 launched Feb 5, 2026",
+      "Oil prices - Brent Crude at 114.57 (+1.78%)",
+      "Gold - 4489.70 (+2.59%) war/inflation hedge signal",
+      "Markets down - SPX -1.67%, NASDAQ -2.15% (risk-off)"
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1774699301
+}

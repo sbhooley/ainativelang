@@ -1,0 +1,62 @@
+{
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "record_id": "digest-2026-03-28T16:00:00.000Z",
+  "payload": {
+    "mention_count": 7,
+    "tiktok_recent": 0,
+    "spike": true,
+    "ts": "2026-03-28T16:00:00.000Z",
+    "sources": [
+      {
+        "source": "BBC",
+        "title": "Iran war splits older and younger conservatives - as pressure builds for Trump to find exit ramp",
+        "url": "https://www.bbc.com/news/articles/cjd8e4px12ro",
+        "tags": ["Iran war", "oil prices", "CPAC", "Trump"]
+      },
+      {
+        "source": "AP News",
+        "title": "Analysis: 1 month into war, Iran is using insurgent tactics and holding the world economy hostage",
+        "url": "https://apnews.com/article/iran-us-israel-war-analysis-23fb5978ef583308f0da4228a9a02c66",
+        "tags": ["Iran war", "Strait of Hormuz", "oil prices", "insurgent tactics"]
+      },
+      {
+        "source": "AP News",
+        "title": "LIVE: Yemen's Houthis claim responsibility for missile attack on Israel as war intensifies",
+        "url": "https://apnews.com/live/iran-war-israel-trump-03-28-2026",
+        "tags": ["Iran war", "Houthis", "Israel", "Middle East"]
+      },
+      {
+        "source": "AP News",
+        "title": "Iran maintains stranglehold on Strait of Hormuz",
+        "url": "https://apnews.com/article/strait-of-hormuz-shipping-oil-disruptions-2a8abe58648abd2d9c4785b4130bee0c",
+        "tags": ["Strait of Hormuz", "oil prices", "Iran war"]
+      },
+      {
+        "source": "AP News",
+        "title": "Trump / Hormuz markets pressure analysis",
+        "url": "https://apnews.com/article/trump-iran-hormuz-markets-bd5ad0e6999abf1cbdf1e7cfb8ea5109",
+        "tags": ["oil prices", "markets", "Federal Reserve adjacent", "Trump"]
+      },
+      {
+        "source": "Anthropic",
+        "title": "Introducing Claude Opus 4.6 - industry-leading model across agentic coding, tool use, finance",
+        "url": "https://www.anthropic.com/news",
+        "tags": ["Anthropic", "AI", "Claude"]
+      },
+      {
+        "source": "AP News",
+        "title": "Iran inflicting maximum pain on global economy through insurgency/attrition analysis",
+        "url": "https://apnews.com/article/iran-us-israel-war-attrition-analysis-5d7e50c3a6da57414bbf4a5e255e4a7e",
+        "tags": ["Iran war", "oil prices", "global economy"]
+      }
+    ]
+  },
+  "ttl": 604800,
+  "meta": {
+    "source": "intelligence.intelligence_digest",
+    "confidence": 1.0,
+    "tags": ["intelligence", "digest", "ops"],
+    "valid_at": "2026-03-28T16:00:00.000Z"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "digest-1775044800",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "payload": {
+    "mention_count": 12,
+    "tiktok_recent": 5,
+    "spike": true,
+    "ts": 1775044800,
+    "signals": [
+      "Iran-US tensions escalating (multiple sources)",
+      "Oil markets volatile (Brent +2.3%)",
+      "Federal Reserve policy signals (rate expectations)",
+      "Anthropic & Palantir AI development updates",
+      "DHS immigration enforcement activity",
+      "TikTok platform policy changes (multiple posts)",
+      "Surveillance AI regulations in Congress",
+      "Economic data: inflation pressures, consumer sentiment",
+      "Defense spending announcements",
+      "Currency/commodities hedge activity (gold, EUR/USD)"
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1775044800
+}

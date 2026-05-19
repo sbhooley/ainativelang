@@ -1,0 +1,52 @@
+{
+  "id": "digest-1774800086",
+  "timestamp": "2026-03-29T16:01:26.626378.000Z",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "payload": {
+    "mention_count": 8,
+    "tiktok_recent": 2,
+    "spike": true,
+    "ts": 1774800086,
+    "ts_iso": "2026-03-29T16:01:26.626378.000Z",
+    "comparison": {
+      "prev_mentions": 6,
+      "prev_tiktok": 0,
+      "mentions_delta": 2,
+      "tiktok_delta": 2
+    },
+    "signals": [
+      "Iran war - ongoing geopolitical tensions (Reuters/AP/BBC)",
+      "Strait of Hormuz - shipping pressures affecting oil prices",
+      "Oil prices - elevated due to regional conflict",
+      "Federal Reserve - monitoring inflation and geopolitical risk",
+      "DHS/Immigration - enforcement operations ongoing",
+      "Palantir - AI/surveillance technology deployment updates",
+      "Anthropic - AI model development and market positioning",
+      "TikTok activity - elevated engagement on geopolitical topics"
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": "2026-03-29T16:01:26.626378.000Z",
+  "meta": {
+    "run_type": "AINL Intelligence Digest (Graph-Executed)",
+    "sources_checked": [
+      "Reuters",
+      "AP News",
+      "BBC",
+      "Federal Reserve",
+      "DHS",
+      "Defense.gov",
+      "Anthropic",
+      "Palantir",
+      "TikTok (simulated)"
+    ],
+    "confidence": 0.95
+  }
+}

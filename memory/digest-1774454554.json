@@ -1,0 +1,41 @@
+{
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "id": "digest-1774454554",
+  "payload": {
+    "mention_count": 5,
+    "tiktok_recent": 0,
+    "spike": false,
+    "ts": 1774454554,
+    "mentions": [
+      {
+        "source": "reuters.com",
+        "headline": "Disney/OpenAI Sora project collaboration blindsided (OpenAI dropped Sora tool)"
+      },
+      {
+        "source": "anthropic.com",
+        "headline": "Claude Opus 4.6 released \u2014 agentic coding, computer use, tool use, finance"
+      },
+      {
+        "source": "bbc.com",
+        "headline": "What does TikTok deal mean for US users?"
+      },
+      {
+        "source": "bbc.com",
+        "headline": "BBC reporter tests AI anti-shoplifting tech"
+      },
+      {
+        "source": "bbc.com",
+        "headline": "Meet MOFO: will.i.am rapping AI toy"
+      }
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1774454554
+}

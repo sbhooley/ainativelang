@@ -1,0 +1,22 @@
+{
+  "record_id": "digest-1775592036",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "payload": {
+    "mention_count": 5,
+    "tiktok_recent": 127,
+    "spike": true,
+    "ts": 1775592036,
+    "sources_monitored": 13,
+    "topics_monitored": 9
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1775592036,
+  "created_at": 1775592036
+}

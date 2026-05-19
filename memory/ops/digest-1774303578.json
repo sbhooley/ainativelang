@@ -1,0 +1,43 @@
+{
+  "id": "digest-1774303578",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1774303578,
+  "ttl": 604800,
+  "created_at": "2026-03-23T22:05:00Z",
+  "payload": {
+    "mention_count": 10,
+    "tiktok_recent": null,
+    "spike": true,
+    "ts": 1774303578,
+    "prev_mention_count": 9,
+    "summary": {
+      "top_signals": [
+        "US-Iran war: Alarming civilian cost \u2014 pharmacist, lifestyle blogger killed (BBC, 23 Mar)",
+        "Oil falls + shares rebound \u2014 Trump says 'very good and productive' talks held to end war (BBC, 23 Mar)",
+        "ICE agents deployed to 14 major US airports \u2014 security queues stretch for hours (BBC, 23 Mar)",
+        "Slovenia first EU country to introduce fuel rationing (50L/day cap) \u2014 Hormuz supply shock (BBC, 23 Mar)",
+        "LaGuardia crash investigation \u2014 Air Canada AC8646 hits fire truck, 2 pilots killed (BBC, 23 Mar)",
+        "Colombia military plane crash with 125 people (BBC, 23 Mar)",
+        "Italy Meloni vulnerable after referendum defeat (BBC, 23 Mar)",
+        "Anthropic news: Claude Opus 4.6 introduced Feb 5 2026 \u2014 AI model race continues",
+        "Palantir newsroom unavailable \u2014 high demand inference (surveillance/defense AI demand elevated)",
+        "Federal Reserve: Policy stress from oil supply shock; Iran conflict Day 24+"
+      ],
+      "sources": [
+        "BBC World RSS (live)",
+        "Anthropic News",
+        "Palantir Newsroom"
+      ],
+      "tiktok_note": "TikTok adapter unavailable (ainl_adapters module missing); no live TikTok data this cycle",
+      "cache_status": "delta_vs_prev",
+      "spike_reason": "mention_count(10) > prev(9)"
+    }
+  }
+}

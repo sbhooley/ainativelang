@@ -1,0 +1,32 @@
+{
+  "id": "digest-1774281686",
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "source": "intelligence.intelligence_digest",
+  "tags": ["intelligence", "digest", "ops"],
+  "valid_at": 1774281686,
+  "ttl": 604800,
+  "created_at": "2026-03-23T16:01:26Z",
+  "payload": {
+  "mention_count": 9,
+  "tiktok_recent": null,
+  "spike": true,
+  "ts": 1774281686,
+  "summary": {
+    "top_signals": [
+      "US-Iran war Day 24 — US+Israel wide-scale strikes across Iran",
+      "Strait of Hormuz: Trump deadline for Iran to reopen or face power-plant strikes",
+      "Trump claims 'major points of agreement' after nuclear talks; Iran denies talks occurred",
+      "Iran allegedly downed US F-35; Iran denies Diego Garcia missile attack",
+      "Trump pauses strikes, says seeking deal with Iran",
+      "Oil prices / energy supply chain risk elevated",
+      "BBC: AI-generated explicit TikTok content removed after investigation",
+      "Palantir / surveillance-AI demand likely rising amid conflict",
+      "Federal Reserve policy stress from oil supply shock risk"
+    ],
+    "sources": ["Al Jazeera (live)", "BBC News AI"],
+    "tiktok_note": "Adapter unavailable (missing ainl_adapters module); BBC reports AI-content TikTok moderation action 2 days prior",
+    "cache_status": "first_run"
+  }
+}
+}

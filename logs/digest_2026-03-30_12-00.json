@@ -1,0 +1,96 @@
+{
+  "execution_timestamp": "2026-03-30T12:00:49Z",
+  "pipeline": "AINL Intelligence Digest",
+  "status": "completed",
+  "graph_compiled": true,
+  "results": {
+    "web_news_scan": {
+      "status": "success",
+      "total_mentions": 8,
+      "sources_monitored": [
+        "reuters.com",
+        "apnews.com",
+        "bbc.com",
+        "federalreserve.gov",
+        "dhs.gov",
+        "palantir.com",
+        "anthropic.com",
+        "defense.gov"
+      ],
+      "mentions_by_source": {
+        "reuters": 3,
+        "apnews": 2,
+        "bbc": 1,
+        "federalreserve": 1,
+        "palantir": 1,
+        "anthropic": 0,
+        "dhs": 0,
+        "defense": 0
+      },
+      "keywords_searched": [
+        "U.S. Iran war",
+        "Strait of Hormuz",
+        "oil prices",
+        "ICE",
+        "Palantir",
+        "Anthropic",
+        "Federal Reserve",
+        "immigration enforcement",
+        "surveillance AI"
+      ]
+    },
+    "tiktok_activity": {
+      "status": "success",
+      "window_hours": 24,
+      "activity_count": 0,
+      "posts_detected": 0
+    },
+    "spike_detection": {
+      "status": "success",
+      "previous_mention_count": 3,
+      "current_mention_count": 8,
+      "spike_detected": true,
+      "delta": 5
+    },
+    "memory_consolidation": {
+      "status": "success",
+      "records_created": 1,
+      "record_id": "digest-2026-03-30T12:00:49.729588",
+      "namespace": "ops",
+      "kind": "intel.digest",
+      "ttl_seconds": 604800,
+      "payload": {
+        "mention_count": 8,
+        "tiktok_recent": 0,
+        "spike": true,
+        "ts": "2026-03-30T12:00:49.729588"
+      }
+    },
+    "cache_updates": {
+      "status": "success",
+      "entries_updated": 3,
+      "updates": {
+        "digest.last_mention_count": 8,
+        "digest.last_tiktok_count": 0,
+        "digest.last_digest_ts": "2026-03-30T12:00:49.729588"
+      }
+    },
+    "notifications": {
+      "status": "queued",
+      "count": 1,
+      "message": "Intel digest SPIKE mentions=8 tiktok=0",
+      "priority": "high"
+    }
+  },
+  "execution_summary": {
+    "graph_compiled": true,
+    "mentions_found": true,
+    "mention_count": 8,
+    "tiktok_activity": false,
+    "spike_detected": true,
+    "memory_records_created": 1,
+    "cache_entries_updated": 3,
+    "notifications_queued": 1,
+    "total_execution_time_seconds": 22
+  }
+}

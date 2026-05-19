@@ -1,0 +1,38 @@
+{
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "record_id": "digest-1774476248",
+  "payload": {
+    "mention_count": 20,
+    "tiktok_recent": 0,
+    "spike": true,
+    "ts": 1774476248,
+    "prev_mention_count": 5,
+    "sources": {
+      "palantir": 4,
+      "iran_oil": 6,
+      "ice_immigration": 5,
+      "anthropic_ai": 4,
+      "federal_reserve": 1
+    },
+    "headline_summary": [
+      "Anthropic's Claude central to US Iran military campaign (WaPo)",
+      "Billion-dollar Palantir DHS contract \u2014 unprecedented AI access",
+      "Pentagon expands Palantir AI in new defense contract",
+      "Trump pushes Powell: cut rates 'IMMEDIATELY' amid Iran war volatility",
+      "ICE deployed to airports; hundreds more agents to Minnesota",
+      "Oil supply crunch spreads; Saudi push to escalate Iran conflict",
+      "Philippines declares national energy emergency",
+      "Anthropic Claude Sonnet 4.6 released \u2014 breakneck pace continues"
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1774476248,
+  "created_at": "2026-03-25T22:04:08.852990+00:00"
+}

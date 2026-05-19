@@ -1,0 +1,35 @@
+{
+  "namespace": "ops",
+  "kind": "intel.digest",
+  "record_id": "digest-1774440113",
+  "payload": {
+    "mention_count": 6,
+    "tiktok_recent": 0,
+    "spike": false,
+    "ts": 1774440113,
+    "prev_mention_count": 9,
+    "sources": {
+      "palantir": 1,
+      "iran_oil": 2,
+      "ice_immigration": 1,
+      "surveillance_ai": 1,
+      "openai_sora": 1
+    },
+    "headline_summary": [
+      "Palantir wins FCA AI contract; lawmakers critical of data access",
+      "Trump-Iran tensions: 15-point plan to Tehran, oil prices spike concerns",
+      "ICE agents deployed to US airports amid TSA shutdown",
+      "Wall Street volatile on oil fears + US-Iran war uncertainty",
+      "Intellexa surveillance founder appeals Greek wiretapping conviction"
+    ]
+  },
+  "ttl": 604800,
+  "source": "intelligence.intelligence_digest",
+  "tags": [
+    "intelligence",
+    "digest",
+    "ops"
+  ],
+  "valid_at": 1774440113,
+  "created_at": "2026-03-25T12:01:53.185535+00:00"
+}
