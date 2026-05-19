@@ -58,8 +58,8 @@ real_and_working:
     test_named_py_files: 225
     lines_python_under_tests: 308207
     lines_python_under_tests_rounded: "~308k"
-    pytest_collect_only_selected: 1461
-    pytest_collect_only_total: 1500
+    pytest_collect_only_selected: 1460
+    pytest_collect_only_total: 1499
     pytest_deselected: 39
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 
