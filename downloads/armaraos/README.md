@@ -10,11 +10,11 @@ Direct-download binaries for the marketing site ([ainativelang.com/armaraos](htt
 **Canonical URLs (after merge to `main`):**
 
 ```
-https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/ArmaraOS_0.7.8_osxARM.dmg
+https://media.githubusercontent.com/media/sbhooley/ainativelang/main/downloads/armaraos/ArmaraOS_0.7.8_osxARM.dmg
 https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/ArmaraOS_0.7.8_arm64-setup.exe
 ```
 
-Large `.dmg` files use **Git LFS** (over GitHub’s 100 MiB blob limit).
+Large `.dmg` files use **Git LFS** (over GitHub’s 100 MiB blob limit). Link LFS blobs with **`media.githubusercontent.com`**, not `raw.githubusercontent.com` (raw serves the LFS pointer text).
 
 Add new builds here when tagging a desktop release; update `ainativelangweb/public/downloads/armaraos/latest.json` and `config/site.ts` → `latestArmaraosReleaseTag` in the website repo.
 
