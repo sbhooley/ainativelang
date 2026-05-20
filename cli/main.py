@@ -2504,6 +2504,48 @@ def main() -> None:
     )
     initp.set_defaults(func=cmd_init)
 
+    # ── estimate: compile-time token cost estimator ──────────────────────────
+    def cmd_estimate(args: argparse.Namespace) -> int:
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from tooling.cost_estimator import estimate_file_cost, MODEL_PRICING
+
+        try:
+            report = estimate_file_cost(args.file, model=args.model)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+
+        print(report.format(style=args.format))
+        return 0
+
+    estp = sub.add_parser(
+        "estimate",
+        help="Estimate compile-time token cost for an .ainl graph before execution",
+    )
+    estp.add_argument(
+        "file",
+        help="Path to .ainl or .lang graph file",
+    )
+    estp.add_argument(
+        "--model",
+        default="gpt-4o",
+        help=(
+            "Model to use for pricing (default: gpt-4o). "
+            "Options: gpt-4o, gpt-4o-mini, gpt-4.1, gpt-3.5-turbo, "
+            "claude-sonnet-4-6, claude-haiku-4-5, claude-opus-4-6, "
+            "gemini-1.5-pro, gemini-1.5-flash"
+        ),
+    )
+    estp.add_argument(
+        "--format",
+        choices=["table", "summary", "json"],
+        default="table",
+        help="Output format: table (default), summary, or json",
+    )
+    estp.set_defaults(func=cmd_estimate)
+
     args = ap.parse_args()
     raise SystemExit(args.func(args))
 
