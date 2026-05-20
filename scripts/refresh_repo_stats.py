@@ -72,12 +72,51 @@ def _count_lines(path: Path) -> int:
     return n
 
 
+_TESTS_IGNORED_DIR_NAMES = frozenset(
+    {
+        "__pycache__",
+        "node_modules",
+        "data",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+    }
+)
+
+
+def _is_ignored_tests_dir_segment(seg: str) -> bool:
+    """Return True for path segments that should never be walked when counting
+    test sources.
+
+    Filters cover:
+      * cache / tooling dirs (``__pycache__``, ``.pytest_cache``, …)
+      * nested virtualenvs inside the tests tree (``.venv``, ``venv``,
+        ``.venv-ainl``, ``tests/emits/server/.venv``, …) — these are not source
+        but `Path.rglob` would otherwise count every stdlib + site-packages
+        ``*.py`` under them, inflating local counts by ~800–1000 files and
+        causing the Repo stats CI workflow to flap (CI has no nested venv, so
+        committed snapshots written from a polluted local tree never match
+        ``--check`` on Ubuntu).
+      * data fixtures dir (``tests/data``) — ignored in .gitignore, not source.
+    """
+    if seg in _TESTS_IGNORED_DIR_NAMES:
+        return True
+    if seg.startswith(".") and (
+        "venv" in seg or seg in {".direnv", ".git"}
+    ):
+        return True
+    if seg.startswith("venv") or seg == "env" or seg.startswith("env-"):
+        return True
+    return False
+
+
 def _iter_tests_py(root: Path):
     tests = root / "tests"
     if not tests.is_dir():
         return
     for p in tests.rglob("*.py"):
-        if "__pycache__" in p.parts:
+        if any(_is_ignored_tests_dir_segment(seg) for seg in p.parts):
             continue
         yield p
 
@@ -457,6 +496,52 @@ def main() -> int:
             print(
                 "repo-stats: STATUS.yaml or AGENTS.md are out of date; run:",
                 "python scripts/refresh_repo_stats.py",
+                file=sys.stderr,
+            )
+            import difflib
+
+            if not status_ok:
+                old_lines = _normalize_status_yaml_for_repo_stats_compare(
+                    old_status
+                ).splitlines(keepends=True)
+                new_lines = _normalize_status_yaml_for_repo_stats_compare(
+                    new_status
+                ).splitlines(keepends=True)
+                diff = "".join(
+                    difflib.unified_diff(
+                        old_lines,
+                        new_lines,
+                        fromfile="STATUS.yaml (committed)",
+                        tofile="STATUS.yaml (would-regenerate)",
+                        n=2,
+                    )
+                )
+                if diff:
+                    print("--- STATUS.yaml diff ---", file=sys.stderr)
+                    print(diff, file=sys.stderr)
+            if not agents_ok:
+                old_lines = old_agents.splitlines(keepends=True)
+                new_lines = new_agents.splitlines(keepends=True)
+                diff = "".join(
+                    difflib.unified_diff(
+                        old_lines,
+                        new_lines,
+                        fromfile="AGENTS.md (committed)",
+                        tofile="AGENTS.md (would-regenerate)",
+                        n=2,
+                    )
+                )
+                if diff:
+                    print("--- AGENTS.md diff ---", file=sys.stderr)
+                    print(diff, file=sys.stderr)
+            print(
+                f"--- stats snapshot ---\n"
+                f"compiler={s.compiler_lines} runtime={s.runtime_lines} cli={s.cli_lines} "
+                f"preprocessor={s.preprocessor_lines} adapters={s.adapter_py_files} "
+                f"examples={s.examples_ainl_files} tests_py={s.tests_py_files} "
+                f"test_named={s.tests_test_named_py} lines_tests={s.tests_python_lines} "
+                f"pytest_selected={s.pytest_selected} pytest_total={s.pytest_total} "
+                f"pytest_deselected={s.pytest_deselected} pytest_err={s.pytest_collect_error}",
                 file=sys.stderr,
             )
             return 2

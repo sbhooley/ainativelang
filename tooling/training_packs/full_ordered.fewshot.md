@@ -449,7 +449,7 @@ L1:
   Set reflect_abort false
   Call reflect/ENTRY ->r_ok
 
-  Set reflect_trajectory_text "{\"outcome\": \"fail\"}"
+  Set reflect_trajectory_text "outcome=fail"
   Set reflect_traj_nonempty 1
   Set reflect_has_fail_pattern true
   Set reflect_abort false
@@ -869,9 +869,8 @@ wishlist_02_vector_semantic_search:
 # Validate: python -m cli.main validate examples/wishlist/03_parallel_fanout.ainl --strict
 
 wishlist_03_parallel_fanout:
-  in:
+  in: fan_json
 
-  fan_json = "[[\"core\",\"add\",2,3],[\"core\",\"mul\",4,5],[\"core\",\"concat\",\"a\",\"b\"]]"
   R fanout.ALL fan_json ->results
   out results
 ```
@@ -994,7 +993,7 @@ wishlist_06_feedback_memory:
 S app core noop
 
 L1:
-  Set fan_json "[[\"http\",\"GET\",\"http://example.com/\"],[\"http\",\"GET\",\"http://example.com/\"]]"
+  X fan_json ctx.fan_json
   R fanout.ALL fan_json ->bundle
   J bundle
 ```
@@ -1345,4 +1344,575 @@ openclaw_handoff:
   in: digest_summary
   merged = core.CONCAT "openclaw_stage=ainl_ingest " digest_summary
   out merged
+```
+
+## 52. `examples/browser/browser_visit_minimal.ainl`
+- Primary: `browser_navigate`
+- Secondary: `adapter_browser`
+
+```ainl
+# examples/browser/browser_visit_minimal.ainl
+#
+# Drive a real Chrome/Chromium browser via the ArmaraOS daemon (CDP under the hood).
+# The `browser` adapter is a thin proxy to ArmaraOS's `browser_*` tools — see
+# adapters/browser.py and AGENTS.md → "Available Adapters".
+#
+# Modes (second arg to NAVIGATE / SESSION_START):
+#   "headless" — default; no visible window (fastest)
+#   "headed"   — visible window; use when sites detect headless or you want to watch
+#   "attach"   — connect to a Chrome the user launched with
+#                  `--remote-debugging-port=9222` (uses real cookies/profile)
+#
+# Validate: ainl validate examples/browser/browser_visit_minimal.ainl --strict
+# Run (requires ArmaraOS daemon on http://127.0.0.1:4200; set ARMARAOS_API_KEY if needed):
+#   ainl run examples/browser/browser_visit_minimal.ainl
+#
+# Optional env:
+#   ARMARAOS_API_BASE       (default: http://127.0.0.1:4200)
+#   ARMARAOS_API_KEY        (bearer token if the daemon enforces auth)
+#   AINL_BROWSER_AGENT_ID   (session tag; default: ainl-default)
+#   AINL_BROWSER_TIMEOUT_S  (per-request timeout; default: 60)
+
+S app browser noop
+
+L_main:
+  R browser.NAVIGATE "https://example.com" "headless" ->page
+  R browser.WAIT "h1" 5000 ->visible
+  R browser.RUN_JS "document.title" ->title
+  J title
+```
+
+## 53. `examples/http/http_machine_payment_flow_compact.ainl`
+- Primary: `http_machine_payment_flow`
+- Secondary: `http_payment_frame`
+
+```ainl
+# HTTP machine payments (x402 / MPP) — graph shape + frame contract.
+#
+# Opcode form: compact ``if http_err == "payment_required":`` currently emits a
+# broken ``Set`` for the predicate in graph mode; use ``R core.EQ`` + ``If`` until fixed.
+#
+# Requires ``http`` with ``payment_profile`` not ``none`` for real 402 probes.
+# One-shot local demo (402 + proof round-trip, no external paywall):
+#   python scripts/run_http_machine_payment_roundtrip_demo.py
+#
+# Validate:  ainl validate examples/http/http_machine_payment_flow_compact.ainl --strict
+# Run (plain):  ainl run examples/http/http_machine_payment_flow_compact.ainl
+# Run (402-capable adapter + frame url):
+#   ainl run examples/http/http_machine_payment_flow_compact.ainl \
+#     --enable-adapter http --http-allow-host 127.0.0.1 --http-payment-profile auto \
+#     --frame-json '{"url":"http://127.0.0.1:PORT/"}'
+#
+# MCP / ArmaraOS: adapters.http.payment_profile + allow_hosts; proofs via frame:
+#   frame["http_payment"] = {"x402": {"payment_signature": "..."}}
+#
+# Hub: docs/integrations/README.md · contract: docs/integrations/HTTP_MACHINE_PAYMENTS.md
+#
+# frame: url: string
+# frame: http_payment: dict (optional; merged on outbound http GET)
+
+S app core noop
+
+L_entry:
+  Set url $url
+  Set http_payment $http_payment
+  R http.GET url {} 15 ->res
+  R core.GET res "error" ->http_err
+  R core.EQ http_err "payment_required" ->pay_hit
+  If pay_hit ->L_need ->L_ok
+
+L_need:
+  Set _out "payment_required"
+  J _out
+
+L_ok:
+  R core.GET res "status" ->st
+  J st
+```
+
+## 54. `examples/compact/fs_write_compact.ainl`
+- Primary: `fs_write_compact`
+- Secondary: `adapter_fs`
+
+```ainl
+# examples/compact/fs_write_compact.ainl
+# Minimal strict-valid compact filesystem write example.
+# Demonstrates fs.write with lowercase verb per adapter contract.
+#
+# Validate: ainl validate examples/compact/fs_write_compact.ainl --strict
+# Run:      ainl run examples/compact/fs_write_compact.ainl
+#           (requires fs adapter with root configured)
+#
+# frame: output_path: string
+# frame: content: string
+
+fs_writer:
+  in: output_path content
+
+  result = fs.write output_path content
+  ok = core.GET result "ok"
+  bytes_written = core.GET result "bytes"
+  summary = core.CONCAT "Wrote " bytes_written " bytes to " output_path
+
+  out summary
+```
+
+## 55. `examples/compact/github_raw_fetch_compact.ainl`
+- Primary: `github_raw_fetch_compact`
+- Secondary: `adapter_http`
+
+```ainl
+# GitHub raw-file fetch (compact syntax).
+#
+# Pattern for ArmaraOS agents that have `http` (and shell_exec / web) but no
+# dedicated `github` adapter: pull a single file from a public repo by URL.
+# For private repos, supply a token via the headers dict argument:
+#   {Authorization: "Bearer <PAT>"}
+#
+# This is the "download a piece" half of "analyze a GitHub repo locally".
+# To pull a whole repo, agents typically shell out:
+#   R shell_exec.RUN "git clone --depth 1 https://github.com/<owner>/<repo>.git" ->_
+# then call file_list / file_read inside the agent workspace.
+#
+# Validate: ainl validate examples/compact/github_raw_fetch_compact.ainl --strict
+# Run:      ainl run examples/compact/github_raw_fetch_compact.ainl
+
+github_raw_fetch:
+  in: owner repo branch path
+  base = core.CONCAT "https://raw.githubusercontent.com/" owner
+  with_repo = core.CONCAT base "/" repo
+  with_branch = core.CONCAT with_repo "/" branch
+  url = core.CONCAT with_branch "/" path
+  res = http.GET url {} 15
+  status = core.GET res "status"
+  body = core.GET res "body"
+  out body
+```
+
+## 56. `examples/workflows/data_pipeline.ainl`
+- Primary: `workflow_order_dispatch`
+- Secondary: `multi_adapter_branching`
+
+```ainl
+# examples/workflows/data_pipeline.ainl
+#
+# Multi-source e-commerce order processing pipeline.
+#
+# Ingests an order event, validates it, enriches with customer tier and product
+# data via HTTP, classifies fraud risk via IR threshold branches, routes by
+# fulfilment type (digital / physical / subscription), applies tier-specific
+# discount logic, conditionally generates a personalised confirmation email
+# with LLM only for high-value / VIP orders, persists processing state in cache,
+# and returns a structured dispatch record.
+#
+# Adapters: http, core, llm, cache, memory
+# LLM calls per run:  0 (standard orders)  |  1 (VIP or high-value orders)
+# Zero-token IR branches (8 routing decisions):
+#   1. order_valid check
+#   2. fraud_score > threshold (block vs proceed)
+#   3. fulfilment type: digital vs physical vs subscription
+#   4. order_value > vip_threshold (tier escalation)
+#   5. customer_tier == "enterprise" (custom SLA path)
+#   6. discount_eligible check
+#   7. inventory_available (backorder vs immediate)
+#   8. generate_email flag (LLM only for VIP/high-value)
+#
+# Real-world deployments:
+#   • Post-payment webhook processor (Stripe / Paddle → order service)
+#   • Shopify order fulfiment automation with customer-tier-aware routing
+#   • SaaS subscription lifecycle manager (new / renewal / upgrade events)
+#   • B2B order management with enterprise SLA routing
+#
+# Equivalent Python:     benchmarks/handwritten_baselines/authoring_density/data_pipeline.py
+# Equivalent TypeScript: benchmarks/handwritten_baselines/authoring_density/data_pipeline.ts
+#
+# Validate: ainl validate examples/workflows/data_pipeline.ainl --strict
+# Run:      ainl run examples/workflows/data_pipeline.ainl
+#
+# frame: order_id        — unique order identifier (e.g. "ORD-2026-8821")
+# frame: customer_id     — customer identifier
+# frame: product_id      — product SKU being ordered
+# frame: order_value     — order total in USD (numeric string, e.g. "1250.00")
+# frame: fulfilment_type — "digital", "physical", or "subscription"
+# frame: customer_api    — base URL for customer enrichment endpoint
+# frame: product_api     — base URL for product/inventory endpoint
+
+S app core noop
+
+L_start:
+  R core.CONCAT "order_state:" order_id ->state_key
+  R cache.GET state_key ->cached_state
+  If cached_state ->L_already_processed ->L_validate
+
+L_already_processed:
+  R core.CONCAT "duplicate:" order_id ->dup_msg
+  J dup_msg
+
+L_validate:
+  R core.GT order_value 0 ->order_valid
+  If order_valid ->L_enrich_customer ->L_invalid_order
+
+L_invalid_order:
+  R cache.SET state_key "rejected:invalid" ->_
+  J "rejected:invalid_order_value"
+
+L_enrich_customer:
+  R core.CONCAT customer_api customer_id ->cust_url
+  R http.GET cust_url {} 10 ->cust_resp
+  R core.GET cust_resp "body" ->cust_data
+  R core.GET cust_data "tier" ->customer_tier
+  R core.GET cust_data "fraud_score" ->fraud_score_raw
+  R core.GET cust_data "discount_pct" ->discount_pct_raw
+  R core.INT fraud_score_raw ->fraud_score
+  R core.GT fraud_score 75 ->is_high_fraud
+  If is_high_fraud ->L_block_fraud ->L_enrich_product
+
+L_block_fraud:
+  R cache.SET state_key "rejected:fraud" ->_
+  R core.CONCAT "blocked:fraud_score=" fraud_score_raw ->block_msg
+  J block_msg
+
+L_enrich_product:
+  R core.CONCAT product_api product_id ->prod_url
+  R http.GET prod_url {} 10 ->prod_resp
+  R core.GET prod_resp "body" ->prod_data
+  R core.GET prod_data "name" ->product_name
+  R core.GET prod_data "inventory" ->inventory_raw
+  R core.GET prod_data "category" ->product_category
+  R core.INT inventory_raw ->inventory
+  R core.EQ fulfilment_type "digital" ->is_digital
+  If is_digital ->L_route_digital ->L_check_physical
+
+L_check_physical:
+  R core.EQ fulfilment_type "physical" ->is_physical
+  If is_physical ->L_route_physical ->L_route_subscription
+
+L_route_digital:
+  R core.GT order_value 500 ->is_highval_digital
+  If is_highval_digital ->L_vip_path ->L_standard_digital
+
+L_standard_digital:
+  R cache.SET state_key "processing:digital" ->_
+  R core.CONCAT "dispatch:digital:immediate:" product_id ->dispatch
+  J dispatch
+
+L_route_physical:
+  R core.GT inventory 0 ->in_stock
+  If in_stock ->L_physical_available ->L_physical_backorder
+
+L_physical_available:
+  R core.GT order_value 500 ->is_highval_phys
+  If is_highval_phys ->L_vip_path ->L_standard_physical
+
+L_standard_physical:
+  R cache.SET state_key "processing:physical" ->_
+  R core.CONCAT "dispatch:physical:warehouse:" product_id ->dispatch
+  J dispatch
+
+L_physical_backorder:
+  R cache.SET state_key "backorder:physical" ->_
+  R core.CONCAT "backorder:physical:notify:" customer_id ->dispatch
+  J dispatch
+
+L_route_subscription:
+  R core.GET cust_data "subscription_id" ->sub_id
+  R core.GT order_value 200 ->is_highval_sub
+  If is_highval_sub ->L_vip_path ->L_standard_subscription
+
+L_standard_subscription:
+  R cache.SET state_key "processing:subscription" ->_
+  R core.CONCAT "dispatch:subscription:renew:" sub_id ->dispatch
+  J dispatch
+
+L_vip_path:
+  R core.EQ customer_tier "enterprise" ->is_enterprise
+  If is_enterprise ->L_enterprise_sla ->L_vip_standard
+
+L_enterprise_sla:
+  R core.CONCAT "Generate a professional enterprise order confirmation for " customer_id ->ep1
+  R core.CONCAT ep1 " ordering " ->ep2
+  R core.CONCAT ep2 product_name ->ep3
+  R core.CONCAT ep3 ". Mention dedicated account manager, priority SLA, and invoice terms." ->ent_email_prompt
+  R llm.COMPLETION ent_email_prompt 250 ->ent_email_r
+  R core.GET ent_email_r "content" ->confirmation_email
+  R cache.SET state_key "processing:enterprise_vip" ->_
+  R memory.APPEND "orders" "vip_enterprise" order_id confirmation_email null ->_
+  J confirmation_email
+
+L_vip_standard:
+  R core.CONCAT "Generate a warm VIP order confirmation for " customer_id ->vp1
+  R core.CONCAT vp1 " ordering " ->vp2
+  R core.CONCAT vp2 product_name ->vp3
+  R core.CONCAT vp3 ". Mention priority handling, estimated delivery, and loyalty points." ->vip_email_prompt
+  R llm.COMPLETION vip_email_prompt 200 ->vip_email_r
+  R core.GET vip_email_r "content" ->confirmation_email
+  R cache.SET state_key "processing:vip" ->_
+  R memory.APPEND "orders" "vip" order_id confirmation_email null ->_
+  J confirmation_email
+```
+
+## 57. `examples/workflows/lead_enrichment.ainl`
+- Primary: `lead_enrichment_cached`
+- Secondary: `http_llm_cache`
+
+```ainl
+# examples/workflows/lead_enrichment.ainl
+#
+# B2B lead enrichment pipeline.
+#
+# Given a company domain, fetches firmographic data from a Clearbit-compatible
+# enrichment API, classifies account tier (enterprise / mid-market / SMB) via
+# IR branches — zero LLM tokens for routing — generates a personalised sales
+# context string with a single llm.COMPLETION call, caches the result, and
+# returns it.  Repeat calls for the same domain cost zero API tokens.
+#
+# Adapters: http, core, llm, cache
+# LLM calls per run:  0 (cache hit)  |  1 (cache miss)
+# Zero-token IR branches: emp_count > 500 (enterprise), emp_count > 100 (mid-market)
+#
+# Real-world deployments:
+#   • CRM enrichment before SDR outreach (HubSpot / Salesforce workflows)
+#   • Marketing-automation account scoring (Marketo / Pardot)
+#   • Inbound lead qualification triggered by a form-fill webhook
+#
+# Compatible enrichment APIs (return {name, employees, industry, country}):
+#   Clearbit:        https://company.clearbit.com/v2/companies/find?domain=
+#   People Data Labs: https://api.peopledatalabs.com/v5/company/enrich?website=
+#   Apollo.io:       https://api.apollo.io/v1/organizations/enrich?domain=
+#
+# Validate: ainl validate examples/workflows/lead_enrichment.ainl --strict
+# Run:      ainl run examples/workflows/lead_enrichment.ainl
+#
+# frame: domain     — company domain to look up (e.g. "stripe.com")
+# frame: enrich_url — base URL of enrichment endpoint; domain is appended
+#                     e.g. "https://company.clearbit.com/v2/companies/find?domain="
+
+lead_enrichment:
+  in: domain enrich_url
+
+  cached = cache.GET domain
+  if cached:
+    out cached
+
+  url = core.CONCAT enrich_url domain
+  resp = http.GET url {} 15
+  data = core.GET resp "body"
+  company_name = core.GET data "name"
+  emp_raw = core.GET data "employees"
+  industry = core.GET data "industry"
+  emp_count = core.INT emp_raw
+
+  is_enterprise = core.GT emp_count 500
+  if is_enterprise:
+    ent_p1 = core.CONCAT "Write a 2-sentence enterprise sales context for " company_name
+    ent_p2 = core.CONCAT ent_p1 " in the "
+    ent_p3 = core.CONCAT ent_p2 industry
+    ent_prompt = core.CONCAT ent_p3 " industry. Emphasise strategic value and multi-year ROI."
+    ent_r = llm.COMPLETION ent_prompt 150
+    ent_ctx = core.GET ent_r "content"
+    ent_result = core.CONCAT "enterprise|" ent_ctx
+    cache.SET domain ent_result
+    out ent_result
+
+  is_mid = core.GT emp_count 100
+  if is_mid:
+    mid_p1 = core.CONCAT "Write a 2-sentence mid-market sales context for " company_name
+    mid_p2 = core.CONCAT mid_p1 " in the "
+    mid_p3 = core.CONCAT mid_p2 industry
+    mid_prompt = core.CONCAT mid_p3 " industry. Focus on team adoption and productivity."
+    mid_r = llm.COMPLETION mid_prompt 120
+    mid_ctx = core.GET mid_r "content"
+    mid_result = core.CONCAT "mid_market|" mid_ctx
+    cache.SET domain mid_result
+    out mid_result
+
+  smb_p1 = core.CONCAT "Write a 1-sentence SMB sales context for " company_name
+  smb_p2 = core.CONCAT smb_p1 " in the "
+  smb_p3 = core.CONCAT smb_p2 industry
+  smb_prompt = core.CONCAT smb_p3 " industry. Keep it punchy and value-focused."
+  smb_r = llm.COMPLETION smb_prompt 80
+  smb_ctx = core.GET smb_r "content"
+  smb_result = core.CONCAT "smb|" smb_ctx
+  cache.SET domain smb_result
+  out smb_result
+```
+
+## 58. `examples/workflows/support_ticket_router.ainl`
+- Primary: `support_ticket_llm_triage`
+- Secondary: `llm_classify_route`
+
+```ainl
+# examples/workflows/support_ticket_router.ainl
+#
+# Customer-support ticket triage pipeline.
+#
+# Uses LLM to classify ticket priority (critical / high / normal / low) and
+# category (bug / billing / feature / general), then routes to the correct
+# team and SLA entirely via IR branches — zero LLM tokens for routing
+# decisions — and finally drafts a first-response message tuned to the
+# priority level with one final llm.COMPLETION call.
+#
+# Adapters: core, llm
+# LLM calls per run: 3  (priority classify, category classify, draft response)
+# Zero-token IR branches: priority routing × 2, category routing × 2
+#
+# Real-world deployments:
+#   • Zendesk / Freshdesk webhook → auto-assign + first-response draft
+#   • Intercom conversation routing before human hand-off
+#   • Internal IT helpdesk triage for enterprise support orgs
+#
+# Validate: ainl validate examples/workflows/support_ticket_router.ainl --strict
+# Run:      ainl run examples/workflows/support_ticket_router.ainl
+#
+# frame: ticket_id   — unique ticket identifier (e.g. "TKT-4821")
+# frame: ticket_text — full ticket body submitted by the customer
+
+S app core noop
+
+L_start:
+  R core.CONCAT "Classify this support ticket priority as exactly one word — critical, high, normal, or low. Ticket: " ticket_text ->pri_q
+  R llm.COMPLETION pri_q 10 ->pri_r
+  R core.GET pri_r "content" ->priority_raw
+  R core.TRIM priority_raw ->priority
+  R core.CONCAT "Classify this support ticket category as exactly one word — bug, billing, feature, or general. Ticket: " ticket_text ->cat_q
+  R llm.COMPLETION cat_q 10 ->cat_r
+  R core.GET cat_r "content" ->category_raw
+  R core.TRIM category_raw ->category
+  R core.EQ priority "critical" ->is_critical
+  If is_critical ->L_critical ->L_check_high
+
+L_check_high:
+  R core.EQ priority "high" ->is_high
+  If is_high ->L_high ->L_normal
+
+L_critical:
+  R core.EQ category "billing" ->crit_billing
+  If crit_billing ->L_crit_billing ->L_crit_eng
+
+L_crit_billing:
+  R core.CONCAT "Write an empathetic urgent response for this critical billing issue. State a 2-hour SLA and offer a direct callback. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 200 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_crit_eng:
+  R core.CONCAT "Write an empathetic urgent acknowledgment for this critical engineering issue. State the on-call team is engaged and commit to a 1-hour response. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 200 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_high:
+  R core.EQ category "billing" ->high_billing
+  If high_billing ->L_high_billing ->L_high_support
+
+L_high_billing:
+  R core.CONCAT "Write a professional response for this high-priority billing enquiry. Confirm 4-hour SLA and name the billing team as the owner. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 180 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_high_support:
+  R core.CONCAT "Write a professional response for this high-priority support ticket. Confirm tier-2 assignment and 8-hour SLA. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 180 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+
+L_normal:
+  R core.CONCAT "Write a friendly, helpful first response for this support ticket. Confirm 24-hour SLA. Ticket: " ticket_text ->draft_prompt
+  R llm.COMPLETION draft_prompt 150 ->draft_r
+  R core.GET draft_r "content" ->draft
+  J draft
+```
+
+## 59. `examples/benchmark/enterprise_monitor.ainl`
+- Primary: `enterprise_health_monitor_llm`
+- Secondary: `http_latency_escalation`
+
+```ainl
+# examples/benchmark/enterprise_monitor.ainl
+#
+# Enterprise infrastructure health monitor — multi-adapter AINL reference.
+#
+# Polls an HTTP health endpoint, evaluates latency and HTTP status, routes by
+# severity entirely via IR branches (zero LLM tokens for routing), generates a
+# human-readable incident alert with llm.COMPLETION only when the endpoint is
+# degraded or down, persists severity state in cache, and returns the result.
+#
+# Adapters: http, core, llm, cache
+# LLM calls per run:  0 (healthy endpoint)  |  1 (degraded or critical)
+# Zero-token IR branches: is_up/is_down, is_slow/is_healthy
+#
+# Real-world deployments:
+#   • Cron-based uptime monitor running every 5 minutes
+#   • PagerDuty / Slack alert pre-processor (feed draft into downstream webhook)
+#   • Cost-efficient SLO enforcer — LLM fires only on incidents
+#
+# Equivalent Python:     benchmarks/handwritten_baselines/authoring_density/enterprise_monitor.py
+# Equivalent TypeScript: benchmarks/handwritten_baselines/authoring_density/enterprise_monitor.ts
+#
+# Validate: ainl validate examples/benchmark/enterprise_monitor.ainl --strict
+# Run:      ainl run examples/benchmark/enterprise_monitor.ainl
+#
+# frame: endpoint_url — HTTP health endpoint to poll (e.g. "https://api.example.com/health")
+# frame: threshold_ms — latency ceiling in ms; responses above this are "degraded"
+
+S app core noop
+
+L_start:
+  R http.GET endpoint_url {} 10 ->response
+  R core.GET response "status" ->status_code
+  R core.GET response "elapsed_ms" ->latency_ms
+  R core.EQ status_code 200 ->is_up
+  If is_up ->L_up ->L_down
+
+L_down:
+  R core.CONCAT "Critical: endpoint " endpoint_url ->p1
+  R core.CONCAT p1 " is DOWN. HTTP status: " ->p2
+  R core.STR status_code ->status_str
+  R core.CONCAT p2 status_str ->alert_prompt
+  R llm.COMPLETION alert_prompt 200 ->alert_r
+  R core.GET alert_r "content" ->alert_text
+  R cache.SET "monitor_last_severity" "critical" ->_
+  R cache.SET "monitor_last_alert" alert_text ->_
+  J alert_text
+
+L_up:
+  R core.GT latency_ms threshold_ms ->is_slow
+  If is_slow ->L_degraded ->L_healthy
+
+L_degraded:
+  R core.CONCAT "Degraded: endpoint " endpoint_url ->p1
+  R core.STR latency_ms ->latency_str
+  R core.CONCAT p1 " latency " ->p2
+  R core.CONCAT p2 latency_str ->p3
+  R core.CONCAT p3 "ms exceeds threshold. Draft a concise ops alert." ->alert_prompt
+  R llm.COMPLETION alert_prompt 150 ->alert_r
+  R core.GET alert_r "content" ->alert_text
+  R cache.SET "monitor_last_severity" "degraded" ->_
+  R cache.SET "monitor_last_alert" alert_text ->_
+  J alert_text
+
+L_healthy:
+  R cache.SET "monitor_last_severity" "healthy" ->_
+  R core.STR latency_ms ->latency_str
+  R core.CONCAT "healthy: " latency_str ->status_msg
+  R core.CONCAT status_msg "ms" ->status_msg
+  J status_msg
+```
+
+## 60. `examples/compact/pggraph_status.ainl`
+- Primary: `pggraph_status_compact`
+- Secondary: `graph_probe`
+
+```ainl
+# examples/compact/pggraph_status.ainl
+# Evokoa pgGraph probe: graph.status() row(s) from a built graph index.
+# Prerequisite: PostgreSQL with pgGraph installed (CREATE EXTENSION graph; build/discover).
+# CLI: ainl run examples/compact/pggraph_status.ainl --enable-adapter pggraph --postgres-url $DSN
+# MCP: adapters.enable includes pggraph; adapters.pggraph.url (or AINL_POSTGRES_URL).
+# Note: use "R pggraph STATUS" (two tokens), not "pggraph.STATUS" — strict graph IR needs a target slot.
+
+status:
+  R pggraph STATUS ->rows
+  out rows
 ```
