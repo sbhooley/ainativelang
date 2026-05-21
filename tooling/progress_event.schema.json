@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainativelang.com/schemas/progress_event.schema.json",
+  "title": "MissionEvent",
+  "description": "Progress ledger events for mission orchestration (SSE / mission_events table).",
+  "oneOf": [
+    { "$ref": "#/$defs/mission_accepted" },
+    { "$ref": "#/$defs/mission_state_changed" },
+    { "$ref": "#/$defs/worker_dispatched" },
+    { "$ref": "#/$defs/worker_completed" },
+    { "$ref": "#/$defs/handoff_recorded" },
+    { "$ref": "#/$defs/assertion_checked" },
+    { "$ref": "#/$defs/milestone_validation_triggered" },
+    { "$ref": "#/$defs/mission_stalled" },
+    { "$ref": "#/$defs/mission_completed" },
+    { "$ref": "#/$defs/mission_cancelled" },
+    { "$ref": "#/$defs/git_snapshot_taken" },
+    { "$ref": "#/$defs/git_rollback_applied" }
+  ],
+  "$defs": {
+    "event_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "mission_id", "ts"],
+      "properties": {
+        "event_type": { "type": "string" },
+        "mission_id": { "type": "string", "minLength": 1 },
+        "ts": { "type": "string", "format": "date-time" },
+        "feature_id": { "type": "string" },
+        "agent_id": { "type": "string" },
+        "detail": { "type": "object" }
+      }
+    },
+    "mission_accepted": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "mission_accepted" },
+            "detail": {
+              "type": "object",
+              "properties": {
+                "objective_md": { "type": "string" },
+                "milestone_ids": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          },
+          "required": ["event_type"]
+        }
+      ]
+    },
+    "mission_state_changed": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "mission_state_changed" },
+            "detail": {
+              "type": "object",
+              "required": ["from_state", "to_state"],
+              "properties": {
+                "from_state": { "type": "string" },
+                "to_state": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "worker_dispatched": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "worker_dispatched" },
+            "feature_id": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature_id"]
+        }
+      ]
+    },
+    "worker_completed": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "worker_completed" },
+            "feature_id": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature_id"]
+        }
+      ]
+    },
+    "handoff_recorded": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "handoff_recorded" },
+            "feature_id": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature_id"]
+        }
+      ]
+    },
+    "assertion_checked": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "assertion_checked" },
+            "detail": {
+              "type": "object",
+              "required": ["assertion_id", "state"],
+              "properties": {
+                "assertion_id": { "type": "string" },
+                "state": {
+                  "type": "string",
+                  "enum": ["Pending", "Passed", "Failed", "Blocked"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "milestone_validation_triggered": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "milestone_validation_triggered" },
+            "detail": {
+              "type": "object",
+              "required": ["milestone"],
+              "properties": {
+                "milestone": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mission_stalled": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "mission_stalled" },
+            "detail": {
+              "type": "object",
+              "properties": {
+                "stall_reason": { "type": "string" },
+                "turns_without_progress": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mission_completed": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "mission_completed" }
+          }
+        }
+      ]
+    },
+    "mission_cancelled": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "mission_cancelled" },
+            "detail": {
+              "type": "object",
+              "properties": {
+                "reason": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "git_snapshot_taken": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "git_snapshot_taken" },
+            "feature_id": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature_id"]
+        }
+      ]
+    },
+    "git_rollback_applied": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "type": "object",
+          "properties": {
+            "event_type": { "const": "git_rollback_applied" },
+            "feature_id": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature_id"]
+        }
+      ]
+    }
+  }
+}

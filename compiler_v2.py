@@ -1266,7 +1266,8 @@ class AICodeCompiler:
                     "would receive only the first token (for example `{`) instead of a structured value."
                 ),
                 suggested_fix=(
-                    "Do not write `J { ... }`, `out { ... }`, or `Set name { ... }` in strict AINL. "
+                    "Do not write `J { ... }`, `out { ... }`, `Set name { ... }`, or inline `{...}` on `R` lines "
+                    "(for example `R core.MERGE rec {\"key\": val}`) in strict AINL. "
                     "Build structured output through supported operations (for example stringify/parse a JSON "
                     "string or merge existing dict variables), pass the dict via frame, then return a variable: "
                     "`Set result payload` followed by `J result`."
@@ -3831,6 +3832,20 @@ class AICodeCompiler:
                             r_slots.append(slots[i])
                             i += 1
                         parsed = self._parse_req_slots(r_slots)
+                        if self.strict_mode:
+                            for idx in range(2, len(r_slots)):
+                                if self._slots_look_like_inline_structured_literal(
+                                    r_slots, idx
+                                ):
+                                    self._record_strict_inline_structured_literal_error(
+                                        context=context,
+                                        line_node=line_node,
+                                        lineno=lineno,
+                                        source_lines=source_lines,
+                                        op="R",
+                                        slot_index=idx,
+                                    )
+                                    break
                         leg["steps"].append({"op": "R", "lineno": lineno, **(parsed or {"raw": r_slots})})
                     elif slots[i] == "J":
                         j_end = i + 2
@@ -4197,6 +4212,20 @@ class AICodeCompiler:
                         i += 1
 
             elif op == "R":
+                if self.strict_mode:
+                    for idx in range(2, len(slots)):
+                        if self._slots_look_like_inline_structured_literal(
+                            slots, idx, kinds=slot_kinds
+                        ):
+                            self._record_strict_inline_structured_literal_error(
+                                context=context,
+                                line_node=line_node,
+                                lineno=lineno,
+                                source_lines=source_lines,
+                                op=op,
+                                slot_index=idx,
+                            )
+                            break
                 parsed = self._parse_req_slots(slots)
                 step_payload: Dict[str, Any]
                 if parsed and str(parsed.get("adapter") or "").strip().lower() == "memory.execute":

@@ -1,0 +1,13 @@
+# Mission worker: materialize handoff JSON under mission_root (host maps to mission_handoff_record).
+# frame: feature_id: string
+# frame: handoff_body: string
+
+handoff_emitter:
+  in: feature_id handoff_body
+
+  rel_path = core.CONCAT "mission/handoffs/" feature_id ".json"
+  write_result = fs.write rel_path handoff_body
+  ok_flag = core.GET write_result "ok"
+  summary = core.CONCAT "handoff_written feature=" feature_id " ok=" ok_flag
+
+  out summary

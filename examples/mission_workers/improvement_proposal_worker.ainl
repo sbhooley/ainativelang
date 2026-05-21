@@ -1,0 +1,15 @@
+# Mission worker: format improvement proposal from discovered issues (feeds ainl-improvement-proposals).
+# frame: feature_id: string
+# frame: issue_summary: string
+
+improvement_proposal:
+  in: feature_id issue_summary
+
+  rel_path = core.CONCAT "mission/proposals/" feature_id ".md"
+  header = core.CONCAT "# Proposal for " feature_id "\n\n"
+  body = core.CONCAT header issue_summary
+  write_result = fs.write rel_path body
+  ok_flag = core.GET write_result "ok"
+  summary = core.CONCAT "proposal_written ok=" ok_flag
+
+  out summary

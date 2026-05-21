@@ -337,6 +337,17 @@ class TestValidate:
         assert "inline JSON/object literals" in pd["message"]
         assert "`out { ... }`" in pd["suggested_fix"]
 
+    def test_validate_strict_rejects_r_core_merge_inline_dict(self):
+        result = ainl_validate(
+            "demo:\n  result = core.MERGE rec {\"k\": 1}\n  out result\n",
+            strict=True,
+        )
+        assert result["ok"] is False
+        pd = result.get("primary_diagnostic") or {}
+        msg = pd.get("message") or " ".join(str(e) for e in (result.get("errors") or []))
+        assert "inline JSON/object literals" in msg
+        assert "R core.MERGE" in (pd.get("suggested_fix") or "")
+
     def test_validate_ok_recommends_compile_first(self):
         result = ainl_validate(VALID_CODE, strict=True)
         assert result["ok"] is True

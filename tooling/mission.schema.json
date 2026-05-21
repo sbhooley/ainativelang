@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainativelang.com/schemas/mission.schema.json",
+  "title": "Mission",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mission_id",
+    "objective_md",
+    "state",
+    "milestone_ids",
+    "mission_root",
+    "created_at",
+    "capability_flags"
+  ],
+  "properties": {
+    "mission_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
+    "objective_md": {
+      "type": "string",
+      "minLength": 1
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "AwaitingInput",
+        "Initializing",
+        "Running",
+        "Paused",
+        "OrchestratorTurn",
+        "Completed",
+        "Cancelled"
+      ]
+    },
+    "milestone_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "mission_root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute or workspace-relative root directory for worker sandboxes."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "capability_flags": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "properties": {
+        "mission_enabled": { "type": "boolean" },
+        "coding_domain": { "type": "boolean" },
+        "git_snapshot": { "type": "boolean" }
+      }
+    },
+    "last_orchestrator_turn_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

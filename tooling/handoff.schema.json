@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainativelang.com/schemas/handoff.schema.json",
+  "title": "Handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "feature_id",
+    "agent_id",
+    "salient_summary",
+    "what_was_implemented_md",
+    "what_was_left_undone_md",
+    "verification",
+    "tests",
+    "discovered_issues",
+    "skill_feedback"
+  ],
+  "properties": {
+    "feature_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "salient_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "what_was_implemented_md": {
+      "type": "string"
+    },
+    "what_was_left_undone_md": {
+      "type": "string"
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "partial", "skipped"]
+        },
+        "notes_md": { "type": "string" }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "name": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["passed", "failed", "skipped"]
+          },
+          "output": { "type": "string" }
+        }
+      }
+    },
+    "discovered_issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["info", "low", "medium", "high", "critical"]
+          },
+          "summary": { "type": "string", "minLength": 1 },
+          "detail_md": { "type": "string" }
+        },
+        "required": ["summary"]
+      }
+    },
+    "skill_feedback": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "skill_name": { "type": "string" },
+          "feedback_md": { "type": "string" }
+        }
+      }
+    }
+  }
+}

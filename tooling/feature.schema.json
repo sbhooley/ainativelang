@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainativelang.com/schemas/feature.schema.json",
+  "title": "Feature",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "feature_id",
+    "description",
+    "status",
+    "milestone",
+    "skill_name",
+    "touches_files",
+    "preconditions",
+    "expected_behavior",
+    "verification_steps",
+    "fulfills"
+  ],
+  "properties": {
+    "feature_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "ready",
+        "in_progress",
+        "completed",
+        "failed",
+        "rolled_back",
+        "blocked"
+      ]
+    },
+    "milestone": {
+      "type": "string",
+      "minLength": 1
+    },
+    "skill_name": {
+      "type": "string",
+      "description": "Preferred ArmaraOS skill; dispatch uses required_capabilities when set."
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "preferred_skill": {
+      "type": "string"
+    },
+    "touches_files": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "feature_id values that must complete before this feature runs."
+    },
+    "expected_behavior": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verification_steps": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "fulfills": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "assertion_id values this feature satisfies when completed."
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repo_toplevel": { "type": "string" },
+        "stash_sha": { "type": "string" },
+        "head_sha": { "type": "string" },
+        "taken_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "worker_ainl_path": {
+      "type": "string",
+      "description": "Optional strict-valid AINL worker graph path under mission_root."
+    }
+  }
+}

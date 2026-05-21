@@ -1,0 +1,13 @@
+# Mission worker: record assertion check outcome (host maps to mission_assertion_check).
+# frame: assertion_id: string
+# frame: check_result: string
+
+assertion_check:
+  in: assertion_id check_result
+
+  rel_path = core.CONCAT "mission/assertions/" assertion_id ".json"
+  write_result = fs.write rel_path check_result
+  state_line = core.CONCAT "{\"assertion_id\":\"" assertion_id "\",\"recorded\":true}"
+  summary = core.CONCAT "assertion_check " assertion_id " -> " state_line
+
+  out summary

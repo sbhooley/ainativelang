@@ -1,0 +1,14 @@
+# Mission worker: write scrutiny review summary for milestone gate.
+# frame: feature_id: string
+# frame: review_md: string
+
+scrutiny_reviewer:
+  in: feature_id review_md
+
+  rel_path = core.CONCAT "mission/scrutiny/" feature_id ".md"
+  write_result = fs.write rel_path review_md
+  ok_flag = core.GET write_result "ok"
+  line_count = core.LEN review_md
+  summary = core.CONCAT "scrutiny_review chars=" line_count " ok=" ok_flag
+
+  out summary

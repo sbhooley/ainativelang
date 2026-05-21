@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ainativelang.com/schemas/assertion.schema.json",
+  "title": "Assertion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assertion_id",
+    "description",
+    "verification_steps",
+    "state",
+    "milestone",
+    "failed_count"
+  ],
+  "properties": {
+    "assertion_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verification_steps": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "state": {
+      "type": "string",
+      "enum": ["Pending", "Passed", "Failed", "Blocked"]
+    },
+    "milestone": {
+      "type": "string",
+      "minLength": 1
+    },
+    "failed_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

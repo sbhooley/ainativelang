@@ -1187,6 +1187,121 @@ ADAPTER_CONTRACTS: Dict[str, Dict[str, Any]] = {
             "Pattern storage is for procedural learning, not user data.",
         ],
     },
+    "mission_dispatch": {
+        "adapter": "mission_dispatch",
+        "status": "host_tool",
+        "summary": "ArmaraOS mission tool: dispatch a worker agent for a Feature node (spawn/delegate).",
+        "side_effects": "write",
+        "approval": "optional",
+        "verbs": {
+            "dispatch": {
+                "args": ["mission_id: string", "feature_id: string"],
+                "example": "mission_dispatch feature_id=feat-implement",
+                "returns": ["dispatch_id", "agent_id", "status"],
+            },
+        },
+        "pitfalls": [
+            "Requires MissionCapability enabled on the agent.",
+            "Respects file-conflict scheduler; overlapping touches_files may queue workers.",
+            "Worker cwd is Mission.mission_root (workspace sandbox unchanged).",
+        ],
+    },
+    "mission_handoff_record": {
+        "adapter": "mission_handoff_record",
+        "status": "host_tool",
+        "summary": "Persist a Handoff graph node after a feature worker completes.",
+        "side_effects": "write",
+        "approval": False,
+        "verbs": {
+            "record": {
+                "args": ["handoff: object (handoff.schema.json)"],
+                "example": "mission_handoff_record handoff={feature_id, agent_id, salient_summary, ...}",
+                "returns": ["handoff_id", "ok"],
+            },
+        },
+        "pitfalls": [
+            "Validate with ainl_handoff_lint before record when authoring offline.",
+            "Feature cannot mark completed until a Handoff exists (ArmaraOS kernel rule).",
+        ],
+    },
+    "mission_assertion_check": {
+        "adapter": "mission_assertion_check",
+        "status": "host_tool",
+        "summary": "Run Assertion verification_steps and update assertion state.",
+        "side_effects": "write",
+        "approval": False,
+        "verbs": {
+            "check": {
+                "args": ["mission_id: string", "assertion_id: string"],
+                "example": "mission_assertion_check assertion_id=assert-objective",
+                "returns": ["state", "evidence"],
+            },
+        },
+        "pitfalls": [
+            "Failed checks increment failed_count and may trigger improvement proposals.",
+            "Shell/browser steps execute in sandboxed worker context.",
+        ],
+    },
+    "git_snapshot": {
+        "adapter": "git_snapshot",
+        "status": "host_tool",
+        "summary": "Lazy per-Feature git stash snapshot on first write (multi-repo: one per repo).",
+        "side_effects": "write",
+        "approval": False,
+        "verbs": {
+            "snapshot": {
+                "args": ["feature_id: string", "path?: string"],
+                "example": "git_snapshot feature_id=feat-implement",
+                "returns": ["repo_toplevel", "stash_sha", "head_sha", "taken_at"],
+            },
+        },
+        "pitfalls": [
+            "Non-git paths emit MissionEvent warning; mission continues without rollback.",
+            "Uses git stash create — not a worktree (v1).",
+        ],
+    },
+    "git_rollback": {
+        "adapter": "git_rollback",
+        "status": "host_tool",
+        "summary": "Apply a prior Feature snapshot stash in repo_toplevel.",
+        "side_effects": "write",
+        "approval": True,
+        "verbs": {
+            "rollback": {
+                "args": ["feature_id: string"],
+                "example": "git_rollback feature_id=feat-implement",
+                "returns": ["ok", "feature_status"],
+            },
+        },
+        "pitfalls": [
+            "Approval-gated: destructive to working tree.",
+            "Sets Feature.status=rolled_back; preserves Handoff for forensics.",
+        ],
+    },
+    "ask_user": {
+        "adapter": "ask_user",
+        "status": "host_tool",
+        "summary": "Operator question path: read-only prompts vs writes vs approval-gated side effects.",
+        "side_effects": "mixed",
+        "verbs": {
+            "question": {
+                "args": ["prompt_md: string", "visibility?: LlmOnly|UserOnly|Both"],
+                "example": "ask_user question='Approve rollback for feat-implement?'",
+                "returns": ["answer_md", "approved?"],
+                "side_effects": "read_only",
+            },
+            "confirm_write": {
+                "args": ["prompt_md: string", "proposed_action: object"],
+                "example": "ask_user confirm_write proposed_action={tool:'git_rollback', ...}",
+                "returns": ["approved", "answer_md"],
+                "side_effects": "approval_gated",
+            },
+        },
+        "pitfalls": [
+            "read_only questions do not mutate graph or filesystem.",
+            "approval_gated paths extend ApprovalRequest.Question in ArmaraOS.",
+        ],
+    },
 }
 
 

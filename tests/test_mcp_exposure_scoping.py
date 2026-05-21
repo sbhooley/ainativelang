@@ -133,10 +133,14 @@ class TestExposureProfiles:
             "ainl_compile",
             "ainl_capabilities",
             "ainl_security_report",
+            "ainl_mission_plan",
+            "ainl_mission_validate",
+            "ainl_handoff_lint",
         }
         assert "ainl_run" not in tools
         assert "ainl://adapter-manifest" in resources
         assert "ainl://strict-valid-families" in resources
+        assert "ainl://mission-authoring-cheatsheet" in resources
 
     def test_design_impact_first_profile_includes_wizard_extras(self):
         tools, resources = _reimport_scoping({"AINL_MCP_EXPOSURE_PROFILE": "design_impact_first"})

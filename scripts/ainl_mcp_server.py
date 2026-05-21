@@ -99,6 +99,12 @@ from tooling.ainl_get_started import (
     WizardState,
     wizard_state_from_tool_result,
 )
+from tooling.mission_mcp import (
+    MISSION_AUTHORING_CHEATSHEET,
+    lint_handoff as mission_lint_handoff,
+    mission_plan as mission_plan_payload,
+    validate_mission_dag,
+)
 from tooling.graph_diff import graph_diff
 from intelligence.signature_enforcer import collect_signature_annotations, run_with_signature_retry
 from intelligence.trace_export_ptc_jsonl import export_file as export_ptc_trace_file
@@ -280,6 +286,9 @@ ALL_TOOL_NAMES: List[str] = [
     "ainl_trace_export",
     "ainl_ptc_run",
     "ainl_ptc_health_check",
+    "ainl_mission_plan",
+    "ainl_mission_validate",
+    "ainl_handoff_lint",
 ]
 ALL_RESOURCE_URIS: List[str] = [
     "ainl://adapter-manifest",
@@ -299,6 +308,9 @@ ALL_RESOURCE_URIS: List[str] = [
     "ainl://integrations-agtp",
     "ainl://integrations-a2a",
     "ainl://examples-http-machine-payment-flow",
+    "ainl://mission-authoring-cheatsheet",
+    "ainl://strict-valid-missions",
+    "ainl://mission-worker-examples",
 ]
 
 # Short MCP-facing authoring guide (mirrors AGENTS.md highlights for agent loops).
@@ -459,7 +471,19 @@ def _strict_valid_examples_json() -> str:
 
 def _adapter_contracts_bundle_json() -> str:
     """Deterministic JSON bundle of adapter_contract payloads for MCP resources/read."""
+    from tooling.ainl_get_started import ADAPTER_CONTRACTS
+
     bundle = {name: ainl_adapter_contract_payload(name) for name in _ADAPTER_CONTRACT_BUNDLE_KEYS}
+    for host_key in (
+        "mission_dispatch",
+        "mission_handoff_record",
+        "mission_assertion_check",
+        "git_snapshot",
+        "git_rollback",
+        "ask_user",
+    ):
+        if host_key in ADAPTER_CONTRACTS:
+            bundle[host_key] = ADAPTER_CONTRACTS[host_key]
     return json.dumps(bundle, indent=2)
 
 
@@ -877,6 +901,40 @@ def _attach_strict_mode_annotation(out: Dict[str, Any], strict: bool) -> None:
 def _annotate_run_return(out: Dict[str, Any], strict: bool) -> Dict[str, Any]:
     _attach_strict_mode_annotation(out, strict)
     return out
+
+
+def _runtime_error_agent_repair_steps(
+    err: "AinlRuntimeError",
+    *,
+    resolved_path: Optional[str],
+    merged_limits: Dict[str, Any],
+) -> List[str]:
+    """Actionable host hints when ``ainl_run`` fails at runtime (not compile time)."""
+    steps: List[str] = []
+    code = getattr(err, "code", None) or ""
+    if code == "RUNTIME_MAX_ADAPTER_CALLS" or "max_adapter_calls" in str(err).lower():
+        lim = merged_limits.get("max_adapter_calls")
+        steps.extend(
+            [
+                "Split the input into smaller batches (≈10–15 records per `ainl_run`) so each graph stays under the adapter-call budget.",
+                f"Pass `limits: {{\"max_adapter_calls\": N}}` on this call (server ceiling applies; current merged limit: {lim!r}).",
+                "For workspace-scale jobs, prefer CLI `ainl run <file.ainl>` or a Python/shell script via `script_run` — no MCP per-run adapter cap.",
+            ]
+        )
+        if resolved_path:
+            steps.append(
+                f"Re-run with `path: {resolved_path!r}` after validate on the same path (no inline code drift)."
+            )
+        ws_hint = (
+            "Place `ainl_mcp_limits.json` in the workspace fs root (see adapters.fs.root) "
+            "to raise limits for that folder."
+        )
+        steps.append(ws_hint)
+    if "inline" in str(err).lower() or "could not convert string to float" in str(err).lower():
+        steps.append(
+            "Do not use inline `{...}` dict literals on `R` lines — pass dicts via `frame` or build with variables + `core.MERGE`."
+        )
+    return steps
 
 
 def _add_recommended_next_steps(
@@ -2733,17 +2791,23 @@ def ainl_run(
             if out_err:
                 out_err["error_structured"] = e.to_dict()
                 return _wiz(out_err)
-        return _wiz(
-            _annotate_run_return(
-                {
-                    "ok": False,
-                    "trace_id": trace_id,
-                    "error": err_text,
-                    "error_structured": e.to_dict(),
-                },
-                strict,
-            )
+        repair = _runtime_error_agent_repair_steps(
+            e, resolved_path=resolved_path, merged_limits=merged_limits
         )
+        payload: Dict[str, Any] = {
+            "ok": False,
+            "trace_id": trace_id,
+            "error": err_text,
+            "error_structured": e.to_dict(),
+        }
+        if repair:
+            payload["agent_repair_steps"] = repair
+            payload["cli_fallback"] = (
+                "For long-running or high-volume enrichment, run "
+                "`ainl run <path.ainl>` in the workspace shell or use `script_run` on a "
+                "Python helper (e.g. enrich_one.py) instead of a single large MCP `ainl_run`."
+            )
+        return _wiz(_annotate_run_return(payload, strict))
     except Exception as e:
         err_text = str(e)
         missing_adapter = _missing_adapter_from_error_text(err_text)
@@ -3080,6 +3144,90 @@ def ainl_ptc_run(
 
 
 @_register_tool
+def ainl_mission_plan(
+    objective: str,
+    repo_intel: Optional[dict] = None,
+    mission_root: Optional[str] = None,
+) -> dict:
+    """Propose a draft Mission + Feature + Assertion DAG from a natural-language objective.
+
+    Optional ``repo_intel`` may include ``touches_files``, ``coding_domain``, ``git_snapshot``,
+    or ``mission_root``. Output is validated with the same rules as ``ainl_mission_validate``.
+    """
+    out = mission_plan_payload(
+        objective,
+        repo_intel=repo_intel,
+        mission_root=mission_root,
+    )
+    out["recommended_next_tools"] = [
+        t for t in ("ainl_mission_validate", "ainl_handoff_lint", "ainl_validate")
+        if t in _ALLOWED_TOOLS
+    ]
+    out["recommended_resources"] = [
+        u
+        for u in (
+            "ainl://mission-authoring-cheatsheet",
+            "ainl://mission-worker-examples",
+            "ainl://strict-valid-missions",
+        )
+        if u in _ALLOWED_RESOURCES
+    ]
+    return out
+
+
+@_register_tool
+def ainl_mission_validate(
+    mission: dict,
+    features: List[dict],
+    assertions: Optional[List[dict]] = None,
+    validate_worker_ainl: bool = False,
+) -> dict:
+    """Validate Mission + Feature DAG: schema conformance, acyclic preconditions, assertion coverage.
+
+    Set ``validate_worker_ainl=true`` to strict-validate each Feature ``worker_ainl_path`` under the repo.
+    """
+    validation = validate_mission_dag(
+        mission,
+        features,
+        assertions or [],
+        validate_worker_ainl=bool(validate_worker_ainl),
+        repo_root=_REPO_ROOT,
+    )
+    return {
+        "ok": validation["ok"],
+        "schema_version": "1.0.0",
+        "validation": validation,
+        "recommended_next_tools": [
+            t for t in ("ainl_mission_plan", "ainl_handoff_lint", "ainl_run")
+            if t in _ALLOWED_TOOLS
+        ],
+        "recommended_resources": [
+            u
+            for u in ("ainl://mission-authoring-cheatsheet", "ainl://strict-valid-missions")
+            if u in _ALLOWED_RESOURCES
+        ],
+    }
+
+
+@_register_tool
+def ainl_handoff_lint(
+    handoff: dict,
+    features: Optional[List[dict]] = None,
+) -> dict:
+    """Validate a Handoff object against handoff.schema.json and optional Feature cross-checks."""
+    out = mission_lint_handoff(handoff, features=features)
+    return {
+        "ok": out["ok"],
+        "schema_version": "1.0.0",
+        "lint": out,
+        "recommended_next_tools": [
+            t for t in ("ainl_mission_validate", "ainl_mission_plan")
+            if t in _ALLOWED_TOOLS
+        ],
+    }
+
+
+@_register_tool
 def ainl_ptc_health_check(
     allow_hosts: Optional[List[str]] = None,
     timeout_s: float = 5.0,
@@ -3220,6 +3368,56 @@ def integrations_a2a_resource() -> str:
 def examples_http_machine_payment_flow_resource() -> str:
     """Strict-valid compact example: HTTP GET + payment_required branch (examples/http/...)."""
     return _read_allowlisted_repo_subpath("examples/http/http_machine_payment_flow_compact.ainl")
+
+
+def _strict_valid_missions_json() -> str:
+    """JSON index of strict-valid mission worker paths from artifact_profiles.json."""
+    profiles = load_artifact_profiles()
+    paths = [
+        p
+        for p in profiles.get("examples", {}).get("strict-valid", [])
+        if "mission_workers/" in p.replace("\\", "/")
+    ]
+    return json.dumps(
+        {
+            "schema_version": "1.0.0",
+            "description": "Strict-valid mission worker examples (CI via artifact_profiles.json).",
+            "paths": sorted(paths),
+        },
+        indent=2,
+    )
+
+
+@_register_resource("ainl://strict-valid-missions")
+def strict_valid_missions_resource() -> str:
+    """JSON index of strict-valid mission worker paths."""
+    return _strict_valid_missions_json()
+
+
+@_register_resource("ainl://mission-authoring-cheatsheet")
+def mission_authoring_cheatsheet_resource() -> str:
+    """Mission substrate authoring: schemas, MCP tools, host tool contracts."""
+    return MISSION_AUTHORING_CHEATSHEET
+
+
+@_register_resource("ainl://mission-worker-examples")
+def mission_worker_examples_resource() -> str:
+    """Concatenated strict-valid mission worker .ainl sources."""
+    profiles = load_artifact_profiles()
+    paths = sorted(
+        p
+        for p in profiles.get("examples", {}).get("strict-valid", [])
+        if "mission_workers/" in p.replace("\\", "/")
+    )
+    chunks: List[str] = ["# Mission worker examples (strict-valid)\n"]
+    for rel in paths:
+        try:
+            text = (_REPO_ROOT / rel).read_text(encoding="utf-8")
+        except OSError as exc:
+            chunks.append(f"\n## {rel}\n\n(read error: {exc})\n")
+            continue
+        chunks.append(f"\n## {rel}\n\n```ainl\n{text.rstrip()}\n```\n")
+    return "".join(chunks)
 
 
 # ---------------------------------------------------------------------------

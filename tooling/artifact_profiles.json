@@ -32,6 +32,10 @@
       "examples/compact/cache_lookup_compact.ainl",
       "examples/compact/pggraph_status.ainl",
       "examples/compact/openclaw_learning_handoff.ainl",
+      "examples/mission_workers/handoff_emitter_worker.ainl",
+      "examples/mission_workers/assertion_check_worker.ainl",
+      "examples/mission_workers/improvement_proposal_worker.ainl",
+      "examples/mission_workers/scrutiny_reviewer_worker.ainl",
       "examples/compact/github_raw_fetch_compact.ainl",
       "examples/compact/fs_write_compact.ainl",
       "examples/rag_pipeline.ainl",
@@ -82,7 +86,11 @@
       "examples/workflows/lead_enrichment.ainl",
       "examples/workflows/support_ticket_router.ainl",
       "examples/benchmark/enterprise_monitor.ainl",
-      "examples/workflows/data_pipeline.ainl"
+      "examples/workflows/data_pipeline.ainl",
+      "examples/mission_workers/handoff_emitter_worker.ainl",
+      "examples/mission_workers/assertion_check_worker.ainl",
+      "examples/mission_workers/improvement_proposal_worker.ainl",
+      "examples/mission_workers/scrutiny_reviewer_worker.ainl"
     ],
     "non-strict-only": [
       "examples/benchmark/doc_pipeline_compiled.ainl",
