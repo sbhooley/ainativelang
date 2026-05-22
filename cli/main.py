@@ -3126,7 +3126,7 @@ def main() -> None:
         else:  # AINL-OPENCLAW-TOP5
             print("\n✅ OpenClaw integration step finished. Check `ainl status` and `openclaw cron list`.\n")  # AINL-OPENCLAW-TOP5
         if dry:  # AINL-OPENCLAW-TOP5
-            return 0 if not cron_errs else 1  # AINL-OPENCLAW-TOP5
+            return 0  # AINL-OPENCLAW-TOP5
         ok = (patch_err is None) and schema_ok and (not cron_errs) and (restart_err is None)  # AINL-OPENCLAW-TOP5
         return 0 if ok else 1  # AINL-OPENCLAW-TOP5
 
