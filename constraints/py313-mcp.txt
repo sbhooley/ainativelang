@@ -11,7 +11,7 @@ jsonschema==4.26.0
 pydantic==2.13.4
 pydantic-settings==2.14.0
 python-multipart==0.0.26
-sse-starlette==3.3.3
+sse-starlette==3.4.1
 starlette==1.0.0
 typer==0.25.1
 uvicorn==0.42.0
