@@ -33,6 +33,14 @@ Requires **`pip install -e ".[dev]"`** so `pytest --collect-only` works.
 
 Commit attribution on GitHub is the source of truth for who landed changes. See **Insights → Contributors** on [`sbhooley/ainativelang`](https://github.com/sbhooley/ainativelang). Local clones may use different git user names; use your GitHub-linked identity for commits you want counted publicly.
 
+**When your PR merges (or lands with edits):** maintainers leave a closing comment on the PR that points to:
+
+- the **commit SHA** (or squash merge commit) on `main`
+- any **docs path** (`docs/…`) if the feature is documented elsewhere
+- a short note if the implementation shape changed during review (e.g. consolidated into an existing module)
+
+Examples: [#70](https://github.com/sbhooley/ainativelang/pull/70#issuecomment-4536108337) (feature reworked, full docs linked), [#71](https://github.com/sbhooley/ainativelang/pull/71#issuecomment-4536109925) (direct merge). If you do not see a follow-up comment within a few days of merge/close, ping in the PR thread.
+
 ## Headline statistics (STATUS.yaml + AGENTS.md)
 
 Large edits to the compiler, runtime, CLI, adapters, or test tree change line counts and inventory. Keep **`STATUS.yaml`** and the **Repository Layout** block in **`AGENTS.md`** aligned so README-style blurbs stay accurate.
