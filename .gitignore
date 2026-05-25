@@ -47,6 +47,16 @@ Thumbs.db
 # Local runtime logs
 runtime_runner.log
 
+# Agent operator runtime artifacts (do not commit live state)
+agent_reports/daily/
+.baselinestore/
+memory/ops/
+cache/digest*.json
+cache/digest_cache.json
+cache/digest_state.json
+cache/summarized.*
+.openclaw/
+
 # Local code_context adapter index (machine-specific paths)
 .ainl_code_context.json
 

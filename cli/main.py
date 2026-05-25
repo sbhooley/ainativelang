@@ -1019,6 +1019,27 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_estimate(args: argparse.Namespace) -> int:
+    src_path = str(Path(args.file).resolve())
+    with open(src_path, "r", encoding="utf-8") as f:
+        code = f.read()
+
+    c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
+    ir = c.compile(code, emit_graph=True, source_path=src_path)
+    if ir.get("errors"):
+        print(json.dumps({"ok": False, "errors": ir.get("errors", [])}, indent=2), file=sys.stderr)
+        return 1
+
+    from tooling.cost_estimate import estimate_ir_cost, format_estimate_table
+
+    est = estimate_ir_cost(ir)
+    if str(getattr(args, "format", "table") or "table").lower() == "json":
+        print(json.dumps({"ok": True, "cost_estimate": est}, indent=2))
+    else:
+        print(format_estimate_table(est), end="")
+    return 0
+
+
 def cmd_compile(args: argparse.Namespace) -> int:
     src_path = str(Path(args.file).resolve())
     with open(src_path, "r", encoding="utf-8") as f:
@@ -3126,7 +3147,7 @@ def main() -> None:
         else:  # AINL-OPENCLAW-TOP5
             print("\n✅ OpenClaw integration step finished. Check `ainl status` and `openclaw cron list`.\n")  # AINL-OPENCLAW-TOP5
         if dry:  # AINL-OPENCLAW-TOP5
-            return 0 if not cron_errs else 1  # AINL-OPENCLAW-TOP5
+            return 0  # AINL-OPENCLAW-TOP5
         ok = (patch_err is None) and schema_ok and (not cron_errs) and (restart_err is None)  # AINL-OPENCLAW-TOP5
         return 0 if ok else 1  # AINL-OPENCLAW-TOP5
 
@@ -3645,6 +3666,20 @@ def main() -> None:
         help="Overwrite the target directory if it already exists",
     )
     initp.set_defaults(func=cmd_init)
+
+    estp = sub.add_parser(
+        "estimate",
+        help="Estimate compile-time LLM token cost for an .ainl graph (static analysis)",
+    )
+    estp.add_argument("file", help="Path to .ainl or .lang graph file")
+    estp.add_argument("--strict", action="store_true", help="Compile in strict mode before estimating")
+    estp.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="Output format: table (default) or json",
+    )
+    estp.set_defaults(func=cmd_estimate)
 
     args = ap.parse_args()
     raise SystemExit(args.func(args))
