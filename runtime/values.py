@@ -79,10 +79,22 @@ def deep_put(obj: Any, path: str, value: Any) -> Any:
 
 
 def stable_sort(rows: List[Any], field: str, desc: bool = False) -> List[Any]:
+    def comparable_value(v: Any) -> Any:
+        if isinstance(v, bool):
+            return ("bool", v)
+        if isinstance(v, (int, float)):
+            return ("number", v)
+        if isinstance(v, str):
+            return ("str", v)
+        try:
+            return (type(v).__name__, json.dumps(json_safe(v), sort_keys=True, ensure_ascii=False))
+        except TypeError:
+            return (type(v).__name__, str(v))
+
     def key_fn(x: Any) -> Any:
         if isinstance(x, dict):
             v = x.get(field)
-            return (v is None, v)
+            return (v is None, comparable_value(v) if v is not None else None)
         return (True, None)
 
     return sorted(rows or [], key=key_fn, reverse=desc)
