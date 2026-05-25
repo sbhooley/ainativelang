@@ -1,0 +1,10 @@
+# WASM health check: call a deterministic health scoring module.
+# Shows branching on WASM output without LLM involvement.
+# Requires: wasmtime + health module with score export.
+wasm_health:
+  score = wasm.CALL "health.score" 95 100 50
+  min_score = core.INT "80"
+  healthy = core.GTE score min_score
+  if healthy:
+    out "healthy"
+  out "degraded"

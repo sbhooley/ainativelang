@@ -957,12 +957,12 @@ ADAPTER_CONTRACTS: Dict[str, Dict[str, Any]] = {
         },
         "verbs": {
             "get": {
-                "args": ["key: string", "or namespace: string, key: string"],
+                "args": ["key: string", "namespace?: string"],
                 "example": 'cached = cache.get "leadgen"',
                 "returns": ["stored value or null"],
             },
             "set": {
-                "args": ["key: string, value: any", "or namespace: string, key: string, value: any"],
+                "args": ["key: string", "value: any", "namespace?: string"],
                 "example": "saved = cache.set \"leadgen\" log_text",
                 "returns": ["null"],
             },
@@ -1302,6 +1302,85 @@ ADAPTER_CONTRACTS: Dict[str, Dict[str, Any]] = {
             "approval_gated paths extend ApprovalRequest.Question in ArmaraOS.",
         ],
     },
+    "postgres": {
+        "adapter": "postgres",
+        "status": "known",
+        "summary": "PostgreSQL query adapter for SELECT/INSERT/UPDATE/DELETE and raw SQL.",
+        "runtime_registration": {
+            "enable": ["postgres"],
+            "postgres": {"url": "<postgresql-dsn-or-AINL_POSTGRES_URL>"},
+        },
+        "verbs": {
+            "QUERY": {
+                "args": ["sql: string", "params?: list"],
+                "example": 'rows = postgres.QUERY "SELECT * FROM users WHERE id=$1" [user_id]',
+                "returns": ["list of row dicts"],
+            },
+            "EXECUTE": {
+                "args": ["sql: string", "params?: list"],
+                "example": 'result = postgres.EXECUTE "INSERT INTO logs(msg) VALUES($1)" [message]',
+                "returns": ["rowcount or status"],
+            },
+        },
+        "pitfalls": [
+            "Always use parameterized queries ($1, $2) to prevent SQL injection.",
+            "MCP ainl_run must enable postgres and set adapters.postgres.url.",
+            "Connection pool is managed by the adapter; do not open raw connections.",
+        ],
+        "strict_valid_pointers": [],
+    },
+    "sqlite": {
+        "adapter": "sqlite",
+        "status": "known",
+        "summary": "SQLite query adapter for local database operations.",
+        "runtime_registration": {
+            "enable": ["sqlite"],
+            "sqlite": {"path": "<absolute-path-to-db-file>"},
+        },
+        "verbs": {
+            "QUERY": {
+                "args": ["sql: string", "params?: list"],
+                "example": 'rows = sqlite.QUERY "SELECT * FROM items WHERE status=?" [status]',
+                "returns": ["list of row dicts"],
+            },
+            "EXECUTE": {
+                "args": ["sql: string", "params?: list"],
+                "example": 'result = sqlite.EXECUTE "INSERT INTO items(name) VALUES(?)" [name]',
+                "returns": ["rowcount or status"],
+            },
+        },
+        "pitfalls": [
+            "Use parameterized queries (?) to prevent SQL injection.",
+            "MCP ainl_run must enable sqlite and set adapters.sqlite.path.",
+            "WAL mode is used by default for concurrent read safety.",
+        ],
+        "strict_valid_pointers": [],
+    },
+    "wasm": {
+        "adapter": "wasm",
+        "status": "known",
+        "summary": "WebAssembly call-out adapter: invoke pre-compiled .wasm/.wat module exports from AINL steps.",
+        "runtime_registration": {
+            "enable": ["wasm"],
+            "wasm": {"modules": {"<module_name>": "<path-to-wasm-or-wat-file>"}},
+        },
+        "verbs": {
+            "CALL": {
+                "args": ["target: string (module.export)"],
+                "variadic": True,
+                "example": 'result = wasm.CALL "metrics.add" 10 20',
+                "returns": ["wasm function return value"],
+            },
+        },
+        "pitfalls": [
+            "Requires wasmtime Python package (optional dependency).",
+            "Module names must be pre-registered in the adapter's module map.",
+            "This is call-out to modules, NOT whole-graph WASM compilation.",
+            "Only exported functions are callable; WASI imports are not supported.",
+            "Allowed modules can be restricted via allowed_modules parameter.",
+        ],
+        "strict_valid_pointers": ["examples/wasm/"],
+    },
 }
 
 
@@ -1327,6 +1406,13 @@ def check_verb_arity(adapter: str, verb: str, arg_count: int) -> Optional[str]:
     verbs = contract.get("verbs") or {}
     verb_schema = verbs.get(verb) or verbs.get(verb.upper()) or verbs.get(verb.lower())
     if not verb_schema:
+        return None
+    if verb_schema.get("variadic"):
+        args_spec = verb_schema.get("args")
+        if args_spec:
+            required_count, _ = _parse_verb_arity(args_spec)
+            if arg_count < required_count:
+                return f"{adapter}.{verb} expects at least {required_count} args, got {arg_count}"
         return None
     args_spec = verb_schema.get("args")
     if not args_spec or not isinstance(args_spec, list):

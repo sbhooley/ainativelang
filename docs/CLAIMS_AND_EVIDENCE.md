@@ -187,6 +187,23 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 **Caveats:** the `production_grade` Python variants are measurement skeletons (retry/breaker/audit surface; no OTEL exporter, no Prometheus, no DLQ, no Kubernetes liveness). A real production deployment adds another 200–500 LOC for those concerns — meaning this benchmark **understates** AINL's LOC advantage on the observability axis. See [`../benchmarks/handwritten_baselines/production/README.md`](../benchmarks/handwritten_baselines/production/README.md) for the explicit caveat list.
 
+## 10. Common false or exaggerated claims (crosswalk to STATUS.yaml)
+
+The following claims have appeared in operator posts, agent reports, or social media. They are mapped here to their actual status so reviewers can quickly verify or reject them.
+
+| Claim | Actual status | STATUS.yaml key | Evidence or refutation |
+|-------|---------------|-----------------|----------------------|
+| "Graphs compile to bare metal / machine code" | **Never** — no native codegen exists | `marketing_claims_boundary.bare_metal_compilation` | AINL compiles to IR JSON; executed by Python `RuntimeEngine` |
+| "AINL v1.8.2" (or any version ahead of release) | **False** — current release is per `pyproject.toml` | `marketing_claims_boundary.version_marketing` | Check `pyproject.toml` `version` field |
+| "Graphs compile to WebAssembly / run in browser" | **Never shipped** — WASM adapter calls modules, not compile-to-wasm | `marketing_claims_boundary.whole_graph_wasm_emit` | `runtime/adapters/wasm.py` is call-out only; no `ainl emit --target wasm` |
+| "Type checker rejects tensor/string mismatches" | **Aspirational** — `--strict` checks syntax/adapter names, not type shapes | `marketing_claims_boundary.tensor_type_system` | No shape/tensor type system in compiler or runtime |
+| "AINL workflows run on-chain as smart contracts" | **Never** — Solana adapter calls RPC; no on-chain graph execution | `aspirational_not_built` (no entry; inherently false) | `adapters/solana.py` is an RPC client, not a contract deployer |
+| "90–95% cost savings" (without baseline qualifier) | **Misleading without baseline A** | `docs/CLAIMS_AND_EVIDENCE.md` §1 | Only valid vs baseline A (prompt-loop); ~1.3–1.5× vs baseline B |
+
+**Operator guardrails:** See [`docs/operations/OPERATOR_MARKETING_GUARDRAILS.md`](operations/OPERATOR_MARKETING_GUARDRAILS.md) for the full claim checklist.
+
+---
+
 ## See also
 
 - [`BENCHMARK.md`](../BENCHMARK.md) — regenerated tables and caveats  

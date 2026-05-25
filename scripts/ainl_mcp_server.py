@@ -289,6 +289,7 @@ ALL_TOOL_NAMES: List[str] = [
     "ainl_mission_plan",
     "ainl_mission_validate",
     "ainl_handoff_lint",
+    "ainl_estimate",
 ]
 ALL_RESOURCE_URIS: List[str] = [
     "ainl://adapter-manifest",
@@ -3094,6 +3095,51 @@ def ainl_ir_diff(file1: str, file2: str, strict: bool = True) -> dict:
             "human_summary": diff.get("human_summary", ""),
         },
     }
+
+
+@_register_tool
+def ainl_estimate(
+    code: Optional[str] = None,
+    ainl: Optional[str] = None,
+    path: Optional[str] = None,
+    model: str = "gpt-4o",
+    runs_per_day: int = 10,
+    strict: bool = True,
+) -> dict:
+    """Estimate compile-time LLM token cost for an AINL graph (static analysis).
+
+    Returns the same JSON as ``ainl estimate --format json`` on the CLI.
+    Accepts inline ``code`` or a filesystem ``path`` to a ``.ainl`` file.
+    """
+    from tooling.cost_estimate import estimate_ir_cost, MODEL_PRICING
+
+    source = _resolve_code_arg(code, ainl)
+    if not source and path:
+        try:
+            resolved = _expand_workflow_path(path)
+            source = resolved.read_text(encoding="utf-8")
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+    if not source.strip():
+        return {
+            "ok": False,
+            "error_kind": "empty_source",
+            "error": "No source code provided. Pass 'code' or 'path'.",
+        }
+
+    ir = _compile(source, strict=strict)
+    errors = ir.get("errors") or []
+    if errors:
+        return {"ok": False, "errors": errors}
+
+    try:
+        est = estimate_ir_cost(ir, pricing_model=model, runs_per_day=runs_per_day)
+    except Exception as exc:
+        return {"ok": False, "error": f"Estimation failed: {exc}"}
+
+    est["ok"] = True
+    est["available_models"] = sorted(MODEL_PRICING.keys())
+    return est
 
 
 @_register_tool

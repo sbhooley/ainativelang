@@ -361,6 +361,48 @@
       "path": "examples/compact/pggraph_status.ainl",
       "primary_pattern": "pggraph_status_compact",
       "secondary_pattern": "graph_probe"
+    },
+    {
+      "order": 61,
+      "path": "examples/mission_workers/handoff_emitter_worker.ainl",
+      "primary_pattern": "mission_handoff_emit",
+      "secondary_pattern": "mission_substrate"
+    },
+    {
+      "order": 62,
+      "path": "examples/mission_workers/assertion_check_worker.ainl",
+      "primary_pattern": "mission_assertion_check",
+      "secondary_pattern": "mission_substrate"
+    },
+    {
+      "order": 63,
+      "path": "examples/mission_workers/improvement_proposal_worker.ainl",
+      "primary_pattern": "mission_improvement_proposal",
+      "secondary_pattern": "mission_substrate"
+    },
+    {
+      "order": 64,
+      "path": "examples/mission_workers/scrutiny_reviewer_worker.ainl",
+      "primary_pattern": "mission_scrutiny_review",
+      "secondary_pattern": "mission_substrate"
+    },
+    {
+      "order": 65,
+      "path": "examples/wasm/wasm_add_minimal.ainl",
+      "primary_pattern": "wasm_call_minimal",
+      "secondary_pattern": "adapter_wasm"
+    },
+    {
+      "order": 66,
+      "path": "examples/wasm/wasm_lead_score.ainl",
+      "primary_pattern": "wasm_scoring_branch",
+      "secondary_pattern": "deterministic_wasm"
+    },
+    {
+      "order": 67,
+      "path": "examples/wasm/wasm_health_check.ainl",
+      "primary_pattern": "wasm_health_check",
+      "secondary_pattern": "deterministic_wasm"
     }
   ]
 }

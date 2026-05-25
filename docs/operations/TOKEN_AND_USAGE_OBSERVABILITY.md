@@ -119,6 +119,26 @@ Use **evidence from your machine** (not global monthly token totals) before lock
 
 3. **Apply** — export the env vars for the OpenClaw bridge process (or wrapper cron), restart if needed, and re-run **`python3 openclaw/bridge/run_wrapper_ainl.py embedding-memory-pilot --dry-run`** to confirm.
 
+## Static estimate vs live usage reconciliation
+
+**`ainl estimate`** (CLI) and **`ainl_estimate`** (MCP tool) produce **compile-time predictions** based on prompt text heuristics and model pricing tables. These are useful for budgeting and planning but do not reflect actual runtime costs.
+
+| Surface | Nature | Source |
+|---------|--------|--------|
+| `ainl estimate` / `ainl_estimate` | Static, pre-run | `tooling/cost_estimate.py` — tiktoken token counting, no LLM calls |
+| CLI trajectory JSONL | Runtime, per-step | `ainl run --log-trajectory` — actual adapter calls and timing |
+| Runner audit JSONL | Runtime, per-request | `scripts/runtime_runner_service.py` — HTTP runner service |
+| ArmaraOS `usage_events` | Runtime, per-turn | Daemon metered tokens from LLM responses |
+
+**The estimate is not a bill.** Key differences:
+
+- **Token count accuracy**: Estimates use tiktoken or `len//4` on prompt templates. Actual token counts depend on the model's tokenizer, system prompts, and context.
+- **Output tokens**: Estimates use `max_tokens` or a 400-token default. Actual completions may be shorter.
+- **Non-LLM costs**: WASM, `core.*`, and database adapter calls have zero token cost in estimates. Runtime may incur API fees for database or HTTP calls.
+- **Caching/deduplication**: Runtime may skip LLM calls via cache hits. Estimates assume every node executes.
+
+For production cost tracking, use runtime observability surfaces alongside static estimates. See [`docs/COST_ESTIMATOR.md`](../COST_ESTIMATOR.md) for the estimation methodology and [`AUDIT_AND_TELEMETRY_MAP.md`](AUDIT_AND_TELEMETRY_MAP.md) for the runtime surfaces.
+
 ## See also
 
 - [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) — agent vs AINL roles, host contract, default loop

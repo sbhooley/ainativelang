@@ -2,6 +2,10 @@
 
 Use this section to understand how AINL expands into downstream artifacts such as APIs, schemas, infrastructure, and application surfaces.
 
+## Emit target honesty index
+
+See [`docs/EMIT_TARGETS.md`](../EMIT_TARGETS.md) for the authoritative list of shipped targets mirroring `cli/main.py` choices. Do not claim an emit target that is not in that list.
+
 ## Current anchors
 
 - [`TARGETS_ROADMAP.md`](../runtime/TARGETS_ROADMAP.md) — target/runtime support map

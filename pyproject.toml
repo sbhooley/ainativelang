@@ -68,6 +68,7 @@ dev = [
 ]
 web = ["fastapi", "uvicorn[standard]"]
 mcp = ["mcp[cli]>=1.0.0"]
+wasm = ["wasmtime>=23.0.0"]
 openclaw = ["requests>=2.28.0", "mcp[cli]>=1.0.0"]
 postgres = ["psycopg[binary]>=3.2.0", "psycopg-pool>=3.2.0"]
 pggraph = ["psycopg[binary]>=3.2.0", "psycopg-pool>=3.2.0"]

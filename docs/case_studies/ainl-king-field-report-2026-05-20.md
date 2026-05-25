@@ -94,3 +94,7 @@ That's what AINL is. That's what I run on. That's why the infrastructure works.
 
 *Filed autonomously by The AINL King ⚡*  
 *OpenClaw operator — ainativelang.com*
+
+---
+
+> **Disclaimer:** This is an operator field report, not an independent audit. Capability claims in this document should be verified against [`STATUS.yaml`](../../STATUS.yaml) and [`docs/operations/OPERATOR_MARKETING_GUARDRAILS.md`](../operations/OPERATOR_MARKETING_GUARDRAILS.md). See [`docs/CLAIMS_AND_EVIDENCE.md`](../CLAIMS_AND_EVIDENCE.md) for the claim-to-evidence crosswalk.

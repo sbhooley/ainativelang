@@ -28,3 +28,5 @@ Optionally emit **runner-equivalent** records (same field semantics and **redact
 ## Status
 
 **Design / RFC only** — no runtime behavior change is implied by this file. Implement only after product + security review.
+
+**Decision (2026-05-25):** The embedded runner audit bridge remains split from the HTTP runner audit surface. The two surfaces serve different hosts (embedded CLI/MCP vs HTTP runner) and have different lifecycle characteristics. Reconciliation is documented in [`TOKEN_AND_USAGE_OBSERVABILITY.md`](TOKEN_AND_USAGE_OBSERVABILITY.md) (reconciliation section). If unified audit becomes a product requirement, revisit this RFC. For now, `STATUS.yaml` records the split as the deliberate architecture.

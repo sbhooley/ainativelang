@@ -63,6 +63,40 @@ Unknown model names fall back to `gpt-4o` pricing with a warning.
 
 Estimates are **static** — they do not call providers and may differ from live billing (actual prompts, caching, tool loops).
 
+## MCP tool
+
+The `ainl_estimate` MCP tool mirrors the CLI and is available to any MCP-compatible host:
+
+```json
+{
+  "tool": "ainl_estimate",
+  "arguments": {
+    "code": "wasm_add:\n  result = wasm.CALL \"metrics.add\" 2 3\n  out result",
+    "model": "gpt-4o",
+    "runs_per_day": 10,
+    "strict": true
+  }
+}
+```
+
+Or from a file path:
+
+```json
+{
+  "tool": "ainl_estimate",
+  "arguments": {
+    "path": "examples/wasm/wasm_add_minimal.ainl",
+    "model": "claude-haiku-4-5"
+  }
+}
+```
+
+The response includes `per_node`, `per_label`, `totals`, `projections`, and `available_models` (same structure as `ainl estimate --format json`).
+
+## Reconciliation with live usage
+
+Static estimates are **not** runtime bills. See [`docs/operations/TOKEN_AND_USAGE_OBSERVABILITY.md`](operations/TOKEN_AND_USAGE_OBSERVABILITY.md) (reconciliation section) for the key differences and how to cross-reference estimates with runtime audit surfaces.
+
 ## Programmatic API
 
 ```python

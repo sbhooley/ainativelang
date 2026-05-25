@@ -6,6 +6,8 @@ This directory holds **research notes, field analyses, and LLM-assisted reviews*
 
 **Honest savings scope:** [`docs/competitive/WHEN_AINL_DOES_NOT_HELP.md`](../docs/competitive/WHEN_AINL_DOES_NOT_HELP.md) — baseline A (prompt-loop) vs B (hand-optimized scripts) vs C (pure deterministic).
 
+**Marketing guardrails:** [`docs/operations/OPERATOR_MARKETING_GUARDRAILS.md`](../docs/operations/OPERATOR_MARKETING_GUARDRAILS.md) — rules for operators and agents making public claims about AINL capabilities.
+
 For engineering truth boundaries, use:
 
 - **`STATUS.yaml`** — shipped vs aspirational

@@ -1,0 +1,5 @@
+# Minimal WASM call: add two numbers via a pre-compiled module.
+# Requires: wasmtime + metrics module registered in adapter config.
+wasm_add:
+  result = wasm.CALL "metrics.add" 2 3
+  out result

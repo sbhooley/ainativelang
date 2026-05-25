@@ -31,7 +31,7 @@
     },
     "design_impact_first": {
       "description": "Impact-first authoring: validate → compile → IR diff before run. Includes read-only tools plus ainl_step_examples and ainl_ir_diff; execution (ainl_run) remains available when explicitly exposed. Aligns with ainl-impact-policy golden chain. Set AINL_MCP_EXPOSURE_PROFILE=design_impact_first.",
-      "tools": ["ainl_get_started", "ainl_step_examples", "ainl_wizard_checkpoint", "ainl_adapter_contract", "ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_ir_diff", "ainl_fitness_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_mission_plan", "ainl_mission_validate", "ainl_handoff_lint"],
+      "tools": ["ainl_get_started", "ainl_step_examples", "ainl_wizard_checkpoint", "ainl_adapter_contract", "ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_ir_diff", "ainl_fitness_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_estimate", "ainl_mission_plan", "ainl_mission_validate", "ainl_handoff_lint"],
       "resources": [
         "ainl://adapter-manifest",
         "ainl://security-profiles",
@@ -57,7 +57,7 @@
     },
     "safe_workflow": {
       "description": "Full read-only tooling plus safe-default execution. All resources exposed. Use only after explicit operator review of grants, policies, limits, and adapter exposure.",
-      "tools": ["ainl_get_started", "ainl_step_examples", "ainl_wizard_checkpoint", "ainl_adapter_contract", "ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_fitness_report", "ainl_ir_diff", "ainl_ptc_signature_check", "ainl_trace_export", "ainl_ptc_run", "ainl_ptc_health_check", "ainl_mission_plan", "ainl_mission_validate", "ainl_handoff_lint"],
+      "tools": ["ainl_get_started", "ainl_step_examples", "ainl_wizard_checkpoint", "ainl_adapter_contract", "ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_fitness_report", "ainl_ir_diff", "ainl_ptc_signature_check", "ainl_trace_export", "ainl_ptc_run", "ainl_ptc_health_check", "ainl_estimate", "ainl_mission_plan", "ainl_mission_validate", "ainl_handoff_lint"],
       "resources": [
         "ainl://adapter-manifest",
         "ainl://security-profiles",
@@ -83,7 +83,7 @@
     },
     "full": {
       "description": "All tools and resources. Equivalent to no exposure restriction.",
-      "tools": ["ainl_get_started", "ainl_step_examples", "ainl_wizard_checkpoint", "ainl_adapter_contract", "ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_fitness_report", "ainl_ir_diff", "ainl_ptc_signature_check", "ainl_trace_export", "ainl_ptc_run", "ainl_ptc_health_check", "ainl_mission_plan", "ainl_mission_validate", "ainl_handoff_lint"],
+      "tools": ["ainl_get_started", "ainl_step_examples", "ainl_wizard_checkpoint", "ainl_adapter_contract", "ainl_validate", "ainl_compile", "ainl_capabilities", "ainl_security_report", "ainl_run", "ainl_import_clawflow", "ainl_import_agency_agent", "ainl_import_markdown", "ainl_list_ecosystem", "ainl_fitness_report", "ainl_ir_diff", "ainl_ptc_signature_check", "ainl_trace_export", "ainl_ptc_run", "ainl_ptc_health_check", "ainl_estimate", "ainl_mission_plan", "ainl_mission_validate", "ainl_handoff_lint"],
       "resources": [
         "ainl://adapter-manifest",
         "ainl://security-profiles",

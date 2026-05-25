@@ -90,7 +90,10 @@
       "examples/mission_workers/handoff_emitter_worker.ainl",
       "examples/mission_workers/assertion_check_worker.ainl",
       "examples/mission_workers/improvement_proposal_worker.ainl",
-      "examples/mission_workers/scrutiny_reviewer_worker.ainl"
+      "examples/mission_workers/scrutiny_reviewer_worker.ainl",
+      "examples/wasm/wasm_add_minimal.ainl",
+      "examples/wasm/wasm_lead_score.ainl",
+      "examples/wasm/wasm_health_check.ainl"
     ],
     "non-strict-only": [
       "examples/benchmark/doc_pipeline_compiled.ainl",

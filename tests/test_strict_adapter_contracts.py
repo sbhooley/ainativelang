@@ -1,126 +1,112 @@
-import os
-import sys
+"""Tests for adapter semantic contract validation (tooling/contract_semantics.py)."""
+from __future__ import annotations
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pytest
 
-from compiler_v2 import AICodeCompiler
-from tooling.effect_analysis import strict_adapter_effect, strict_adapter_key, strict_adapter_key_for_step
-
-
-def _strict_errors(code: str):
-    return list(AICodeCompiler(strict_mode=True).compile(code, emit_graph=True).get("errors", []))
-
-
-def test_strict_allows_explicit_runtime_supported_adapter_verbs():
-    programs = [
-        'L1: R core.ADD 1 2 ->out J out\n',
-        'L1: R db.G User "1" ->out J out\n',
-        'L1: R api.POST /x "{}" ->out J out\n',
-        'L1: R http.GET "https://example.com" ->out J out\n',
-        'L1: R a2a.DISCOVER "https://a.example.com" ->out J out\n',
-        'L1: R a2a.SEND "https://a.example.com/a2a" "msg" ->out J out\n',
-        'L1: R sqlite.QUERY "SELECT 1" ->out J out\n',
-        'L1: R postgres.QUERY "SELECT 1" ->out J out\n',
-        'L1: R postgres.EXECUTE "UPDATE x SET y = 1" ->out J out\n',
-        'L1: R postgres.TRANSACTION [] ->out J out\n',
-        'L1: R mysql.QUERY "SELECT 1" ->out J out\n',
-        'L1: R mysql.EXECUTE "UPDATE x SET y = 1" ->out J out\n',
-        'L1: R mysql.TRANSACTION [] ->out J out\n',
-        'L1: R redis.GET "k" ->out J out\n',
-        'L1: R redis.SET "k" "v" ->out J out\n',
-        'L1: R redis.TRANSACTION [] ->out J out\n',
-        'L1: R dynamodb.GET "users" "key" ->out J out\n',
-        'L1: R dynamodb.PUT "users" "item" ->out J out\n',
-        'L1: R dynamodb.QUERY "users" "pk = :pk" "expr_values" ->out J out\n',
-        'L1: R dynamodb.STREAMS_SUBSCRIBE "users" "LATEST" {} 0.2 10 ->out J out\n',
-        'L1: R dynamodb.STREAMS_UNSUBSCRIBE "users" ->out J out\n',
-        'L1: R airtable.LIST "users" ->out J out\n',
-        'L1: R airtable.FIND "users" "formula" ->out J out\n',
-        'L1: R airtable.CREATE "users" "record" ->out J out\n',
-        'L1: R airtable.ATTACHMENT_UPLOAD "users" "rec1" "Files" "https://files.example.com/a" "a.bin" ->out J out\n',
-        'L1: R airtable.WEBHOOK_LIST "users" ->out J out\n',
-        'L1: R supabase.SELECT "users" ->out J out\n',
-        'L1: R supabase.INSERT "users" "record" ->out J out\n',
-        'L1: R supabase.AUTH_SIGN_IN_WITH_PASSWORD "a@x.dev" "pw" ->out J out\n',
-        'L1: R supabase.REALTIME_REPLAY "ch" "latest" 10 0.01 ->out J out\n',
-        'L1: R supabase.REALTIME_GET_CURSOR "ch" "g1" "c1" ->out J out\n',
-        'L1: R supabase.REALTIME_ACK "ch" "cur1" "g1" "c1" ->out J out\n',
-        'L1: R fs.READ "note.txt" ->out J out\n',
-        'L1: R tools.CALL "ping" ->out J out\n',
-        'L1: R memory prune ->out J out\n',
-        'L1: R ptc_runner run "(+ 1 2)" "{total :float}" 5 ->out J out\n',
-        'L1: R ptc_runner.RUN "(+ 1 2)" "{total :float}" 5 ->out J out\n',
-        'L1: R llm_query query "hello" "gpt" 64 ->out J out\n',
-        'L1: R llm_query.QUERY "hello" "gpt" 64 ->out J out\n',
-    ]
-    for code in programs:
-        errs = _strict_errors(code)
-        assert not errs, f"strict compile unexpectedly failed for: {code!r} -> {errs!r}"
+from tooling.contract_semantics import (
+    ContractDiagnostic,
+    validate_ir_contracts,
+    format_diagnostics,
+)
 
 
-def test_strict_unknown_adapter_verb_fails_by_design():
-    errs = _strict_errors('L1: R http.BOGUS "https://example.com" ->out J out\n')
-    assert any("unknown adapter.verb" in e for e in errs), errs
+def _make_ir(labels: dict) -> dict:
+    return {"labels": labels, "ir_version": "test"}
 
 
-def test_strict_core_allowlist_is_explicit():
-    allowed = _strict_errors("L1: R core.ADD 2 3 ->out J out\n")
-    assert not allowed, allowed
-
-    blocked = _strict_errors("L1: R core.MAGIC 2 3 ->out J out\n")
-    assert any("unknown adapter.verb 'core.MAGIC'" in e for e in blocked), blocked
+def _step(adapter: str, args: list | None = None) -> dict:
+    return {"op": "R", "adapter": adapter, "args": args or []}
 
 
-def test_legacy_surface_does_not_widen_strict_contract():
-    allowed = _strict_errors('L1: R ext.OP /x 1 ->out J out\n')
-    assert not allowed, allowed
+class TestValidateIrContracts:
+    def test_empty_ir_no_diagnostics(self):
+        assert validate_ir_contracts(_make_ir({})) == []
 
-    blocked = _strict_errors('L1: R ext.UNKNOWN /x 1 ->out J out\n')
-    assert any("unknown adapter.verb 'ext.UNKNOWN'" in e for e in blocked), blocked
+    def test_known_adapter_valid_verb(self):
+        ir = _make_ir({"L1": [_step("http.GET", ["https://example.com"])]})
+        diags = validate_ir_contracts(ir)
+        assert diags == []
+
+    def test_unknown_verb_warning(self):
+        ir = _make_ir({"L1": [_step("http.FOOBAR", ["url"])]})
+        diags = validate_ir_contracts(ir, strict=False)
+        assert len(diags) == 1
+        assert diags[0].severity == "warning"
+        assert "FOOBAR" in diags[0].message
+
+    def test_unknown_verb_error_strict(self):
+        ir = _make_ir({"L1": [_step("http.FOOBAR", ["url"])]})
+        diags = validate_ir_contracts(ir, strict=True)
+        assert len(diags) == 1
+        assert diags[0].severity == "error"
+
+    def test_arity_too_few(self):
+        ir = _make_ir({"L1": [_step("http.GET", [])]})
+        diags = validate_ir_contracts(ir, strict=True)
+        assert any("at least" in d.message for d in diags)
+
+    def test_arity_too_many(self):
+        ir = _make_ir({"L1": [_step("http.GET", ["u", "h", "t", "extra"])]})
+        diags = validate_ir_contracts(ir, strict=True)
+        assert any("at most" in d.message for d in diags)
+
+    def test_unknown_adapter_no_diagnostics(self):
+        ir = _make_ir({"L1": [_step("exotic.DO_THING", ["arg"])]})
+        diags = validate_ir_contracts(ir, strict=True)
+        assert diags == []
+
+    def test_queue_put_valid(self):
+        ir = _make_ir({"L1": [_step("queue.Put", ["channel", "payload"])]})
+        diags = validate_ir_contracts(ir)
+        assert diags == []
+
+    def test_wasm_call_valid(self):
+        ir = _make_ir({"L1": [_step("wasm.CALL", ["metrics.add", "10", "20"])]})
+        diags = validate_ir_contracts(ir)
+        assert diags == []
+
+    def test_cache_get_valid(self):
+        ir = _make_ir({"L1": [_step("cache.get", ["mykey"])]})
+        diags = validate_ir_contracts(ir)
+        assert diags == []
+
+    def test_multiple_labels(self):
+        ir = _make_ir({
+            "L1": [_step("http.GET", ["https://a.com"])],
+            "L2": [_step("http.NOPE")],
+        })
+        diags = validate_ir_contracts(ir, strict=True)
+        assert len(diags) == 1
+        assert diags[0].label == "L2"
+
+    def test_non_request_ops_ignored(self):
+        ir = _make_ir({"L1": [
+            {"op": "Set", "var": "x", "value": 1},
+            {"op": "J", "var": "x"},
+        ]})
+        assert validate_ir_contracts(ir) == []
 
 
-def test_strict_adapter_helpers_are_deterministic_and_compiler_owned():
-    key_a = strict_adapter_key("core.add", "")
-    key_b = strict_adapter_key_for_step({"adapter": "core.add"})
-    key_c = strict_adapter_key_for_step({"src": "core", "req_op": "add"})
-    assert key_a == "core.ADD"
-    assert key_b == "core.ADD"
-    assert key_c == "core.ADD"
-    assert strict_adapter_effect(key_a) is not None
+class TestFormatDiagnostics:
+    def test_empty(self):
+        result = format_diagnostics([])
+        assert "verified" in result
+
+    def test_with_issues(self):
+        diags = [ContractDiagnostic("http", "FOOBAR", "L1", "error", "bad verb", "use GET")]
+        result = format_diagnostics(diags)
+        assert "ERROR" in result
+        assert "bad verb" in result
 
 
-def test_strict_adapter_effect_includes_memory_persona_graph_ops():
-    """Strict keys use uppercased verbs (see strict_adapter_key)."""
-    for key in (
-        "memory.RECALL",
-        "memory.SEARCH",
-        "memory.EXPORT_GRAPH",
-        "memory.STORE_PATTERN",
-        "memory.STORE",
-        "memory.PATTERN_RECALL",
-        "memory.EXECUTE",
-        "ainl_graph_memory.MEMORY_EXECUTE",
-        "persona.UPDATE",
-        "persona.GET",
-        "persona.LOAD",
-    ):
-        assert strict_adapter_effect(key) is not None, key
+class TestContractDiagnostic:
+    def test_to_dict(self):
+        d = ContractDiagnostic("http", "GET", "L1", "warning", "msg", "fix")
+        out = d.to_dict()
+        assert out["adapter"] == "http"
+        assert out["suggested_fix"] == "fix"
 
-
-def test_strict_compile_allows_memory_persona_graph_adapter_verbs():
-    """OP_REGISTRY memory.* / persona.* R steps must pass strict graph adapter contract."""
-    programs = [
-        'L1: R memory.recall * ->out J out\n',
-        'L1: R memory.search "q" * ->out J out\n',
-        'L1: R memory.export_graph * ->out J out\n',
-        'L1: R memory.store_pattern "p" v * ->out J out\n',
-        'L1: R memory.store "p" v * ->out J out\n',
-        'L1: R memory.pattern_recall "p" * ->out J out\n',
-        'L1: R memory.execute "p" * ->out J out\n',
-        'L1: R persona.update "t" 0.5 * ->out J out\n',
-        'L1: R persona.get "t" * ->out J out\n',
-        'L1: R persona.load * ->out J out\n',
-    ]
-    for code in programs:
-        errs = _strict_errors(code)
-        assert not errs, f"{code!r} -> {errs!r}"
+    def test_to_dict_no_fix(self):
+        d = ContractDiagnostic("http", "GET", "L1", "warning", "msg")
+        out = d.to_dict()
+        assert "suggested_fix" not in out

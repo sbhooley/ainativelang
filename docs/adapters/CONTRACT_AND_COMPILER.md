@@ -1,35 +1,65 @@
-# Adapter contract vs compiler (AINL)
+# Adapter contracts and compiler integration
 
-## Two different “ok” signals
+This document describes how adapter semantic contracts work, where they live, and how contributors should extend them when adding or modifying adapter verbs.
 
-- **Compiler / `ainl validate` / `ainl compile`** — graph shape, opcodes, strict policy, and manifest-declared **adapter names** and **verb spellings** the compiler knows about. Success means the IR is structurally valid for this toolchain, not that every `R adapter.VERB` matches a hand-written “how to call this HTTP endpoint” document.
-- **Adapter contract (MCP)** — human-oriented semantics: typical arguments, pitfalls, and links to `ainl://` resources. The deterministic bundle is built from `tooling/ainl_get_started.py` (`ADAPTER_CONTRACTS`) and is exposed as `ainl_adapter_contract` and `ainl://adapter-contracts`.
+## Architecture
 
-## Versioned `adapter_contract` payload
+```
+ADAPTER_CONTRACTS (tooling/ainl_get_started.py)
+    ↓
+contract_semantics.py (tooling/)
+    ↓
+ainl validate --strict-contracts
+    ↓
+Structured diagnostics (kind, severity, suggested_fix)
+```
 
-The MCP `ainl_adapter_contract` tool returns a JSON object that includes:
+## Where contracts live
 
-- `schema_version` — **string** (see `ADAPTER_CONTRACT_PAYLOAD_SCHEMA_VERSION` in `tooling/ainl_get_started.py`).
-- `adapter`, `status`, `summary` — as before.
-- `verbs` — per-verb entries where documented (per-adapter shape varies; see bundle).
-- `strict_valid_pointers` (for `http` / `fs` when applicable) — links into CI `strict-valid` and/or honest notes when no profiled example exists.
-- `runtime_registration` — reminder of the MCP `adapters` object for `ainl_run`.
-- `pitfalls` — authoring mistakes.
+| Source | Role |
+|--------|------|
+| `tooling/ainl_get_started.py` → `ADAPTER_CONTRACTS` | Canonical dict of adapter verbs, arg specs, pitfalls |
+| `tooling/adapter_manifest.json` | Machine-readable adapter catalog (name, effect, flags) |
+| `tooling/contract_semantics.py` | Validation engine: IR → diagnostics |
+| `runtime/adapters/base.py` | `ADAPTER_EFFECT` side-effect classification |
 
-`ainl://adapter-contracts` is a JSON object keyed by bundle name, same payloads.
+## Contributor checklist (adding or changing a verb)
 
-## Single source of truth for “what verbs exist at runtime”
+1. **Add/update the verb entry** in `ADAPTER_CONTRACTS` (`tooling/ainl_get_started.py`).
+   - Include `args` list with type annotations (required: `name: type`, optional: `name?: type`).
+   - Include `example` showing compact syntax usage.
+   - Include `returns` listing expected result fields.
 
-- **Full runtime catalog** — `tooling/adapter_manifest.json` and `ainl_capabilities` (merged into `strict_summary` for fast checks).
-- **MCP / wizard bundle** — `ADAPTER_CONTRACTS` in `tooling/ainl_get_started.py` (imported by the MCP server for hints). New verbs should appear in the manifest and, where agents need prose examples, in `ADAPTER_CONTRACTS` — not only in `AGENTS.md` prose.
+2. **Update the adapter manifest** if adding a new adapter:
+   - Add an entry to `tooling/adapter_manifest.json`.
+   - Verify `ADAPTER_EFFECT` in `runtime/adapters/base.py` is consistent.
 
-## Optional validate/compile warnings: `contract_alignment`
+3. **Add a strict-valid example** if none exists for the adapter family:
+   - Create under `examples/<adapter>/`.
+   - Register in `tooling/artifact_profiles.json` under `strict-valid`.
 
-On successful `ainl_validate` / `ainl_compile`, the MCP server may add:
+4. **Test contract validation**:
+   - Run `ainl validate <example> --strict --strict-contracts` and verify zero diagnostics.
+   - Add negative test cases to `tests/test_strict_adapter_contracts.py` if the verb has arity constraints.
 
-- `contract_alignment` — `schema_version`, `severity: "warning"`, `items[]` for **http** and **fs** `R` lines whose verb token is **not** in `ADAPTER_CONTRACTS`. These are **non-fatal**: the runtime may have newer verbs; use `ainl_capabilities` as the final arbiter.
+5. **Update MCP resource** (`ainl://adapter-contracts`) by running the MCP server — it reads `ADAPTER_CONTRACTS` at startup.
 
-## Related
+## Sync rules
 
-- `AGENTS.md` (HTTP `R` line rules, queue, strict-valid lists).
-- `docs/EXAMPLE_SUPPORT_MATRIX.md` and `tooling/artifact_profiles.json` for CI `strict-valid` paths.
+- `ADAPTER_CONTRACTS` keys must be a superset of adapters referenced in `artifact_profiles.json` strict-valid examples.
+- `adapter_manifest.json` adapter names should have a corresponding `ADAPTER_CONTRACTS` entry (gaps are tracked as "uncontracted" in `ainl_capabilities`).
+- `ADAPTER_EFFECT` in `base.py` classifies side effects; contracts add verb-level semantic detail on top.
+
+## Validation modes
+
+| Flag | Behavior |
+|------|----------|
+| `--strict` | Syntax strictness (existing) |
+| `--strict-contracts` | Semantic contract validation: unknown verbs and arity mismatches become errors |
+| Neither | Permissive: compiles even with unknown verbs |
+
+## See also
+
+- [`docs/issues/04-strict-adapter-contract-expansion-policy.md`](../issues/04-strict-adapter-contract-expansion-policy.md) — expansion policy
+- [`docs/operations/OPERATOR_MARKETING_GUARDRAILS.md`](../operations/OPERATOR_MARKETING_GUARDRAILS.md) — marketing rules
+- [`docs/EMIT_TARGETS.md`](../EMIT_TARGETS.md) — shipped emit targets

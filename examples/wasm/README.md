@@ -2,23 +2,33 @@
 
 These examples show how to move deterministic parsing/scoring/aggregation out of LLM prompts and into **WASM** via `R wasm.CALL`.
 
+## Strict-valid examples
+
+| File | Description |
+|------|-------------|
+| `wasm_add_minimal.ainl` | Minimal WASM call — add two numbers |
+| `wasm_lead_score.ainl` | Lead scoring with branch on WASM result |
+| `wasm_health_check.ainl` | Health check with threshold branch |
+
+All pass `ainl validate --strict` and are registered in `tooling/artifact_profiles.json`.
+
 ## Requirements
 
-- Install `wasmtime` (optional dependency used by the runtime WASM adapter).
+- Install `wasmtime`: `pip install 'ainativelang[wasm]'`
 - Ensure the runtime has a module mapping for `metrics` / `health` (the OpenClaw registry auto-registers demo modules from `demo/wasm/*.wat` when `wasmtime` is available).
 
 ## Run (demo)
 
-The simplest demo program is the legacy `.lang` example:
-
 ```bash
+# Validate a strict-valid example
+ainl validate examples/wasm/wasm_add_minimal.ainl --strict
+
+# Demo runner (legacy)
 python3 scripts/run_intelligence.py --dry-run context
-python3 scripts/run_intelligence.py --dry-run summarizer
 ```
 
-For a WASM-specific demo, see:
+For a WASM-specific demo, see `demo/demo_wasm.lang`.
 
-- `demo/demo_wasm.lang` (uses `R wasm.CALL metrics add ...` and `metrics lead_score ...`)
+## Operator notes
 
-This folder exists as a landing page for future `.ainl`-native WASM examples (strict-valid) without changing runtime semantics.
-
+See [`docs/operations/WASM_OPERATOR_NOTES.md`](../../docs/operations/WASM_OPERATOR_NOTES.md) for MCP config, runner config, and security guidance.

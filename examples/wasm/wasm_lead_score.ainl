@@ -1,0 +1,13 @@
+# WASM lead scoring: deterministic scoring via compiled module.
+# Moves scoring logic out of LLM prompts into sandboxed WASM.
+# Requires: wasmtime + metrics module with lead_score export.
+wasm_lead_scorer:
+  reviews = core.INT "15"
+  revenue = core.INT "450"
+  age_days = core.INT "30"
+  score = wasm.CALL "metrics.lead_score" reviews revenue age_days
+  threshold = core.INT "70"
+  above = core.GT score threshold
+  if above:
+    out "qualified"
+  out "nurture"

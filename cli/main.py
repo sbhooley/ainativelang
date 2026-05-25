@@ -1007,6 +1007,33 @@ def cmd_check(args: argparse.Namespace) -> int:
                 payload["structured_diagnostics"] = [d.to_dict() for d in enriched]
         except Exception:
             pass
+    if bool(getattr(args, "strict_contracts", False)):
+        try:
+            from tooling.contract_semantics import validate_ir_contracts, format_diagnostics
+            contract_diags = validate_ir_contracts(ir, strict=True)
+            payload["contract_diagnostics"] = [d.to_dict() for d in contract_diags]
+            payload["contract_validation_status"] = "verified" if not contract_diags else "issues_found"
+            if contract_diags:
+                print(format_diagnostics(contract_diags), end="", file=sys.stderr)
+                errors = [d for d in contract_diags if d.severity == "error"]
+                if errors:
+                    ok = False
+                    payload["ok"] = False
+        except Exception as _e:
+            payload["contract_validation_status"] = f"error: {_e}"
+    if bool(getattr(args, "verify_adapters", False)):
+        try:
+            from tooling.verification.z3_adapter_safety import verify_adapter_safety
+            vr = verify_adapter_safety(ir)
+            payload["verification"] = vr.to_dict()
+            if not vr.z3_available:
+                print("Warning: z3-solver not installed; adapter verification skipped.", file=sys.stderr)
+            elif not vr.all_passed:
+                print(vr.summary(), file=sys.stderr)
+                for v in vr.violations:
+                    print(f"  {v}", file=sys.stderr)
+        except Exception as _e:
+            payload["verification"] = {"error": str(_e)}
     if bool(getattr(args, "estimate", False)):
         try:
             from tooling.cost_estimate import estimate_ir_cost, format_estimate_table
@@ -2808,6 +2835,8 @@ def main() -> None:
     chk = sub.add_parser("check", help="Compile/check AINL file")
     chk.add_argument("file")
     chk.add_argument("--strict", action="store_true")
+    chk.add_argument("--strict-contracts", action="store_true", default=False, help="Validate adapter calls against semantic contracts (warnings become errors)")
+    chk.add_argument("--verify-adapters", action="store_true", default=False, help="Run Z3-based adapter safety verification (requires z3-solver)")
     chk.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
     chk.add_argument("--enhanced-diagnostics", action="store_true", default=False, help="Enrich diagnostics with graph context and Mermaid snippets on failure")
     chk.set_defaults(func=cmd_check)
@@ -2828,6 +2857,8 @@ def main() -> None:
     val = sub.add_parser("validate", help="Validate an .ainl file (alias for 'check')")
     val.add_argument("file")
     val.add_argument("--strict", action="store_true")
+    val.add_argument("--strict-contracts", action="store_true", default=False, help="Validate adapter calls against semantic contracts (warnings become errors)")
+    val.add_argument("--verify-adapters", action="store_true", default=False, help="Run Z3-based adapter safety verification (requires z3-solver)")
     val.add_argument("--estimate", action="store_true", default=False, help="Append static LLM cost estimate to output JSON")
     val.add_argument("--json-output", action="store_true", help="Output full IR JSON instead of summary (for CI/tooling)")
     val.add_argument("--enhanced-diagnostics", action="store_true", default=False, help="Enrich diagnostics with graph context and Mermaid snippets on failure")
