@@ -46,14 +46,14 @@ compiler_v2.py          — The compiler (6972 lines). Parses .ainl → IR dict.
 compiler_diagnostics.py — Error/warning types used by compiler.
 runtime/engine.py       — The runtime engine (3106 lines). Executes IR graphs.
 runtime/adapters/       — Runtime adapter base classes and builtins.
-cli/main.py             — CLI entry point (3689 lines). All `ainl` commands.
+cli/main.py             — CLI entry point (3703 lines). All `ainl` commands.
 adapters/               — 70 Python files under `adapters/` (recursive); ArmaraOS monitor bootstrap: `armaraos_integration.py`, `armaraos_defaults.py` (`build_armaraos_monitor_registry`, `boot_armaraos_graph_memory`). See `docs/ARMARAOS_INTEGRATION.md`, `docs/adapters/AINL_GRAPH_MEMORY.md`.
 armaraos/emitter/       — `armaraos.py`: `ainl emit --target armaraos` Hand pack (`HAND.toml`, IR JSON, `security.json`, README) with `schema_version` for openfang-hands validation.
 scripts/                — Standalone scripts (`refresh_repo_stats.py`, emit_langgraph, emit_temporal, `ainl_mcp_server.py` MCP entrypoint, etc).
 tooling/                — Graph analysis, normalization, effect analysis; `ainl_get_started.py` (authoring wizard + adapter contracts), `corpus_mining.py` (strict-valid family index for `corpus/strict_valid_family_index.json`).
 corpus/                 — Generated/mined JSON (e.g. `strict_valid_family_index.json`, `reverse_prompt_fixtures.json`); see `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`.
 examples/               — 103+ `.ainl` files under `examples/` (strict CI subset: `tooling/artifact_profiles.json`). See `examples/README.md`.
-tests/                  — 257 `*.py` files under `tests/` (~31k lines total); 227 `test_*.py` modules; pytest —collect-only: 1482/1521 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
+tests/                  — 258 `*.py` files under `tests/` (~31k lines total); 228 `test_*.py` modules; pytest —collect-only: 1490/1529 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
 docs/                   — Documentation (some accurate, some aspirational — see **`STATUS.yaml`**).
 ```
 <!-- repo-stats:layout-end -->
@@ -67,7 +67,7 @@ ainl run <file>                          # Compile and execute
 ainl validate <file> [--strict]          # Validate (alias for check)
 ainl validate <file> --json-output       # Full IR JSON output
 ainl compile <file>                      # Compile to IR JSON
-ainl estimate <file> [--format table|json]  # Static LLM token cost projection
+ainl estimate <file> [--model M] [--format table|summary|json] [--runs-per-day N]  # Static LLM token cost projection (see docs/COST_ESTIMATOR.md)
 ainl emit <file> --target <t> [-o path]  # Emit to target platform
 ainl serve [--host H] [--port P]         # HTTP server (REST API)
 ainl check <file> [--strict]             # Same as validate

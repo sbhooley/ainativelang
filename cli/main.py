@@ -1020,23 +1020,20 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 
 def cmd_estimate(args: argparse.Namespace) -> int:
-    src_path = str(Path(args.file).resolve())
-    with open(src_path, "r", encoding="utf-8") as f:
-        code = f.read()
+    from tooling.cost_estimate import estimate_file_cost, format_estimate_report
 
-    c = AICodeCompiler(strict_mode=bool(getattr(args, "strict", False)))
-    ir = c.compile(code, emit_graph=True, source_path=src_path)
-    if ir.get("errors"):
-        print(json.dumps({"ok": False, "errors": ir.get("errors", [])}, indent=2), file=sys.stderr)
+    try:
+        est = estimate_file_cost(
+            args.file,
+            model=getattr(args, "model", None) or None,
+            strict=bool(getattr(args, "strict", False)),
+            runs_per_day=int(getattr(args, "runs_per_day", 10) or 10),
+        )
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    from tooling.cost_estimate import estimate_ir_cost, format_estimate_table
-
-    est = estimate_ir_cost(ir)
-    if str(getattr(args, "format", "table") or "table").lower() == "json":
-        print(json.dumps({"ok": True, "cost_estimate": est}, indent=2))
-    else:
-        print(format_estimate_table(est), end="")
+    print(format_estimate_report(est, style=getattr(args, "format", "table")), end="")
     return 0
 
 
@@ -3674,10 +3671,27 @@ def main() -> None:
     estp.add_argument("file", help="Path to .ainl or .lang graph file")
     estp.add_argument("--strict", action="store_true", help="Compile in strict mode before estimating")
     estp.add_argument(
+        "--model",
+        default="gpt-4o",
+        help=(
+            "Model for pricing lookup (default: gpt-4o). "
+            "Options include gpt-4o, gpt-4o-mini, gpt-4.1, gpt-3.5-turbo, "
+            "claude-sonnet-4-6, claude-haiku-4-5, claude-opus-4-6, "
+            "gemini-1.5-pro, gemini-1.5-flash"
+        ),
+    )
+    estp.add_argument(
         "--format",
-        choices=["table", "json"],
+        choices=["table", "summary", "json"],
         default="table",
-        help="Output format: table (default) or json",
+        help="Output format: table (default), summary, or json",
+    )
+    estp.add_argument(
+        "--runs-per-day",
+        type=int,
+        default=10,
+        metavar="N",
+        help="Runs per day for daily/monthly cost projections (default: 10)",
     )
     estp.set_defaults(func=cmd_estimate)
 
