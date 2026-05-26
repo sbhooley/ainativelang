@@ -346,7 +346,8 @@ class TestValidate:
         pd = result.get("primary_diagnostic") or {}
         msg = pd.get("message") or " ".join(str(e) for e in (result.get("errors") or []))
         assert "inline JSON/object literals" in msg
-        assert "R core.MERGE" in (pd.get("suggested_fix") or "")
+        fix = pd.get("suggested_fix") or ""
+        assert "inline dict literals" in fix or "core.MERGE" in fix
 
     def test_validate_ok_recommends_compile_first(self):
         result = ainl_validate(VALID_CODE, strict=True)

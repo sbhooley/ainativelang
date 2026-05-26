@@ -628,6 +628,11 @@
         }),
         'nodes': list([
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.ADD',
+              'effect_kind': 'compute',
+              'effect_tier': 'pure',
+            }),
             'data': dict({
               'adapter': 'core.ADD',
               'args': list([
@@ -1962,6 +1967,11 @@
         }),
         'nodes': list([
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.ADD',
+              'effect_kind': 'compute',
+              'effect_tier': 'pure',
+            }),
             'data': dict({
               'adapter': 'core.ADD',
               'args': list([
@@ -2236,6 +2246,11 @@
         }),
         'nodes': list([
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.SLEEP',
+              'effect_kind': 'control',
+              'effect_tier': 'control',
+            }),
             'data': dict({
               'adapter': 'core.SLEEP',
               'args': list([
@@ -2509,6 +2524,11 @@
         }),
         'nodes': list([
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.ECHO',
+              'effect_kind': 'compute',
+              'effect_tier': 'pure',
+            }),
             'data': dict({
               'adapter': 'core.ECHO',
               'args': list([
@@ -2640,6 +2660,11 @@
         }),
         'nodes': list([
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.ADD',
+              'effect_kind': 'compute',
+              'effect_tier': 'pure',
+            }),
             'data': dict({
               'adapter': 'core.ADD',
               'args': list([
@@ -4220,6 +4245,11 @@
         }),
         'nodes': list([
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.PARSE',
+              'effect_kind': 'compute',
+              'effect_tier': 'pure',
+            }),
             'data': dict({
               'adapter': 'core.parse',
               'args': list([
@@ -4254,6 +4284,11 @@
             ]),
           }),
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.PARSE',
+              'effect_kind': 'compute',
+              'effect_tier': 'pure',
+            }),
             'data': dict({
               'adapter': 'core.parse',
               'args': list([
@@ -4288,6 +4323,11 @@
             ]),
           }),
           dict({
+            'contract': dict({
+              'adapter_verb': 'core.PARSE',
+              'effect_kind': 'compute',
+              'effect_tier': 'pure',
+            }),
             'data': dict({
               'adapter': 'core.parse',
               'args': list([

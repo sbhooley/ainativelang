@@ -84,7 +84,10 @@ def run_roundtrip() -> int:
             return 1
         try:
             lid = eng.default_entry_label()
-            r1 = eng.run_label(lid, frame={"url": url})
+            r1 = eng.run_label(
+                lid,
+                frame={"url": url, "http_headers": {}, "http_timeout": 15},
+            )
         finally:
             eng.close()
 
@@ -107,6 +110,8 @@ def run_roundtrip() -> int:
                 lid2,
                 frame={
                     "url": url,
+                    "http_headers": {},
+                    "http_timeout": 15,
                     "http_payment": {"x402": {"payment_signature": "demo-local-signature"}},
                 },
             )
