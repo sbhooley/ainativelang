@@ -32,6 +32,7 @@ from tooling.effect_analysis import (
     propagate_inter_label_entry_defs,
     strict_adapter_is_allowed,
     strict_adapter_key_for_step,
+    strict_core_runtime_implemented,
 )
 from tooling.emission_planner import apply_minimal_emit_python_api_stub_fallback
 from tooling.ir_canonical import attach_label_and_node_hashes, graph_semantic_checksum
@@ -761,6 +762,28 @@ def runtime_canonicalize_r_step(step: Dict[str, Any]) -> Dict[str, Any]:
     return {"adapter": adapter, "target": target, "args": args, "out": out}
 
 
+def _lookup_adapter_contract(dotted_name: str) -> Optional[Dict[str, str]]:
+    """Look up the effect contract for a dotted adapter verb (e.g. 'http.GET').
+
+    Case-insensitive on the verb part: 'fs.write' matches 'fs.WRITE'.
+    Returns {"effect_tier": ..., "effect_kind": ..., "adapter_verb": ...} or None.
+    """
+    try:
+        from tooling.effect_analysis import ADAPTER_EFFECT
+        if dotted_name in ADAPTER_EFFECT:
+            tier, kind = ADAPTER_EFFECT[dotted_name]
+            return {"effect_tier": tier, "effect_kind": kind, "adapter_verb": dotted_name}
+        parts = dotted_name.split(".", 1)
+        if len(parts) == 2:
+            upper_key = f"{parts[0]}.{parts[1].upper()}"
+            if upper_key in ADAPTER_EFFECT:
+                tier, kind = ADAPTER_EFFECT[upper_key]
+                return {"effect_tier": tier, "effect_kind": kind, "adapter_verb": upper_key}
+    except ImportError:
+        pass
+    return None
+
+
 def _steps_to_nodes_edges(steps: List[Dict[str, Any]], label_name: str) -> Dict[str, Any]:
     """
     Lifted from AICodeCompiler._steps_to_graph: builds nodes/edges/entry/exits
@@ -845,6 +868,9 @@ def _steps_to_nodes_edges(steps: List[Dict[str, Any]], label_name: str) -> Dict[
             mt = _MEMORY_TYPE_MAP.get(ad_key) or _MEMORY_TYPE_MAP.get(ad_raw)
             if mt:
                 node["memory_type"] = mt
+            _contract = _lookup_adapter_contract(ad_key if "." in ad_key else ad_raw)
+            if _contract:
+                node["contract"] = _contract
         elif op == "MemoryExecute":
             node["memory_type"] = "procedural"
         elif op == "MemoryPatch":
@@ -1266,8 +1292,14 @@ class AICodeCompiler:
                     "would receive only the first token (for example `{`) instead of a structured value."
                 ),
                 suggested_fix=(
-                    "Do not write `J { ... }`, `out { ... }`, `Set name { ... }`, or inline `{...}` on `R` lines "
-                    "(for example `R core.MERGE rec {\"key\": val}`) in strict AINL. "
+                    "Do not use inline dict literals on R lines. "
+                    "Pass dicts via frame parameter instead. "
+                    "For example, use `frame: {\"body\": {...}}` in `ainl_run` and reference by name: "
+                    "`R http.POST url body ->resp`. "
+                    "Alternatively, build dicts via `core.CONCAT` + `core.STRINGIFY` + `core.PARSE`, "
+                    "or use `core.MERGE` with two variables that are already resolved dicts."
+                ) if op == "R" else (
+                    "Do not write `J { ... }`, `out { ... }`, or `Set name { ... }` in strict AINL. "
                     "Build structured output through supported operations (for example stringify/parse a JSON "
                     "string or merge existing dict variables), pass the dict via frame, then return a variable: "
                     "`Set result payload` followed by `J result`."
@@ -2618,6 +2650,9 @@ class AICodeCompiler:
                 mt = _MEMORY_TYPE_MAP.get(ad_key) or _MEMORY_TYPE_MAP.get(ad_raw)
                 if mt:
                     node["memory_type"] = mt
+                _contract = _lookup_adapter_contract(ad_key if "." in ad_key else ad_raw)
+                if _contract:
+                    node["contract"] = _contract
             elif op == "MemoryExecute":
                 node["memory_type"] = "procedural"
             elif op == "MemoryPatch":
@@ -2926,6 +2961,24 @@ class AICodeCompiler:
                             node_id=nid_n if isinstance(nid_n, str) else None,
                             contract_violation_reason="Strict mode validates R steps against the adapter contract.",
                         )
+                    elif key and not strict_core_runtime_implemented(key):
+                        msg_core = (
+                            f"Label {lid!r}: node {nid_n!r} uses core verb {key!r} "
+                            f"which is not implemented at runtime (strict mode)"
+                        )
+                        self._errors.append(msg_core)
+                        self._emit_graph_validation_diagnostic(
+                            context,
+                            str(lid),
+                            "core_runtime_unimplemented",
+                            msg_core,
+                            (
+                                "Use a supported core.* verb (see ainl capabilities / AGENTS.md). "
+                                "For map/filter/reduce, use external code or supported string ops."
+                            ),
+                            node_id=nid_n if isinstance(nid_n, str) else None,
+                            contract_violation_reason="Strict mode rejects contract-listed core verbs without a runtime implementation.",
+                        )
 
             # Canonical ids must be n1..nK with no gaps or duplicates.
             if any(not isinstance(nid, str) or not nid.startswith("n") for nid in node_ids):
@@ -3225,6 +3278,22 @@ class AICodeCompiler:
         if parts and parts[-1].startswith("->") and not parts[-1].startswith("->L"):
             out_var = parts[-1][2:]
             parts = parts[:-1]
+        if len(parts) == 1:
+            # Zero-arg adapter verb: `R core.NOW ->now` (compact: `now = core.NOW`).
+            adapter_only = parts[0]
+            if "." in adapter_only:
+                src, req_op = adapter_only.split(".", 1)
+                return {
+                    "adapter": adapter_only,
+                    "target": "",
+                    "args": [],
+                    "out": out_var,
+                    "src": src,
+                    "req_op": req_op.upper() if req_op else "",
+                    "entity": "",
+                    "fields": "*",
+                    "raw": slots,
+                }
         if len(parts) < 2:
             return {"adapter": "?", "target": "", "args": [], "out": out_var, "raw": slots}
         adapter = parts[0]  # e.g. db.F, api.G
@@ -3828,6 +3897,7 @@ class AICodeCompiler:
                     if slots[i] == "R":
                         r_slots = []
                         i += 1
+                        r_base = i
                         while i < len(slots) and slots[i] not in step_ops:
                             r_slots.append(slots[i])
                             i += 1
@@ -3843,7 +3913,7 @@ class AICodeCompiler:
                                         lineno=lineno,
                                         source_lines=source_lines,
                                         op="R",
-                                        slot_index=idx,
+                                        slot_index=r_base + idx,
                                     )
                                     break
                         leg["steps"].append({"op": "R", "lineno": lineno, **(parsed or {"raw": r_slots})})

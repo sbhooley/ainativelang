@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import os
 import re
 import time
+import uuid as uuid_mod
 from typing import Any, Dict, List
 
 from runtime.adapters.base import RuntimeAdapter
@@ -236,5 +239,74 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             return float(_num(v))
         if t == "bool":
             return bool(args[0]) if args else False
+
+        if t == "abs":
+            return abs(_num(args[0]))
+        if t == "ceil":
+            return math.ceil(_num(args[0]))
+        if t == "floor":
+            return math.floor(_num(args[0]))
+        if t == "round":
+            v = _num(args[0])
+            ndigits = int(_num(args[1])) if len(args) > 1 else 0
+            return round(v, ndigits)
+        if t == "pow":
+            return _num(args[0]) ** _num(args[1])
+        if t == "mod":
+            return _num(args[0]) % _num(args[1])
+        if t == "and":
+            if len(args) >= 2:
+                return bool(args[0]) and bool(args[1])
+            return bool(args[0]) if args else False
+        if t == "or":
+            if len(args) >= 2:
+                return bool(args[0]) or bool(args[1])
+            return bool(args[0]) if args else False
+        if t == "not":
+            return not bool(args[0]) if args else True
+        if t == "noop":
+            return None
+        if t == "uuid":
+            return str(uuid_mod.uuid4())
+        if t == "hash":
+            s = str(args[0]) if args else ""
+            algo = str(args[1]).lower() if len(args) > 1 else "sha256"
+            h = hashlib.new(algo)
+            h.update(s.encode("utf-8"))
+            return h.hexdigest()
+        if t == "sort":
+            arr = args[0] if args else []
+            if not isinstance(arr, list):
+                arr = list(str(arr))
+            return sorted(arr, key=lambda x: str(x))
+        if t == "reverse":
+            arr = args[0] if args else []
+            if isinstance(arr, list):
+                return list(reversed(arr))
+            return list(reversed(list(str(arr))))
+        if t == "flatten":
+            arr = args[0] if args else []
+            if not isinstance(arr, list):
+                return [arr]
+            out: List[Any] = []
+            for item in arr:
+                if isinstance(item, list):
+                    out.extend(item)
+                else:
+                    out.append(item)
+            return out
+        if t == "unique":
+            arr = args[0] if args else []
+            if not isinstance(arr, list):
+                return [arr]
+            seen: set = set()
+            out_u: List[Any] = []
+            for item in arr:
+                key = json.dumps(item, sort_keys=True, default=str) if isinstance(item, (dict, list)) else item
+                if key in seen:
+                    continue
+                seen.add(key)
+                out_u.append(item)
+            return out_u
 
         raise RuntimeError(f"unsupported core builtin target: {t}")

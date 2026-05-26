@@ -402,6 +402,32 @@ def strict_adapter_is_allowed(key: str) -> bool:
     return bool(key) and key in ADAPTER_EFFECT
 
 
+# core.* verbs listed in ADAPTER_EFFECT but not yet implemented in runtime/adapters/builtins.py.
+CORE_RUNTIME_UNIMPLEMENTED: frozenset = frozenset(
+    {
+        "core.TYPE",
+        "core.REDUCE",
+        "core.MAP",
+        "core.FILTER",
+        "core.FORMAT",
+        "core.RANGE",
+        "core.OMIT",
+        "core.PICK",
+        "core.ZIP",
+    }
+)
+
+
+def strict_core_runtime_implemented(key: str) -> bool:
+    """False when strict mode should reject a contract-listed core verb with no runtime."""
+    if not key or not key.startswith("core."):
+        return True
+    upper = key.upper()
+    if upper in CORE_RUNTIME_UNIMPLEMENTED:
+        return False
+    return upper in ADAPTER_EFFECT or key in ADAPTER_EFFECT
+
+
 def strict_adapter_effect(key: str) -> Optional[Tuple[str, str]]:
     return ADAPTER_EFFECT.get(key)
 
