@@ -1,6 +1,9 @@
 # Synthetic dataset output
 data/
 
+# WordPress Site Brain plugin — standalone repo: ../ainl-site-brain (see that repo's README)
+wordpress/
+
 # Python
 *.pyc
 __pycache__/

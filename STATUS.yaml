@@ -1,10 +1,10 @@
 # STATUS.yaml — What is real vs aspirational
-# stats_refreshed: 2026-05-25 (UTC) — run: python scripts/refresh_repo_stats.py
+# stats_refreshed: 2026-05-26 (UTC) — run: python scripts/refresh_repo_stats.py
 
 real_and_working:
   compiler:
     file: compiler_v2.py
-    lines: 6972
+    lines: 7042
     status: production
     notes: "Parses .ainl → IR. Multiple emitters. Fully tested."
 
@@ -16,7 +16,7 @@ real_and_working:
 
   cli:
     file: cli/main.py
-    lines: 3703
+    lines: 3766
     status: production
     commands:
       - "ainl run"
@@ -29,8 +29,6 @@ real_and_working:
       - "ainl inspect"
       - "ainl init"
       - "ainl doctor"
-      - "ainl estimate"
-      - "ainl audit verify-jsonl"
 
   adapters:
     status: production
@@ -49,7 +47,6 @@ real_and_working:
       - "llm/anthropic"
       - "llm/cohere"
       - "http, memory, cache, queue"
-      - "wasm (beta — requires wasmtime optional dep)"
 
   tests:
     definitions:
@@ -57,17 +54,17 @@ real_and_working:
       test_named_py_files: "Files named test_*.py under tests/ (pytest test modules)."
       lines_python_under_tests: "Sum of lines of all *.py under tests/."
       pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
-    py_files_under_tests: 258
-    test_named_py_files: 228
-    lines_python_under_tests: 31416
-    lines_python_under_tests_rounded: "~31k"
-    pytest_collect_only_selected: 1490
-    pytest_collect_only_total: 1529
+    py_files_under_tests: 262
+    test_named_py_files: 232
+    lines_python_under_tests: 31719
+    lines_python_under_tests_rounded: "~32k"
+    pytest_collect_only_selected: 1598
+    pytest_collect_only_total: 1637
     pytest_deselected: 39
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 
   examples:
-    count: 103
+    count: 110
     format: ".ainl under examples/ (real, compilable syntax)"
 
   http_server:
@@ -106,70 +103,6 @@ telemetry_and_audit_surfaces:
   runtime_observability_jsonl:
     status: shipped
     notes: "Optional metrics JSONL (AINL_OBSERVABILITY, AINL_OBSERVABILITY_JSONL) — runtime/observability.py"
-marketing_claims_boundary:
-  # Maps public claims to their actual status and evidence location.
-  # Operators/agents: do NOT market a capability unless it appears here as "shipped".
-  # See docs/operations/OPERATOR_MARKETING_GUARDRAILS.md for rules.
-
-  wasm_adapter:
-    claim: "AINL graphs can call WebAssembly modules"
-    status: shipped
-    evidence: "runtime/adapters/wasm.py; R wasm.CALL <module>.<export> in compact/opcode syntax"
-    scope: "Call-out to pre-compiled .wasm/.wat modules via wasmtime. NOT whole-graph WASM emit."
-
-  whole_graph_wasm_emit:
-    claim: "AINL graphs compile to WebAssembly"
-    status: never_shipped
-    notes: "P5 research spike (wasm_subgraph_analysis) may explore deterministic subgraph emit. No ainl emit --target wasm exists."
-
-  bare_metal_compilation:
-    claim: "Graphs compile to bare metal / machine code"
-    status: never
-    notes: "AINL compiles .ainl to IR JSON, then executes via Python RuntimeEngine + adapters. No native codegen exists or is planned."
-
-  tensor_type_system:
-    claim: "Type checker rejects graphs with tensor/string mismatches"
-    status: aspirational
-    notes: "Compiler validates syntax, adapter names, and arity (--strict). No tensor/shape type system exists. Phase 2 adapter semantic contracts (P1) will add arg-shape checks for known adapters."
-
-  ainl_estimate:
-    claim: "Static compile-time LLM cost estimation"
-    status: shipped
-    evidence: "cli/main.py (ainl estimate); tooling/cost_estimate.py; docs/COST_ESTIMATOR.md; tests/test_cost_estimate.py"
-
-  cost_estimator_cli:
-    claim: "ainl estimate command for token cost analysis"
-    status: shipped
-    evidence: "cli/main.py line 3667+; ainl estimate <file> --model --format --runs-per-day"
-
-  version_marketing:
-    claim: "Version number reflects released features"
-    status: policy
-    notes: "Only pyproject.toml version is authoritative. Currently 1.8.1. Do not market v1.8.2 or higher until pyproject.toml is bumped."
-
-  emit_targets:
-    claim: "ainl emit --target produces downstream artifacts"
-    status: shipped
-    targets:
-      - ir
-      - langgraph
-      - temporal
-      - hermes-skill
-      - hermes
-      - solana-client
-      - blockchain-client
-      - server
-      - python-api
-      - react
-      - openapi
-      - prisma
-      - sql
-      - docker
-      - k8s
-      - cron
-      - armaraos
-    notes: "This list MUST match cli/main.py cmd_emit parser choices. No target not in this list may be claimed."
-
 aspirational_not_built:
   graph_block_syntax:
     description: "graph X { node Y: LLM(...) { ... } } verbose block syntax in tutorials"
