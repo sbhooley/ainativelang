@@ -1570,6 +1570,37 @@ def cmd_serve(args: argparse.Namespace) -> int:
                     metrics.record_validation(False, [{"message": str(e)}], duration)
                     self._json_response(500, {"ok": False, "error": str(e)})
 
+            elif self.path == "/grammar":
+                try:
+                    payload = json.loads(body) if body.strip().startswith("{") else {}
+                    fmt = str(payload.get("format", "gbnf")).strip().lower()
+                    if fmt == "jsonschema":
+                        from tooling.grammar_emit_jsonschema import emit_jsonschema
+
+                        schema = emit_jsonschema()
+                        self._json_response(200, {"ok": True, "format": "jsonschema", "schema": schema})
+                    elif fmt == "ebnf":
+                        from tooling.grammar_emit_jsonschema import emit_ebnf
+
+                        grammar = emit_ebnf()
+                        self._json_response(200, {"ok": True, "format": "ebnf", "grammar": grammar})
+                    else:
+                        from tooling.grammar_emit_gbnf import emit_gbnf
+
+                        include_compact = payload.get("include_compact", True)
+                        grammar = emit_gbnf(include_compact=bool(include_compact))
+                        self._json_response(
+                            200,
+                            {
+                                "ok": True,
+                                "format": "gbnf",
+                                "grammar": grammar,
+                                "byte_length": len(grammar.encode("utf-8")),
+                            },
+                        )
+                except Exception as e:
+                    self._json_response(500, {"ok": False, "error": str(e)})
+
             elif self.path == "/run":
                 try:
                     payload = json.loads(body) if body.strip().startswith("{") else {"source": body}
@@ -1603,7 +1634,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
                     self._json_response(500, {"ok": False, "error": str(e)})
 
             else:
-                self._json_response(404, {"error": f"Unknown endpoint: {self.path}", "endpoints": ["/validate", "/compile", "/run"]})
+                self._json_response(404, {"error": f"Unknown endpoint: {self.path}", "endpoints": ["/validate", "/compile", "/grammar", "/run"]})
         def do_GET(self):
             if self.path == "/health" or self.path == "/":
                 self._json_response(200, {
@@ -1613,6 +1644,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
                     "endpoints": {
                         "POST /validate": "Validate AINL source (JSON body: {source, strict?})",
                         "POST /compile": "Compile AINL source to IR (JSON body: {source, strict?})",
+                        "POST /grammar": "Emit constrained-decode grammar (JSON body: {format?: gbnf|jsonschema|ebnf, include_compact?})",
                         "POST /run": "Compile and run AINL source (JSON body: {source, strict?, frame?})",
                         "GET /health": "Health check",
                         "GET /metrics": "Get aggregated validation metrics",
@@ -1641,7 +1673,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
             sys.stderr.write(f"[ainl-serve] {self.address_string()} {format % a}\n")
 
     print(f"Starting AINL server on {host}:{port}")
-    print(f"Endpoints: POST /validate, POST /compile, POST /run, GET /health")
+    print(f"Endpoints: POST /validate, POST /compile, POST /grammar, POST /run, GET /health")
     server = HTTPServer((host, port), AINLRequestHandler)
     try:
         server.serve_forever()

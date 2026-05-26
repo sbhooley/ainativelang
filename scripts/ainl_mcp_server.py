@@ -273,6 +273,8 @@ ALL_TOOL_NAMES: List[str] = [
     "ainl_adapter_contract",
     "ainl_validate",
     "ainl_compile",
+    "ainl_emit_grammar_gbnf",
+    "ainl_emit_grammar_jsonschema",
     "ainl_capabilities",
     "ainl_security_report",
     "ainl_run",
@@ -2316,6 +2318,63 @@ def ainl_compile(
     _add_recommended_next_steps(out_ok, "compile_ok")
     _attach_strict_mode_annotation(out_ok, strict)
     return _augment_with_wizard_state(out_ok, "ainl_compile", wizard_state_json)
+
+
+@_register_tool
+def ainl_emit_grammar_gbnf(
+    include_compact: bool = True,
+    wizard_state_json: Optional[dict] = None,
+) -> dict:
+    """Emit a llama.cpp-compatible GBNF grammar for strict-valid AINL programs.
+
+    No source required — grammar is derived from the compiler opcode registry and
+    adapter effect contract. Use with constrained decode backends (llama.cpp grammar).
+    """
+    from tooling.grammar_emit_gbnf import emit_gbnf
+
+    grammar = emit_gbnf(include_compact=include_compact)
+    out: Dict[str, Any] = {
+        "ok": True,
+        "format": "gbnf",
+        "grammar": grammar,
+        "byte_length": len(grammar.encode("utf-8")),
+        "recommended_next_tools": ["ainl_validate", "ainl_compile"],
+    }
+    return _augment_with_wizard_state(out, "ainl_emit_grammar_gbnf", wizard_state_json)
+
+
+@_register_tool
+def ainl_emit_grammar_jsonschema(
+    format: str = "jsonschema",
+    wizard_state_json: Optional[dict] = None,
+) -> dict:
+    """Emit JSON Schema or EBNF for vLLM / XGrammar guided decoding of strict-valid AINL.
+
+    ``format`` is ``jsonschema`` (default) or ``ebnf``.
+    """
+    fmt = (format or "jsonschema").strip().lower()
+    if fmt == "ebnf":
+        from tooling.grammar_emit_jsonschema import emit_ebnf
+
+        grammar = emit_ebnf()
+        out: Dict[str, Any] = {"ok": True, "format": "ebnf", "grammar": grammar}
+    elif fmt in ("jsonschema", "json"):
+        from tooling.grammar_emit_jsonschema import emit_jsonschema
+
+        schema = emit_jsonschema()
+        out = {"ok": True, "format": "jsonschema", "schema": schema}
+    else:
+        return _augment_with_wizard_state(
+            {
+                "ok": False,
+                "error_kind": "invalid_format",
+                "error": f"Unknown format {format!r}; use jsonschema or ebnf",
+            },
+            "ainl_emit_grammar_jsonschema",
+            wizard_state_json,
+        )
+    out["recommended_next_tools"] = ["ainl_validate", "ainl_compile"]
+    return _augment_with_wizard_state(out, "ainl_emit_grammar_jsonschema", wizard_state_json)
 
 
 @_register_tool
