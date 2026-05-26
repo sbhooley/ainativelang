@@ -17,7 +17,7 @@ http_to_sqlite:
 
   insert_sql = core.CONCAT "INSERT INTO " table_name " (payload, fetched_at) VALUES (?, ?)"
   body_str = core.STRINGIFY body
-  fetched_at = core.STRINGIFY status
+  fetched_at = core.NOW
 
   sqlite.execute insert_sql body_str fetched_at
   summary = core.CONCAT "Stored response from " api_url " in " table_name " (HTTP " status ")"
