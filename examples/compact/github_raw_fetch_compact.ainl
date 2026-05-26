@@ -15,11 +15,13 @@
 
 github_raw_fetch:
   in: owner repo branch path
+  # frame: http_headers — optional dict (default {})
+  # frame: http_timeout — seconds (default 15)
   base = core.CONCAT "https://raw.githubusercontent.com/" owner
   with_repo = core.CONCAT base "/" repo
   with_branch = core.CONCAT with_repo "/" branch
   url = core.CONCAT with_branch "/" path
-  res = http.GET url {} 15
+  res = http.GET url http_headers http_timeout
   status = core.GET res "status"
   body = core.GET res "body"
   out body

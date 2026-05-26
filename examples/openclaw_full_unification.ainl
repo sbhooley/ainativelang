@@ -1,9 +1,11 @@
 # Meta-supervisor sample — polls health endpoint and writes a status log entry.
 # Runs every 15 minutes via cron.
+# frame: memory_opts — optional dict for memory.put (default {})
+
 S core cron "*/15 * * * *"
 
 L0:
   R http.GET "http://localhost:4200/api/health" ->st
   R core.concat "supervisor status=" st ->line
-  R memory.put "ops" "supervisor" "status" line 86400 {} ->_
+  R memory.put "ops" "supervisor" "status" line 86400 memory_opts ->_
   J st

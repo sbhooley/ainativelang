@@ -11,5 +11,5 @@ L_main:
   # GET: positional args only — URL, optional headers dict, optional timeout (seconds).
   # Put query parameters in the URL string; do not use "params = {...}" on the R line.
   R http.GET "https://example.com/" ->res
-  R core.GET ["status"] res ->st
+  R core.GET res "status" ->st
   J st

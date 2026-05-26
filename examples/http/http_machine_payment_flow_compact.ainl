@@ -21,13 +21,15 @@
 #
 # frame: url: string
 # frame: http_payment: dict (optional; merged on outbound http GET)
+# frame: http_headers: dict (optional; default {})
+# frame: http_timeout: number (optional; default 15)
 
 S app core noop
 
 L_entry:
   Set url $url
   Set http_payment $http_payment
-  R http.GET url {} 15 ->res
+  R http.GET url http_headers http_timeout ->res
   R core.GET res "error" ->http_err
   R core.EQ http_err "payment_required" ->pay_hit
   If pay_hit ->L_need ->L_ok

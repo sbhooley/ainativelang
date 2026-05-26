@@ -1,0 +1,28 @@
+# examples/compact/scrape_to_csv.ainl
+# Host-neutral template: fetch a web page, extract text, write CSV.
+#
+# Validate: ainl validate examples/compact/scrape_to_csv.ainl --strict
+# Run:      ainl run examples/compact/scrape_to_csv.ainl
+#           (requires http + fs adapters; see AGENTS.md HTTP/fs adapter sections)
+#
+# frame: target_url: string
+# frame: output_path: string
+
+scrape_to_csv:
+  in: target_url output_path
+
+  res = http.GET target_url
+  status = core.GET res "status"
+  body = core.GET res "body"
+
+  header = core.CONCAT "url,status,length\n"
+  body_len = core.LEN body
+  body_len_str = core.STR body_len
+  row = core.CONCAT target_url "," status "," body_len_str "\n"
+  csv = core.CONCAT header row
+
+  result = fs.write output_path csv
+  ok = core.GET result "ok"
+  bytes_written = core.GET result "bytes"
+  summary = core.CONCAT "Scraped " target_url " -> " output_path " (" bytes_written " bytes)"
+  out summary

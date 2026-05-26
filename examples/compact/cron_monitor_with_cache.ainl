@@ -1,0 +1,28 @@
+# examples/compact/cron_monitor_with_cache.ainl
+# Host-neutral template: periodic health check with cache-based change detection.
+#
+# Validate: ainl validate examples/compact/cron_monitor_with_cache.ainl --strict
+# Run:      ainl run examples/compact/cron_monitor_with_cache.ainl
+#           (requires http + cache adapters)
+#
+# frame: health_url: string
+
+cron_monitor @cron "*/15 * * * *":
+  in: health_url
+
+  cache_key = core.CONCAT "monitor:" health_url
+  prev = cache.get cache_key
+
+  res = http.GET health_url
+  status = core.GET res "status"
+  status_str = core.STR status
+
+  cache.set cache_key status_str
+
+  if prev:
+    changed = core.NEQ prev status_str
+    if changed:
+      summary = core.CONCAT "Status changed: " prev " -> " status_str " for " health_url
+      out summary
+
+  out status_str

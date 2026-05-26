@@ -1,0 +1,33 @@
+# examples/compact/multi_adapter_pipeline.ainl
+# Host-neutral template: HTTP fetch -> cache -> filesystem pipeline.
+# Demonstrates chaining three adapters in a single workflow.
+#
+# Validate: ainl validate examples/compact/multi_adapter_pipeline.ainl --strict
+# Run:      ainl run examples/compact/multi_adapter_pipeline.ainl
+#           (requires http + cache + fs adapters)
+#
+# frame: source_url: string
+# frame: output_dir: string
+
+pipeline:
+  in: source_url output_dir
+
+  cache_key = core.CONCAT "pipeline:" source_url
+  cached = cache.get cache_key
+  if cached:
+    out cached
+
+  res = http.GET source_url
+  status = core.GET res "status"
+  body = core.GET res "body"
+
+  body_str = core.STRINGIFY body
+  cache.set cache_key body_str
+
+  filename = core.CONCAT output_dir "/pipeline_latest.json"
+  write_result = fs.write filename body_str
+  ok = core.GET write_result "ok"
+  bytes = core.GET write_result "bytes"
+
+  summary = core.CONCAT "Pipeline: fetched " source_url " (" status "), cached, wrote " bytes " bytes to " filename
+  out summary

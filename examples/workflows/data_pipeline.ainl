@@ -40,6 +40,8 @@
 # frame: fulfilment_type — "digital", "physical", or "subscription"
 # frame: customer_api    — base URL for customer enrichment endpoint
 # frame: product_api     — base URL for product/inventory endpoint
+# frame: http_headers    — optional HTTP headers dict (default {})
+# frame: http_timeout    — HTTP timeout in seconds (default 10)
 
 S app core noop
 
@@ -62,7 +64,7 @@ L_invalid_order:
 
 L_enrich_customer:
   R core.CONCAT customer_api customer_id ->cust_url
-  R http.GET cust_url {} 10 ->cust_resp
+  R http.GET cust_url http_headers http_timeout ->cust_resp
   R core.GET cust_resp "body" ->cust_data
   R core.GET cust_data "tier" ->customer_tier
   R core.GET cust_data "fraud_score" ->fraud_score_raw
@@ -78,7 +80,7 @@ L_block_fraud:
 
 L_enrich_product:
   R core.CONCAT product_api product_id ->prod_url
-  R http.GET prod_url {} 10 ->prod_resp
+  R http.GET prod_url http_headers http_timeout ->prod_resp
   R core.GET prod_resp "body" ->prod_data
   R core.GET prod_data "name" ->product_name
   R core.GET prod_data "inventory" ->inventory_raw

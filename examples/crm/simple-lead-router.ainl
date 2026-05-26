@@ -5,6 +5,9 @@
 # python3 scripts/validate_ainl.py examples/crm/simple-lead-router.ainl --strict
 # python3 -m cli.main run examples/crm/simple-lead-router.ainl --json --enable-adapter crm_db
 
+# frame: hot_payload — dict for crm_db.P hot route audit row
+# frame: std_payload — dict for crm_db.P standard route audit row
+
 S app core noop
 
 L_start:
@@ -22,12 +25,12 @@ L_eval:
   If hot ->L_route_hot ->L_route_std
 
 L_route_hot:
-  R crm_db.P {"jobName": "lead:router", "status": "routed_hot", "result_json": "{\"score\":82,\"channel\":\"sales\",\"policy\":\"score_gt_70\"}"} ->_p
+  R crm_db.P hot_payload ->_p
   Set decision "hot"
   J decision
 
 L_route_std:
-  R crm_db.P {"jobName": "lead:router", "status": "routed_std", "result_json": "{\"score\":65,\"channel\":\"nurture\",\"policy\":\"score_lte_70\"}"} ->_p
+  R crm_db.P std_payload ->_p
   Set decision "standard"
   J decision
 

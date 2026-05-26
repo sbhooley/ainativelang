@@ -1,0 +1,24 @@
+# examples/compact/http_to_sqlite.ainl
+# Host-neutral template: fetch JSON from HTTP API, store in SQLite.
+#
+# Validate: ainl validate examples/compact/http_to_sqlite.ainl --strict
+# Run:      ainl run examples/compact/http_to_sqlite.ainl
+#           (requires http + sqlite adapters)
+#
+# frame: api_url: string
+# frame: table_name: string
+
+http_to_sqlite:
+  in: api_url table_name
+
+  res = http.GET api_url
+  status = core.GET res "status"
+  body = core.GET res "body"
+
+  insert_sql = core.CONCAT "INSERT INTO " table_name " (payload, fetched_at) VALUES (?, ?)"
+  body_str = core.STRINGIFY body
+  fetched_at = core.STRINGIFY status
+
+  sqlite.execute insert_sql body_str fetched_at
+  summary = core.CONCAT "Stored response from " api_url " in " table_name " (HTTP " status ")"
+  out summary

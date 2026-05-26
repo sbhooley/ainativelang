@@ -24,11 +24,13 @@
 #
 # frame: endpoint_url — HTTP health endpoint to poll (e.g. "https://api.example.com/health")
 # frame: threshold_ms — latency ceiling in ms; responses above this are "degraded"
+# frame: http_headers — optional HTTP headers dict (default {})
+# frame: http_timeout — request timeout in seconds (default 10)
 
 S app core noop
 
 L_start:
-  R http.GET endpoint_url {} 10 ->response
+  R http.GET endpoint_url http_headers http_timeout ->response
   R core.GET response "status" ->status_code
   R core.GET response "elapsed_ms" ->latency_ms
   R core.EQ status_code 200 ->is_up

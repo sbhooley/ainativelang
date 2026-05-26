@@ -28,6 +28,8 @@
 # frame: domain     — company domain to look up (e.g. "stripe.com")
 # frame: enrich_url — base URL of enrichment endpoint; domain is appended
 #                     e.g. "https://company.clearbit.com/v2/companies/find?domain="
+# frame: http_headers — optional HTTP headers dict (default {})
+# frame: http_timeout — HTTP timeout in seconds (default 15)
 
 lead_enrichment:
   in: domain enrich_url
@@ -37,7 +39,7 @@ lead_enrichment:
     out cached
 
   url = core.CONCAT enrich_url domain
-  resp = http.GET url {} 15
+  resp = http.GET url http_headers http_timeout
   data = core.GET resp "body"
   company_name = core.GET data "name"
   emp_raw = core.GET data "employees"
