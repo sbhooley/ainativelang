@@ -14,7 +14,7 @@
 set -euo pipefail
 
 # Public CLI binaries + checksums (hosted on sbhooley/ainativelang — same pattern as desktop DMGs).
-DOWNLOAD_BASE="${ARMARAOS_DOWNLOAD_BASE:-https://media.githubusercontent.com/media/sbhooley/ainativelang/main/downloads/armaraos/cli}"
+DOWNLOAD_BASE="${ARMARAOS_DOWNLOAD_BASE:-https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli}"
 INSTALL_DIR="${ARMARAOS_INSTALL_DIR:-${OPENFANG_INSTALL_DIR:-$HOME/.armaraos/bin}}"
 SHELL_RC=""
 

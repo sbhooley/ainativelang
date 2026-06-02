@@ -11,7 +11,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$DownloadBase = if ($env:ARMARAOS_DOWNLOAD_BASE) { $env:ARMARAOS_DOWNLOAD_BASE.TrimEnd('/') } else { "https://media.githubusercontent.com/media/sbhooley/ainativelang/main/downloads/armaraos/cli" }
+$DownloadBase = if ($env:ARMARAOS_DOWNLOAD_BASE) { $env:ARMARAOS_DOWNLOAD_BASE.TrimEnd('/') } else { "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli" }
 $DefaultInstallDir = Join-Path $env:USERPROFILE ".armaraos\bin"
 $InstallDir =
     if ($env:ARMARAOS_INSTALL_DIR) { $env:ARMARAOS_INSTALL_DIR }
