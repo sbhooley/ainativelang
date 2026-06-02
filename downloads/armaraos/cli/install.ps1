@@ -53,17 +53,64 @@ function Test-Python310Plus {
 }
 
 function Find-Python {
-    foreach ($name in @("python", "python3")) {
+    foreach ($name in @("python3.12", "python3.11", "python3.10", "python3", "python")) {
         if (Get-Command $name -ErrorAction SilentlyContinue) {
             if (Test-Python310Plus $name) { return $name }
         }
     }
     # Common per-user install location after winget
-    $localPy = Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"
-    if ((Test-Path $localPy) -and (Test-Python310Plus $localPy)) { return $localPy }
-    $localPy311 = Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"
-    if ((Test-Path $localPy311) -and (Test-Python310Plus $localPy311)) { return $localPy311 }
+    foreach ($ver in @("312", "311", "310")) {
+        $localPy = Join-Path $env:LOCALAPPDATA "Programs\Python\Python$ver\python.exe"
+        if ((Test-Path $localPy) -and (Test-Python310Plus $localPy)) { return $localPy }
+    }
     return $null
+}
+
+function Get-AinlVenvDir {
+    if ($env:ARMARAOS_AINL_VENV) { return $env:ARMARAOS_AINL_VENV }
+    return Join-Path $env:USERPROFILE ".armaraos\ainl-venv"
+}
+
+function Test-PythonExternallyManaged {
+    param([string]$PyCmd)
+    if (-not $PyCmd) { return $false }
+    try {
+        & $PyCmd -c "import sysconfig, pathlib; p=pathlib.Path(sysconfig.get_path('stdlib'))/'EXTERNALLY-MANAGED'; raise SystemExit(0 if p.is_file() else 1)" 2>$null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
+}
+
+function Install-AinlViaVenv {
+    param([string]$BasePy)
+    $venvDir = Get-AinlVenvDir
+    $venvPy = Join-Path $venvDir "Scripts\python.exe"
+    Write-Host "  System Python is externally managed — using venv at $venvDir" -ForegroundColor Yellow
+    if (-not (Test-Path $venvPy)) {
+        Write-Host "  Creating AINL virtualenv..." -ForegroundColor Cyan
+        & $BasePy -m venv $venvDir
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Error: could not create venv at $venvDir" -ForegroundColor Red
+            exit 1
+        }
+        $venvPy = Join-Path $venvDir "Scripts\python.exe"
+    }
+    Write-Host "  Installing ainativelang[mcp] into venv..." -ForegroundColor Cyan
+    & $venvPy -m pip install -q "ainativelang[mcp]" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        & $venvPy -m pip install --upgrade pip | Out-Null
+        & $venvPy -m pip install "ainativelang[mcp]"
+    }
+    $scriptsDir = Join-Path $venvDir "Scripts"
+    $ainl = Join-Path $scriptsDir "ainl.exe"
+    if (-not (Test-Path $ainl)) {
+        Write-Host "  Error: AINL not found in venv at $ainl" -ForegroundColor Red
+        exit 1
+    }
+    Add-UserPathEntry $scriptsDir
+    Write-Host "  Registering AINL MCP server for ArmaraOS..." -ForegroundColor Cyan
+    & $ainl install-mcp --host armaraos
+    $verLine = try { (& $ainl --version 2>&1 | Select-Object -First 1) } catch { "ainl" }
+    Write-Host "  AINL ready in venv ($verLine)" -ForegroundColor Green
 }
 
 function Install-PythonViaWinget {
@@ -120,14 +167,27 @@ function Install-Ainl {
         exit 1
     }
 
+    $pyVer = try { & $Py -c "import sys; print('.'.join(map(str, sys.version_info[:3])))" } catch { "unknown" }
+    Write-Host "  Using Python $pyVer ($Py)" -ForegroundColor Green
+
+    if (Test-PythonExternallyManaged $Py) {
+        Install-AinlViaVenv -BasePy $Py
+        return
+    }
+
+    $pipFailed = $false
     try {
         & $Py -m pip install --user -q "ainativelang[mcp]" 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            & $Py -m pip install --upgrade pip | Out-Null
-            & $Py -m pip install --user "ainativelang[mcp]"
+        if ($LASTEXITCODE -ne 0) { $pipFailed = $true }
+    } catch { $pipFailed = $true }
+
+    if ($pipFailed) {
+        $pipLog = & $Py -m pip install --user "ainativelang[mcp]" 2>&1 | Out-String
+        if ($pipLog -match 'externally-managed-environment|EXTERNALLY-MANAGED') {
+            Install-AinlViaVenv -BasePy $Py
+            return
         }
-    } catch {
-        Write-Host "  pip install failed: $_" -ForegroundColor Red
+        Write-Host "  pip install failed: $pipLog" -ForegroundColor Red
         exit 1
     }
 
@@ -277,6 +337,9 @@ function Install-ArmaraOS {
     }
 
     $py = Find-Python
+    if ($py) {
+        Write-Host "  Found existing Python on PATH." -ForegroundColor Green
+    }
     if (-not $py) { $py = Install-PythonViaWinget }
     if (-not $py) { $py = Find-Python }
     if (-not $py) {

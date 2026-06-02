@@ -6,7 +6,8 @@
 #   ARMARAOS_INSTALL_DIR  — custom install directory (default: ~/.armaraos/bin)
 #   ARMARAOS_VERSION      — install a specific version tag (default: latest)
 #   ARMARAOS_AUTO_PYTHON  — set to 0 to skip auto-installing Python (macOS: brew; default: 1)
-#   ARMARAOS_DOWNLOAD_BASE — CLI mirror base (default: https://ainativelang.com/downloads/armaraos/cli)
+#   ARMARAOS_AINL_VENV       — AINL virtualenv when system Python is PEP 668 (default: ~/.armaraos/ainl-venv)
+#   ARMARAOS_DOWNLOAD_BASE — CLI mirror base (default: raw.githubusercontent.com/.../downloads/armaraos/cli)
 #
 # Legacy aliases (supported for compatibility):
 #   OPENFANG_INSTALL_DIR, OPENFANG_VERSION
@@ -109,27 +110,37 @@ python_version_ok() {
     "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null
 }
 
+python_display_version() {
+    local py="$1"
+    "$py" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))' 2>/dev/null || echo "unknown"
+}
+
+python_is_externally_managed() {
+    local py="$1"
+    "$py" -c 'import sysconfig, pathlib; p=pathlib.Path(sysconfig.get_path("stdlib"))/"EXTERNALLY-MANAGED"; raise SystemExit(0 if p.is_file() else 1)' 2>/dev/null
+}
+
 find_python() {
-    local candidate=""
-    for candidate in python3 python; do
-        if command -v "$candidate" >/dev/null 2>&1 && python_version_ok "$(command -v "$candidate")"; then
-            command -v "$candidate"
+    local candidate="" path=""
+    for candidate in python3.12 python3.11 python3.10 python3 python; do
+        path="$(command -v "$candidate" 2>/dev/null || true)"
+        if [ -n "$path" ] && python_version_ok "$path"; then
+            echo "$path"
             return 0
         fi
     done
-    # Homebrew keg-only python@3.12 (common on macOS)
+    # Homebrew keg-only python@3.12 / python@3.11 (common on macOS)
     if [ "$OS" = "darwin" ] && command -v brew >/dev/null 2>&1; then
         local brew_py
-        brew_py="$(brew --prefix python@3.12 2>/dev/null)/bin/python3"
-        if [ -x "$brew_py" ] && python_version_ok "$brew_py"; then
-            echo "$brew_py"
-            return 0
-        fi
-        brew_py="$(brew --prefix python@3.11 2>/dev/null)/bin/python3"
-        if [ -x "$brew_py" ] && python_version_ok "$brew_py"; then
-            echo "$brew_py"
-            return 0
-        fi
+        for brew_py in \
+            "$(brew --prefix python@3.12 2>/dev/null)/bin/python3" \
+            "$(brew --prefix python@3.11 2>/dev/null)/bin/python3" \
+            "$(brew --prefix python@3.10 2>/dev/null)/bin/python3"; do
+            if [ -x "$brew_py" ] && python_version_ok "$brew_py"; then
+                echo "$brew_py"
+                return 0
+            fi
+        done
     fi
     return 1
 }
@@ -138,7 +149,7 @@ try_install_python_mac() {
     [ "$OS" = "darwin" ] || return 1
     [ "${ARMARAOS_AUTO_PYTHON:-1}" != "0" ] || return 1
     command -v brew >/dev/null 2>&1 || return 1
-    echo "  No Python 3.10+ on PATH — installing via Homebrew (one-time, ~1 min)..."
+    echo "  No Python 3.10+ on PATH — installing via Homebrew (one-time, ~1 min)..." >&2
     if brew install python@3.12 2>/dev/null || brew install python3; then
         local brew_py
         brew_py="$(brew --prefix python@3.12 2>/dev/null)/bin/python3"
@@ -166,9 +177,12 @@ print_python_help() {
         echo "    • Official installer: https://www.python.org/downloads/"
     else
         echo "  Install Python 3.10+, then re-run this script:"
-        echo "    Debian/Ubuntu: sudo apt install python3 python3-pip"
+        echo "    Debian/Ubuntu: sudo apt install python3 python3-pip python3-venv"
         echo "    Fedora:        sudo dnf install python3 python3-pip"
         echo "    Or:            https://www.python.org/downloads/"
+        echo ""
+        echo "  On PEP 668 systems (externally managed), the installer auto-creates"
+        echo "  ~/.armaraos/ainl-venv when pip --user is blocked."
     fi
     echo ""
     echo "  Skip AINL for now (CLI only): ARMARAOS_SKIP_AINL=1 curl -sSfL https://ainativelang.com/install.sh | sh"
@@ -179,10 +193,12 @@ print_python_help() {
 ensure_python() {
     local py=""
     if py="$(find_python)"; then
+        echo "  Using existing Python $(python_display_version "$py") ($py)" >&2
         echo "$py"
         return 0
     fi
     if py="$(try_install_python_mac)"; then
+        echo "  Using Python $(python_display_version "$py") ($py)" >&2
         echo "$py"
         return 0
     fi
@@ -190,26 +206,114 @@ ensure_python() {
     return 1
 }
 
+ainl_venv_dir() {
+    echo "${ARMARAOS_AINL_VENV:-$HOME/.armaraos/ainl-venv}"
+}
+
+pip_stderr_indicates_externally_managed() {
+    local log="$1"
+    grep -qi 'externally-managed-environment\|EXTERNALLY-MANAGED' "$log" 2>/dev/null
+}
+
+pip_install_ainl_user() {
+    local python="$1"
+    local log
+    log="$(mktemp)"
+    if "$python" -m pip install --user -q "ainativelang[mcp]" 2>"$log"; then
+        rm -f "$log"
+        return 0
+    fi
+    if pip_stderr_indicates_externally_managed "$log"; then
+        rm -f "$log"
+        return 2
+    fi
+    "$python" -m pip install --upgrade pip >/dev/null 2>&1 || true
+    if "$python" -m pip install --user "ainativelang[mcp]" 2>"$log"; then
+        rm -f "$log"
+        return 0
+    fi
+    if pip_stderr_indicates_externally_managed "$log"; then
+        rm -f "$log"
+        return 2
+    fi
+    cat "$log" >&2
+    rm -f "$log"
+    return 1
+}
+
+install_ainl_via_venv() {
+    local base_python="$1"
+    local venv_dir pip_py ainl_bin
+    venv_dir="$(ainl_venv_dir)"
+    echo "  System Python is externally managed — using venv at $venv_dir"
+
+    if ! "$base_python" -m venv --help >/dev/null 2>&1; then
+        echo "  Error: 'python3 -m venv' is unavailable."
+        if [ "$OS" = "linux" ]; then
+            echo "  Install it, then re-run: sudo apt install python3-venv python3-pip   # Debian/Ubuntu"
+            echo "                          sudo dnf install python3-pip               # Fedora"
+        fi
+        return 1
+    fi
+
+    if [ ! -x "$venv_dir/bin/python" ]; then
+        echo "  Creating AINL virtualenv..."
+        if ! "$base_python" -m venv "$venv_dir"; then
+            echo "  Error: could not create venv at $venv_dir"
+            return 1
+        fi
+    fi
+
+    pip_py="$venv_dir/bin/python"
+    echo "  Installing ainativelang[mcp] into venv..."
+    if ! "$pip_py" -m pip install -q "ainativelang[mcp]"; then
+        "$pip_py" -m pip install --upgrade pip >/dev/null 2>&1 || true
+        "$pip_py" -m pip install "ainativelang[mcp]"
+    fi
+
+    ainl_bin="$venv_dir/bin/ainl"
+    if [ ! -x "$ainl_bin" ]; then
+        echo "  Error: AINL installed in venv but 'ainl' not found at $ainl_bin"
+        return 1
+    fi
+
+    echo "  Registering AINL MCP server for ArmaraOS..."
+    "$ainl_bin" install-mcp --host armaraos
+
+    append_path_to_shell_rc "$venv_dir/bin" "ainl-venv"
+    export_path_now "$venv_dir/bin"
+    echo "  AINL ready in venv ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))"
+}
+
 install_ainl() {
     local python="$1"
+    local pip_rc user_base ainl_bin
     echo ""
     echo "  Installing AINL (ainativelang[mcp])..."
 
     if ! python_version_ok "$python"; then
         local ver
-        ver="$("$python" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))' 2>/dev/null || echo "unknown")"
+        ver="$(python_display_version "$python")"
         echo "  Error: Python $ver is too old — AINL needs 3.10+."
         print_python_help
         return 1
     fi
 
-    # Quiet install; skip slow pip self-upgrade unless needed.
-    if ! "$python" -m pip install --user -q "ainativelang[mcp]"; then
-        "$python" -m pip install --upgrade pip >/dev/null 2>&1 || true
-        "$python" -m pip install --user "ainativelang[mcp]"
+    if python_is_externally_managed "$python"; then
+        install_ainl_via_venv "$python"
+        return $?
     fi
 
-    local user_base ainl_bin
+    pip_rc=0
+    pip_install_ainl_user "$python" || pip_rc=$?
+    if [ "$pip_rc" -eq 2 ]; then
+        install_ainl_via_venv "$python"
+        return $?
+    fi
+    if [ "$pip_rc" -ne 0 ]; then
+        return 1
+    fi
+
     user_base="$("$python" -c 'import site; print(site.USER_BASE)')"
     ainl_bin="$user_base/bin/ainl"
     if [ ! -x "$ainl_bin" ]; then
