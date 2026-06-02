@@ -1,0 +1,13 @@
+{
+  "tag": "v0.8.0",
+  "version": "0.8.0",
+  "pub_date": "2026-05-21T11:28:19Z",
+  "download_base": "https://media.githubusercontent.com/media/sbhooley/ainativelang/main/downloads/armaraos/cli",
+  "platforms": {
+    "aarch64-apple-darwin": {
+      "archive": "openfang-aarch64-apple-darwin.tar.gz",
+      "url": "https://media.githubusercontent.com/media/sbhooley/ainativelang/main/downloads/armaraos/cli/openfang-aarch64-apple-darwin.tar.gz",
+      "sha256_url": "https://media.githubusercontent.com/media/sbhooley/ainativelang/main/downloads/armaraos/cli/openfang-aarch64-apple-darwin.tar.gz.sha256"
+    }
+  }
+}
