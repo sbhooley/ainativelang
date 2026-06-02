@@ -1,7 +1,7 @@
 {
-  "tag": "v0.8.0",
-  "version": "0.8.0",
-  "pub_date": "2026-05-21T11:28:19Z",
+  "tag": "v0.8.1",
+  "version": "0.8.1",
+  "pub_date": "2026-06-02T22:41:37Z",
   "download_base": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli",
   "platforms": {
     "aarch64-apple-darwin": {

@@ -28,11 +28,19 @@ resolve_latest_tag() {
         echo "$OPENFANG_VERSION"
         return 0
     fi
-    local json tag
-    json="$(curl -fsSL "${DOWNLOAD_BASE%/}/latest.json" 2>/dev/null)" || return 1
-    tag="$(printf '%s' "$json" | sed -n 's/.*"tag"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
-    [ -n "$tag" ] || return 1
-    echo "$tag"
+    local json tag base
+    for base in \
+        "${DOWNLOAD_BASE%/}" \
+        "https://ainativelang.com/downloads/armaraos/cli" \
+        "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli"; do
+        json="$(curl -fsSL "${base}/latest.json" 2>/dev/null)" || continue
+        tag="$(printf '%s' "$json" | sed -n 's/.*"tag"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+        if [ -n "$tag" ]; then
+            echo "$tag"
+            return 0
+        fi
+    done
+    return 1
 }
 
 detect_platform() {
