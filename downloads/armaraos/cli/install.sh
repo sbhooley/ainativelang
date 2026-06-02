@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ArmaraOS installer — works on Linux, macOS, WSL
-# Usage: curl -sSf https://ainativelang.com/install.sh | sh
+# Usage: curl -sSfL https://ainativelang.com/install.sh | sh
 #
 # Environment variables:
 #   ARMARAOS_INSTALL_DIR  — custom install directory (default: ~/.armaraos/bin)
@@ -171,8 +171,8 @@ print_python_help() {
         echo "    Or:            https://www.python.org/downloads/"
     fi
     echo ""
-    echo "  Skip AINL for now (CLI only): ARMARAOS_SKIP_AINL=1 curl -sSf https://ainativelang.com/install.sh | sh"
-    echo "  Re-run full install:            curl -sSf https://ainativelang.com/install.sh | sh"
+    echo "  Skip AINL for now (CLI only): ARMARAOS_SKIP_AINL=1 curl -sSfL https://ainativelang.com/install.sh | sh"
+    echo "  Re-run full install:            curl -sSfL https://ainativelang.com/install.sh | sh"
     echo ""
 }
 
@@ -348,7 +348,7 @@ EOF
 
     if [ "${ARMARAOS_SKIP_AINL:-0}" = "1" ]; then
         echo ""
-        echo "  Skipped AINL (ARMARAOS_SKIP_AINL=1). Add later: curl -sSf https://ainativelang.com/install.sh | sh"
+        echo "  Skipped AINL (ARMARAOS_SKIP_AINL=1). Add later: curl -sSfL https://ainativelang.com/install.sh | sh"
         print_get_started
         return 0
     fi

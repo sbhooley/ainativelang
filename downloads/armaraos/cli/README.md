@@ -1,6 +1,6 @@
 # ArmaraOS CLI install artifacts
 
-Public download host for `curl -sSf https://ainativelang.com/install.sh | sh`.
+Public download host for `curl -sSfL https://ainativelang.com/install.sh | sh`.
 
 Built in private **`sbhooley/armara`**, published here (same storage pattern as desktop `.dmg` / `.exe` in `../`).
 
