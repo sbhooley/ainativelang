@@ -280,16 +280,14 @@ function Get-WindowsDownloadCandidates {
             }
         }
 
-        foreach ($prefix in @("armaraos", "openfang")) {
-            $archive = "$prefix-$platformKey.zip"
-            if ($seen[$archive]) { continue }
-            $seen[$archive] = $true
-            $candidates += [PSCustomObject]@{
-                PlatformKey = $platformKey
-                Archive     = $archive
-                Url         = "$DownloadBase/$archive"
-                Sha256Url   = "$DownloadBase/$archive.sha256"
-            }
+        $archive = "armaraos-$platformKey.zip"
+        if ($seen[$archive]) { continue }
+        $seen[$archive] = $true
+        $candidates += [PSCustomObject]@{
+            PlatformKey = $platformKey
+            Archive     = $archive
+            Url         = "$DownloadBase/$archive"
+            Sha256Url   = "$DownloadBase/$archive.sha256"
         }
     }
 
@@ -343,8 +341,8 @@ function Install-ArmaraOS {
         }
     }
     if (-not $archivePath) {
-        $names = ($downloadCandidates | ForEach-Object { $_.Archive }) -join ', '
-        Write-Host "  Download failed for: $names" -ForegroundColor Red
+        $tried = ($downloadCandidates | ForEach-Object { $_.PlatformKey } | Select-Object -Unique) -join ', '
+        Write-Host "  Download failed (tried: $tried)." -ForegroundColor Red
         Write-Host "  If this is a fresh release, wait for ainativelang.com to sync CLI binaries." -ForegroundColor Yellow
         Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
         exit 1
