@@ -761,6 +761,57 @@ function Get-ArmaraosExe {
     return $null
 }
 
+function Stop-ArmaraosForInstall {
+    $exe = Get-ArmaraosExe
+    if ($exe) {
+        & $exe stop 2>$null | Out-Null
+    }
+    foreach ($name in @('armaraos', 'openfang')) {
+        Get-Process -Name $name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Seconds 2
+}
+
+function Install-ArmaraosBinary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceExe
+    )
+
+    $dest = Join-Path $InstallDir "armaraos.exe"
+    Stop-ArmaraosForInstall
+
+    try {
+        Copy-Item -Path $SourceExe -Destination $dest -Force -ErrorAction Stop
+        return
+    } catch {
+        Write-Host "  Binary locked (Access is denied) — staging deferred install..." -ForegroundColor Yellow
+    }
+
+    $staged = Join-Path $InstallDir "armaraos.exe.new"
+    Copy-Item -Path $SourceExe -Destination $staged -Force
+    $parentPid = $PID
+    $scriptPath = Join-Path $env:TEMP "armaraos-install-$parentPid.cmd"
+    $legacy = Join-Path $InstallDir "openfang.exe"
+    $script = @"
+@echo off
+setlocal EnableExtensions
+:wait
+tasklist /FI "PID eq $parentPid" 2>NUL | find "$parentPid" >NUL
+if not errorlevel 1 (timeout /t 1 /nobreak >NUL & goto wait)
+move /Y "$staged" "$dest"
+"@
+    if (Test-Path $legacy) {
+        $script += "copy /Y `"$dest`" `"$legacy`" >NUL`r`n"
+    }
+    $script += "del `"%~f0`"`r`n"
+    Set-Content -Path $scriptPath -Value $script -Encoding ASCII
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/C", $scriptPath -WindowStyle Hidden | Out-Null
+    Write-Host "  Install will finish after this PowerShell window closes." -ForegroundColor Green
+    Write-Host "  Close this window, wait a few seconds, open a new one, then run: armaraos --version" -ForegroundColor Yellow
+    exit 0
+}
+
 function Initialize-ArmaraosIfNeeded {
     $exe = Get-ArmaraosExe
     if (-not $exe) { return }
@@ -1062,7 +1113,7 @@ function Install-ArmaraOS {
         exit 1
     }
 
-    Copy-Item -Path $exePath.FullName -Destination (Join-Path $InstallDir "armaraos.exe") -Force
+    Install-ArmaraosBinary -SourceExe $exePath.FullName
     Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 
     Add-UserPathEntry $InstallDir
