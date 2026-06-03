@@ -39,6 +39,50 @@ def _assert_valid_toml_file(path: Path) -> None:
         raise RuntimeError(f"Wrote invalid TOML to {path}: {e}") from e
 
 
+def _toml_safe_quoted_path(path: str) -> str:
+    """
+    Normalize filesystem paths for TOML basic (double-quoted) strings.
+
+    On Windows, ``C:\\Users\\...`` is invalid TOML because ``\\U`` starts a unicode escape.
+    Forward slashes are accepted by Windows APIs and keep config.toml parseable on all hosts.
+    """
+    if "\\" in path:
+        return path.replace("\\", "/")
+    return path
+
+
+def _repair_windows_backslash_quoted_assignments(text: str) -> str:
+    """Fix ``command = "C:\\Users\\..."`` lines written before path normalization."""
+    out: List[str] = []
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip()
+        key = stripped.split("=", 1)[0].strip() if "=" in stripped else ""
+        if key not in ("command", "path", "root", "cwd"):
+            out.append(line)
+            continue
+        eq_idx = line.find("=")
+        if eq_idx < 0:
+            out.append(line)
+            continue
+        after_eq = line[eq_idx + 1 :].lstrip()
+        if not after_eq.startswith('"'):
+            out.append(line)
+            continue
+        value_start = eq_idx + 1 + (len(line[eq_idx + 1 :]) - len(after_eq))
+        end_rel = line[value_start + 1 :].rfind('"')
+        if end_rel is None:
+            out.append(line)
+            continue
+        value_end = value_start + 1 + end_rel
+        inner = line[value_start + 1 : value_end]
+        if "\\" not in inner:
+            out.append(line)
+            continue
+        fixed = inner.replace("\\", "/")
+        out.append(f"{line[: value_start + 1]}{fixed}{line[value_end:]}")
+    return "".join(out)
+
+
 @dataclass(frozen=True)
 class McpHostProfile:
     """One agent host that stores MCP config + bin shims under ~/.<dot_dir>/."""
@@ -447,8 +491,10 @@ def _repair_armaraos_mcp_config_toml_text(text: str) -> str:
     Best-effort cleanup for ~/.armaraos/config.toml before merge/append.
 
     Fixes the common corruption where ``env = ["a", ...]`` is followed by duplicate quoted
-    lines (and sometimes a stray ``]``) from an older multiline representation.
+    lines (and sometimes a stray ``]``) from an older multiline representation, and
+    Windows ``command = "C:\\Users\\..."`` paths that break TOML parsing.
     """
+    text = _repair_windows_backslash_quoted_assignments(text)
     lines = text.splitlines(keepends=True)
     out: List[str] = []
     idx = 0
@@ -577,6 +623,7 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
     # See armaraos repo docs/configuration.md: [[mcp_servers]] + [mcp_servers.transport] type="stdio".
     env_list = env_pass_through if env_pass_through else []
     env_toml = json.dumps(env_list)
+    command = _toml_safe_quoted_path(desired["command"])
     desired_block = (
         "[[mcp_servers]]\n"
         f"name = \"{server_key}\"\n"
@@ -585,7 +632,7 @@ def _ensure_mcp_registration_toml_mcp_servers_array(
         "\n"
         "[mcp_servers.transport]\n"
         "type = \"stdio\"\n"
-        f"command = \"{desired['command']}\"\n"
+        f"command = \"{command}\"\n"
         "args = []\n"
     )
 
