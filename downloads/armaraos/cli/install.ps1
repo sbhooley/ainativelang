@@ -55,7 +55,7 @@ function Test-Python310Plus {
 }
 
 # AINL is tested on 3.10-3.13; 3.14+ often lacks wheels and breaks pip installs.
-function Test-PythonAinlCompatible {
+function Test-PythonVersionSupported {
     param([string]$PyCmd)
     if (-not $PyCmd) { return $false }
     $prev = $ErrorActionPreference
@@ -65,6 +65,45 @@ function Test-PythonAinlCompatible {
         return ($LASTEXITCODE -eq 0)
     } catch { return $false }
     finally { $ErrorActionPreference = $prev }
+}
+
+function Get-HostCpuArch {
+    if ($script:ArmaraosHostCpuArch) { return $script:ArmaraosHostCpuArch }
+    $arch = ""
+    try { $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString() } catch {}
+    if (-not $arch) { try { $arch = $env:PROCESSOR_ARCHITECTURE } catch {} }
+    if (-not $arch -and [IntPtr]::Size -eq 8) { $arch = "X64" }
+    switch ("$arch".ToUpper().Trim()) {
+        { $_ -in "ARM64", "AARCH64", "ARM" } { $script:ArmaraosHostCpuArch = "aarch64"; return "aarch64" }
+        default { $script:ArmaraosHostCpuArch = "x86_64"; return "x86_64" }
+    }
+}
+
+function Test-WindowsArm64Host {
+    return (Get-HostCpuArch) -eq "aarch64"
+}
+
+function Test-PythonIsNativeArm64 {
+    param([string]$PyCmd)
+    $resolved = Resolve-PythonExecutable $PyCmd
+    if (-not $resolved) { return $false }
+    if ($resolved -match '(?i)([\\/]|-)arm64([\\/]|$)') { return $true }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $resolved -c "import platform; m=platform.machine().lower(); raise SystemExit(0 if m in ('arm64','aarch64') else 1)" 2>$null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
+    finally { $ErrorActionPreference = $prev }
+}
+
+function Test-PythonAinlCompatible {
+    param([string]$PyCmd)
+    if (-not (Test-PythonVersionSupported $PyCmd)) { return $false }
+    if ((Test-WindowsArm64Host) -and (Test-PythonIsNativeArm64 $PyCmd) -and $env:ARMARAOS_ALLOW_ARM64_PYTHON -ne '1') {
+        return $false
+    }
+    return $true
 }
 
 function Get-PythonVersionLabel {
@@ -154,13 +193,14 @@ function Find-PythonViaLauncher {
 }
 
 function Find-Python {
-    # Prefer explicit install paths (winget / our installer) before generic python3 on PATH (may be 3.14).
+    # Our x64 bundle (Windows ARM) before winget's native ARM64 Python312-arm64.
+    $armaraosPy = Join-Path $env:USERPROFILE ".armaraos\python312\python.exe"
+    if ((Test-Path -LiteralPath $armaraosPy) -and (Test-PythonAinlCompatible $armaraosPy)) { return $armaraosPy }
+
     foreach ($ver in @("312", "311", "310")) {
         $localPy = Join-Path $env:LOCALAPPDATA "Programs\Python\Python$ver\python.exe"
         if ((Test-Path -LiteralPath $localPy) -and (Test-PythonAinlCompatible $localPy)) { return $localPy }
     }
-    $armaraosPy = Join-Path $env:USERPROFILE ".armaraos\python312\python.exe"
-    if ((Test-Path -LiteralPath $armaraosPy) -and (Test-PythonAinlCompatible $armaraosPy)) { return $armaraosPy }
 
     $fromReg = Find-PythonFromRegistry
     if ($fromReg) { return $fromReg }
@@ -200,9 +240,25 @@ function Find-UnsupportedPython {
     return $null
 }
 
-function Get-AinlVenvDir {
-    if ($env:ARMARAOS_AINL_VENV) { return $env:ARMARAOS_AINL_VENV }
-    return Join-Path $env:USERPROFILE ".armaraos\ainl-venv"
+function Find-IncompatibleArm64Python {
+    if (-not (Test-WindowsArm64Host)) { return $null }
+    foreach ($ver in @("312", "311", "310")) {
+        $localPy = Join-Path $env:LOCALAPPDATA "Programs\Python\Python$ver-arm64\python.exe"
+        if ((Test-Path -LiteralPath $localPy) -and (Test-PythonVersionSupported $localPy) -and (Test-PythonIsNativeArm64 $localPy)) {
+            return $localPy
+        }
+    }
+    return $null
+}
+
+function Reset-AinlVenvIfWrongArch {
+    $venvDir = Get-AinlVenvDir
+    $venvPy = Join-Path $venvDir "Scripts\python.exe"
+    if (-not (Test-Path -LiteralPath $venvPy)) { return }
+    if ((Test-WindowsArm64Host) -and (Test-PythonIsNativeArm64 $venvPy)) {
+        Write-Host "  Removing ARM64 AINL venv (x64 Python required on Windows ARM)..." -ForegroundColor Yellow
+        Remove-Item -Recurse -Force $venvDir -ErrorAction SilentlyContinue
+    }
 }
 
 function Test-PythonExternallyManaged {
@@ -214,8 +270,14 @@ function Test-PythonExternallyManaged {
     } catch { return $false }
 }
 
+function Get-AinlVenvDir {
+    if ($env:ARMARAOS_AINL_VENV) { return $env:ARMARAOS_AINL_VENV }
+    return Join-Path $env:USERPROFILE ".armaraos\ainl-venv"
+}
+
 function Install-AinlViaVenv {
     param([string]$BasePy)
+    Reset-AinlVenvIfWrongArch
     $venvDir = Get-AinlVenvDir
     $venvPy = Join-Path $venvDir "Scripts\python.exe"
     Write-Host "  Using isolated AINL environment at $venvDir" -ForegroundColor Cyan
@@ -235,10 +297,10 @@ function Install-AinlViaVenv {
         $venvPy = Join-Path $venvDir "Scripts\python.exe"
     }
     Write-Host "  Installing ainativelang[mcp] into venv..." -ForegroundColor Cyan
-    $result = Invoke-PipInstall -Python $venvPy -PipArguments @('install', '-q', 'ainativelang[mcp]')
+    $result = Invoke-PipInstall -Python $venvPy -PipArguments @('install', '--prefer-binary', '-q', 'ainativelang[mcp]')
     if (-not $result.Ok) {
         [void](Invoke-PipInstall -Python $venvPy -PipArguments @('install', '--upgrade', 'pip'))
-        $result = Invoke-PipInstall -Python $venvPy -PipArguments @('install', 'ainativelang[mcp]')
+        $result = Invoke-PipInstall -Python $venvPy -PipArguments @('install', '--prefer-binary', 'ainativelang[mcp]')
     }
     if (-not $result.Ok) {
         Write-Host "  pip install failed:" -ForegroundColor Red
@@ -324,11 +386,7 @@ function Install-PythonViaWinget {
 }
 
 function Get-PythonInstallerArchCandidates {
-    $arch = Get-Architecture
-    if ($arch -eq "aarch64") {
-        # Prefer native ARM64 Python; fall back to x64 under emulation (matches armaraos CLI zip).
-        return @("arm64", "amd64")
-    }
+    # On Windows ARM, AINL/MCP deps (cryptography, etc.) need x64 wheels under emulation.
     return @("amd64")
 }
 
@@ -389,6 +447,14 @@ function Ensure-CompatiblePython {
     if ($py) {
         Write-Host "  Found compatible Python on PATH." -ForegroundColor Green
         return $py
+    }
+
+    $armPy = Find-IncompatibleArm64Python
+    if ($armPy) {
+        Write-Host "  Native ARM64 Python ($(Get-PythonVersionLabel $armPy)) cannot install AINL deps (no prebuilt wheels)." -ForegroundColor Yellow
+        Write-Host "  Installing x64 Python 3.12 for AINL (Windows x64 emulation, same as ArmaraOS CLI)..." -ForegroundColor Yellow
+        $py = Install-PythonViaOfficialInstaller
+        if ($py) { return $py }
     }
 
     $unsupported = Find-UnsupportedPython
