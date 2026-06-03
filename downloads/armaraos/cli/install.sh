@@ -9,6 +9,7 @@
 #   ARMARAOS_AUTO_PYTHON  — set to 0 to skip auto-installing Python (macOS: brew; default: 1)
 #   ARMARAOS_AINL_VENV       — AINL virtualenv when system Python is PEP 668 (default: ~/.armaraos/ainl-venv)
 #   ARMARAOS_DOWNLOAD_BASE — CLI mirror base (default: raw.githubusercontent.com/.../downloads/armaraos/cli)
+#   ARMARAOS_SKIP_AUTO_LAUNCH — set to 1 to skip auto start + dashboard (default: 0)
 #
 # Legacy aliases (supported for compatibility):
 #   OPENFANG_INSTALL_DIR, OPENFANG_VERSION
@@ -342,16 +343,163 @@ install_ainl() {
     echo "  AINL ready ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))"
 }
 
+daemon_base_url() {
+    local dj="${HOME}/.armaraos/daemon.json"
+    if [ -f "$dj" ]; then
+        python3 -c "
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+    a = (d.get('listen_addr') or '127.0.0.1:4200').replace('0.0.0.0', '127.0.0.1')
+    print('http://' + a)
+except Exception:
+    print('http://127.0.0.1:4200')
+" "$dj" 2>/dev/null || echo "http://127.0.0.1:4200"
+    else
+        echo "http://127.0.0.1:4200"
+    fi
+}
+
+daemon_healthy() {
+    local base="${1:-http://127.0.0.1:4200}"
+    curl -sfS -m 3 "${base%/}/api/health" >/dev/null 2>&1
+}
+
+wait_daemon_healthy() {
+    local base="$1"
+    local timeout="${2:-45}"
+    local i=0
+    while [ "$i" -lt "$timeout" ]; do
+        if daemon_healthy "$base"; then
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 1
+    done
+    return 1
+}
+
+repair_armaraos_install() {
+    local bin="$1"
+    local of_home="${HOME}/.armaraos"
+    local sub config
+
+    for sub in data agents logs; do
+        mkdir -p "${of_home}/${sub}"
+    done
+    config="${of_home}/config.toml"
+    if [ ! -f "$config" ]; then
+        echo "  Repair: first-time setup (armaraos init --quick)..." >&2
+        "$bin" init --quick || true
+    fi
+    "$bin" stop 2>/dev/null || true
+    sleep 1
+}
+
+start_armaraos_daemon() {
+    local bin="$1"
+    local base
+
+    echo "" >&2
+    echo "  Starting ArmaraOS daemon (background)..." >&2
+    if ! "$bin" start --yolo --detach; then
+        return 1
+    fi
+    base="$(daemon_base_url)"
+    if wait_daemon_healthy "$base"; then
+        return 0
+    fi
+
+    echo "  Repairing install state and retrying..." >&2
+    repair_armaraos_install "$bin"
+    if ! "$bin" start --yolo --detach; then
+        return 1
+    fi
+    wait_daemon_healthy "$(daemon_base_url)"
+}
+
+open_armaraos_dashboard() {
+    local bin="$1"
+    local base
+
+    echo "" >&2
+    echo "  Opening dashboard in your browser..." >&2
+    base="$(daemon_base_url)"
+    if ! "$bin" dashboard; then
+        base="$(daemon_base_url)"
+        if ! daemon_healthy "$base"; then
+            echo "  Browser did not open — visit: ${base}/" >&2
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Golden path (Mac/Linux + Windows install.ps1): start daemon, verify /api/health, repair + retry, open dashboard.
+launch_armaraos_after_install() {
+    if [ "${ARMARAOS_SKIP_AUTO_LAUNCH:-}" = "1" ]; then
+        printf '%s\n' "skipped"
+        return 0
+    fi
+
+    local bin base
+    bin="$(armaraos_cli_bin)"
+    if [ -z "$bin" ]; then
+        printf '%s\n' "failed"
+        return 0
+    fi
+
+    base="$(daemon_base_url)"
+    if ! daemon_healthy "$base"; then
+        if ! start_armaraos_daemon "$bin"; then
+            echo "" >&2
+            echo "  Recovering via dashboard auto-start..." >&2
+            if ! open_armaraos_dashboard "$bin"; then
+                base="$(daemon_base_url)"
+                if ! daemon_healthy "$base"; then
+                    echo "" >&2
+                    echo "  Could not start the daemon automatically." >&2
+                    echo "  Run: armaraos doctor" >&2
+                    echo "  Then: armaraos dashboard" >&2
+                    printf '%s\n' "failed"
+                    return 0
+                fi
+            fi
+        else
+            echo "  Daemon is running." >&2
+            open_armaraos_dashboard "$bin" || true
+        fi
+    else
+        echo "" >&2
+        echo "  Daemon already running." >&2
+        open_armaraos_dashboard "$bin" || true
+    fi
+
+    if daemon_healthy "$(daemon_base_url)"; then
+        printf '%s\n' "success"
+        return 0
+    fi
+    printf '%s\n' "failed"
+}
+
 print_get_started() {
     local desktop_shortcut="${1:-}"
+    local launch_result="${2:-skipped}"
     echo ""
     echo "  You're ready!"
-    if [ -n "$desktop_shortcut" ]; then
-        echo "  Double-click the desktop icon: ArmaraOS Dashboard"
+    if [ "$launch_result" = "success" ]; then
+        echo "  ArmaraOS is running in the background."
+        echo "  Your browser should show the dashboard (setup wizard on first visit)."
+        echo "  You can close this terminal — the daemon keeps running."
+    elif [ "$launch_result" = "failed" ]; then
+        echo "  Open the dashboard: armaraos dashboard"
         echo "  (starts the daemon if needed, then opens your browser)"
     else
         echo "  Open the dashboard: armaraos dashboard"
         echo "  (starts the daemon if needed, then opens your browser)"
+    fi
+    if [ -n "$desktop_shortcut" ]; then
+        echo "  Next time: double-click ArmaraOS Dashboard on your desktop."
     fi
     echo ""
     echo "  Verify anytime: armaraos doctor"
@@ -526,7 +674,8 @@ EOF
         DESKTOP_SHORTCUT="$launcher_path"
     fi
 
-    print_get_started "$DESKTOP_SHORTCUT"
+    LAUNCH_RESULT="$(launch_armaraos_after_install)"
+    print_get_started "$DESKTOP_SHORTCUT" "$LAUNCH_RESULT"
 }
 
 install

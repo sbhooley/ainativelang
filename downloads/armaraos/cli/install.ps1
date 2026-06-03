@@ -5,6 +5,7 @@
 #   $env:ARMARAOS_INSTALL_DIR  — custom install directory
 #   $env:ARMARAOS_VERSION      — specific version tag
 #   $env:ARMARAOS_AUTO_PYTHON  — set to 0 to skip winget Python install (default: 1)
+#   $env:ARMARAOS_SKIP_AUTO_LAUNCH — set to 1 to skip auto start + dashboard (default: 0)
 #
 # Legacy: OPENFANG_INSTALL_DIR, OPENFANG_VERSION
 
@@ -511,17 +512,158 @@ function Install-Ainl {
     Install-AinlViaVenv -BasePy $Py
 }
 
+function Get-DaemonBaseUrl {
+    $default = "http://127.0.0.1:4200"
+    $dj = Join-Path $env:USERPROFILE ".armaraos\daemon.json"
+    if (-not (Test-Path $dj)) { return $default }
+    try {
+        $info = Get-Content $dj -Raw | ConvertFrom-Json
+        $addr = [string]$info.listen_addr
+        if (-not $addr) { return $default }
+        $addr = $addr.Replace("0.0.0.0", "127.0.0.1")
+        return "http://$addr"
+    } catch {
+        return $default
+    }
+}
+
+function Test-DaemonHealthy {
+    param([string]$Base = "http://127.0.0.1:4200")
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $uri = "$($Base.TrimEnd('/'))/api/health"
+        $r = Invoke-WebRequest -Uri $uri -UseBasicParsing -TimeoutSec 3
+        return ($r.StatusCode -eq 200)
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
+function Wait-DaemonHealthy {
+    param(
+        [string]$Base,
+        [int]$TimeoutSec = 45
+    )
+    for ($i = 0; $i -lt $TimeoutSec; $i++) {
+        if (Test-DaemonHealthy -Base $Base) { return $true }
+        Start-Sleep -Seconds 1
+    }
+    return $false
+}
+
+function Repair-ArmaraosInstall {
+    param([string]$Exe)
+
+    $ofHome = Join-Path $env:USERPROFILE ".armaraos"
+    foreach ($sub in @("data", "agents", "logs")) {
+        $p = Join-Path $ofHome $sub
+        if (-not (Test-Path $p)) {
+            New-Item -ItemType Directory -Path $p -Force | Out-Null
+        }
+    }
+    $config = Join-Path $ofHome "config.toml"
+    if (-not (Test-Path $config)) {
+        Write-Host "  Repair: first-time setup (armaraos init --quick)..." -ForegroundColor Yellow
+        & $Exe init --quick
+    }
+    & $Exe stop 2>$null | Out-Null
+    Start-Sleep -Seconds 1
+}
+
+function Start-ArmaraosDaemon {
+    param([string]$Exe)
+
+    Write-Host ""
+    Write-Host "  Starting ArmaraOS daemon (background)..." -ForegroundColor Cyan
+    & $Exe start --yolo --detach
+    if ($LASTEXITCODE -ne 0) { return $false }
+
+    $base = Get-DaemonBaseUrl
+    if (Wait-DaemonHealthy -Base $base) { return $true }
+
+    Write-Host "  Repairing install state and retrying..." -ForegroundColor Yellow
+    Repair-ArmaraosInstall -Exe $Exe
+    & $Exe start --yolo --detach
+    if ($LASTEXITCODE -ne 0) { return $false }
+    Wait-DaemonHealthy -Base (Get-DaemonBaseUrl)
+}
+
+function Open-ArmaraosDashboard {
+    param([string]$Exe)
+
+    Write-Host ""
+    Write-Host "  Opening dashboard in your browser..." -ForegroundColor Cyan
+    & $Exe dashboard
+    $base = Get-DaemonBaseUrl
+    if ($LASTEXITCODE -ne 0 -and -not (Test-DaemonHealthy -Base $base)) {
+        Write-Host "  Browser did not open — visit: $base/" -ForegroundColor Yellow
+        return $false
+    }
+    return $true
+}
+
+# Golden path (Windows + Mac/Linux install.sh): start daemon, verify /api/health, repair + retry, open dashboard.
+function Launch-ArmaraosAfterInstall {
+    if ($env:ARMARAOS_SKIP_AUTO_LAUNCH -eq "1") { return "skipped" }
+
+    $exe = Get-ArmaraosExe
+    if (-not $exe) { return "failed" }
+
+    $base = Get-DaemonBaseUrl
+    if (-not (Test-DaemonHealthy -Base $base)) {
+        if (-not (Start-ArmaraosDaemon -Exe $exe)) {
+            Write-Host ""
+            Write-Host "  Recovering via dashboard auto-start..." -ForegroundColor Yellow
+            if (-not (Open-ArmaraosDashboard -Exe $exe)) {
+                if (-not (Test-DaemonHealthy -Base (Get-DaemonBaseUrl))) {
+                    Write-Host ""
+                    Write-Host "  Could not start the daemon automatically." -ForegroundColor Yellow
+                    Write-Host "  Run: armaraos doctor" -ForegroundColor Yellow
+                    Write-Host "  Then: armaraos dashboard" -ForegroundColor Yellow
+                    return "failed"
+                }
+            }
+        } else {
+            Write-Host "  Daemon is running." -ForegroundColor Green
+            Open-ArmaraosDashboard -Exe $exe | Out-Null
+        }
+    } else {
+        Write-Host ""
+        Write-Host "  Daemon already running." -ForegroundColor Green
+        Open-ArmaraosDashboard -Exe $exe | Out-Null
+    }
+
+    if (Test-DaemonHealthy -Base (Get-DaemonBaseUrl)) {
+        return "success"
+    }
+    return "failed"
+}
+
 function Show-GetStarted {
-    param([string]$DesktopShortcut = "")
+    param(
+        [string]$DesktopShortcut = "",
+        [ValidateSet("success", "failed", "skipped")]
+        [string]$LaunchResult = "skipped"
+    )
 
     Write-Host ""
     Write-Host "  You're ready!" -ForegroundColor Cyan
-    if ($DesktopShortcut) {
-        Write-Host "  Double-click the desktop icon: ArmaraOS Dashboard" -ForegroundColor Green
+    if ($LaunchResult -eq "success") {
+        Write-Host "  ArmaraOS is running in the background." -ForegroundColor Green
+        Write-Host "  Your browser should show the dashboard (setup wizard on first visit)." -ForegroundColor Green
+        Write-Host "  You can close this window — the daemon keeps running." -ForegroundColor Green
+    } elseif ($LaunchResult -eq "failed") {
+        Write-Host "  Open the dashboard: armaraos dashboard" -ForegroundColor Green
         Write-Host "  (starts the daemon if needed, then opens your browser)" -ForegroundColor Green
     } else {
         Write-Host "  Open the dashboard: armaraos dashboard" -ForegroundColor Green
         Write-Host "  (starts the daemon if needed, then opens your browser)" -ForegroundColor Green
+    }
+    if ($DesktopShortcut) {
+        Write-Host "  Next time: double-click ArmaraOS Dashboard on your desktop." -ForegroundColor Green
     }
     Write-Host ""
     Write-Host "  Verify anytime: armaraos doctor"
@@ -761,7 +903,8 @@ function Install-ArmaraOS {
     Install-Ainl -Py $py
     Initialize-ArmaraosIfNeeded
     $desktopShortcut = Install-DashboardShortcut
-    Show-GetStarted -DesktopShortcut $desktopShortcut
+    $launchResult = Launch-ArmaraosAfterInstall
+    Show-GetStarted -DesktopShortcut $desktopShortcut -LaunchResult $launchResult
 }
 
 Install-ArmaraOS
