@@ -554,6 +554,86 @@ function Wait-DaemonHealthy {
     return $false
 }
 
+function Repair-ConfigTomlWindowsPaths {
+    $configPath = Join-Path (Join-Path $env:USERPROFILE ".armaraos") "config.toml"
+    if (-not (Test-Path -LiteralPath $configPath)) { return $false }
+
+    $raw = [System.IO.File]::ReadAllText($configPath)
+    $endsWithNewline = $raw.EndsWith("`n") -or $raw.EndsWith("`r`n")
+    $lines = $raw -split "`r?`n", -1
+    $keys = @('command', 'path', 'root', 'cwd')
+    $changed = $false
+    $out = New-Object System.Collections.Generic.List[string]
+
+    foreach ($line in $lines) {
+        $trim = $line.Trim()
+        if ($trim -notmatch '=' -or $trim -notmatch '"') {
+            [void]$out.Add($line)
+            continue
+        }
+        $key = ($trim -split '=', 2)[0].Trim()
+        if ($keys -notcontains $key) {
+            [void]$out.Add($line)
+            continue
+        }
+        $eqIdx = $line.IndexOf('=')
+        if ($eqIdx -lt 0) {
+            [void]$out.Add($line)
+            continue
+        }
+        $afterEq = $line.Substring($eqIdx + 1).TrimStart()
+        if (-not $afterEq.StartsWith('"')) {
+            [void]$out.Add($line)
+            continue
+        }
+        $valueStart = $line.IndexOf('"', $eqIdx)
+        if ($valueStart -lt 0) {
+            [void]$out.Add($line)
+            continue
+        }
+        $endRel = $line.Substring($valueStart + 1).LastIndexOf('"')
+        if ($endRel -lt 0) {
+            [void]$out.Add($line)
+            continue
+        }
+        $valueEnd = $valueStart + 1 + $endRel
+        $inner = $line.Substring($valueStart + 1, $endRel)
+        if ($inner -notmatch '\\') {
+            [void]$out.Add($line)
+            continue
+        }
+        $fixedInner = $inner -replace '\\', '/'
+        $changed = $true
+        [void]$out.Add($line.Substring(0, $valueStart + 1) + $fixedInner + $line.Substring($valueEnd))
+    }
+
+    if (-not $changed) { return $false }
+
+    $joined = ($out -join "`n")
+    if ($endsWithNewline -and -not $joined.EndsWith("`n")) {
+        $joined += "`n"
+    }
+    [System.IO.File]::WriteAllText($configPath, $joined)
+    Write-Host ""
+    Write-Host "  Repaired Windows path escaping in config.toml (MCP command paths)" -ForegroundColor Yellow
+    return $true
+}
+
+function Invoke-ArmaraosDoctorRepair {
+    param([string]$Exe)
+    if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) { return $false }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Exe doctor --repair 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
 function Repair-ArmaraosInstall {
     param([string]$Exe)
 
@@ -569,6 +649,8 @@ function Repair-ArmaraosInstall {
         Write-Host "  Repair: first-time setup (armaraos init --quick)..." -ForegroundColor Yellow
         & $Exe init --quick
     }
+    Repair-ConfigTomlWindowsPaths | Out-Null
+    Invoke-ArmaraosDoctorRepair -Exe $Exe | Out-Null
     & $Exe stop 2>$null | Out-Null
     Start-Sleep -Seconds 1
 }
@@ -621,7 +703,9 @@ function Launch-ArmaraosAfterInstall {
                 if (-not (Test-DaemonHealthy -Base (Get-DaemonBaseUrl))) {
                     Write-Host ""
                     Write-Host "  Could not start the daemon automatically." -ForegroundColor Yellow
-                    Write-Host "  Run: armaraos doctor" -ForegroundColor Yellow
+                    Write-Host "  Common fix on Windows: broken MCP paths in config.toml (desktop AINL bootstrap)." -ForegroundColor Yellow
+                    Write-Host "  Run: armaraos doctor --repair" -ForegroundColor Yellow
+                    Write-Host "  Then: armaraos start --yolo --detach" -ForegroundColor Yellow
                     Write-Host "  Then: armaraos dashboard" -ForegroundColor Yellow
                     return "failed"
                 }
@@ -902,6 +986,9 @@ function Install-ArmaraOS {
 
     Install-Ainl -Py $py
     Initialize-ArmaraosIfNeeded
+    Repair-ConfigTomlWindowsPaths | Out-Null
+    $exe = Get-ArmaraosExe
+    if ($exe) { Invoke-ArmaraosDoctorRepair -Exe $exe | Out-Null }
     $desktopShortcut = Install-DashboardShortcut
     $launchResult = Launch-ArmaraosAfterInstall
     Show-GetStarted -DesktopShortcut $desktopShortcut -LaunchResult $launchResult

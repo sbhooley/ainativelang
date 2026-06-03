@@ -392,8 +392,64 @@ repair_armaraos_install() {
         echo "  Repair: first-time setup (armaraos init --quick)..." >&2
         "$bin" init --quick || true
     fi
+    repair_config_toml_windows_paths || true
+    "$bin" doctor --repair >/dev/null 2>&1 || true
     "$bin" stop 2>/dev/null || true
     sleep 1
+}
+
+# Fix command = "C:\..." lines where backslashes break TOML (desktop AINL bootstrap on Windows).
+repair_config_toml_windows_paths() {
+    local config="${HOME}/.armaraos/config.toml"
+    [ -f "$config" ] || return 0
+    python3 - "$config" <<'PY' || return 1
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+raw = path.read_text(encoding="utf-8")
+keys = {"command", "path", "root", "cwd"}
+ends_nl = raw.endswith("\n")
+lines = raw.splitlines()
+out = []
+changed = False
+for line in lines:
+    trimmed = line.strip()
+    if "=" not in trimmed or '"' not in trimmed:
+        out.append(line)
+        continue
+    key = trimmed.split("=", 1)[0].strip()
+    if key not in keys:
+        out.append(line)
+        continue
+    eq = line.find("=")
+    after = line[eq + 1 :].lstrip()
+    if not after.startswith('"'):
+        out.append(line)
+        continue
+    vs = line.find('"', eq)
+    if vs < 0:
+        out.append(line)
+        continue
+    er = line[vs + 1 :].rfind('"')
+    if er < 0:
+        out.append(line)
+        continue
+    inner = line[vs + 1 : vs + 1 + er]
+    if "\\" not in inner:
+        out.append(line)
+        continue
+    fixed = inner.replace("\\", "/")
+    out.append(line[: vs + 1] + fixed + line[vs + 1 + er :])
+    changed = True
+if not changed:
+    sys.exit(0)
+text = "\n".join(out)
+if ends_nl and not text.endswith("\n"):
+    text += "\n"
+path.write_text(text, encoding="utf-8")
+print("  Repaired Windows path escaping in config.toml (MCP command paths)", file=sys.stderr)
+PY
 }
 
 start_armaraos_daemon() {
@@ -459,7 +515,8 @@ launch_armaraos_after_install() {
                 if ! daemon_healthy "$base"; then
                     echo "" >&2
                     echo "  Could not start the daemon automatically." >&2
-                    echo "  Run: armaraos doctor" >&2
+                    echo "  Common fix: run armaraos doctor --repair (Windows MCP path escaping)" >&2
+                    echo "  Then: armaraos start --yolo --detach" >&2
                     echo "  Then: armaraos dashboard" >&2
                     printf '%s\n' "failed"
                     return 0
@@ -669,6 +726,10 @@ EOF
     fi
 
     initialize_armaraos_if_needed
+    repair_config_toml_windows_paths || true
+    if bin="$(armaraos_cli_bin)"; then
+        "$bin" doctor --repair >/dev/null 2>&1 || true
+    fi
     DESKTOP_SHORTCUT=""
     if launcher_path="$(install_dashboard_shortcut)"; then
         DESKTOP_SHORTCUT="$launcher_path"
