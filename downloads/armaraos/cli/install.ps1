@@ -210,15 +210,66 @@ function Install-Ainl {
 }
 
 function Show-GetStarted {
+    param([string]$DesktopShortcut = "")
+
     Write-Host ""
-    Write-Host "  You're ready — run these now:" -ForegroundColor Cyan
-    Write-Host "    armaraos init --quick"
-    Write-Host "    armaraos start --detach"
-    Write-Host "    armaraos dashboard"
+    Write-Host "  You're ready!" -ForegroundColor Cyan
+    if ($DesktopShortcut) {
+        Write-Host "  Double-click the desktop icon: ArmaraOS Dashboard" -ForegroundColor Green
+        Write-Host "  (starts the daemon if needed, then opens your browser)" -ForegroundColor Green
+    } else {
+        Write-Host "  Open the dashboard: armaraos dashboard" -ForegroundColor Green
+        Write-Host "  (starts the daemon if needed, then opens your browser)" -ForegroundColor Green
+    }
     Write-Host ""
     Write-Host "  Verify anytime: armaraos doctor"
     Write-Host "  Upgrade CLI:    armaraos update"
     Write-Host ""
+}
+
+function Get-ArmaraosExe {
+    $exe = Join-Path $InstallDir "armaraos.exe"
+    if (Test-Path $exe) { return $exe }
+    return $null
+}
+
+function Initialize-ArmaraosIfNeeded {
+    $exe = Get-ArmaraosExe
+    if (-not $exe) { return }
+    $configPath = Join-Path $env:USERPROFILE ".armaraos\config.toml"
+    if (Test-Path $configPath) { return }
+    Write-Host ""
+    Write-Host "  First-time setup (armaraos init --quick)..." -ForegroundColor Cyan
+    & $exe init --quick
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  Warning: init --quick did not complete — run it manually before opening the dashboard." -ForegroundColor Yellow
+    }
+}
+
+function Install-DashboardShortcut {
+    $exe = Get-ArmaraosExe
+    if (-not $exe) { return "" }
+
+    $desktop = [Environment]::GetFolderPath("Desktop")
+    if (-not $desktop -or -not (Test-Path $desktop)) { return "" }
+
+    $shortcutPath = Join-Path $desktop "ArmaraOS Dashboard.lnk"
+    try {
+        $wsh = New-Object -ComObject WScript.Shell
+        $shortcut = $wsh.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = $exe
+        $shortcut.Arguments = "dashboard"
+        $shortcut.WorkingDirectory = $InstallDir
+        $shortcut.Description = "Open ArmaraOS dashboard (starts daemon if needed)"
+        $shortcut.Save()
+        Write-Host ""
+        Write-Host "  Created desktop shortcut: ArmaraOS Dashboard" -ForegroundColor Green
+        return $shortcutPath
+    } catch {
+        Write-Host ""
+        Write-Host "  Could not create desktop shortcut — run: armaraos dashboard" -ForegroundColor Yellow
+        return ""
+    }
 }
 
 function Get-Architecture {
@@ -401,7 +452,9 @@ function Install-ArmaraOS {
     }
 
     Install-Ainl -Py $py
-    Show-GetStarted
+    Initialize-ArmaraosIfNeeded
+    $desktopShortcut = Install-DashboardShortcut
+    Show-GetStarted -DesktopShortcut $desktopShortcut
 }
 
 Install-ArmaraOS

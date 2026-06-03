@@ -343,11 +343,16 @@ install_ainl() {
 }
 
 print_get_started() {
+    local desktop_shortcut="${1:-}"
     echo ""
-    echo "  You're ready — run these now (PATH updated for this shell):"
-    echo "    armaraos init --quick"
-    echo "    armaraos start --detach"
-    echo "    armaraos dashboard"
+    echo "  You're ready!"
+    if [ -n "$desktop_shortcut" ]; then
+        echo "  Double-click the desktop icon: ArmaraOS Dashboard"
+        echo "  (starts the daemon if needed, then opens your browser)"
+    else
+        echo "  Open the dashboard: armaraos dashboard"
+        echo "  (starts the daemon if needed, then opens your browser)"
+    fi
     echo ""
     echo "  Verify anytime: armaraos doctor"
     echo "  Upgrade CLI:    armaraos update"
@@ -360,6 +365,53 @@ print_get_started() {
         esac
         echo ""
     fi
+}
+
+armaraos_cli_bin() {
+    if [ -x "$INSTALL_DIR/armaraos" ]; then
+        echo "$INSTALL_DIR/armaraos"
+    elif [ -x "$INSTALL_DIR/openfang" ]; then
+        echo "$INSTALL_DIR/openfang"
+    fi
+}
+
+initialize_armaraos_if_needed() {
+    local bin config
+    bin="$(armaraos_cli_bin)"
+    [ -n "$bin" ] || return 0
+    config="${HOME}/.armaraos/config.toml"
+    [ -f "$config" ] && return 0
+    echo ""
+    echo "  First-time setup (armaraos init --quick)..."
+    if ! "$bin" init --quick; then
+        echo "  Warning: init --quick did not complete — run it manually before opening the dashboard."
+    fi
+}
+
+install_dashboard_shortcut() {
+    local bin desktop launcher
+    bin="$(armaraos_cli_bin)"
+    [ -n "$bin" ] || return 1
+
+    desktop=""
+    if [ "$OS" = "darwin" ]; then
+        desktop="$HOME/Desktop"
+    elif [ -n "${XDG_DESKTOP_DIR:-}" ] && [ -d "$XDG_DESKTOP_DIR" ]; then
+        desktop="$XDG_DESKTOP_DIR"
+    elif [ -d "$HOME/Desktop" ]; then
+        desktop="$HOME/Desktop"
+    fi
+    [ -n "$desktop" ] || return 1
+
+    launcher="$desktop/ArmaraOS Dashboard.command"
+    cat > "$launcher" <<EOF
+#!/usr/bin/env bash
+exec "$bin" dashboard
+EOF
+    chmod +x "$launcher"
+    echo "" >&2
+    echo "  Created desktop shortcut: ArmaraOS Dashboard" >&2
+    printf '%s\n' "$launcher"
 }
 
 install() {
@@ -468,7 +520,13 @@ EOF
         exit 1
     fi
 
-    print_get_started
+    initialize_armaraos_if_needed
+    DESKTOP_SHORTCUT=""
+    if launcher_path="$(install_dashboard_shortcut)"; then
+        DESKTOP_SHORTCUT="$launcher_path"
+    fi
+
+    print_get_started "$DESKTOP_SHORTCUT"
 }
 
 install
