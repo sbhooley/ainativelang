@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ArmaraOS installer — works on Linux, macOS, WSL
+# ArmaraOS installer — Linux, macOS, WSL (Windows: use install.ps1 in PowerShell)
+# Installs the ArmaraOS CLI and AINL (ainativelang[mcp]) — both are required.
 # Usage: curl -sSfL https://ainativelang.com/install.sh | sh
 #
 # Environment variables:
@@ -175,8 +176,8 @@ try_install_python_mac() {
 
 print_python_help() {
     echo ""
-    echo "  Python 3.10+ is required for AINL (ainativelang[mcp])."
-    echo "  The ArmaraOS CLI is already installed — finish AINL after Python is ready."
+    echo "  Install incomplete: Python 3.10+ is required for AINL (ainativelang[mcp])."
+    echo "  ArmaraOS requires AINL — finish setup after Python is ready, then re-run this installer."
     echo ""
     if [ "$OS" = "darwin" ]; then
         echo "  Easiest options on macOS:"
@@ -193,8 +194,8 @@ print_python_help() {
         echo "  ~/.armaraos/ainl-venv when pip --user is blocked."
     fi
     echo ""
-    echo "  Skip AINL for now (CLI only): ARMARAOS_SKIP_AINL=1 curl -sSfL https://ainativelang.com/install.sh | sh"
-    echo "  Re-run full install:            curl -sSfL https://ainativelang.com/install.sh | sh"
+    echo "  Re-run after Python is ready:"
+    echo "    curl -sSfL https://ainativelang.com/install.sh | sh"
     echo ""
 }
 
@@ -456,13 +457,6 @@ EOF
     else
         echo ""
         echo "  ArmaraOS binary installed to $INSTALL_DIR"
-    fi
-
-    if [ "${ARMARAOS_SKIP_AINL:-0}" = "1" ]; then
-        echo ""
-        echo "  Skipped AINL (ARMARAOS_SKIP_AINL=1). Add later: curl -sSfL https://ainativelang.com/install.sh | sh"
-        print_get_started
-        return 0
     fi
 
     PYTHON=""

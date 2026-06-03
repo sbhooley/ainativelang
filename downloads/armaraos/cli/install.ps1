@@ -1,11 +1,10 @@
-# ArmaraOS installer for Windows
+# ArmaraOS installer for Windows — installs CLI + AINL (both required)
 # Usage: irm https://ainativelang.com/install.ps1 | iex
 #
 # Environment variables:
 #   $env:ARMARAOS_INSTALL_DIR  — custom install directory
 #   $env:ARMARAOS_VERSION      — specific version tag
 #   $env:ARMARAOS_AUTO_PYTHON  — set to 0 to skip winget Python install (default: 1)
-#   $env:ARMARAOS_SKIP_AINL    — set to 1 to install only the ArmaraOS CLI
 #
 # Legacy: OPENFANG_INSTALL_DIR, OPENFANG_VERSION
 
@@ -138,8 +137,8 @@ function Install-PythonViaWinget {
 
 function Show-PythonHelp {
     Write-Host ""
-    Write-Host "  Python 3.10+ is required for AINL (ainativelang[mcp])." -ForegroundColor Red
-    Write-Host "  The ArmaraOS CLI is already installed — finish AINL after Python is ready." -ForegroundColor Yellow
+    Write-Host "  Install incomplete: Python 3.10+ is required for AINL (ainativelang[mcp])." -ForegroundColor Red
+    Write-Host "  ArmaraOS requires AINL — finish setup after Python is ready, then re-run this installer." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  Easiest options on Windows:" -ForegroundColor Yellow
     Write-Host "    • Desktop .msi (bundled Python): https://ainativelang.com/armaraos"
@@ -148,9 +147,6 @@ function Show-PythonHelp {
     Write-Host ""
     Write-Host "  Then open a new PowerShell and re-run:" -ForegroundColor Cyan
     Write-Host "    irm https://ainativelang.com/install.ps1 | iex"
-    Write-Host ""
-    Write-Host "  CLI-only (skip AINL for now):" -ForegroundColor Cyan
-    Write-Host '    $env:ARMARAOS_SKIP_AINL=1; irm https://ainativelang.com/install.ps1 | iex'
     Write-Host ""
 }
 
@@ -247,17 +243,69 @@ function Get-Architecture {
     }
 }
 
+function Get-CliManifest {
+    if ($script:ArmaraosCliManifest) { return $script:ArmaraosCliManifest }
+    try {
+        $script:ArmaraosCliManifest = Invoke-RestMethod -Uri "$DownloadBase/latest.json" -UseBasicParsing
+        return $script:ArmaraosCliManifest
+    } catch {
+        return $null
+    }
+}
+
+function Get-WindowsDownloadCandidates {
+    param([string]$NativeArch)
+
+    $manifest = Get-CliManifest
+    $platformKeys = @("${NativeArch}-pc-windows-msvc")
+    # Native ARM64 Windows builds may not be published yet; x64 runs under Windows emulation.
+    if ($NativeArch -eq "aarch64") {
+        $platformKeys += "x86_64-pc-windows-msvc"
+    }
+
+    $seen = @{}
+    $candidates = @()
+
+    foreach ($platformKey in $platformKeys) {
+        if ($manifest -and $manifest.platforms) {
+            $entry = $manifest.platforms.$platformKey
+            if ($entry -and $entry.archive -and -not $seen[$entry.archive]) {
+                $seen[$entry.archive] = $true
+                $candidates += [PSCustomObject]@{
+                    PlatformKey = $platformKey
+                    Archive     = $entry.archive
+                    Url         = if ($entry.url) { $entry.url } else { "$DownloadBase/$($entry.archive)" }
+                    Sha256Url   = if ($entry.sha256_url) { $entry.sha256_url } else { "$DownloadBase/$($entry.archive).sha256" }
+                }
+            }
+        }
+
+        foreach ($prefix in @("armaraos", "openfang")) {
+            $archive = "$prefix-$platformKey.zip"
+            if ($seen[$archive]) { continue }
+            $seen[$archive] = $true
+            $candidates += [PSCustomObject]@{
+                PlatformKey = $platformKey
+                Archive     = $archive
+                Url         = "$DownloadBase/$archive"
+                Sha256Url   = "$DownloadBase/$archive.sha256"
+            }
+        }
+    }
+
+    return $candidates
+}
+
 function Get-LatestVersion {
     if ($env:ARMARAOS_VERSION) { return $env:ARMARAOS_VERSION }
     if ($env:OPENFANG_VERSION) { return $env:OPENFANG_VERSION }
     Write-Host "  Fetching latest release from $DownloadBase/latest.json ..."
-    try {
-        $manifest = Invoke-RestMethod -Uri "$DownloadBase/latest.json" -UseBasicParsing
+    $manifest = Get-CliManifest
+    if ($manifest) {
         if ($manifest.tag) { return $manifest.tag }
         if ($manifest.version) { return "v$($manifest.version)" }
-    } catch {
-        Write-Host "  Could not read $DownloadBase/latest.json" -ForegroundColor Red
     }
+    Write-Host "  Could not read $DownloadBase/latest.json" -ForegroundColor Red
     Write-Host "  Set `$env:ARMARAOS_VERSION=vX.Y.Z or retry after the next release syncs to ainativelang.com." -ForegroundColor Yellow
     exit 1
 }
@@ -268,10 +316,7 @@ function Install-ArmaraOS {
     $arch = Get-Architecture
     $version = Get-LatestVersion
     $target = "${arch}-pc-windows-msvc"
-    $archiveCandidates = @(
-        "armaraos-${target}.zip",
-        "openfang-${target}.zip"
-    )
+    $downloadCandidates = Get-WindowsDownloadCandidates -NativeArch $arch
 
     Write-Host "  Installing ArmaraOS (CLI) $version for $target..."
 
@@ -283,24 +328,30 @@ function Install-ArmaraOS {
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     $archivePath = $null
     $checksumUrl = $null
+    $usedPlatform = $null
 
-    foreach ($archive in $archiveCandidates) {
-        $url = "$DownloadBase/$archive"
-        $candidatePath = Join-Path $tempDir $archive
+    foreach ($item in $downloadCandidates) {
+        $candidatePath = Join-Path $tempDir $item.Archive
         try {
-            Invoke-WebRequest -Uri $url -OutFile $candidatePath -UseBasicParsing
+            Invoke-WebRequest -Uri $item.Url -OutFile $candidatePath -UseBasicParsing
             $archivePath = $candidatePath
-            $checksumUrl = "$url.sha256"
+            $checksumUrl = $item.Sha256Url
+            $usedPlatform = $item.PlatformKey
             break
         } catch {
             continue
         }
     }
     if (-not $archivePath) {
-        Write-Host "  Download failed for: $($archiveCandidates -join ', ')" -ForegroundColor Red
+        $names = ($downloadCandidates | ForEach-Object { $_.Archive }) -join ', '
+        Write-Host "  Download failed for: $names" -ForegroundColor Red
         Write-Host "  If this is a fresh release, wait for ainativelang.com to sync CLI binaries." -ForegroundColor Yellow
         Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
         exit 1
+    }
+
+    if ($arch -eq "aarch64" -and $usedPlatform -eq "x86_64-pc-windows-msvc") {
+        Write-Host "  No native ARM64 build yet — using x64 package (Windows x64 emulation)." -ForegroundColor Yellow
     }
 
     try {
@@ -338,13 +389,6 @@ function Install-ArmaraOS {
     } catch {
         Write-Host ""
         Write-Host "  ArmaraOS binary installed to $installedExe" -ForegroundColor Green
-    }
-
-    if ($env:ARMARAOS_SKIP_AINL -eq '1') {
-        Write-Host ""
-        Write-Host "  Skipped AINL (ARMARAOS_SKIP_AINL=1)." -ForegroundColor Yellow
-        Show-GetStarted
-        return
     }
 
     $py = Find-Python
