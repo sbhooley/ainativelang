@@ -98,16 +98,47 @@ function Invoke-PipInstall {
     }
 }
 
-function Find-Python {
-    foreach ($name in @("python3.12", "python3.11", "python3.10", "python3", "python")) {
-        if (Get-Command $name -ErrorAction SilentlyContinue) {
-            if (Test-PythonAinlCompatible $name) { return $name }
+function Resolve-PythonExecutable {
+    param($Py)
+    if ($null -eq $Py) { return $null }
+    if ($Py -is [System.Array]) {
+        foreach ($item in $Py) {
+            $resolved = Resolve-PythonExecutable ([string]$item)
+            if ($resolved -and (Test-PythonAinlCompatible $resolved)) { return $resolved }
         }
+        return $null
     }
-    # Common per-user install location after winget
+    $Py = "$Py".Trim()
+    if (-not $Py) { return $null }
+    if (Test-Path -LiteralPath $Py) { return $Py }
+    $cmd = Get-Command $Py -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source) { return $cmd.Source }
+    return $Py
+}
+
+function Find-Python {
+    # Prefer explicit install paths (winget) before generic python3 on PATH (may be 3.14).
     foreach ($ver in @("312", "311", "310")) {
         $localPy = Join-Path $env:LOCALAPPDATA "Programs\Python\Python$ver\python.exe"
-        if ((Test-Path $localPy) -and (Test-PythonAinlCompatible $localPy)) { return $localPy }
+        if ((Test-Path -LiteralPath $localPy) -and (Test-PythonAinlCompatible $localPy)) { return $localPy }
+    }
+    foreach ($name in @("python3.12", "python3.11", "python3.10")) {
+        if (Get-Command $name -ErrorAction SilentlyContinue) {
+            $resolved = Resolve-PythonExecutable $name
+            if ($resolved -and (Test-PythonAinlCompatible $resolved)) { return $resolved }
+        }
+    }
+    return $null
+}
+
+function Wait-ForCompatiblePython {
+    param([int]$TimeoutSec = 120)
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        Refresh-SessionPath
+        $py = Find-Python
+        if ($py) { return $py }
+        Start-Sleep -Seconds 3
     }
     return $null
 }
@@ -205,21 +236,31 @@ function Install-PythonViaWinget {
         Write-Host "  No compatible Python on PATH - installing Python 3.12 via winget (one-time)..." -ForegroundColor Yellow
     }
     try {
-        winget install Python.Python.3.12 `
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        & winget install Python.Python.3.12 `
             --accept-package-agreements `
             --accept-source-agreements `
             --disable-interactivity `
-            -h 2>$null
+            -h 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
-            winget install Python.Python.3.12 --accept-package-agreements --accept-source-agreements
+            & winget install Python.Python.3.12 `
+                --accept-package-agreements `
+                --accept-source-agreements 2>&1 | Out-Null
         }
+        $ErrorActionPreference = $prev
     } catch {
         Write-Host "  winget install failed: $_" -ForegroundColor Yellow
         return $null
     }
-    Refresh-SessionPath
-    Start-Sleep -Seconds 2
-    return Find-Python
+    Write-Host "  Waiting for Python 3.12 (up to 2 min)..." -ForegroundColor Cyan
+    $installed = Wait-ForCompatiblePython -TimeoutSec 120
+    if ($installed) {
+        Write-Host "  Python ready: $(Get-PythonVersionLabel $installed)" -ForegroundColor Green
+    } elseif ($LASTEXITCODE -ne 0) {
+        Write-Host "  winget exited with code $LASTEXITCODE (Python 3.12 may still be installing)." -ForegroundColor Yellow
+    }
+    return $installed
 }
 
 function Show-PythonHelp {
@@ -234,9 +275,9 @@ function Show-PythonHelp {
     Write-Host "  ArmaraOS requires AINL - finish setup after Python is ready, then re-run this installer." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  Easiest options on Windows:" -ForegroundColor Yellow
-    Write-Host "    • Desktop .msi (bundled Python): https://ainativelang.com/armaraos"
-    Write-Host "    • winget:  winget install Python.Python.3.12"
-    Write-Host "    • Official: https://www.python.org/downloads/ (check Add python.exe to PATH)"
+    Write-Host "    * Desktop .msi (bundled Python): https://ainativelang.com/armaraos"
+    Write-Host "    * winget:  winget install Python.Python.3.12"
+    Write-Host "    * Official: https://www.python.org/downloads/ (check Add python.exe to PATH)"
     Write-Host ""
     Write-Host "  Then open a new PowerShell and re-run:" -ForegroundColor Cyan
     Write-Host "    irm https://ainativelang.com/install.ps1 | iex"
@@ -510,6 +551,14 @@ function Install-ArmaraOS {
     if (-not $py) {
         $unsupported = Find-UnsupportedPython
         $ver = if ($unsupported) { Get-PythonVersionLabel $unsupported } else { "" }
+        Show-PythonHelp -UnsupportedVersion $ver
+        exit 1
+    }
+
+    $py = Resolve-PythonExecutable $py
+    if (-not $py -or -not (Test-PythonAinlCompatible $py)) {
+        $ver = if ($py) { Get-PythonVersionLabel $py } else { "unknown" }
+        Write-Host "  Could not find a compatible Python (3.10-3.13) after install." -ForegroundColor Red
         Show-PythonHelp -UnsupportedVersion $ver
         exit 1
     }
