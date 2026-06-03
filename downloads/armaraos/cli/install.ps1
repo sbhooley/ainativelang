@@ -45,22 +45,80 @@ function Add-UserPathEntry {
 function Test-Python310Plus {
     param([string]$PyCmd)
     if (-not $PyCmd) { return $false }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     try {
         & $PyCmd -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
         return ($LASTEXITCODE -eq 0)
     } catch { return $false }
+    finally { $ErrorActionPreference = $prev }
+}
+
+# AINL is tested on 3.10-3.13; 3.14+ often lacks wheels and breaks pip installs.
+function Test-PythonAinlCompatible {
+    param([string]$PyCmd)
+    if (-not $PyCmd) { return $false }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $PyCmd -c "import sys; v=sys.version_info; raise SystemExit(0 if (3, 10) <= v[:2] < (3, 14) else 1)" 2>$null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
+    finally { $ErrorActionPreference = $prev }
+}
+
+function Get-PythonVersionLabel {
+    param([string]$PyCmd)
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        return (& $PyCmd -c "import sys; print('.'.join(map(str, sys.version_info[:3])))" 2>$null | Select-Object -First 1)
+    } catch { return "unknown" }
+    finally { $ErrorActionPreference = $prev }
+}
+
+function Invoke-PipInstall {
+    param(
+        [Parameter(Mandatory = $true)][string]$Python,
+        [Parameter(Mandatory = $true)][string[]]$PipArguments
+    )
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $lines = New-Object System.Collections.Generic.List[string]
+    try {
+        & $Python -m pip @PipArguments 2>&1 | ForEach-Object {
+            [void]$lines.Add($_.ToString())
+        }
+        return @{
+            Ok  = ($LASTEXITCODE -eq 0)
+            Log = ($lines -join [Environment]::NewLine)
+        }
+    } finally {
+        $ErrorActionPreference = $prev
+    }
 }
 
 function Find-Python {
     foreach ($name in @("python3.12", "python3.11", "python3.10", "python3", "python")) {
         if (Get-Command $name -ErrorAction SilentlyContinue) {
-            if (Test-Python310Plus $name) { return $name }
+            if (Test-PythonAinlCompatible $name) { return $name }
         }
     }
     # Common per-user install location after winget
     foreach ($ver in @("312", "311", "310")) {
         $localPy = Join-Path $env:LOCALAPPDATA "Programs\Python\Python$ver\python.exe"
-        if ((Test-Path $localPy) -and (Test-Python310Plus $localPy)) { return $localPy }
+        if ((Test-Path $localPy) -and (Test-PythonAinlCompatible $localPy)) { return $localPy }
+    }
+    return $null
+}
+
+function Find-UnsupportedPython {
+    foreach ($name in @("python3", "python")) {
+        if (Get-Command $name -ErrorAction SilentlyContinue) {
+            if ((Test-Python310Plus $name) -and -not (Test-PythonAinlCompatible $name)) {
+                return $name
+            }
+        }
     }
     return $null
 }
@@ -83,10 +141,16 @@ function Install-AinlViaVenv {
     param([string]$BasePy)
     $venvDir = Get-AinlVenvDir
     $venvPy = Join-Path $venvDir "Scripts\python.exe"
-    Write-Host "  System Python is externally managed — using venv at $venvDir" -ForegroundColor Yellow
+    Write-Host "  Using isolated AINL environment at $venvDir" -ForegroundColor Cyan
     if (-not (Test-Path $venvPy)) {
         Write-Host "  Creating AINL virtualenv..." -ForegroundColor Cyan
-        & $BasePy -m venv $venvDir
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & $BasePy -m venv $venvDir 2>&1 | Out-Null
+        } finally {
+            $ErrorActionPreference = $prev
+        }
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  Error: could not create venv at $venvDir" -ForegroundColor Red
             exit 1
@@ -94,10 +158,15 @@ function Install-AinlViaVenv {
         $venvPy = Join-Path $venvDir "Scripts\python.exe"
     }
     Write-Host "  Installing ainativelang[mcp] into venv..." -ForegroundColor Cyan
-    & $venvPy -m pip install -q "ainativelang[mcp]" 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        & $venvPy -m pip install --upgrade pip | Out-Null
-        & $venvPy -m pip install "ainativelang[mcp]"
+    $result = Invoke-PipInstall -Python $venvPy -PipArguments @('install', '-q', 'ainativelang[mcp]')
+    if (-not $result.Ok) {
+        [void](Invoke-PipInstall -Python $venvPy -PipArguments @('install', '--upgrade', 'pip'))
+        $result = Invoke-PipInstall -Python $venvPy -PipArguments @('install', 'ainativelang[mcp]')
+    }
+    if (-not $result.Ok) {
+        Write-Host "  pip install failed:" -ForegroundColor Red
+        Write-Host $result.Log -ForegroundColor Red
+        exit 1
     }
     $scriptsDir = Join-Path $venvDir "Scripts"
     $ainl = Join-Path $scriptsDir "ainl.exe"
@@ -107,16 +176,34 @@ function Install-AinlViaVenv {
     }
     Add-UserPathEntry $scriptsDir
     Write-Host "  Registering AINL MCP server for ArmaraOS..." -ForegroundColor Cyan
-    & $ainl install-mcp --host armaraos
-    $verLine = try { (& $ainl --version 2>&1 | Select-Object -First 1) } catch { "ainl" }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $ainl install-mcp --host armaraos 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Warning: ainl install-mcp returned exit code $LASTEXITCODE (re-run after install if MCP is missing)." -ForegroundColor Yellow
+        }
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $verLine = (& $ainl --version 2>&1 | Select-Object -First 1) } catch { $verLine = "ainl" }
+    finally { $ErrorActionPreference = $prev }
     Write-Host "  AINL ready in venv ($verLine)" -ForegroundColor Green
 }
 
 function Install-PythonViaWinget {
+    param([string]$Reason = "missing")
+
     if ($env:ARMARAOS_AUTO_PYTHON -eq '0') { return $null }
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { return $null }
     Write-Host ""
-    Write-Host "  No Python 3.10+ on PATH — installing via winget (one-time)..." -ForegroundColor Yellow
+    if ($Reason -eq "unsupported") {
+        Write-Host "  Python 3.14+ is on PATH but AINL needs 3.10-3.13 - installing Python 3.12 via winget..." -ForegroundColor Yellow
+    } else {
+        Write-Host "  No compatible Python on PATH - installing Python 3.12 via winget (one-time)..." -ForegroundColor Yellow
+    }
     try {
         winget install Python.Python.3.12 `
             --accept-package-agreements `
@@ -136,9 +223,15 @@ function Install-PythonViaWinget {
 }
 
 function Show-PythonHelp {
+    param([string]$UnsupportedVersion = "")
+
     Write-Host ""
-    Write-Host "  Install incomplete: Python 3.10+ is required for AINL (ainativelang[mcp])." -ForegroundColor Red
-    Write-Host "  ArmaraOS requires AINL — finish setup after Python is ready, then re-run this installer." -ForegroundColor Yellow
+    if ($UnsupportedVersion) {
+        Write-Host "  Python $UnsupportedVersion is too new - AINL needs Python 3.10 through 3.13." -ForegroundColor Red
+    } else {
+        Write-Host "  Install incomplete: Python 3.10-3.13 is required for AINL (ainativelang[mcp])." -ForegroundColor Red
+    }
+    Write-Host "  ArmaraOS requires AINL - finish setup after Python is ready, then re-run this installer." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  Easiest options on Windows:" -ForegroundColor Yellow
     Write-Host "    • Desktop .msi (bundled Python): https://ainativelang.com/armaraos"
@@ -156,57 +249,16 @@ function Install-Ainl {
     Write-Host ""
     Write-Host "  Installing AINL (ainativelang[mcp])..." -ForegroundColor Cyan
 
-    if (-not (Test-Python310Plus $Py)) {
-        $ver = try { & $Py -c "import sys; print('.'.join(map(str, sys.version_info[:3])))" } catch { "unknown" }
-        Write-Host "  Error: Python $ver is too old — AINL needs 3.10+." -ForegroundColor Red
-        Show-PythonHelp
+    if (-not (Test-PythonAinlCompatible $Py)) {
+        $ver = Get-PythonVersionLabel $Py
+        Write-Host "  Error: Python $ver is not supported - AINL needs 3.10 through 3.13." -ForegroundColor Red
+        Show-PythonHelp -UnsupportedVersion $ver
         exit 1
     }
 
-    $pyVer = try { & $Py -c "import sys; print('.'.join(map(str, sys.version_info[:3])))" } catch { "unknown" }
+    $pyVer = Get-PythonVersionLabel $Py
     Write-Host "  Using Python $pyVer ($Py)" -ForegroundColor Green
-
-    if (Test-PythonExternallyManaged $Py) {
-        Install-AinlViaVenv -BasePy $Py
-        return
-    }
-
-    $pipFailed = $false
-    try {
-        & $Py -m pip install --user -q "ainativelang[mcp]" 2>$null
-        if ($LASTEXITCODE -ne 0) { $pipFailed = $true }
-    } catch { $pipFailed = $true }
-
-    if ($pipFailed) {
-        $pipLog = & $Py -m pip install --user "ainativelang[mcp]" 2>&1 | Out-String
-        if ($pipLog -match 'externally-managed-environment|EXTERNALLY-MANAGED') {
-            Install-AinlViaVenv -BasePy $Py
-            return
-        }
-        Write-Host "  pip install failed: $pipLog" -ForegroundColor Red
-        exit 1
-    }
-
-    $userBase = & $Py -c "import site; print(site.USER_BASE)"
-    $scriptsDir = Join-Path $userBase "Scripts"
-    $ainl = Join-Path $scriptsDir "ainl.exe"
-    if (-not (Test-Path $ainl)) {
-        $cmd = Get-Command ainl -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($cmd) { $ainl = $cmd.Source }
-    }
-    if (-not $ainl -or -not (Test-Path $ainl)) {
-        Write-Host "  Error: AINL installed but could not find 'ainl.exe'." -ForegroundColor Red
-        Write-Host "  Add to PATH: $scriptsDir" -ForegroundColor Yellow
-        exit 1
-    }
-
-    Add-UserPathEntry $scriptsDir
-
-    Write-Host "  Registering AINL MCP server for ArmaraOS..." -ForegroundColor Cyan
-    & $ainl install-mcp --host armaraos
-
-    $verLine = try { (& $ainl --version 2>&1 | Select-Object -First 1) } catch { "ainl" }
-    Write-Host "  AINL ready ($verLine)" -ForegroundColor Green
+    Install-AinlViaVenv -BasePy $Py
 }
 
 function Show-GetStarted {
@@ -400,7 +452,7 @@ function Install-ArmaraOS {
     }
 
     if ($arch -eq "aarch64" -and $usedPlatform -eq "x86_64-pc-windows-msvc") {
-        Write-Host "  No native ARM64 build yet — using x64 package (Windows x64 emulation)." -ForegroundColor Yellow
+        Write-Host "  No native ARM64 build yet - using x64 package (Windows x64 emulation)." -ForegroundColor Yellow
     }
 
     try {
@@ -442,12 +494,23 @@ function Install-ArmaraOS {
 
     $py = Find-Python
     if ($py) {
-        Write-Host "  Found existing Python on PATH." -ForegroundColor Green
+        Write-Host "  Found compatible Python on PATH." -ForegroundColor Green
     }
-    if (-not $py) { $py = Install-PythonViaWinget }
+    if (-not $py) {
+        $unsupported = Find-UnsupportedPython
+        if ($unsupported) {
+            $ver = Get-PythonVersionLabel $unsupported
+            Write-Host "  Found Python $ver but AINL needs 3.10-3.13." -ForegroundColor Yellow
+            $py = Install-PythonViaWinget -Reason "unsupported"
+        } else {
+            $py = Install-PythonViaWinget -Reason "missing"
+        }
+    }
     if (-not $py) { $py = Find-Python }
     if (-not $py) {
-        Show-PythonHelp
+        $unsupported = Find-UnsupportedPython
+        $ver = if ($unsupported) { Get-PythonVersionLabel $unsupported } else { "" }
+        Show-PythonHelp -UnsupportedVersion $ver
         exit 1
     }
 
