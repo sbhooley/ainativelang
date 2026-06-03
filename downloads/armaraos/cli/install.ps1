@@ -822,39 +822,136 @@ function Get-Architecture {
     }
 }
 
+function Get-ManifestBaseCandidates {
+    $bases = New-Object System.Collections.Generic.List[string]
+    $add = {
+        param([string]$Base)
+        $b = "$Base".Trim().TrimEnd('/')
+        if ($b -and -not $bases.Contains($b)) { [void]$bases.Add($b) }
+    }
+    if ($env:ARMARAOS_DOWNLOAD_BASE) { & $add $env:ARMARAOS_DOWNLOAD_BASE }
+    & $add $DownloadBase
+    & $add "https://ainativelang.com/downloads/armaraos/cli"
+    & $add "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli"
+    return $bases
+}
+
+function Get-ManifestTag {
+    param($Manifest)
+    if (-not $Manifest) { return "" }
+    if ($Manifest.tag) { return "$($Manifest.tag)".Trim() }
+    if ($Manifest.version) { return "v$($Manifest.version)".Trim() }
+    return ""
+}
+
+function Compare-ArmaraosReleaseTags {
+    param([string]$Left, [string]$Right)
+    $norm = {
+        param([string]$Tag)
+        $t = "$Tag".Trim()
+        if ($t.StartsWith("v")) { $t = $t.Substring(1) }
+        $parts = $t.Split(".")
+        $nums = @()
+        foreach ($p in $parts) {
+            $n = 0
+            [void][int]::TryParse(($p -replace '[^0-9].*$', ''), [ref]$n)
+            $nums += $n
+        }
+        while ($nums.Count -lt 3) { $nums += 0 }
+        return $nums
+    }
+    $a = & $norm $Left
+    $b = & $norm $Right
+    for ($i = 0; $i -lt 3; $i++) {
+        if ($a[$i] -gt $b[$i]) { return 1 }
+        if ($a[$i] -lt $b[$i]) { return -1 }
+    }
+    return 0
+}
+
+function Get-ManifestPlatformEntry {
+    param($Manifest, [string]$PlatformKey)
+    if (-not $Manifest -or -not $Manifest.platforms) { return $null }
+    $prop = $Manifest.platforms.PSObject.Properties[$PlatformKey]
+    if ($prop) { return $prop.Value }
+    return $null
+}
+
+function Resolve-ManifestDownloadBase {
+    param($Manifest, [string]$ManifestBase)
+    $fromManifest = ""
+    if ($Manifest -and $Manifest.download_base) {
+        $fromManifest = "$($Manifest.download_base)".Trim().TrimEnd('/')
+    }
+    if ($fromManifest) { return $fromManifest }
+    return $ManifestBase
+}
+
 function Get-CliManifest {
     if ($script:ArmaraosCliManifest) { return $script:ArmaraosCliManifest }
-    try {
-        $script:ArmaraosCliManifest = Invoke-RestMethod -Uri "$DownloadBase/latest.json" -UseBasicParsing
-        return $script:ArmaraosCliManifest
-    } catch {
-        return $null
+
+    $bestManifest = $null
+    $bestTag = ""
+    $bestBase = $DownloadBase
+
+    foreach ($base in (Get-ManifestBaseCandidates)) {
+        try {
+            $cacheBust = [Guid]::NewGuid().ToString("n")
+            $manifest = Invoke-RestMethod -Uri "$base/latest.json?cb=$cacheBust" -UseBasicParsing
+            $tag = Get-ManifestTag $manifest
+            if (-not $tag) { continue }
+            if (-not $bestManifest -or (Compare-ArmaraosReleaseTags $tag $bestTag) -gt 0) {
+                $bestManifest = $manifest
+                $bestTag = $tag
+                $bestBase = $base
+            }
+        } catch {
+            continue
+        }
     }
+
+    if ($bestManifest) {
+        $script:ArmaraosCliManifest = $bestManifest
+        $script:ArmaraosResolvedDownloadBase = Resolve-ManifestDownloadBase -Manifest $bestManifest -ManifestBase $bestBase
+        return $bestManifest
+    }
+
+    return $null
+}
+
+function Get-ResolvedDownloadBase {
+    if (-not $script:ArmaraosResolvedDownloadBase) {
+        $null = Get-CliManifest | Out-Null
+    }
+    if ($script:ArmaraosResolvedDownloadBase) { return $script:ArmaraosResolvedDownloadBase }
+    return $DownloadBase
 }
 
 function Get-WindowsDownloadCandidates {
     param([string]$NativeArch)
 
     $manifest = Get-CliManifest
-    $platformKeys = @("${NativeArch}-pc-windows-msvc")
-    # Native ARM64 Windows builds may not be published yet; x64 runs under Windows emulation.
-    if ($NativeArch -eq "aarch64") {
-        $platformKeys += "x86_64-pc-windows-msvc"
+    $artifactBase = Get-ResolvedDownloadBase
+    # Native ARM64 Windows builds may not be published yet; prefer x64 first (Windows emulation).
+    $platformKeys = if ($NativeArch -eq "aarch64") {
+        @("x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc")
+    } else {
+        @("${NativeArch}-pc-windows-msvc")
     }
 
     $seen = @{}
     $candidates = @()
 
     foreach ($platformKey in $platformKeys) {
-        if ($manifest -and $manifest.platforms) {
-            $entry = $manifest.platforms.$platformKey
+        if ($manifest) {
+            $entry = Get-ManifestPlatformEntry -Manifest $manifest -PlatformKey $platformKey
             if ($entry -and $entry.archive -and -not $seen[$entry.archive]) {
                 $seen[$entry.archive] = $true
                 $candidates += [PSCustomObject]@{
                     PlatformKey = $platformKey
                     Archive     = $entry.archive
-                    Url         = if ($entry.url) { $entry.url } else { "$DownloadBase/$($entry.archive)" }
-                    Sha256Url   = if ($entry.sha256_url) { $entry.sha256_url } else { "$DownloadBase/$($entry.archive).sha256" }
+                    Url         = if ($entry.url) { $entry.url } else { "$artifactBase/$($entry.archive)" }
+                    Sha256Url   = if ($entry.sha256_url) { $entry.sha256_url } else { "$artifactBase/$($entry.archive).sha256" }
                 }
             }
         }
@@ -865,8 +962,8 @@ function Get-WindowsDownloadCandidates {
         $candidates += [PSCustomObject]@{
             PlatformKey = $platformKey
             Archive     = $archive
-            Url         = "$DownloadBase/$archive"
-            Sha256Url   = "$DownloadBase/$archive.sha256"
+            Url         = "$artifactBase/$archive"
+            Sha256Url   = "$artifactBase/$archive.sha256"
         }
     }
 
@@ -910,12 +1007,17 @@ function Install-ArmaraOS {
     foreach ($item in $downloadCandidates) {
         $candidatePath = Join-Path $tempDir $item.Archive
         try {
+            Write-Host "  Downloading $($item.Archive)..." -ForegroundColor Cyan
             Invoke-WebRequest -Uri $item.Url -OutFile $candidatePath -UseBasicParsing
+            if (-not (Test-Path -LiteralPath $candidatePath) -or (Get-Item -LiteralPath $candidatePath).Length -lt 1024) {
+                throw "Download too small or missing: $($item.Url)"
+            }
             $archivePath = $candidatePath
             $checksumUrl = $item.Sha256Url
             $usedPlatform = $item.PlatformKey
             break
         } catch {
+            Write-Host "  Skipped $($item.Archive): $($_.Exception.Message)" -ForegroundColor DarkYellow
             continue
         }
     }
@@ -943,7 +1045,14 @@ function Install-ArmaraOS {
         Write-Host "  Checksum file not available, skipping verification." -ForegroundColor Yellow
     }
 
-    Expand-Archive -Path $archivePath -DestinationPath $tempDir -Force
+    try {
+        Expand-Archive -Path $archivePath -DestinationPath $tempDir -Force
+    } catch {
+        Write-Host "  Could not extract archive: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "  URL was: $(($downloadCandidates | Where-Object { $_.Archive -eq (Split-Path -Leaf $archivePath) } | Select-Object -First 1).Url)" -ForegroundColor Yellow
+        Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
+        exit 1
+    }
     $exePath = Get-ChildItem -Path $tempDir -Filter "armaraos.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $exePath) {
         $exePath = Get-ChildItem -Path $tempDir -Filter "openfang.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
