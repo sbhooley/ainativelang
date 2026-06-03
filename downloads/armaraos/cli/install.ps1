@@ -268,9 +268,10 @@ function Install-ArmaraOS {
     $arch = Get-Architecture
     $version = Get-LatestVersion
     $target = "${arch}-pc-windows-msvc"
-    $archive = "openfang-${target}.zip"
-    $url = "$DownloadBase/$archive"
-    $checksumUrl = "$url.sha256"
+    $archiveCandidates = @(
+        "armaraos-${target}.zip",
+        "openfang-${target}.zip"
+    )
 
     Write-Host "  Installing ArmaraOS (CLI) $version for $target..."
 
@@ -280,12 +281,23 @@ function Install-ArmaraOS {
 
     $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "armaraos-install-$([guid]::NewGuid().ToString('n'))"
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-    $archivePath = Join-Path $tempDir $archive
+    $archivePath = $null
+    $checksumUrl = $null
 
-    try {
-        Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing
-    }     catch {
-        Write-Host "  Download failed: $url" -ForegroundColor Red
+    foreach ($archive in $archiveCandidates) {
+        $url = "$DownloadBase/$archive"
+        $candidatePath = Join-Path $tempDir $archive
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $candidatePath -UseBasicParsing
+            $archivePath = $candidatePath
+            $checksumUrl = "$url.sha256"
+            break
+        } catch {
+            continue
+        }
+    }
+    if (-not $archivePath) {
+        Write-Host "  Download failed for: $($archiveCandidates -join ', ')" -ForegroundColor Red
         Write-Host "  If this is a fresh release, wait for ainativelang.com to sync CLI binaries." -ForegroundColor Yellow
         Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
         exit 1
@@ -304,16 +316,15 @@ function Install-ArmaraOS {
     }
 
     Expand-Archive -Path $archivePath -DestinationPath $tempDir -Force
-    $exePath = Get-ChildItem -Path $tempDir -Filter "openfang.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    $exePath = Get-ChildItem -Path $tempDir -Filter "armaraos.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $exePath) {
-        $exePath = Get-ChildItem -Path $tempDir -Filter "armaraos.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+        $exePath = Get-ChildItem -Path $tempDir -Filter "openfang.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     }
     if (-not $exePath) {
-        Write-Host "  Could not find openfang.exe in archive." -ForegroundColor Red
+        Write-Host "  Could not find armaraos.exe in archive." -ForegroundColor Red
         exit 1
     }
 
-    Copy-Item -Path $exePath.FullName -Destination (Join-Path $InstallDir "openfang.exe") -Force
     Copy-Item -Path $exePath.FullName -Destination (Join-Path $InstallDir "armaraos.exe") -Force
     Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 
