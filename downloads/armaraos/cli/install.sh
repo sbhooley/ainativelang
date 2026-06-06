@@ -10,6 +10,10 @@
 #   ARMARAOS_AINL_VENV       — AINL virtualenv when system Python is PEP 668 (default: ~/.armaraos/ainl-venv)
 #   ARMARAOS_DOWNLOAD_BASE — CLI mirror base (default: raw.githubusercontent.com/.../downloads/armaraos/cli)
 #   ARMARAOS_SKIP_AUTO_LAUNCH — set to 1 to skip auto start + dashboard (default: 0)
+#   ARMARAOS_DAEMON_START_TIMEOUT — seconds to poll /api/health after spawn (default: 45)
+#   ARMARAOS_INSTALL_DAEMON_BUDGET — max seconds for the whole launch phase (default: 120)
+#   ARMARAOS_INSTALL_DAEMON_GRACE_SEC — final recheck after main wait (default: 15)
+#   ARMARAOS_SKIP_INSTALL_REPAIR — set to 1 to skip repair+retry during launch (default: 0)
 #
 # Legacy aliases (supported for compatibility):
 #   OPENFANG_INSTALL_DIR, OPENFANG_VERSION
@@ -292,6 +296,9 @@ install_ainl_via_venv() {
 
     append_path_to_shell_rc "$venv_dir/bin" "ainl-venv"
     export_path_now "$venv_dir/bin"
+    local arm_home="${ARMARAOS_HOME:-${OPENFANG_HOME:-$HOME/.armaraos}}"
+    mkdir -p "$arm_home"
+    printf '%s\n' "$ainl_bin" > "$arm_home/.armaraos-ainl-bin"
     echo "  AINL ready in venv ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))"
 }
 
@@ -360,6 +367,246 @@ except Exception:
     fi
 }
 
+daemon_start_timeout_sec() {
+    local raw="${ARMARAOS_DAEMON_START_TIMEOUT:-45}"
+    if [[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -gt 0 ]; then
+        echo "$raw"
+    else
+        echo 45
+    fi
+}
+
+install_daemon_budget_sec() {
+    local raw="${ARMARAOS_INSTALL_DAEMON_BUDGET:-120}"
+    if [[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -gt 0 ]; then
+        echo "$raw"
+    else
+        echo 120
+    fi
+}
+
+install_daemon_grace_sec() {
+    local raw="${ARMARAOS_INSTALL_DAEMON_GRACE_SEC:-15}"
+    if [[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -ge 0 ]; then
+        echo "$raw"
+    else
+        echo 15
+    fi
+}
+
+armaraos_home_dir() {
+    echo "${ARMARAOS_HOME:-${OPENFANG_HOME:-${HOME}/.armaraos}}"
+}
+
+daemon_listen_port() {
+    local base="${1:-http://127.0.0.1:4200}"
+    local port
+    port="$(printf '%s' "$base" | sed -n 's|.*:\([0-9][0-9]*\)/\?$|\1|p')"
+    if [ -n "$port" ]; then
+        echo "$port"
+    else
+        echo 4200
+    fi
+}
+
+armaraos_process_running() {
+    if command -v pgrep >/dev/null 2>&1; then
+        pgrep -x armaraos >/dev/null 2>&1 || pgrep -x openfang >/dev/null 2>&1
+        return $?
+    fi
+    ps aux 2>/dev/null | grep -E '[a]rmaraos|[o]penfang' >/dev/null 2>&1
+}
+
+port_in_use() {
+    local port="${1:-4200}"
+    if command -v ss >/dev/null 2>&1; then
+        ss -ltn 2>/dev/null | grep -q ":${port} "
+        return $?
+    fi
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+        return $?
+    fi
+    if command -v netstat >/dev/null 2>&1; then
+        netstat -an 2>/dev/null | grep -E "[\.:]${port}[[:space:]].*LISTEN" >/dev/null 2>&1
+        return $?
+    fi
+    return 1
+}
+
+armaraos_log_tail() {
+    local lines="${1:-6}"
+    local home
+    home="$(armaraos_home_dir)"
+    local f
+    for f in "$home/logs/daemon.log" "$home/logs/tui.log" "$home/tui.log"; do
+        if [ -f "$f" ]; then
+            tail -n "$lines" "$f" 2>/dev/null
+            return 0
+        fi
+    done
+    return 1
+}
+
+diagnose_daemon_launch() {
+    local bin="$1"
+    local base="${2:-$(daemon_base_url)}"
+    local port log_tail pid
+
+    port="$(daemon_listen_port "$base")"
+
+    if [ -z "$bin" ] || [ ! -x "$bin" ]; then
+        echo "FINDING: CLI binary not found at install path"
+        echo "HINT: Re-run the installer; check permissions and antivirus"
+        return 0
+    fi
+
+    if ! run_with_timeout 12 "$bin" --version >/dev/null 2>&1; then
+        echo "FINDING: armaraos --version failed or timed out (antivirus may be scanning)"
+        echo "HINT: Allow the install directory in antivirus, then run: armaraos --version"
+    fi
+
+    if daemon_healthy "$base"; then
+        echo "FINDING: Daemon is healthy at ${base}"
+        echo "HINT: Open dashboard: armaraos dashboard"
+        return 0
+    fi
+
+    if armaraos_process_running; then
+        echo "FINDING: ArmaraOS process is running but /api/health did not respond yet"
+        echo "HINT: Wait a few seconds, then: armaraos status"
+        echo "HINT: If stuck: armaraos stop && armaraos start --yolo --detach"
+    elif port_in_use "$port"; then
+        echo "FINDING: Port ${port} is in use by another program"
+        echo "HINT: Stop the other service or change api_listen in ~/.armaraos/config.toml"
+    else
+        echo "FINDING: No armaraos process detected"
+        echo "HINT: Start manually: armaraos start --yolo --detach"
+        echo "HINT: If nothing starts: armaraos doctor --repair"
+        echo "HINT: First boot can take 30-60s under antivirus scan"
+    fi
+
+    if [ -f "${HOME}/.armaraos/daemon.json" ]; then
+        pid="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('pid',''))" "${HOME}/.armaraos/daemon.json" 2>/dev/null || true)"
+        if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+            echo "FINDING: Stale daemon.json (PID ${pid} is not running)"
+            echo "HINT: Run: armaraos stop && armaraos start --yolo --detach"
+        fi
+    fi
+
+    if log_tail="$(armaraos_log_tail 6)"; then
+        echo "FINDING: Log file present under ~/.armaraos/logs/"
+        printf '%s\n' "$log_tail" | while IFS= read -r line; do
+            echo "LOG: $line"
+        done
+    else
+        echo "FINDING: No daemon log yet — boot may not have started"
+    fi
+}
+
+write_daemon_launch_report() {
+    local status="$1"
+    local bin="$2"
+    local line kind text hint_header printed_hints
+
+    echo ""
+    echo "  ── Daemon launch ──"
+    case "$status" in
+        success)
+            echo "  Status: RUNNING"
+            echo "  Dashboard: $(daemon_base_url)/"
+            ;;
+        failed)
+            echo "  Status: NOT READY (install finished — CLI + AINL are installed)"
+            echo "  Detected:"
+            hint_header=0
+            printed_hints=0
+            log_header=0
+            while IFS= read -r line; do
+                kind="${line%%:*}"
+                text="${line#*: }"
+                case "$kind" in
+                    FINDING) echo "    • $text" ;;
+                    HINT)
+                        if [ "$hint_header" -eq 0 ]; then
+                            echo "  Next steps:"
+                            hint_header=1
+                        fi
+                        printed_hints=$((printed_hints + 1))
+                        echo "    ${printed_hints}. $text"
+                        ;;
+                    LOG)
+                        if [ "$log_header" -eq 0 ]; then
+                            echo "  Recent log:"
+                            log_header=1
+                        fi
+                        echo "    $text"
+                        ;;
+                esac
+            done <<EOF
+$(diagnose_daemon_launch "$bin" "$(daemon_base_url)" 2>/dev/null || true)
+EOF
+            echo "  Logs: $(armaraos_home_dir)/logs/daemon.log"
+            ;;
+        skipped)
+            echo "  Status: SKIPPED (ARMARAOS_SKIP_AUTO_LAUNCH=1)"
+            ;;
+    esac
+    echo ""
+}
+
+install_deadline_epoch() {
+    echo $(( $(date +%s) + $(install_daemon_budget_sec) ))
+}
+
+remaining_budget_sec() {
+    local deadline="$1"
+    local now remain
+    now=$(date +%s)
+    remain=$(( deadline - now ))
+    if [ "$remain" -lt 0 ]; then
+        echo 0
+    else
+        echo "$remain"
+    fi
+}
+
+run_with_timeout() {
+    local timeout_sec="$1"
+    shift
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$timeout_sec" "$@"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        gtimeout "$timeout_sec" "$@"
+    else
+        perl -e 'alarm shift; exec @ARGV or exit 127' "$timeout_sec" "$@"
+    fi
+}
+
+start_daemon_detached_process() {
+    local bin="$1"
+    # Do not wait on `armaraos start --detach` — it polls health internally for up to 45s.
+    if command -v setsid >/dev/null 2>&1; then
+        setsid "$bin" start --yolo --detach >/dev/null 2>&1 &
+    else
+        nohup "$bin" start --yolo --detach >/dev/null 2>&1 &
+    fi
+    disown 2>/dev/null || true
+}
+
+open_dashboard_url() {
+    local base="$1"
+    local url="${base%/}/"
+    if command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$url" >/dev/null 2>&1 &
+    elif command -v open >/dev/null 2>&1; then
+        open "$url" >/dev/null 2>&1 &
+    else
+        return 1
+    fi
+    return 0
+}
+
 daemon_healthy() {
     local base="${1:-http://127.0.0.1:4200}"
     curl -sfS -m 3 "${base%/}/api/health" >/dev/null 2>&1
@@ -368,7 +615,32 @@ daemon_healthy() {
 wait_daemon_healthy() {
     local base="$1"
     local timeout="${2:-45}"
-    local i=0
+    local deadline="${3:-}"
+    local label="${4:-daemon}"
+    local i=0 started now elapsed left last_progress=-5
+
+    if [ -n "$deadline" ]; then
+        started="$(date +%s)"
+        while [ "$(date +%s)" -lt "$deadline" ]; do
+            if daemon_healthy "$base"; then
+                elapsed=$(( $(date +%s) - started ))
+                [ "$elapsed" -lt 1 ] && elapsed=1
+                echo "  ${label} ready after ${elapsed}s ($base)" >&2
+                return 0
+            fi
+            now="$(date +%s)"
+            elapsed=$(( now - started ))
+            left=$(( deadline - now ))
+            [ "$left" -lt 0 ] && left=0
+            if [ "$elapsed" -ge $(( last_progress + 5 )) ]; then
+                last_progress=$elapsed
+                echo "  Waiting for ${label}... ${elapsed}s elapsed (${left}s left, checking /api/health)" >&2
+            fi
+            sleep 1
+        done
+        echo "  Timed out waiting for ${label} (${base%/}/api/health)" >&2
+        return 1
+    fi
     while [ "$i" -lt "$timeout" ]; do
         if daemon_healthy "$base"; then
             return 0
@@ -390,11 +662,13 @@ repair_armaraos_install() {
     config="${of_home}/config.toml"
     if [ ! -f "$config" ]; then
         echo "  Repair: first-time setup (armaraos init --quick)..." >&2
-        "$bin" init --quick || true
+        run_with_timeout 60 "$bin" init --quick || true
     fi
     repair_config_toml_windows_paths || true
-    "$bin" doctor --repair >/dev/null 2>&1 || true
-    "$bin" stop 2>/dev/null || true
+    ARMARAOS_NONINTERACTIVE=1 run_with_timeout 60 "$bin" doctor --repair >/dev/null 2>&1 || {
+        echo "  Warning: armaraos doctor --repair timed out or failed (continuing install)." >&2
+    }
+    run_with_timeout 15 "$bin" stop 2>/dev/null || true
     sleep 1
 }
 
@@ -454,89 +728,137 @@ PY
 
 start_armaraos_daemon() {
     local bin="$1"
-    local base
+    local deadline="${2:-}"
+    local base remaining grace diag_line
 
-    echo "" >&2
-    echo "  Starting ArmaraOS daemon (background)..." >&2
-    if ! "$bin" start --yolo --detach; then
-        return 1
+    if [ -z "$deadline" ]; then
+        deadline=$(( $(date +%s) + $(install_daemon_budget_sec) ))
     fi
+
     base="$(daemon_base_url)"
-    if wait_daemon_healthy "$base"; then
+    if daemon_healthy "$base"; then
+        echo "  Daemon already healthy at $base" >&2
         return 0
     fi
 
-    echo "  Repairing install state and retrying..." >&2
-    repair_armaraos_install "$bin"
-    if ! "$bin" start --yolo --detach; then
+    echo "" >&2
+    echo "  Starting ArmaraOS daemon (background, non-blocking)..." >&2
+    echo "  (First boot can take up to $(install_daemon_budget_sec)s — progress updates every 5s)" >&2
+    start_daemon_detached_process "$bin"
+    if wait_daemon_healthy "$base" 0 "$deadline" "daemon"; then
+        return 0
+    fi
+
+    echo "  Quick check:" >&2
+    diagnose_daemon_launch "$bin" "$base" 2>/dev/null | grep '^FINDING:' | head -3 | while IFS= read -r diag_line; do
+        echo "    • ${diag_line#FINDING: }" >&2
+    done
+
+    if [ "${ARMARAOS_SKIP_INSTALL_REPAIR:-}" = "1" ]; then
+        echo "  Repair skipped (ARMARAOS_SKIP_INSTALL_REPAIR=1)." >&2
         return 1
     fi
-    wait_daemon_healthy "$(daemon_base_url)"
+
+    remaining="$(remaining_budget_sec "$deadline")"
+    if [ "$remaining" -lt 12 ]; then
+        echo "  No time left for repair retry in this install window." >&2
+        return 1
+    fi
+
+    echo "  Repairing install state and retrying (up to ${remaining}s left)..." >&2
+    repair_armaraos_install "$bin"
+    start_daemon_detached_process "$bin"
+    wait_daemon_healthy "$(daemon_base_url)" 0 "$deadline" "daemon (retry)"
 }
 
 open_armaraos_dashboard() {
     local bin="$1"
-    local base
+    local deadline="${2:-}"
+    local base remaining
 
     echo "" >&2
     echo "  Opening dashboard in your browser..." >&2
     base="$(daemon_base_url)"
-    if ! "$bin" dashboard; then
-        base="$(daemon_base_url)"
-        if ! daemon_healthy "$base"; then
-            echo "  Browser did not open — visit: ${base}/" >&2
-            return 1
+    if daemon_healthy "$base"; then
+        if open_dashboard_url "$base"; then
+            return 0
         fi
+        echo "  Browser did not open — visit: ${base%/}/" >&2
+        return 1
     fi
-    return 0
+
+    if [ -n "$deadline" ]; then
+        remaining="$(remaining_budget_sec "$deadline")"
+        [ "$remaining" -lt 5 ] && remaining=5
+    else
+        remaining=30
+    fi
+    if run_with_timeout "$remaining" "$bin" dashboard; then
+        return 0
+    fi
+    base="$(daemon_base_url)"
+    if daemon_healthy "$base"; then
+        return 0
+    fi
+    echo "  Browser did not open — visit: ${base%/}/" >&2
+    return 1
 }
 
 # Golden path (Mac/Linux + Windows install.ps1): start daemon, verify /api/health, repair + retry, open dashboard.
 launch_armaraos_after_install() {
     if [ "${ARMARAOS_SKIP_AUTO_LAUNCH:-}" = "1" ]; then
+        write_daemon_launch_report skipped ""
         printf '%s\n' "skipped"
         return 0
     fi
 
-    local bin base
+    local bin base deadline healthy grace grace_deadline
     bin="$(armaraos_cli_bin)"
     if [ -z "$bin" ]; then
+        write_daemon_launch_report failed ""
         printf '%s\n' "failed"
         return 0
     fi
 
+    deadline="$(install_deadline_epoch)"
     base="$(daemon_base_url)"
-    if ! daemon_healthy "$base"; then
-        if ! start_armaraos_daemon "$bin"; then
-            echo "" >&2
-            echo "  Recovering via dashboard auto-start..." >&2
-            if ! open_armaraos_dashboard "$bin"; then
-                base="$(daemon_base_url)"
-                if ! daemon_healthy "$base"; then
-                    echo "" >&2
-                    echo "  Could not start the daemon automatically." >&2
-                    echo "  Common fix: run armaraos doctor --repair (Windows MCP path escaping)" >&2
-                    echo "  Then: armaraos start --yolo --detach" >&2
-                    echo "  Then: armaraos dashboard" >&2
-                    printf '%s\n' "failed"
-                    return 0
-                fi
-            fi
-        else
-            echo "  Daemon is running." >&2
-            open_armaraos_dashboard "$bin" || true
-        fi
-    else
+    healthy=0
+    if daemon_healthy "$base"; then
+        healthy=1
         echo "" >&2
         echo "  Daemon already running." >&2
-        open_armaraos_dashboard "$bin" || true
+    elif start_armaraos_daemon "$bin" "$deadline"; then
+        healthy=1
+        echo "  Daemon is running." >&2
     fi
 
-    if daemon_healthy "$(daemon_base_url)"; then
+    if [ "$healthy" -eq 0 ]; then
+        grace="$(install_daemon_grace_sec)"
+        if [ "$grace" -gt 0 ]; then
+            echo "" >&2
+            echo "  Final recheck (${grace}s) — daemon may still be starting..." >&2
+            grace_deadline=$(( $(date +%s) + grace ))
+            if wait_daemon_healthy "$(daemon_base_url)" 0 "$grace_deadline" "daemon (recheck)"; then
+                healthy=1
+            fi
+        fi
+    fi
+
+    open_armaraos_dashboard "$bin" "$deadline" || true
+
+    if [ "$healthy" -eq 0 ] && daemon_healthy "$(daemon_base_url)"; then
+        healthy=1
+        echo "  Daemon became healthy during dashboard open." >&2
+    fi
+
+    if [ "$healthy" -eq 1 ]; then
+        write_daemon_launch_report success "$bin"
         printf '%s\n' "success"
         return 0
     fi
+    write_daemon_launch_report failed "$bin"
     printf '%s\n' "failed"
+    return 0
 }
 
 print_get_started() {
@@ -545,12 +867,11 @@ print_get_started() {
     echo ""
     echo "  You're ready!"
     if [ "$launch_result" = "success" ]; then
-        echo "  ArmaraOS is running in the background."
         echo "  Your browser should show the dashboard (setup wizard on first visit)."
         echo "  You can close this terminal — the daemon keeps running."
     elif [ "$launch_result" = "failed" ]; then
-        echo "  Open the dashboard: armaraos dashboard"
-        echo "  (starts the daemon if needed, then opens your browser)"
+        echo "  See the Daemon launch report above for detected issues and next steps."
+        echo "  Quick retry: armaraos start --yolo --detach  then  armaraos dashboard"
     else
         echo "  Open the dashboard: armaraos dashboard"
         echo "  (starts the daemon if needed, then opens your browser)"
@@ -588,8 +909,8 @@ initialize_armaraos_if_needed() {
     [ -f "$config" ] && return 0
     echo ""
     echo "  First-time setup (armaraos init --quick)..."
-    if ! "$bin" init --quick; then
-        echo "  Warning: init --quick did not complete — run it manually before opening the dashboard."
+    if ! run_with_timeout 60 "$bin" init --quick; then
+        echo "  Warning: init --quick timed out or failed — run it manually before opening the dashboard."
     fi
 }
 
@@ -728,7 +1049,9 @@ EOF
     initialize_armaraos_if_needed
     repair_config_toml_windows_paths || true
     if bin="$(armaraos_cli_bin)"; then
-        "$bin" doctor --repair >/dev/null 2>&1 || true
+        ARMARAOS_NONINTERACTIVE=1 run_with_timeout 60 "$bin" doctor --repair >/dev/null 2>&1 || {
+            echo "  Warning: armaraos doctor --repair timed out or failed (continuing install)." >&2
+        }
     fi
     DESKTOP_SHORTCUT=""
     if launcher_path="$(install_dashboard_shortcut)"; then

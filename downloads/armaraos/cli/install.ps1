@@ -6,6 +6,10 @@
 #   $env:ARMARAOS_VERSION      — specific version tag
 #   $env:ARMARAOS_AUTO_PYTHON  — set to 0 to skip winget Python install (default: 1)
 #   $env:ARMARAOS_SKIP_AUTO_LAUNCH — set to 1 to skip auto start + dashboard (default: 0)
+#   $env:ARMARAOS_DAEMON_START_TIMEOUT — seconds to poll /api/health after spawn (default: 45)
+#   $env:ARMARAOS_INSTALL_DAEMON_BUDGET — max seconds for the whole launch phase (default: 120)
+#   $env:ARMARAOS_INSTALL_DAEMON_GRACE_SEC — final recheck after main wait (default: 15)
+#   $env:ARMARAOS_SKIP_INSTALL_REPAIR — set to 1 to skip repair+retry during launch (default: 0)
 #
 # Legacy: OPENFANG_INSTALL_DIR, OPENFANG_VERSION
 
@@ -276,6 +280,47 @@ function Get-AinlVenvDir {
     return Join-Path $env:USERPROFILE ".armaraos\ainl-venv"
 }
 
+function Get-AinlHomeDir {
+    if ($env:ARMARAOS_HOME) { return $env:ARMARAOS_HOME }
+    if ($env:OPENFANG_HOME) { return $env:OPENFANG_HOME }
+    return Join-Path $env:USERPROFILE ".armaraos"
+}
+
+function Write-AinlBinCache {
+    param([string]$AinlExe)
+    $homeDir = Get-AinlHomeDir
+    if (-not (Test-Path $homeDir)) { New-Item -ItemType Directory -Path $homeDir -Force | Out-Null }
+    $cache = Join-Path $homeDir ".armaraos-ainl-bin"
+    Set-Content -Path $cache -Value $AinlExe -Encoding utf8NoBOM
+}
+
+function Test-AinlCliRunnable {
+    param([string]$AinlExe)
+    if (-not $AinlExe -or -not (Test-Path $AinlExe)) { return $false }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $AinlExe --version 2>$null | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
+    finally { $ErrorActionPreference = $prev }
+}
+
+function Ensure-AinlCliReady {
+    param(
+        [Parameter(Mandatory = $true)][string]$ScriptsDir,
+        [Parameter(Mandatory = $true)][string]$AinlExe
+    )
+    Add-UserPathEntry $ScriptsDir
+    Refresh-SessionPath
+    Write-AinlBinCache $AinlExe
+    if (Test-AinlCliRunnable $AinlExe) { return $true }
+    # Second pass: PATH can lag until session refresh on some Windows builds.
+    Refresh-SessionPath
+    Start-Sleep -Milliseconds 400
+    return (Test-AinlCliRunnable $AinlExe)
+}
+
 function Install-AinlViaVenv {
     param([string]$BasePy)
     Reset-AinlVenvIfWrongArch
@@ -315,6 +360,10 @@ function Install-AinlViaVenv {
         exit 1
     }
     Add-UserPathEntry $scriptsDir
+    if (-not (Ensure-AinlCliReady -ScriptsDir $scriptsDir -AinlExe $ainl)) {
+        Write-Host "  Error: AINL installed but ainl.exe is not runnable at $ainl" -ForegroundColor Red
+        exit 1
+    }
     Write-Host "  Registering AINL MCP server for ArmaraOS..." -ForegroundColor Cyan
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -527,6 +576,186 @@ function Get-DaemonBaseUrl {
     }
 }
 
+function Get-DaemonStartTimeoutSec {
+    $raw = if ($env:ARMARAOS_DAEMON_START_TIMEOUT) { $env:ARMARAOS_DAEMON_START_TIMEOUT } else { "45" }
+    $n = 0
+    if ([int]::TryParse("$raw".Trim(), [ref]$n) -and $n -gt 0) { return $n }
+    return 45
+}
+
+function Get-InstallDaemonBudgetSec {
+    $raw = if ($env:ARMARAOS_INSTALL_DAEMON_BUDGET) { $env:ARMARAOS_INSTALL_DAEMON_BUDGET } else { "120" }
+    $n = 0
+    if ([int]::TryParse("$raw".Trim(), [ref]$n) -and $n -gt 0) { return $n }
+    return 120
+}
+
+function Get-InstallDaemonGraceSec {
+    $raw = if ($env:ARMARAOS_INSTALL_DAEMON_GRACE_SEC) { $env:ARMARAOS_INSTALL_DAEMON_GRACE_SEC } else { "15" }
+    $n = 0
+    if ([int]::TryParse("$raw".Trim(), [ref]$n) -and $n -ge 0) { return $n }
+    return 15
+}
+
+function Get-ArmaraosHomeDir {
+    if ($env:ARMARAOS_HOME) { return $env:ARMARAOS_HOME }
+    if ($env:OPENFANG_HOME) { return $env:OPENFANG_HOME }
+    return Join-Path $env:USERPROFILE ".armaraos"
+}
+
+function Get-DaemonJsonInfo {
+    $dj = Join-Path (Get-ArmaraosHomeDir) "daemon.json"
+    if (-not (Test-Path -LiteralPath $dj)) { return $null }
+    try { return (Get-Content -LiteralPath $dj -Raw | ConvertFrom-Json) } catch { return $null }
+}
+
+function Test-ArmaraosProcessRunning {
+    foreach ($name in @('armaraos', 'openfang')) {
+        if (Get-Process -Name $name -ErrorAction SilentlyContinue) { return $true }
+    }
+    return $false
+}
+
+function Test-PortListening {
+    param([int]$Port = 4200)
+    try {
+        $conn = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+        return [bool]$conn
+    } catch {
+        $pattern = ":$Port\s"
+        return [bool](netstat -an 2>$null | Select-String -Pattern $pattern -Quiet)
+    }
+}
+
+function Get-ArmaraosLogTail {
+    param([int]$Lines = 6)
+    $homeDir = Get-ArmaraosHomeDir
+    foreach ($rel in @('logs\daemon.log', 'logs\tui.log', 'tui.log')) {
+        $p = Join-Path $homeDir $rel
+        if (Test-Path -LiteralPath $p) {
+            return @(Get-Content -LiteralPath $p -Tail $Lines -ErrorAction SilentlyContinue)
+        }
+    }
+    return @()
+}
+
+function Get-DaemonListenPort {
+    param([string]$Base = $(Get-DaemonBaseUrl))
+    if ($Base -match ':(\d+)(?:/|$)') { return [int]$Matches[1] }
+    return 4200
+}
+
+function Diagnose-DaemonLaunch {
+    param(
+        [string]$Exe,
+        [string]$Base = $(Get-DaemonBaseUrl)
+    )
+    $findings = New-Object System.Collections.Generic.List[string]
+    $hints = New-Object System.Collections.Generic.List[string]
+    $port = Get-DaemonListenPort -Base $Base
+
+    if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) {
+        [void]$findings.Add("CLI binary not found at the install path")
+        [void]$hints.Add("Re-run the installer; check Windows Security / antivirus quarantine for armaraos.exe")
+        return @{ Findings = $findings; Hints = $hints; LogTail = @() }
+    }
+
+    $ver = Invoke-ExternalWithTimeout -FilePath $Exe -ArgumentList @('--version') -TimeoutSec 12
+    if ($ver.TimedOut) {
+        [void]$findings.Add("armaraos --version timed out (antivirus may be scanning the new binary)")
+        [void]$hints.Add("Allow $Exe in Windows Security / Defender, then run: armaraos --version")
+    } elseif (-not $ver.Ok) {
+        [void]$findings.Add("armaraos --version failed (exit $($ver.ExitCode))")
+        [void]$hints.Add("Antivirus or permissions may block the binary — add an exclusion for $(Split-Path $Exe -Parent)")
+    }
+
+    $healthy = Test-DaemonHealthy -Base $Base
+    $procRunning = Test-ArmaraosProcessRunning
+    $portListen = Test-PortListening -Port $port
+
+    if ($healthy) {
+        [void]$findings.Add("Daemon is healthy at $Base")
+        [void]$hints.Add("Open dashboard: armaraos dashboard")
+        return @{ Findings = $findings; Hints = $hints; LogTail = @() }
+    }
+
+    if ($procRunning -and -not $healthy) {
+        [void]$findings.Add("ArmaraOS process is running but /api/health did not respond yet")
+        [void]$hints.Add("Wait a few seconds, then: armaraos status")
+        [void]$hints.Add("If stuck: armaraos stop  then  armaraos start --yolo --detach")
+    } elseif (-not $procRunning -and $portListen) {
+        [void]$findings.Add("Port $port is in use by another program")
+        [void]$hints.Add("Stop the other service or change api_listen in ~/.armaraos/config.toml")
+    } elseif (-not $procRunning) {
+        [void]$findings.Add("No armaraos process detected")
+        [void]$hints.Add("Start manually: armaraos start --yolo --detach")
+        [void]$hints.Add("If nothing starts, run: armaraos doctor --repair")
+        [void]$hints.Add("First boot can take 30-60s under antivirus scan — that is normal")
+    }
+
+    $info = Get-DaemonJsonInfo
+    if ($info -and $info.pid) {
+        $alive = Get-Process -Id ([int]$info.pid) -ErrorAction SilentlyContinue
+        if (-not $alive) {
+            [void]$findings.Add("Stale daemon.json (PID $($info.pid) is not running)")
+            [void]$hints.Add("Run: armaraos stop  then  armaraos start --yolo --detach")
+        }
+    }
+
+    $logTail = Get-ArmaraosLogTail
+    if ($logTail.Count -gt 0) {
+        [void]$findings.Add("Log file present under $(Join-Path (Get-ArmaraosHomeDir) 'logs')")
+    } else {
+        [void]$findings.Add("No daemon log yet — boot may not have started")
+    }
+
+    return @{ Findings = $findings; Hints = $hints; LogTail = $logTail }
+}
+
+function Write-DaemonLaunchReport {
+    param(
+        [ValidateSet('success', 'failed', 'skipped')]
+        [string]$Status,
+        [hashtable]$Diagnosis = @{}
+    )
+    Write-Host ""
+    Write-Host "  ── Daemon launch ──" -ForegroundColor Cyan
+    switch ($Status) {
+        'success' {
+            Write-Host "  Status: RUNNING" -ForegroundColor Green
+            Write-Host "  Dashboard: $((Get-DaemonBaseUrl).TrimEnd('/'))/" -ForegroundColor Green
+        }
+        'failed' {
+            Write-Host "  Status: NOT READY (install finished — CLI + AINL are installed)" -ForegroundColor Yellow
+            if ($Diagnosis.Findings -and $Diagnosis.Findings.Count -gt 0) {
+                Write-Host "  Detected:" -ForegroundColor DarkCyan
+                foreach ($f in $Diagnosis.Findings) {
+                    Write-Host "    • $f" -ForegroundColor Gray
+                }
+            }
+            if ($Diagnosis.Hints -and $Diagnosis.Hints.Count -gt 0) {
+                Write-Host "  Next steps:" -ForegroundColor DarkCyan
+                $n = 1
+                foreach ($h in ($Diagnosis.Hints | Select-Object -Unique)) {
+                    Write-Host "    $n. $h" -ForegroundColor Yellow
+                    $n++
+                }
+            }
+            if ($Diagnosis.LogTail -and $Diagnosis.LogTail.Count -gt 0) {
+                Write-Host "  Recent log:" -ForegroundColor DarkCyan
+                foreach ($line in $Diagnosis.LogTail) {
+                    Write-Host "    $line" -ForegroundColor DarkGray
+                }
+            }
+            Write-Host "  Logs: $(Join-Path (Get-ArmaraosHomeDir) 'logs\daemon.log')" -ForegroundColor DarkGray
+        }
+        'skipped' {
+            Write-Host "  Status: SKIPPED (ARMARAOS_SKIP_AUTO_LAUNCH=1)" -ForegroundColor Gray
+        }
+    }
+    Write-Host ""
+}
+
 function Test-DaemonHealthy {
     param([string]$Base = "http://127.0.0.1:4200")
     $prev = $ErrorActionPreference
@@ -545,13 +774,65 @@ function Test-DaemonHealthy {
 function Wait-DaemonHealthy {
     param(
         [string]$Base,
-        [int]$TimeoutSec = 45
+        [int]$TimeoutSec = 45,
+        [Nullable[datetime]]$Deadline = $null,
+        [string]$Label = "daemon"
     )
-    for ($i = 0; $i -lt $TimeoutSec; $i++) {
-        if (Test-DaemonHealthy -Base $Base) { return $true }
+    $deadline = if ($Deadline) { $Deadline.Value } else { (Get-Date).AddSeconds($TimeoutSec) }
+    $started = Get-Date
+    $lastProgress = -5
+    while ((Get-Date) -lt $deadline) {
+        if (Test-DaemonHealthy -Base $Base) {
+            $elapsed = [Math]::Max(1, [int]((Get-Date) - $started).TotalSeconds)
+            Write-Host "  $Label ready after ${elapsed}s ($Base)" -ForegroundColor Green
+            return $true
+        }
+        $elapsed = [int]((Get-Date) - $started).TotalSeconds
+        $left = [Math]::Max(0, [int]($deadline - (Get-Date)).TotalSeconds)
+        if ($elapsed - $lastProgress -ge 5) {
+            $lastProgress = $elapsed
+            Write-Host "  Waiting for $Label... ${elapsed}s elapsed (${left}s left, checking /api/health)" -ForegroundColor DarkCyan
+        }
         Start-Sleep -Seconds 1
     }
+    Write-Host "  Timed out waiting for $Label (${Base}/api/health)" -ForegroundColor Yellow
     return $false
+}
+
+function Invoke-ExternalWithTimeout {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [string[]]$ArgumentList = @(),
+        [int]$TimeoutSec = 60
+    )
+    if (-not (Test-Path -LiteralPath $FilePath)) {
+        return @{ Ok = $false; TimedOut = $false; ExitCode = 127 }
+    }
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = ($ArgumentList | ForEach-Object {
+        if ($_ -match '\s|"') { '"' + ($_.Replace('"', '\"')) + '"' } else { $_ }
+    }) -join ' '
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    if (-not $proc) {
+        return @{ Ok = $false; TimedOut = $false; ExitCode = 1 }
+    }
+    $ms = [Math]::Max(1000, $TimeoutSec * 1000)
+    if (-not $proc.WaitForExit($ms)) {
+        try { $proc.Kill() } catch { }
+        return @{ Ok = $false; TimedOut = $true; ExitCode = -1 }
+    }
+    return @{ Ok = ($proc.ExitCode -eq 0); TimedOut = $false; ExitCode = $proc.ExitCode }
+}
+
+function Start-DaemonDetachedProcess {
+    param([Parameter(Mandatory = $true)][string]$Exe)
+    # Do not wait on `armaraos start --detach` — it polls health internally for up to 45s.
+    Start-Process -FilePath $Exe -ArgumentList @('start', '--yolo', '--detach') -WindowStyle Hidden | Out-Null
 }
 
 function Repair-ConfigTomlWindowsPaths {
@@ -620,18 +901,18 @@ function Repair-ConfigTomlWindowsPaths {
 }
 
 function Invoke-ArmaraosDoctorRepair {
-    param([string]$Exe)
+    param(
+        [string]$Exe,
+        [int]$TimeoutSec = 60
+    )
     if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) { return $false }
-    $prev = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & $Exe doctor --repair 2>&1 | Out-Null
-        return ($LASTEXITCODE -eq 0)
-    } catch {
+    $env:ARMARAOS_NONINTERACTIVE = "1"
+    $result = Invoke-ExternalWithTimeout -FilePath $Exe -ArgumentList @('doctor', '--repair') -TimeoutSec $TimeoutSec
+    if ($result.TimedOut) {
+        Write-Host "  Warning: armaraos doctor --repair timed out after ${TimeoutSec}s (continuing install)." -ForegroundColor Yellow
         return $false
-    } finally {
-        $ErrorActionPreference = $prev
     }
+    return [bool]$result.Ok
 }
 
 function Repair-ArmaraosInstall {
@@ -647,40 +928,89 @@ function Repair-ArmaraosInstall {
     $config = Join-Path $ofHome "config.toml"
     if (-not (Test-Path $config)) {
         Write-Host "  Repair: first-time setup (armaraos init --quick)..." -ForegroundColor Yellow
-        & $Exe init --quick
+        Invoke-ExternalWithTimeout -FilePath $Exe -ArgumentList @('init', '--quick') -TimeoutSec 60 | Out-Null
     }
     Repair-ConfigTomlWindowsPaths | Out-Null
-    Invoke-ArmaraosDoctorRepair -Exe $Exe | Out-Null
-    & $Exe stop 2>$null | Out-Null
+    Invoke-ArmaraosDoctorRepair -Exe $Exe -TimeoutSec 60 | Out-Null
+    Invoke-ExternalWithTimeout -FilePath $Exe -ArgumentList @('stop') -TimeoutSec 15 | Out-Null
     Start-Sleep -Seconds 1
 }
 
 function Start-ArmaraosDaemon {
-    param([string]$Exe)
+    param(
+        [string]$Exe,
+        [Nullable[datetime]]$Deadline = $null
+    )
+
+    $budgetDeadline = if ($Deadline) { $Deadline.Value } else { (Get-Date).AddSeconds((Get-InstallDaemonBudgetSec)) }
+    $base = Get-DaemonBaseUrl
+
+    if (Test-DaemonHealthy -Base $base) {
+        Write-Host "  Daemon already healthy at $base" -ForegroundColor Green
+        return $true
+    }
 
     Write-Host ""
-    Write-Host "  Starting ArmaraOS daemon (background)..." -ForegroundColor Cyan
-    & $Exe start --yolo --detach
-    if ($LASTEXITCODE -ne 0) { return $false }
+    Write-Host "  Starting ArmaraOS daemon (background, non-blocking)..." -ForegroundColor Cyan
+    Write-Host "  (First boot can take up to $((Get-InstallDaemonBudgetSec))s — progress updates every 5s)" -ForegroundColor DarkGray
+    Start-DaemonDetachedProcess -Exe $Exe
+    if (Wait-DaemonHealthy -Base $base -Deadline $budgetDeadline -Label "daemon") { return $true }
 
-    $base = Get-DaemonBaseUrl
-    if (Wait-DaemonHealthy -Base $base) { return $true }
+    $diag = Diagnose-DaemonLaunch -Exe $Exe -Base $base
+    if ($diag.Findings -and $diag.Findings.Count -gt 0) {
+        Write-Host "  Quick check:" -ForegroundColor DarkCyan
+        foreach ($f in $diag.Findings | Select-Object -First 3) {
+            Write-Host "    • $f" -ForegroundColor Gray
+        }
+    }
 
-    Write-Host "  Repairing install state and retrying..." -ForegroundColor Yellow
+    if ($env:ARMARAOS_SKIP_INSTALL_REPAIR -eq "1") {
+        Write-Host "  Repair skipped (ARMARAOS_SKIP_INSTALL_REPAIR=1)." -ForegroundColor Yellow
+        return $false
+    }
+
+    $remaining = [Math]::Max(0, [int]($budgetDeadline - (Get-Date)).TotalSeconds)
+    if ($remaining -lt 12) {
+        Write-Host "  No time left for repair retry in this install window." -ForegroundColor Yellow
+        return $false
+    }
+
+    Write-Host "  Repairing install state and retrying (up to ${remaining}s left)..." -ForegroundColor Yellow
     Repair-ArmaraosInstall -Exe $Exe
-    & $Exe start --yolo --detach
-    if ($LASTEXITCODE -ne 0) { return $false }
-    Wait-DaemonHealthy -Base (Get-DaemonBaseUrl)
+    Start-DaemonDetachedProcess -Exe $Exe
+    Wait-DaemonHealthy -Base (Get-DaemonBaseUrl) -Deadline $budgetDeadline -Label "daemon (retry)"
 }
 
 function Open-ArmaraosDashboard {
-    param([string]$Exe)
+    param(
+        [string]$Exe,
+        [Nullable[datetime]]$Deadline = $null
+    )
 
+    $base = Get-DaemonBaseUrl
     Write-Host ""
     Write-Host "  Opening dashboard in your browser..." -ForegroundColor Cyan
-    & $Exe dashboard
+
+    if (Test-DaemonHealthy -Base $base) {
+        try {
+            Start-Process "$($base.TrimEnd('/'))/" | Out-Null
+            return $true
+        } catch {
+            Write-Host "  Browser did not open — visit: $base/" -ForegroundColor Yellow
+            return $false
+        }
+    }
+
+    $remaining = if ($Deadline) {
+        [Math]::Max(5, [int]($Deadline.Value - (Get-Date)).TotalSeconds)
+    } else { 30 }
+    $result = Invoke-ExternalWithTimeout -FilePath $Exe -ArgumentList @('dashboard') -TimeoutSec $remaining
     $base = Get-DaemonBaseUrl
-    if ($LASTEXITCODE -ne 0 -and -not (Test-DaemonHealthy -Base $base)) {
+    if ($result.TimedOut) {
+        Write-Host "  Dashboard command timed out — visit: $base/" -ForegroundColor Yellow
+        return (Test-DaemonHealthy -Base $base)
+    }
+    if (-not $result.Ok -and -not (Test-DaemonHealthy -Base $base)) {
         Write-Host "  Browser did not open — visit: $base/" -ForegroundColor Yellow
         return $false
     }
@@ -689,40 +1019,55 @@ function Open-ArmaraosDashboard {
 
 # Golden path (Windows + Mac/Linux install.sh): start daemon, verify /api/health, repair + retry, open dashboard.
 function Launch-ArmaraosAfterInstall {
-    if ($env:ARMARAOS_SKIP_AUTO_LAUNCH -eq "1") { return "skipped" }
+    if ($env:ARMARAOS_SKIP_AUTO_LAUNCH -eq "1") {
+        Write-DaemonLaunchReport -Status 'skipped'
+        return "skipped"
+    }
 
     $exe = Get-ArmaraosExe
-    if (-not $exe) { return "failed" }
+    if (-not $exe) {
+        Write-DaemonLaunchReport -Status 'failed' -Diagnosis (Diagnose-DaemonLaunch -Exe "")
+        return "failed"
+    }
 
+    $deadline = (Get-Date).AddSeconds((Get-InstallDaemonBudgetSec))
     $base = Get-DaemonBaseUrl
-    if (-not (Test-DaemonHealthy -Base $base)) {
-        if (-not (Start-ArmaraosDaemon -Exe $exe)) {
-            Write-Host ""
-            Write-Host "  Recovering via dashboard auto-start..." -ForegroundColor Yellow
-            if (-not (Open-ArmaraosDashboard -Exe $exe)) {
-                if (-not (Test-DaemonHealthy -Base (Get-DaemonBaseUrl))) {
-                    Write-Host ""
-                    Write-Host "  Could not start the daemon automatically." -ForegroundColor Yellow
-                    Write-Host "  Common fix on Windows: broken MCP paths in config.toml (desktop AINL bootstrap)." -ForegroundColor Yellow
-                    Write-Host "  Run: armaraos doctor --repair" -ForegroundColor Yellow
-                    Write-Host "  Then: armaraos start --yolo --detach" -ForegroundColor Yellow
-                    Write-Host "  Then: armaraos dashboard" -ForegroundColor Yellow
-                    return "failed"
-                }
-            }
-        } else {
-            Write-Host "  Daemon is running." -ForegroundColor Green
-            Open-ArmaraosDashboard -Exe $exe | Out-Null
-        }
+    $healthy = Test-DaemonHealthy -Base $base
+
+    if (-not $healthy) {
+        $healthy = Start-ArmaraosDaemon -Exe $exe -Deadline $deadline
     } else {
         Write-Host ""
         Write-Host "  Daemon already running." -ForegroundColor Green
-        Open-ArmaraosDashboard -Exe $exe | Out-Null
     }
 
-    if (Test-DaemonHealthy -Base (Get-DaemonBaseUrl)) {
+    if (-not $healthy) {
+        $grace = Get-InstallDaemonGraceSec
+        if ($grace -gt 0) {
+            Write-Host ""
+            Write-Host "  Final recheck (${grace}s) — daemon may still be starting..." -ForegroundColor DarkCyan
+            $graceDeadline = (Get-Date).AddSeconds($grace)
+            $healthy = Wait-DaemonHealthy -Base (Get-DaemonBaseUrl) -Deadline $graceDeadline -Label "daemon (recheck)"
+        }
+    }
+
+    if ($healthy) {
+        Write-Host "  Daemon is running." -ForegroundColor Green
+    }
+
+    Open-ArmaraosDashboard -Exe $exe -Deadline $deadline | Out-Null
+
+    if (-not $healthy -and (Test-DaemonHealthy -Base (Get-DaemonBaseUrl))) {
+        $healthy = $true
+        Write-Host "  Daemon became healthy during dashboard open." -ForegroundColor Green
+    }
+
+    $diag = Diagnose-DaemonLaunch -Exe $exe -Base (Get-DaemonBaseUrl)
+    if ($healthy) {
+        Write-DaemonLaunchReport -Status 'success' -Diagnosis $diag
         return "success"
     }
+    Write-DaemonLaunchReport -Status 'failed' -Diagnosis $diag
     return "failed"
 }
 
@@ -736,12 +1081,11 @@ function Show-GetStarted {
     Write-Host ""
     Write-Host "  You're ready!" -ForegroundColor Cyan
     if ($LaunchResult -eq "success") {
-        Write-Host "  ArmaraOS is running in the background." -ForegroundColor Green
         Write-Host "  Your browser should show the dashboard (setup wizard on first visit)." -ForegroundColor Green
         Write-Host "  You can close this window — the daemon keeps running." -ForegroundColor Green
     } elseif ($LaunchResult -eq "failed") {
-        Write-Host "  Open the dashboard: armaraos dashboard" -ForegroundColor Green
-        Write-Host "  (starts the daemon if needed, then opens your browser)" -ForegroundColor Green
+        Write-Host "  See the Daemon launch report above for detected issues and next steps." -ForegroundColor Yellow
+        Write-Host "  Quick retry: armaraos start --yolo --detach  then  armaraos dashboard" -ForegroundColor Green
     } else {
         Write-Host "  Open the dashboard: armaraos dashboard" -ForegroundColor Green
         Write-Host "  (starts the daemon if needed, then opens your browser)" -ForegroundColor Green
@@ -819,8 +1163,10 @@ function Initialize-ArmaraosIfNeeded {
     if (Test-Path $configPath) { return }
     Write-Host ""
     Write-Host "  First-time setup (armaraos init --quick)..." -ForegroundColor Cyan
-    & $exe init --quick
-    if ($LASTEXITCODE -ne 0) {
+    $init = Invoke-ExternalWithTimeout -FilePath $exe -ArgumentList @('init', '--quick') -TimeoutSec 60
+    if ($init.TimedOut) {
+        Write-Host "  Warning: init --quick timed out — run it manually before opening the dashboard." -ForegroundColor Yellow
+    } elseif (-not $init.Ok) {
         Write-Host "  Warning: init --quick did not complete — run it manually before opening the dashboard." -ForegroundColor Yellow
     }
 }
