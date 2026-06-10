@@ -34,6 +34,15 @@ class CoreBuiltinAdapter(RuntimeAdapter):
       filter_high_score(list, min) — keep dict items with score/relevance >= min
       id(value) — identity; returns first arg (used to materialize object literals in R lines)
       get(obj, key) — deep key/index read (objects and lists)
+      abs/ceil/floor/round/pow/mod — numeric ops
+      and/or/not — boolean ops; noop — returns None
+      hash(s, algo?) / uuid() — hashing and id generation
+      sort/reverse/flatten/unique — list ops
+      type(v) — type name; format(template, args...) — positional str.format
+      range(stop|start,stop[,step]) — list of ints
+      pick(dict, keys...) / omit(dict, keys...) — key projection
+      zip(list...) — pairwise grouping truncated to shortest input
+    NOT implemented (strict mode rejects): map, filter, reduce (need callbacks).
     """
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
@@ -308,5 +317,58 @@ class CoreBuiltinAdapter(RuntimeAdapter):
                 seen.add(key)
                 out_u.append(item)
             return out_u
+        if t == "type":
+            v = args[0] if args else None
+            if v is None:
+                return "null"
+            if isinstance(v, bool):
+                return "bool"
+            if isinstance(v, int):
+                return "int"
+            if isinstance(v, float):
+                return "float"
+            if isinstance(v, str):
+                return "string"
+            if isinstance(v, list):
+                return "list"
+            if isinstance(v, dict):
+                return "dict"
+            return type(v).__name__
+        if t == "format":
+            # format(template, args...) — positional str.format ("{0} and {1}" or bare "{}").
+            template = str(args[0]) if args else ""
+            return template.format(*args[1:])
+        if t == "range":
+            # range(stop) | range(start, stop) | range(start, stop, step) — returns a list of ints.
+            nums = [int(_num(a)) for a in args[:3]]
+            if not nums:
+                return []
+            return list(range(*nums))
+        if t in ("pick", "omit"):
+            # pick(dict, keys...) / omit(dict, keys...) — keys as varargs or a single list arg.
+            src = args[0] if args else {}
+            if not isinstance(src, dict):
+                return {}
+            raw_keys = args[1:]
+            if len(raw_keys) == 1 and isinstance(raw_keys[0], list):
+                raw_keys = raw_keys[0]
+            keys = {str(k) for k in raw_keys}
+            if t == "pick":
+                return {k: v for k, v in src.items() if k in keys}
+            return {k: v for k, v in src.items() if k not in keys}
+        if t == "zip":
+            # zip(list1, list2, ...) — list of pair/tuple lists, truncated to the shortest input.
+            lists = [a for a in args if isinstance(a, list)]
+            if not lists:
+                return []
+            return [list(group) for group in zip(*lists)]
+        if t == "slice":
+            # slice(list_or_str, start, end?) — Python-style [start:end]; end omitted = to end.
+            seq = args[0] if args else []
+            if not isinstance(seq, (list, str)):
+                seq = str(seq)
+            start = int(_num(args[1])) if len(args) > 1 else 0
+            end = int(_num(args[2])) if len(args) > 2 else None
+            return seq[start:end]
 
         raise RuntimeError(f"unsupported core builtin target: {t}")

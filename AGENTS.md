@@ -42,7 +42,7 @@ graph, then executes that graph via adapters (database, HTTP, LLM, Solana, etc).
 
 <!-- repo-stats:layout-begin -->
 ```
-compiler_v2.py          — The compiler (7042 lines). Parses .ainl → IR dict.
+compiler_v2.py          — The compiler (7052 lines). Parses .ainl → IR dict.
 compiler_diagnostics.py — Error/warning types used by compiler.
 runtime/engine.py       — The runtime engine (3106 lines). Executes IR graphs.
 runtime/adapters/       — Runtime adapter base classes and builtins.
@@ -53,7 +53,7 @@ scripts/                — Standalone scripts (`refresh_repo_stats.py`, emit_la
 tooling/                — Graph analysis, normalization, effect analysis; `ainl_get_started.py` (authoring wizard + adapter contracts), `corpus_mining.py` (strict-valid family index for `corpus/strict_valid_family_index.json`).
 corpus/                 — Generated/mined JSON (e.g. `strict_valid_family_index.json`, `reverse_prompt_fixtures.json`); see `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`.
 examples/               — 110+ `.ainl` files under `examples/` (strict CI subset: `tooling/artifact_profiles.json`). See `examples/README.md`.
-tests/                  — 262 `*.py` files under `tests/` (~32k lines total); 232 `test_*.py` modules; pytest —collect-only: 1598/1637 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
+tests/                  — 264 `*.py` files under `tests/` (~32k lines total); 234 `test_*.py` modules; pytest —collect-only: 1636/1675 (see STATUS.yaml). Definitions: **`STATUS.yaml`** → `real_and_working.tests`.
 docs/                   — Documentation (some accurate, some aspirational — see **`STATUS.yaml`**).
 ```
 <!-- repo-stats:layout-end -->
@@ -324,9 +324,9 @@ R http.GET "https://example.com/api?x=1" {} 15 ->res
 **`core.GET` arg order is object-first:** `R core.GET obj "key" ->val` — NOT `R core.GET "key" obj`. The first positional arg to `core.GET` is always the container (dict or list), the second is the key/index string.
 
 **`core.*` runtime coverage — verified working verbs (builtins.py v1.4.3+; package **1.8.0**):**
-`ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MIN`, `MAX`, `CLAMP`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, `TRIM`, `STRIP`, `LSTRIP`, `RSTRIP`, `GET`, `PARSE`, `STRINGIFY`, `MERGE`, `LEN`, `NOW`, `ISO`, `ISO_TS`, `ECHO`, `ID`, `ENV`, `SUBSTR`, `SLEEP`, `FILTER_HIGH_SCORE`, `EQ`, `NEQ`, `GT`, `LT`, `GTE`, `LTE`, `KEYS`, `VALUES`, `STR`, `INT`, `FLOAT`, `BOOL`.
+`ADD`, `SUB`, `MUL`, `DIV`, `IDIV`, `MIN`, `MAX`, `CLAMP`, `CONCAT`, `SPLIT`, `JOIN`, `LOWER`, `UPPER`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, `TRIM`, `STRIP`, `LSTRIP`, `RSTRIP`, `GET`, `PARSE`, `STRINGIFY`, `MERGE`, `LEN`, `NOW`, `ISO`, `ISO_TS`, `ECHO`, `ID`, `ENV`, `SUBSTR`, `SLEEP`, `FILTER_HIGH_SCORE`, `EQ`, `NEQ`, `GT`, `LT`, `GTE`, `LTE`, `KEYS`, `VALUES`, `STR`, `INT`, `FLOAT`, `BOOL`, `ABS`, `CEIL`, `FLOOR`, `ROUND`, `POW`, `MOD`, `AND`, `OR`, `NOT`, `NOOP`, `HASH`, `UUID`, `SORT`, `REVERSE`, `FLATTEN`, `UNIQUE`, `TYPE`, `FORMAT`, `RANGE`, `PICK`, `OMIT`, `ZIP`, `SLICE`.
 
-**Still NOT implemented at runtime** (pass `--strict` validation but throw "unsupported core builtin target"): `type`, `unique`, `reduce`, `map`, `filter`, `format`, `range`, `sort`, `reverse`, `flatten`, `omit`, `pick`, `zip`, `abs`, `ceil`, `floor`, `round`, `pow`, `mod`, `and`, `or`, `not`, `noop`, `hash`, `uuid`.
+**NOT implemented at runtime — and now rejected by `--strict`** (no more "validates but throws"): `map`, `filter`, `reduce` (they need per-item callbacks the adapter call model cannot express; use external code). The contract/runtime parity is enforced by `tests/test_core_runtime_strict_gap.py` — any future verb added to the strict contract without a runtime implementation (or vice versa) fails CI.
 
 **Type coercion shortcuts (new):** Use `R core.STR val ->s` instead of `R core.CONCAT "" val ->s`. Use `R core.EQ a b ->ok` instead of `R core.CONTAINS str_a str_b ->ok` workarounds. Use `R core.TRIM html_text ->clean` instead of cascading `REPLACE` chains.
 

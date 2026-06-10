@@ -402,30 +402,29 @@ def strict_adapter_is_allowed(key: str) -> bool:
     return bool(key) and key in ADAPTER_EFFECT
 
 
-# core.* verbs listed in ADAPTER_EFFECT but not yet implemented in runtime/adapters/builtins.py.
+# core.* verbs listed in ADAPTER_EFFECT but not implemented in runtime/adapters/builtins.py.
+# MAP/FILTER/REDUCE need per-item callbacks the adapter call model cannot express;
+# strict mode rejects them so "validates" implies "runs".
 CORE_RUNTIME_UNIMPLEMENTED: frozenset = frozenset(
     {
-        "core.TYPE",
-        "core.REDUCE",
         "core.MAP",
         "core.FILTER",
-        "core.FORMAT",
-        "core.RANGE",
-        "core.OMIT",
-        "core.PICK",
-        "core.ZIP",
+        "core.REDUCE",
     }
 )
 
 
 def strict_core_runtime_implemented(key: str) -> bool:
     """False when strict mode should reject a contract-listed core verb with no runtime."""
-    if not key or not key.startswith("core."):
+    if not key or not key.lower().startswith("core."):
         return True
-    upper = key.upper()
-    if upper in CORE_RUNTIME_UNIMPLEMENTED:
+    # Canonical form is lowercase namespace + uppercase verb ("core.MAP");
+    # normalize so the check fires regardless of input casing.
+    _, _, verb = key.partition(".")
+    canonical = f"core.{verb.upper()}"
+    if canonical in CORE_RUNTIME_UNIMPLEMENTED:
         return False
-    return upper in ADAPTER_EFFECT or key in ADAPTER_EFFECT
+    return canonical in ADAPTER_EFFECT or key in ADAPTER_EFFECT
 
 
 def strict_adapter_effect(key: str) -> Optional[Tuple[str, str]]:
