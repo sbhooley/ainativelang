@@ -120,6 +120,106 @@ export_path_now() {
     export PATH="$1:$PATH"
 }
 
+# Emit manifest URL + checksum URL for this platform (stdout: two lines). No fallback here.
+resolve_cli_download_from_manifest() {
+    local platform="$1"
+    local base="${DOWNLOAD_BASE%/}"
+    local json
+
+    json="$(curl -fsSL "${base}/latest.json" 2>/dev/null || true)"
+    [ -n "$json" ] || return 1
+
+    python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+platform = sys.argv[1]
+base = (data.get('download_base') or sys.argv[2]).rstrip('/')
+entry = (data.get('platforms') or {}).get(platform)
+if not entry:
+    sys.exit(1)
+archive = entry.get('archive') or ''
+url = entry.get('url') or (f'{base}/{archive}' if archive else '')
+sha = entry.get('sha256_url') or (f'{url}.sha256' if url else '')
+if not url:
+    sys.exit(1)
+print(url)
+print(sha)
+" "$platform" "$base" <<< "$json" 2>/dev/null
+}
+
+download_cli_archive() {
+    local platform="$1"
+    local archive_path="$2"
+    local base="${DOWNLOAD_BASE%/}"
+    local tried=()
+    local url sha candidate lines
+
+    lines="$(resolve_cli_download_from_manifest "$platform" 2>/dev/null || true)"
+    if [ -n "$lines" ]; then
+        url="$(printf '%s\n' "$lines" | sed -n '1p')"
+        sha="$(printf '%s\n' "$lines" | sed -n '2p')"
+        if [ -n "$url" ]; then
+            tried+=("$url")
+            if curl -fsSL "$url" -o "$archive_path" 2>/dev/null; then
+                CLI_DOWNLOAD_URL="$url"
+                CLI_CHECKSUM_URL="${sha:-${url}.sha256}"
+                return 0
+            fi
+            echo "  Skipped $(basename "$url") (download failed)" >&2
+        fi
+    fi
+
+    for candidate in \
+        "${base}/armaraos-${platform}.tar.gz" \
+        "${base}/openfang-${platform}.tar.gz"; do
+        case " ${tried[*]} " in
+            *" $candidate "*) continue ;;
+        esac
+        if curl -fsSL "$candidate" -o "$archive_path" 2>/dev/null; then
+            CLI_DOWNLOAD_URL="$candidate"
+            CLI_CHECKSUM_URL="${candidate}.sha256"
+            return 0
+        fi
+        echo "  Skipped $(basename "$candidate") (not found)" >&2
+    done
+    return 1
+}
+
+finalize_cli_binary() {
+    local install_dir="$1"
+    if [ -f "${install_dir}/armaraos" ]; then
+        chmod +x "${install_dir}/armaraos"
+        if [ -f "${install_dir}/openfang" ]; then
+            chmod +x "${install_dir}/openfang" 2>/dev/null || true
+        fi
+        return 0
+    fi
+    if [ -f "${install_dir}/openfang" ]; then
+        chmod +x "${install_dir}/openfang"
+        cat > "${install_dir}/armaraos" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$DIR/openfang" "$@"
+EOF
+        chmod +x "${install_dir}/armaraos"
+        return 0
+    fi
+    return 1
+}
+
+macos_quarantine_fix() {
+    local bin="$1"
+    [ "$OS" = "darwin" ] || return 0
+    if command -v xattr &>/dev/null; then
+        xattr -cr "$bin" 2>/dev/null || true
+    fi
+    if command -v codesign &>/dev/null; then
+        codesign --force --sign - "$bin" 2>/dev/null || \
+            echo "  Warning: ad-hoc codesign failed — if the binary is killed, run: xattr -cr $bin && codesign --force --sign - $bin"
+    fi
+}
+
 python_version_ok() {
     "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null
 }
@@ -969,26 +1069,26 @@ install() {
         exit 1
     fi
 
-    URL="${DOWNLOAD_BASE%/}/openfang-$PLATFORM.tar.gz"
-    CHECKSUM_URL="${URL}.sha256"
-
     echo "  Installing ArmaraOS (CLI) $VERSION for $PLATFORM..."
     mkdir -p "$INSTALL_DIR"
 
     TMPDIR=$(mktemp -d)
-    ARCHIVE="$TMPDIR/openfang.tar.gz"
+    ARCHIVE="$TMPDIR/armaraos-cli.tar.gz"
     CHECKSUM_FILE="$TMPDIR/checksum.sha256"
+    CLI_DOWNLOAD_URL=""
+    CLI_CHECKSUM_URL=""
     cleanup() { rm -rf "$TMPDIR"; }
     trap cleanup EXIT
 
-    if ! curl -fsSL "$URL" -o "$ARCHIVE" 2>/dev/null; then
-        echo "  Download failed: $URL"
+    if ! download_cli_archive "$PLATFORM" "$ARCHIVE"; then
+        echo "  Download failed (tried latest.json + armaraos/openfang archives for $PLATFORM)."
         echo "  If this is a fresh release, wait a few minutes for ainativelang.com to sync CLI binaries."
         echo "  Or set ARMARAOS_VERSION=vX.Y.Z when a build exists at ${DOWNLOAD_BASE%/}/"
         exit 1
     fi
+    echo "  Downloaded $(basename "$CLI_DOWNLOAD_URL")" 
 
-    if curl -fsSL "$CHECKSUM_URL" -o "$CHECKSUM_FILE" 2>/dev/null; then
+    if curl -fsSL "$CLI_CHECKSUM_URL" -o "$CHECKSUM_FILE" 2>/dev/null; then
         EXPECTED=$(cut -d ' ' -f 1 < "$CHECKSUM_FILE")
         if command -v sha256sum &>/dev/null; then
             ACTUAL=$(sha256sum "$ARCHIVE" | cut -d ' ' -f 1)
@@ -1005,36 +1105,28 @@ install() {
     fi
 
     tar xzf "$ARCHIVE" -C "$INSTALL_DIR"
-    chmod +x "$INSTALL_DIR/openfang"
-
-    cat > "$INSTALL_DIR/armaraos" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$DIR/openfang" "$@"
-EOF
-    chmod +x "$INSTALL_DIR/armaraos"
-
-    if [ "$OS" = "darwin" ]; then
-        if command -v xattr &>/dev/null; then
-            xattr -cr "$INSTALL_DIR/openfang" 2>/dev/null || true
-        fi
-        if command -v codesign &>/dev/null; then
-            codesign --force --sign - "$INSTALL_DIR/openfang" 2>/dev/null || \
-                echo "  Warning: ad-hoc codesign failed — if the binary is killed, run: xattr -cr $INSTALL_DIR/openfang && codesign --force --sign - $INSTALL_DIR/openfang"
-        fi
+    if ! finalize_cli_binary "$INSTALL_DIR"; then
+        echo "  Error: archive did not contain armaraos or openfang binary."
+        exit 1
     fi
 
-    append_path_to_shell_rc "$INSTALL_DIR" "openfang"
+    CLI_BIN="$(armaraos_cli_bin || true)"
+    if [ -z "$CLI_BIN" ]; then
+        echo "  Error: could not locate installed CLI binary under $INSTALL_DIR"
+        exit 1
+    fi
+    macos_quarantine_fix "$CLI_BIN"
+
+    append_path_to_shell_rc "$INSTALL_DIR" "armaraos"
     export_path_now "$INSTALL_DIR"
 
-    if "$INSTALL_DIR/openfang" --version >/dev/null 2>&1; then
-        INSTALLED_VERSION=$("$INSTALL_DIR/openfang" --version 2>/dev/null || echo "$VERSION")
+    if "$CLI_BIN" --version >/dev/null 2>&1; then
+        INSTALLED_VERSION=$("$CLI_BIN" --version 2>/dev/null || echo "$VERSION")
         echo ""
         echo "  ArmaraOS CLI installed ($INSTALLED_VERSION)"
     else
         echo ""
-        echo "  ArmaraOS binary installed to $INSTALL_DIR"
+        echo "  ArmaraOS binary installed to $CLI_BIN"
     fi
 
     PYTHON=""
