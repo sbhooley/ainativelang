@@ -22,10 +22,13 @@ $InstallDir =
     elseif ($env:OPENFANG_INSTALL_DIR) { $env:OPENFANG_INSTALL_DIR }
     else { $DefaultInstallDir }
 
+$Script:InstallScriptRevision = '20260610.3'
+
 function Write-Banner {
     Write-Host ""
     Write-Host "  ArmaraOS Installer" -ForegroundColor Cyan
     Write-Host "  ==================" -ForegroundColor Cyan
+    Write-Host "  Script revision: $Script:InstallScriptRevision" -ForegroundColor DarkGray
     Write-Host ""
 }
 
@@ -291,9 +294,8 @@ function Write-AinlBinCache {
     $homeDir = Get-AinlHomeDir
     if (-not (Test-Path $homeDir)) { New-Item -ItemType Directory -Path $homeDir -Force | Out-Null }
     $cache = Join-Path $homeDir ".armaraos-ainl-bin"
-    # Windows PowerShell 5.1 does not accept -Encoding utf8NoBOM on Set-Content.
-    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($cache, $AinlExe, $utf8NoBom)
+    # ASCII works on Windows PowerShell 5.1+ (paths are ASCII-safe on Windows).
+    Set-Content -Path $cache -Value $AinlExe -Encoding ASCII
 }
 
 function Test-AinlCliRunnable {
