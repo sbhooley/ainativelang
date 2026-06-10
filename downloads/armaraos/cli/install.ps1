@@ -291,7 +291,9 @@ function Write-AinlBinCache {
     $homeDir = Get-AinlHomeDir
     if (-not (Test-Path $homeDir)) { New-Item -ItemType Directory -Path $homeDir -Force | Out-Null }
     $cache = Join-Path $homeDir ".armaraos-ainl-bin"
-    Set-Content -Path $cache -Value $AinlExe -Encoding utf8NoBOM
+    # Windows PowerShell 5.1 does not accept -Encoding utf8NoBOM on Set-Content.
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($cache, $AinlExe, $utf8NoBom)
 }
 
 function Test-AinlCliRunnable {
