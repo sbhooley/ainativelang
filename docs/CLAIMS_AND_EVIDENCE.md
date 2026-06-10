@@ -123,7 +123,7 @@ This metric is **not** the same as §1–3; do not mix **emit size** with **orch
 
 **Classification:** Operator field reports (project author / close collaborators) — **Class (b)** per [`competitive/PRODUCTION_EVIDENCE.md`](competitive/PRODUCTION_EVIDENCE.md) honesty disclosure. **Not Class (a)** third-party paying customer evidence.
 
-**Role:** Narrative validation, operator experience, and write-ups ([`agent_reports/`](../agent_reports/), [`AI_CONSULTANT_REPORT_APOLLO.md`](../AI_CONSULTANT_REPORT_APOLLO.md), etc.).
+**Role:** Narrative validation, operator experience, and write-ups ([`agent_reports/`](../agent_reports/), [`AI_CONSULTANT_REPORT_APOLLO.md`](../agent_reports/AI_CONSULTANT_REPORT_APOLLO.md), etc.).
 
 **Relationship to §1–4:** Useful context and quotes; **auditable reproduction** for headline economics should cite **`BENCHMARK.md`** and the **`scripts/benchmark_*.py`** family above.
 

@@ -22,7 +22,7 @@ on strict canonical AINL generation.
 8. Inspect current generation quality report:
    - `corpus/curated/model_eval_report_v5_aligned.json` (or latest variant)
 9. **If planning an integration or major change**, review consultant reports:
-   - `AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw `ocl` adapter integration strategy
+   - `agent_reports/AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw `ocl` adapter integration strategy
    - `docs/ZEROCLAW_INTEGRATION.md` — ZeroClaw skill + MCP bootstrap (parallel integration path)
 10. **Operator / field narratives** (what shipped in live stacks): `agent_reports/README.md` — indexed OpenClaw agent field reports (e.g. Day 2 AINL King, 2026-03-19).
 11. **Intelligence monitors** (memory / bootstrap / summarizer AINL): `docs/INTELLIGENCE_PROGRAMS.md` and `scripts/run_intelligence.py`.

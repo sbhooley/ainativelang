@@ -147,7 +147,7 @@ R memory.put "session" "session.context" session_id {...payload...} 86400
 - Deployed: Not yet (cron added; awaiting first run)
 - Runner: `scripts/run_session_continuity.py` implemented and executable
 - Documentation: This file
-- Consultant report: Appended to `AI_CONSULTANT_REPORT_APOLLO.md`
+- Consultant report: Appended to `agent_reports/AI_CONSULTANT_REPORT_APOLLO.md`
 
 ---
 

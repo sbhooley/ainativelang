@@ -10,8 +10,16 @@ This guide covers installing AINL on macOS, Linux, and Windows (WSL). Choose the
 
 ## Quick Install (Recommended)
 
+The PyPI package is **`ainativelang`** (the CLI it installs is `ainl`):
+
 ```bash
-pip3 install ainl
+pipx install 'ainativelang[mcp]'
+```
+
+Fallback if `pipx` is unavailable:
+
+```bash
+python3 -m pip install --user 'ainativelang[mcp]'
 ```
 
 Verify installation:
@@ -25,13 +33,9 @@ ainl --version
 
 #### macOS
 
-Using Homebrew:
+Install `pipx` first if needed (`brew install pipx`), then use the Quick Install above.
 
-```bash
-brew install ainl
-```
-
-If you encounter permission errors, use `pip3 install --user ainl` and add `~/.local/bin` to your `PATH`.
+If you encounter permission errors with pip, use `python3 -m pip install --user ainativelang` and add `~/.local/bin` to your `PATH`.
 
 #### Linux
 
@@ -39,7 +43,7 @@ You may need `python3-dev` and `build-essential`:
 
 ```bash
 sudo apt-get install python3-dev build-essential  # Debian/Ubuntu
-pip3 install ainl
+python3 -m pip install --user 'ainativelang[mcp]'
 ```
 
 #### Windows (WSL)
@@ -50,49 +54,38 @@ pip3 install ainl
 
 ## Verify Your Setup
 
-Create a simple test file `test.ainl`:
+Create a simple test file `test.ainl` (compact syntax — see `examples/compact/` for more):
 
 ```ainl
-graph Test {
-  input: string
-  node hello: emit("Hello, {{input}}!")
-  output: hello.result
-}
+adder:
+  result = core.ADD 2 3
+  out result
 ```
 
 Validate and run:
 
 ```bash
-ainl validate test.ainl
-ainl run test.ainl --input "World"
-# Output: {"result":"Hello, World!"}
+ainl validate test.ainl --strict
+ainl run test.ainl
+# Output: 5
 ```
 
 If these commands work, you're ready for the [next tutorial](02-first-agent.md).
 
-## Optional: Install Adapters
+## Optional: LLM Adapters and MCP
 
-AINL supports multiple LLM providers. Install adapters as needed:
+All adapters (including `llm/openrouter`, `llm/ollama`, `llm/anthropic`, `llm/cohere`)
+ship inside the `ainativelang` package — there is nothing extra to install for them.
+
+For MCP host integration (Claude Desktop, Cursor, etc.), install with the `[mcp]`
+extra as shown above, then run:
 
 ```bash
-# OpenRouter adapter (recommended for cost savings)
-pip3 install ainl-adapter-openrouter
-
-# Ollama for local models
-pip3 install ainl-adapter-ollama
-
-# MCP for Claude Desktop integration
-pip3 install ainl-adapter-mcp
+ainl setup --auto
 ```
 
-Configure adapters in `~/.ainl/config.yaml`:
-
-```yaml
-adapters:
-  openrouter:
-    api_key: ${OPENROUTER_API_KEY}
-    default_model: openai/gpt-4o-mini
-```
+LLM provider credentials are configured via environment variables / `AINL_CONFIG` —
+see `docs/LLM_ADAPTER_USAGE.md` in the repository for details.
 
 ## Next Steps
 

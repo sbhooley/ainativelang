@@ -40,7 +40,7 @@ Read in order:
 3. `docs/DOCS_INDEX.md` — map to all docs
 4. `docs/AINL_SPEC.md` (sections 0-3 only) — core syntax and execution model
 5. `examples/openclaw/daily_digest.lang` — a monitor workflow example
-6. `AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw integration strategy
+6. `agent_reports/AI_CONSULTANT_REPORT_APOLLO.md` — OpenClaw integration strategy
 7. `agent_reports/README.md` — indexed **field reports** from agents running AINL in production (continuity narratives)
 8. `docs/INTELLIGENCE_PROGRAMS.md` — `intelligence/*.lang` monitors + `scripts/run_intelligence.py` runner
 9. `docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md` — required before coding (steps + output structure)
@@ -232,8 +232,8 @@ This ensures smooth continuity.
 | `docs/TRAINING_ALIGNMENT_RUNBOOK.md` | Quality gates and eval |
 | `docs/reference/TOOL_API.md` | Structured tool interface |
 | `OPENCLAW_AI_AGENT.md` | OpenClaw agent index and integration |
-| `AI_CONSULTANT_REPORT_APOLLO.md` | OpenClaw-specific recommendations |
-| `CONSULTANT_REPORTS.md` | Index of all consultant reports |
+| `agent_reports/AI_CONSULTANT_REPORT_APOLLO.md` | OpenClaw-specific recommendations |
+| `agent_reports/CONSULTANT_REPORTS.md` | Index of all consultant reports |
 | `examples/openclaw/` | Reference examples (daily_digest, lead_enrichment, infrastructure_watchdog, webhook_handler) |
 | `ADAPTER_REGISTRY.json` | Machine-readable adapter catalog |
 | `corpus/curated/` | Evaluation reports and trends |

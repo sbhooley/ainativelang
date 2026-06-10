@@ -186,7 +186,7 @@ X digest (core.join "\n\n" [part1 part2])
 
 - Every `.strict.lang` file compiles in strict mode with zero errors.
 - `scripts/run_test_profiles.py --profile openclaw` passes for both strict and non‑strict variants (if strict variant included in profile).
-- `AI_CONSULTANT_REPORT_APOLLO.md` updated to reflect strict‑mode compliance and include strict‑mode example snippets.
+- `agent_reports/AI_CONSULTANT_REPORT_APOLLO.md` updated to reflect strict‑mode compliance and include strict‑mode example snippets.
 - `OPENCLAW_AI_AGENT.md` references updated if necessary.
 
 ---

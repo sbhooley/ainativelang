@@ -1,5 +1,10 @@
 # Build Your First Agent (30-Minute Tutorial)
 
+> **⚠️ DESIGN PREVIEW NOTICE**: The `graph Name { node ... }` blocks in this
+> tutorial are a **design preview** — they do NOT compile today. For working
+> code, use **compact syntax** (see `examples/compact/` and `AGENTS.md`) and
+> validate with `ainl validate <file> --strict`.
+
 In this tutorial, you'll build a **monitoring agent** that watches a log file, classifies errors, and sends alerts. This is the same pattern used in production at FinTech Solutions Inc.
 
 ## What You'll Build

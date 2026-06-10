@@ -1,5 +1,10 @@
 # Validate and Run: The Strict Workflow
 
+> **⚠️ DESIGN PREVIEW NOTICE**: Any `graph Name { node ... }` blocks in this
+> guide are a **design preview** — they do NOT compile today. For working
+> code, use **compact syntax** (see `examples/compact/` and `AGENTS.md`) and
+> validate with `ainl validate <file> --strict`.
+
 This guide explains AINL's **compile-time validation** system and how to debug validation failures. Understanding this is key to reliable production deployments.
 
 ## The Two-Phase Execution Model

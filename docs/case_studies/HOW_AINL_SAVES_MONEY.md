@@ -51,10 +51,10 @@ AINL is valuable for routine operational workflows because it lets us use LLMs w
 That means we keep the benefit of intelligence in workflow creation, but avoid paying for fresh generation every 5–15 minutes forever.
 For our current monitoring footprint, that likely translates to roughly $100–2,500/month in avoided recurring inference cost, while also giving us faster and more deterministic execution.
 
-See also AI_CONSULTANT_REPORT_APOLLO.md for a full AI AGENT/BOT written report on Key Findings, tokenization cost savings, practical applications, how to/why "Apollo" chose to write certain programs for its openclaw setup, and more.
+See also agent_reports/AI_CONSULTANT_REPORT_APOLLO.md for a full AI AGENT/BOT written report on Key Findings, tokenization cost savings, practical applications, how to/why "Apollo" chose to write certain programs for its openclaw setup, and more.
 
-— see `AI_CONSULTANT_REPORT_APOLLO.md` (root)
-— see `CONSULTANT_REPORTS.md` (root)
+— see `agent_reports/AI_CONSULTANT_REPORT_APOLLO.md`
+— see `agent_reports/CONSULTANT_REPORTS.md`
 
 ## Reproducible token accounting (repository benchmarks)
 

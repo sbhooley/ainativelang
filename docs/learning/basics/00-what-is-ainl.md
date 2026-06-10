@@ -1,5 +1,11 @@
 # What is AINL?
 
+> **⚠️ DESIGN PREVIEW NOTICE**: Code blocks in this document using
+> `graph Name { node ... }` syntax are a **design preview** — they do NOT
+> compile today. For working code, use **compact syntax** (see
+> `examples/compact/` and `AGENTS.md`) and validate with
+> `ainl validate <file> --strict`.
+
 **AINL (AI Native Language)** is a programming language designed to build deterministic AI workflows that compile to strict, validated graphs.
 
 ## The Problem AINL Solves

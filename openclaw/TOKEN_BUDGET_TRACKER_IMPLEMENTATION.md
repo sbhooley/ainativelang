@@ -154,7 +154,7 @@ engine.call('memory.put', ['long_term', 'budget_config', 'weekly', {'budget_usd'
 - Deployed: Not yet (cron added; awaiting first run)
 - Runner: `scripts/run_token_budget_tracker.py` implemented and executable
 - Documentation: This file
-- Consultant report: Appended to `AI_CONSULTANT_REPORT_APOLLO.md`
+- Consultant report: Appended to `agent_reports/AI_CONSULTANT_REPORT_APOLLO.md`
 
 ---
 

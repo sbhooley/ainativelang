@@ -88,7 +88,7 @@ bot_onboarding: docs/BOT_ONBOARDING.md
 implementation_preflight: docs/OPENCLAW_IMPLEMENTATION_PREFLIGHT.md
 bot_bootstrap: tooling/bot_bootstrap.json
 quickstart: AI_AGENT_QUICKSTART_OPENCLAW.md
-consultant_report: AI_CONSULTANT_REPORT_APOLLO.md
+consultant_report: agent_reports/AI_CONSULTANT_REPORT_APOLLO.md
 test_profile: openclaw
 production_cron: AINL Proactive Monitor (runs every 15 minutes)
 strict_mode_conversion_plan: STRICT_MODE_CONVERSION_PLAN.md
