@@ -386,6 +386,71 @@ function Install-AinlViaVenv {
     Write-Host "  AINL ready in venv ($verLine)" -ForegroundColor Green
 }
 
+function Test-AinlCronShim {
+    param([string]$Path)
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $false }
+    try {
+        $head = Get-Content -LiteralPath $Path -TotalCount 30 -ErrorAction Stop
+        $text = ($head -join "`n")
+        return ($text -match 'REAL_AINL=' -or $text -match '--enable-adapter\s+http')
+    } catch { return $false }
+}
+
+function Remove-LegacyArmaraosBinAinlShim {
+    $homeDir = Get-AinlHomeDir
+    $shim = Join-Path $homeDir 'bin\ainl'
+    if (-not (Test-AinlCronShim $shim)) { return }
+    $backup = Join-Path $homeDir 'bin\ainl.cron-shim.bak'
+    if (Test-Path -LiteralPath $backup) {
+        $backup = Join-Path $homeDir "bin\ainl.cron-shim.$([int][double]::Parse((Get-Date -UFormat %s))).bak"
+    }
+    Move-Item -LiteralPath $shim -Destination $backup -Force
+    Write-Host "  Removed legacy ~/.armaraos/bin/ainl cron shim (saved as $(Split-Path -Leaf $backup))" -ForegroundColor Yellow
+}
+
+function Resolve-RepairAinlExecutable {
+    $homeDir = Get-AinlHomeDir
+    $venvAinl = Join-Path (Get-AinlVenvDir) 'Scripts\ainl.exe'
+    if (Test-Path -LiteralPath $venvAinl) { return $venvAinl }
+    $cache = Join-Path $homeDir '.armaraos-ainl-bin'
+    if (Test-Path -LiteralPath $cache) {
+        $cached = (Get-Content -LiteralPath $cache -TotalCount 1 -ErrorAction SilentlyContinue).Trim()
+        if ($cached -and (Test-Path -LiteralPath $cached) -and -not (Test-AinlCronShim $cached)) {
+            return $cached
+        }
+    }
+    $cmd = Get-Command ainl -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source -and (Test-Path -LiteralPath $cmd.Source) -and -not (Test-AinlCronShim $cmd.Source)) {
+        return $cmd.Source
+    }
+    return $null
+}
+
+function Repair-AinlLayout {
+    $homeDir = Get-AinlHomeDir
+    if (-not (Test-Path $homeDir)) { New-Item -ItemType Directory -Path $homeDir -Force | Out-Null }
+    Remove-LegacyArmaraosBinAinlShim
+    $ainl = Resolve-RepairAinlExecutable
+    if (-not $ainl) {
+        Write-Host '  AINL layout repair: no runnable ainl found (skipping MCP refresh)' -ForegroundColor Yellow
+        return $false
+    }
+    Write-AinlBinCache $ainl
+    if (-not (Test-AinlCliRunnable $ainl)) {
+        Write-Host "  AINL layout repair: ainl at $ainl failed --version" -ForegroundColor Yellow
+        return $false
+    }
+    Write-Host '  Refreshing AINL MCP registration...' -ForegroundColor Cyan
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $ainl install-mcp --host armaraos 2>&1 | Out-Null
+    } finally { $ErrorActionPreference = $prev }
+    $verLine = try { (& $ainl --version 2>&1 | Select-Object -First 1) } catch { 'ainl' }
+    Write-Host "  AINL layout OK ($verLine)" -ForegroundColor Green
+    return $true
+}
+
 function Test-WingetBenignExit {
     param([int]$Code)
     # 0 = ok; others = already installed / no update needed (winget still exit non-zero).
@@ -1509,6 +1574,7 @@ function Install-ArmaraOS {
     }
 
     Install-Ainl -Py $py
+    Repair-AinlLayout | Out-Null
     Initialize-ArmaraosIfNeeded
     Repair-ConfigTomlWindowsPaths | Out-Null
     $exe = Get-ArmaraosExe

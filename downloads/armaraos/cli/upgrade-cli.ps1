@@ -102,12 +102,58 @@ try {
     Write-Host ''
     Write-Host "  Installed: $ver" -ForegroundColor Green
     Write-Host ''
-    Write-Host '  Next: armaraos doctor --repair' -ForegroundColor Cyan
-    Write-Host '        armaraos start --yolo --detach' -ForegroundColor Cyan
-    Write-Host '        armaraos dashboard' -ForegroundColor Cyan
+
+    function Get-AinlHomeDirLocal {
+        if ($env:ARMARAOS_HOME) { return $env:ARMARAOS_HOME }
+        if ($env:OPENFANG_HOME) { return $env:OPENFANG_HOME }
+        return Join-Path $env:USERPROFILE '.armaraos'
+    }
+
+    function Test-AinlCronShimLocal {
+        param([string]$Path)
+        if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $false }
+        try {
+            $head = Get-Content -LiteralPath $Path -TotalCount 30 -ErrorAction Stop
+            $text = ($head -join "`n")
+            return ($text -match 'REAL_AINL=' -or $text -match '--enable-adapter\s+http')
+        } catch { return $false }
+    }
+
+    function Repair-AinlLayoutLocal {
+        $homeDir = Get-AinlHomeDirLocal
+        $venvAinl = Join-Path $homeDir 'ainl-venv\Scripts\ainl.exe'
+        $shim = Join-Path $homeDir 'bin\ainl'
+        if (Test-AinlCronShimLocal $shim) {
+            $backup = Join-Path $homeDir 'bin\ainl.cron-shim.bak'
+            if (Test-Path -LiteralPath $backup) {
+                $backup = Join-Path $homeDir "bin\ainl.cron-shim.$([int][double]::Parse((Get-Date -UFormat %s))).bak"
+            }
+            Move-Item -LiteralPath $shim -Destination $backup -Force -ErrorAction SilentlyContinue
+            Write-Host '  Removed legacy ainl cron shim' -ForegroundColor Yellow
+        }
+        if (-not (Test-Path -LiteralPath $venvAinl)) {
+            $cmd = Get-Command ainl -ErrorAction SilentlyContinue
+            if ($cmd) { $venvAinl = $cmd.Source }
+        }
+        if (Test-Path -LiteralPath $venvAinl) {
+            Set-Content -Path (Join-Path $homeDir '.armaraos-ainl-bin') -Value $venvAinl -Encoding ASCII
+            Write-Host '  Refreshing AINL MCP registration...' -ForegroundColor Cyan
+            & $venvAinl install-mcp --host armaraos 2>&1 | Out-Null
+        }
+    }
+
+    Write-Host '  Post-upgrade: repairing config and AINL layout...' -ForegroundColor Cyan
+    Repair-AinlLayoutLocal
+    & $dest doctor --repair 2>&1 | Out-Null
+    & $dest stop 2>&1 | Out-Null
+    Start-Sleep -Seconds 2
+    & $dest start --yolo --detach 2>&1 | Out-Null
+    & $dest dashboard 2>&1 | Out-Null
     Write-Host ''
-  Write-Host '  Note: On v0.8.2 and older, use this script on Windows instead of armaraos update.' -ForegroundColor DarkYellow
-  Write-Host '        v0.8.3+ supports armaraos update in place.' -ForegroundColor DarkYellow
+    Write-Host '  Upgrade complete. Dashboard should open automatically.' -ForegroundColor Green
+    Write-Host ''
+    Write-Host '  Note: On v0.8.2 and older, use this script on Windows instead of armaraos update.' -ForegroundColor DarkYellow
+    Write-Host '        v0.8.3+ supports armaraos update in place.' -ForegroundColor DarkYellow
     Write-Host ''
 } finally {
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
