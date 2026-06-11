@@ -78,8 +78,8 @@ repair_ainl_layout() {
 
     printf '%s\n' "$ainl_bin" > "${home}/.armaraos-ainl-bin"
 
-    if ! "$ainl_bin" --version >/dev/null 2>&1; then
-        echo "  AINL layout repair: ainl at $ainl_bin failed --version" >&2
+    if ! "$ainl_bin" --help >/dev/null 2>&1; then
+        echo "  AINL layout repair: ainl at $ainl_bin is not runnable (--help failed)" >&2
         return 1
     fi
 
@@ -88,7 +88,17 @@ repair_ainl_layout() {
         echo "  Warning: ainl install-mcp returned non-zero (continuing)" >&2
     fi
 
-    echo "  AINL layout OK ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))" >&2
+    py="${ainl_bin%/ainl}/python"
+    if [ -x "$py" ]; then
+        ver="$("$py" -m pip show ainativelang 2>/dev/null | awk -F': ' '/^Version:/{print $2; exit}')"
+        if [ -n "$ver" ]; then
+            echo "  AINL layout OK (ainativelang $ver)" >&2
+        else
+            echo "  AINL layout OK (ainl runnable)" >&2
+        fi
+    else
+        echo "  AINL layout OK (ainl runnable)" >&2
+    fi
     return 0
 }
 

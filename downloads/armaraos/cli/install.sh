@@ -414,7 +414,7 @@ install_ainl_via_venv() {
     local arm_home="${ARMARAOS_HOME:-${OPENFANG_HOME:-$HOME/.armaraos}}"
     mkdir -p "$arm_home"
     printf '%s\n' "$ainl_bin" > "$arm_home/.armaraos-ainl-bin"
-    echo "  AINL ready in venv ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))"
+    echo "  AINL ready in venv ($( ainl_display_version "$ainl_bin" 2>/dev/null || echo ainl ))"
 }
 
 install_ainl() {
@@ -465,7 +465,29 @@ install_ainl() {
     local arm_home="${ARMARAOS_HOME:-${OPENFANG_HOME:-$HOME/.armaraos}}"
     mkdir -p "$arm_home"
     printf '%s\n' "$ainl_bin" > "$arm_home/.armaraos-ainl-bin"
-    echo "  AINL ready ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))"
+    echo "  AINL ready ($( ainl_display_version "$ainl_bin" 2>/dev/null || echo ainl ))"
+}
+
+ainl_cli_runnable() {
+    local bin="$1"
+    "$bin" --help >/dev/null 2>&1
+}
+
+ainl_display_version() {
+    local bin="$1"
+    local py ver
+    if ! ainl_cli_runnable "$bin"; then
+        return 1
+    fi
+    py="${bin%/ainl}/python"
+    if [ -x "$py" ]; then
+        ver="$("$py" -m pip show ainativelang 2>/dev/null | awk -F': ' '/^Version:/{print $2; exit}')"
+        if [ -n "$ver" ]; then
+            echo "ainativelang $ver"
+            return 0
+        fi
+    fi
+    echo "ainl (runnable)"
 }
 
 is_armaraos_bin_ainl_cron_shim() {
@@ -519,21 +541,25 @@ resolve_repair_ainl_executable() {
 }
 
 repair_ainl_layout() {
-    local home ainl_bin
+    local home ainl_bin venv_dir venv_ainl
     home="$(armaraos_home_dir)"
     mkdir -p "$home"
 
     remove_legacy_armaraos_bin_ainl_shim "$home"
 
-    if ! ainl_bin="$(resolve_repair_ainl_executable "$home")"; then
+    venv_dir="$(ainl_venv_dir)"
+    venv_ainl="${venv_dir}/bin/ainl"
+    if [ -x "$venv_ainl" ]; then
+        ainl_bin="$venv_ainl"
+    elif ! ainl_bin="$(resolve_repair_ainl_executable "$home")"; then
         echo "  AINL layout repair: no runnable ainl found (skipping MCP refresh)" >&2
         return 1
     fi
 
     printf '%s\n' "$ainl_bin" > "${home}/.armaraos-ainl-bin"
 
-    if ! "$ainl_bin" --version >/dev/null 2>&1; then
-        echo "  AINL layout repair: ainl at $ainl_bin failed --version" >&2
+    if ! ainl_cli_runnable "$ainl_bin"; then
+        echo "  AINL layout repair: ainl at $ainl_bin is not runnable (--help failed)" >&2
         return 1
     fi
 
@@ -541,7 +567,7 @@ repair_ainl_layout() {
     "$ainl_bin" install-mcp --host armaraos >/dev/null 2>&1 || {
         echo "  Warning: ainl install-mcp returned non-zero (continuing install)" >&2
     }
-    echo "  AINL layout OK ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))"
+    echo "  AINL layout OK ($( ainl_display_version "$ainl_bin" ))"
     return 0
 }
 

@@ -304,10 +304,21 @@ function Test-AinlCliRunnable {
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        & $AinlExe --version 2>$null | Out-Null
+        & $AinlExe --help 2>$null | Out-Null
         return ($LASTEXITCODE -eq 0)
     } catch { return $false }
     finally { $ErrorActionPreference = $prev }
+}
+
+function Get-AinlDisplayVersion {
+    param([string]$AinlExe)
+    if (-not (Test-AinlCliRunnable $AinlExe)) { return 'ainl' }
+    $py = Join-Path (Split-Path $AinlExe -Parent) 'python.exe'
+    if (Test-Path -LiteralPath $py) {
+        $ver = & $py -m pip show ainativelang 2>$null | Select-String '^Version:' | ForEach-Object { ($_ -split ':', 2)[1].Trim() } | Select-Object -First 1
+        if ($ver) { return "ainativelang $ver" }
+    }
+    return 'ainl (runnable)'
 }
 
 function Ensure-AinlCliReady {
@@ -381,7 +392,7 @@ function Install-AinlViaVenv {
     }
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    try { $verLine = (& $ainl --version 2>&1 | Select-Object -First 1) } catch { $verLine = "ainl" }
+    try { $verLine = Get-AinlDisplayVersion $ainl } catch { $verLine = "ainl" }
     finally { $ErrorActionPreference = $prev }
     Write-Host "  AINL ready in venv ($verLine)" -ForegroundColor Green
 }
@@ -430,14 +441,19 @@ function Repair-AinlLayout {
     $homeDir = Get-AinlHomeDir
     if (-not (Test-Path $homeDir)) { New-Item -ItemType Directory -Path $homeDir -Force | Out-Null }
     Remove-LegacyArmaraosBinAinlShim
-    $ainl = Resolve-RepairAinlExecutable
+    $venvAinl = Join-Path (Get-AinlVenvDir) 'Scripts\ainl.exe'
+    if (Test-Path -LiteralPath $venvAinl) {
+        $ainl = $venvAinl
+    } else {
+        $ainl = Resolve-RepairAinlExecutable
+    }
     if (-not $ainl) {
         Write-Host '  AINL layout repair: no runnable ainl found (skipping MCP refresh)' -ForegroundColor Yellow
         return $false
     }
     Write-AinlBinCache $ainl
     if (-not (Test-AinlCliRunnable $ainl)) {
-        Write-Host "  AINL layout repair: ainl at $ainl failed --version" -ForegroundColor Yellow
+        Write-Host "  AINL layout repair: ainl at $ainl failed --help" -ForegroundColor Yellow
         return $false
     }
     Write-Host '  Refreshing AINL MCP registration...' -ForegroundColor Cyan
@@ -446,7 +462,7 @@ function Repair-AinlLayout {
     try {
         & $ainl install-mcp --host armaraos 2>&1 | Out-Null
     } finally { $ErrorActionPreference = $prev }
-    $verLine = try { (& $ainl --version 2>&1 | Select-Object -First 1) } catch { 'ainl' }
+    $verLine = Get-AinlDisplayVersion $ainl
     Write-Host "  AINL layout OK ($verLine)" -ForegroundColor Green
     return $true
 }
