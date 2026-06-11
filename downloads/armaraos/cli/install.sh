@@ -120,6 +120,21 @@ export_path_now() {
     export PATH="$1:$PATH"
 }
 
+print_path_hint() {
+    local bin="${1:-$(armaraos_cli_bin 2>/dev/null || true)}"
+    echo ""
+    echo "  PATH note: curl | sh runs in a subshell — open a new terminal or run:"
+    if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
+        echo "    source \"$SHELL_RC\""
+    else
+        echo "    export PATH=\"$INSTALL_DIR:\$PATH\""
+    fi
+    if [ -n "$bin" ]; then
+        echo "  Or use the full path: $bin dashboard"
+    fi
+    echo ""
+}
+
 # Emit manifest URL + checksum URL for this platform (stdout: two lines). No fallback here.
 resolve_cli_download_from_manifest() {
     local platform="$1"
@@ -450,20 +465,38 @@ install_ainl() {
     echo "  AINL ready ($( "$ainl_bin" --version 2>/dev/null | head -1 || echo ainl ))"
 }
 
+config_api_listen_addr() {
+    local config home listen
+    home="$(armaraos_home_dir)"
+    config="${home}/config.toml"
+    listen=""
+    if [ -f "$config" ]; then
+        listen="$(grep -E '^[[:space:]]*api_listen[[:space:]]*=' "$config" 2>/dev/null | head -1 \
+            | sed -E 's/.*=[[:space:]]*"([^"]+)".*/\1/' \
+            | tr -d '\r')"
+    fi
+    if [ -z "$listen" ]; then
+        # Match armaraos-types KernelConfig default (127.0.0.1:50051).
+        listen="127.0.0.1:50051"
+    fi
+    printf '%s' "$listen" | sed 's/0\.0\.0\.0/127.0.0.1/g'
+}
+
 daemon_base_url() {
-    local dj="${HOME}/.armaraos/daemon.json"
+    local dj listen
+    dj="$(armaraos_home_dir)/daemon.json"
     if [ -f "$dj" ]; then
         python3 -c "
 import json, sys
 try:
     d = json.load(open(sys.argv[1]))
-    a = (d.get('listen_addr') or '127.0.0.1:4200').replace('0.0.0.0', '127.0.0.1')
+    a = (d.get('listen_addr') or sys.argv[2]).replace('0.0.0.0', '127.0.0.1')
     print('http://' + a)
 except Exception:
-    print('http://127.0.0.1:4200')
-" "$dj" 2>/dev/null || echo "http://127.0.0.1:4200"
+    print('http://' + sys.argv[2])
+" "$dj" "$(config_api_listen_addr)" 2>/dev/null || echo "http://$(config_api_listen_addr)"
     else
-        echo "http://127.0.0.1:4200"
+        echo "http://$(config_api_listen_addr)"
     fi
 }
 
@@ -499,13 +532,16 @@ armaraos_home_dir() {
 }
 
 daemon_listen_port() {
-    local base="${1:-http://127.0.0.1:4200}"
-    local port
+    local base="${1:-$(daemon_base_url)}"
+    local port default_port
     port="$(printf '%s' "$base" | sed -n 's|.*:\([0-9][0-9]*\)/\?$|\1|p')"
+    default_port="$(config_api_listen_addr | sed -n 's|.*:\([0-9][0-9]*\)$|\1|p')"
     if [ -n "$port" ]; then
         echo "$port"
+    elif [ -n "$default_port" ]; then
+        echo "$default_port"
     else
-        echo 4200
+        echo 50051
     fi
 }
 
@@ -708,7 +744,7 @@ open_dashboard_url() {
 }
 
 daemon_healthy() {
-    local base="${1:-http://127.0.0.1:4200}"
+    local base="${1:-$(daemon_base_url)}"
     curl -sfS -m 3 "${base%/}/api/health" >/dev/null 2>&1
 }
 
@@ -717,15 +753,16 @@ wait_daemon_healthy() {
     local timeout="${2:-45}"
     local deadline="${3:-}"
     local label="${4:-daemon}"
-    local i=0 started now elapsed left last_progress=-5
+    local i=0 started now elapsed left last_progress=-5 check_base
 
     if [ -n "$deadline" ]; then
         started="$(date +%s)"
         while [ "$(date +%s)" -lt "$deadline" ]; do
-            if daemon_healthy "$base"; then
+            check_base="$(daemon_base_url)"
+            if daemon_healthy "$check_base"; then
                 elapsed=$(( $(date +%s) - started ))
                 [ "$elapsed" -lt 1 ] && elapsed=1
-                echo "  ${label} ready after ${elapsed}s ($base)" >&2
+                echo "  ${label} ready after ${elapsed}s ($check_base)" >&2
                 return 0
             fi
             now="$(date +%s)"
@@ -734,15 +771,17 @@ wait_daemon_healthy() {
             [ "$left" -lt 0 ] && left=0
             if [ "$elapsed" -ge $(( last_progress + 5 )) ]; then
                 last_progress=$elapsed
-                echo "  Waiting for ${label}... ${elapsed}s elapsed (${left}s left, checking /api/health)" >&2
+                echo "  Waiting for ${label}... ${elapsed}s elapsed (${left}s left, checking ${check_base%/}/api/health)" >&2
             fi
             sleep 1
         done
-        echo "  Timed out waiting for ${label} (${base%/}/api/health)" >&2
+        check_base="$(daemon_base_url)"
+        echo "  Timed out waiting for ${label} (${check_base%/}/api/health)" >&2
         return 1
     fi
     while [ "$i" -lt "$timeout" ]; do
-        if daemon_healthy "$base"; then
+        check_base="$(daemon_base_url)"
+        if daemon_healthy "$check_base"; then
             return 0
         fi
         i=$((i + 1))
@@ -1119,6 +1158,7 @@ install() {
 
     append_path_to_shell_rc "$INSTALL_DIR" "armaraos"
     export_path_now "$INSTALL_DIR"
+    print_path_hint "$CLI_BIN"
 
     if "$CLI_BIN" --version >/dev/null 2>&1; then
         INSTALLED_VERSION=$("$CLI_BIN" --version 2>/dev/null || echo "$VERSION")
@@ -1153,5 +1193,15 @@ install() {
     LAUNCH_RESULT="$(launch_armaraos_after_install)"
     print_get_started "$DESKTOP_SHORTCUT" "$LAUNCH_RESULT"
 }
+
+on_install_interrupt() {
+    echo "" >&2
+    echo "  Install interrupted." >&2
+    print_path_hint "$(armaraos_cli_bin 2>/dev/null || true)"
+    echo "  If the daemon was starting, try: $(armaraos_cli_bin 2>/dev/null || echo "$INSTALL_DIR/armaraos") start --yolo --detach" >&2
+    exit 130
+}
+
+trap on_install_interrupt INT
 
 install

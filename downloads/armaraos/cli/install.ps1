@@ -565,8 +565,20 @@ function Install-Ainl {
     Install-AinlViaVenv -BasePy $Py
 }
 
+function Get-ConfigApiListen {
+    $default = "127.0.0.1:50051"
+    $config = Join-Path (Get-ArmaraosHomeDir) "config.toml"
+    if (-not (Test-Path -LiteralPath $config)) { return $default }
+    foreach ($line in Get-Content -LiteralPath $config -ErrorAction SilentlyContinue) {
+        if ($line -match '^\s*api_listen\s*=\s*"([^"]+)"') {
+            return $Matches[1].Replace('0.0.0.0', '127.0.0.1')
+        }
+    }
+    return $default
+}
+
 function Get-DaemonBaseUrl {
-    $default = "http://127.0.0.1:4200"
+    $default = "http://$(Get-ConfigApiListen)"
     $dj = Join-Path $env:USERPROFILE ".armaraos\daemon.json"
     if (-not (Test-Path $dj)) { return $default }
     try {
@@ -761,7 +773,7 @@ function Write-DaemonLaunchReport {
 }
 
 function Test-DaemonHealthy {
-    param([string]$Base = "http://127.0.0.1:4200")
+    param([string]$Base = $(Get-DaemonBaseUrl))
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
@@ -786,20 +798,22 @@ function Wait-DaemonHealthy {
     $started = Get-Date
     $lastProgress = -5
     while ((Get-Date) -lt $deadline) {
-        if (Test-DaemonHealthy -Base $Base) {
+        $checkBase = Get-DaemonBaseUrl
+        if (Test-DaemonHealthy -Base $checkBase) {
             $elapsed = [Math]::Max(1, [int]((Get-Date) - $started).TotalSeconds)
-            Write-Host "  $Label ready after ${elapsed}s ($Base)" -ForegroundColor Green
+            Write-Host "  $Label ready after ${elapsed}s ($checkBase)" -ForegroundColor Green
             return $true
         }
         $elapsed = [int]((Get-Date) - $started).TotalSeconds
         $left = [Math]::Max(0, [int]($deadline - (Get-Date)).TotalSeconds)
         if ($elapsed - $lastProgress -ge 5) {
             $lastProgress = $elapsed
-            Write-Host "  Waiting for $Label... ${elapsed}s elapsed (${left}s left, checking /api/health)" -ForegroundColor DarkCyan
+            Write-Host "  Waiting for $Label... ${elapsed}s elapsed (${left}s left, checking $($checkBase.TrimEnd('/'))/api/health)" -ForegroundColor DarkCyan
         }
         Start-Sleep -Seconds 1
     }
-    Write-Host "  Timed out waiting for $Label (${Base}/api/health)" -ForegroundColor Yellow
+    $finalBase = Get-DaemonBaseUrl
+    Write-Host "  Timed out waiting for $Label ($($finalBase.TrimEnd('/'))/api/health)" -ForegroundColor Yellow
     return $false
 }
 
