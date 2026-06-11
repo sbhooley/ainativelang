@@ -1044,11 +1044,6 @@ function Start-ArmaraosDaemon {
     $budgetDeadline = if ($Deadline) { $Deadline.Value } else { (Get-Date).AddSeconds((Get-InstallDaemonBudgetSec)) }
     $base = Get-DaemonBaseUrl
 
-    if (Test-DaemonHealthy -Base $base) {
-        Write-Host "  Daemon already healthy at $base" -ForegroundColor Green
-        return $true
-    }
-
     Write-Host ""
     Write-Host "  Starting ArmaraOS daemon (background, non-blocking)..." -ForegroundColor Cyan
     Write-Host "  (First boot can take up to $((Get-InstallDaemonBudgetSec))s — progress updates every 5s)" -ForegroundColor DarkGray
@@ -1131,14 +1126,10 @@ function Launch-ArmaraosAfterInstall {
 
     $deadline = (Get-Date).AddSeconds((Get-InstallDaemonBudgetSec))
     $base = Get-DaemonBaseUrl
-    $healthy = Test-DaemonHealthy -Base $base
+    $healthy = $false
 
-    if (-not $healthy) {
-        $healthy = Start-ArmaraosDaemon -Exe $exe -Deadline $deadline
-    } else {
-        Write-Host ""
-        Write-Host "  Daemon already running." -ForegroundColor Green
-    }
+    Ensure-DaemonStoppedForInstall -Exe $exe
+    $healthy = Start-ArmaraosDaemon -Exe $exe -Deadline $deadline
 
     if (-not $healthy) {
         $grace = Get-InstallDaemonGraceSec
@@ -1213,6 +1204,23 @@ function Stop-ArmaraosForInstall {
         Get-Process -Name $name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 2
+}
+
+function Ensure-DaemonStoppedForInstall {
+    param([string]$Exe)
+    if ($env:ARMARAOS_SKIP_DAEMON_RESTART -eq '1') { return }
+    if (-not $Exe) { return }
+    $base = Get-DaemonBaseUrl
+    $running = Test-ArmaraosProcessRunning
+    $healthy = Test-DaemonHealthy -Base $base
+    if (-not $running -and -not $healthy) { return }
+    Write-Host ""
+    Write-Host "  Stopping existing ArmaraOS daemon (install will start a fresh one)..." -ForegroundColor Cyan
+    Invoke-ExternalWithTimeout -FilePath $Exe -ArgumentList @('stop') -TimeoutSec 15 | Out-Null
+    Start-Sleep -Seconds 2
+    if (Test-ArmaraosProcessRunning) {
+        Write-Host "  Warning: ArmaraOS process still running after stop — install will retry start anyway." -ForegroundColor Yellow
+    }
 }
 
 function Install-ArmaraosBinary {

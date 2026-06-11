@@ -836,6 +836,29 @@ start_daemon_detached_process() {
     disown 2>/dev/null || true
 }
 
+# Stop a running daemon so re-install / upgrade loads the new CLI binary (skip: ARMARAOS_SKIP_DAEMON_RESTART=1).
+ensure_daemon_stopped_for_install() {
+    local bin="$1"
+    local base
+
+    if [ "${ARMARAOS_SKIP_DAEMON_RESTART:-}" = "1" ]; then
+        return 0
+    fi
+    [ -n "$bin" ] || return 0
+    base="$(daemon_base_url)"
+    if ! armaraos_process_running && ! daemon_healthy "$base"; then
+        return 0
+    fi
+    echo "" >&2
+    echo "  Stopping existing ArmaraOS daemon (install will start a fresh one)..." >&2
+    run_with_timeout 15 "$bin" stop 2>/dev/null || true
+    sleep 2
+    if armaraos_process_running; then
+        echo "  Warning: ArmaraOS process still running after stop — install will retry start anyway." >&2
+        echo "  If install hangs, run: armaraos stop  (or kill stale PIDs)  then  armaraos start --yolo --detach" >&2
+    fi
+}
+
 open_dashboard_url() {
     local base="$1"
     local url="${base%/}/"
@@ -981,10 +1004,6 @@ start_armaraos_daemon() {
     fi
 
     base="$(daemon_base_url)"
-    if daemon_healthy "$base"; then
-        echo "  Daemon already healthy at $base" >&2
-        return 0
-    fi
 
     echo "" >&2
     echo "  Starting ArmaraOS daemon (background, non-blocking)..." >&2
@@ -1068,11 +1087,8 @@ launch_armaraos_after_install() {
     deadline="$(install_deadline_epoch)"
     base="$(daemon_base_url)"
     healthy=0
-    if daemon_healthy "$base"; then
-        healthy=1
-        echo "" >&2
-        echo "  Daemon already running." >&2
-    elif start_armaraos_daemon "$bin" "$deadline"; then
+    ensure_daemon_stopped_for_install "$bin"
+    if start_armaraos_daemon "$bin" "$deadline"; then
         healthy=1
         echo "  Daemon is running." >&2
     fi
@@ -1289,6 +1305,7 @@ install() {
     initialize_armaraos_if_needed
     repair_config_toml_windows_paths || true
     if bin="$(armaraos_cli_bin)"; then
+        ensure_daemon_stopped_for_install "$bin"
         ARMARAOS_NONINTERACTIVE=1 run_with_timeout 60 "$bin" doctor --repair >/dev/null 2>&1 || {
             echo "  Warning: armaraos doctor --repair timed out or failed (continuing install)." >&2
         }
