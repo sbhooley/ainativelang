@@ -1,18 +1,18 @@
 {
-  "tag": "v0.8.4",
-  "version": "0.8.4",
-  "pub_date": "2026-06-11T04:54:55Z",
+  "tag": "v0.8.6",
+  "version": "0.8.6",
+  "pub_date": "2026-06-24T06:38:46Z",
   "download_base": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli",
   "platforms": {
-    "aarch64-apple-darwin": {
-      "archive": "armaraos-aarch64-apple-darwin.tar.gz",
-      "url": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli/armaraos-aarch64-apple-darwin.tar.gz",
-      "sha256_url": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli/armaraos-aarch64-apple-darwin.tar.gz.sha256"
-    },
     "x86_64-apple-darwin": {
       "archive": "armaraos-x86_64-apple-darwin.tar.gz",
       "url": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli/armaraos-x86_64-apple-darwin.tar.gz",
       "sha256_url": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli/armaraos-x86_64-apple-darwin.tar.gz.sha256"
+    },
+    "aarch64-apple-darwin": {
+      "archive": "armaraos-aarch64-apple-darwin.tar.gz",
+      "url": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli/armaraos-aarch64-apple-darwin.tar.gz",
+      "sha256_url": "https://raw.githubusercontent.com/sbhooley/ainativelang/main/downloads/armaraos/cli/armaraos-aarch64-apple-darwin.tar.gz.sha256"
     },
     "x86_64-pc-windows-msvc": {
       "archive": "armaraos-x86_64-pc-windows-msvc.zip",
