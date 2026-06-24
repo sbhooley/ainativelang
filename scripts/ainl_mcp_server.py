@@ -3300,7 +3300,8 @@ def ainl_mission_validate(
     )
     return {
         "ok": validation["ok"],
-        "schema_version": "1.0.0",
+        "schema_version": validation.get("schema_version", "1.0.0"),
+        "validate_checksum": validation.get("validate_checksum"),
         "validation": validation,
         "recommended_next_tools": [
             t for t in ("ainl_mission_plan", "ainl_handoff_lint", "ainl_run")

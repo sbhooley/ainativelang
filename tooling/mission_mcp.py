@@ -1,6 +1,8 @@
 """Mission substrate MCP helpers — schema load, DAG validation, draft planning, handoff lint."""
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import uuid
 from datetime import datetime, timezone
@@ -160,6 +162,30 @@ def assertion_coverage_errors(
     return errors
 
 
+_MISSION_PROMOTION_SCHEMA_VERSION = "1.0.0"
+
+
+def compute_validate_checksum(
+    objective_md: str,
+    mission_id: str,
+    features: List[Dict[str, Any]],
+    assertions: Optional[List[Dict[str, Any]]] = None,
+    *,
+    schema_version: str = _MISSION_PROMOTION_SCHEMA_VERSION,
+) -> str:
+    """Canonical SHA-256 hex digest for POST /api/missions promotion gate (matches ainl-mission Rust)."""
+    assertions = assertions or []
+    payload = {
+        "schema_version": schema_version,
+        "objective_md": objective_md.strip(),
+        "mission_id": (mission_id or "").strip(),
+        "features": sorted(features, key=lambda f: f.get("feature_id") or ""),
+        "assertions": sorted(assertions, key=lambda a: a.get("assertion_id") or ""),
+    }
+    blob = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
 def validate_mission_dag(
     mission: Dict[str, Any],
     features: List[Dict[str, Any]],
@@ -225,6 +251,13 @@ def validate_mission_dag(
         "warnings": warnings,
         "feature_count": len(features),
         "assertion_count": len(assertions),
+        "schema_version": _MISSION_PROMOTION_SCHEMA_VERSION,
+        "validate_checksum": compute_validate_checksum(
+            str(mission.get("objective_md") or ""),
+            str(mission.get("mission_id") or ""),
+            features,
+            assertions,
+        ),
     }
 
 
