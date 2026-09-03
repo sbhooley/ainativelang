@@ -820,7 +820,7 @@ function Write-DaemonLaunchReport {
     switch ($Status) {
         'success' {
             Write-Host "  Status: RUNNING" -ForegroundColor Green
-            Write-Host "  Dashboard: $((Get-DaemonBaseUrl).TrimEnd('/'))/" -ForegroundColor Green
+            Write-Host "  Dashboard: $((Get-DaemonBaseUrl).TrimEnd('/'))/lite/" -ForegroundColor Green
         }
         'failed' {
             Write-Host "  Status: NOT READY (install finished — CLI + AINL are installed)" -ForegroundColor Yellow
@@ -1087,10 +1087,10 @@ function Open-ArmaraosDashboard {
 
     if (Test-DaemonHealthy -Base $base) {
         try {
-            Start-Process "$($base.TrimEnd('/'))/" | Out-Null
+            Start-Process "$($base.TrimEnd('/'))/lite/" | Out-Null
             return $true
         } catch {
-            Write-Host "  Browser did not open — visit: $base/" -ForegroundColor Yellow
+            Write-Host "  Browser did not open — visit: $($base.TrimEnd('/'))/lite/" -ForegroundColor Yellow
             return $false
         }
     }
@@ -1101,11 +1101,11 @@ function Open-ArmaraosDashboard {
     $result = Invoke-ExternalWithTimeout -FilePath $Exe -ArgumentList @('dashboard') -TimeoutSec $remaining
     $base = Get-DaemonBaseUrl
     if ($result.TimedOut) {
-        Write-Host "  Dashboard command timed out — visit: $base/" -ForegroundColor Yellow
+        Write-Host "  Dashboard command timed out — visit: $($base.TrimEnd('/'))/lite/" -ForegroundColor Yellow
         return (Test-DaemonHealthy -Base $base)
     }
     if (-not $result.Ok -and -not (Test-DaemonHealthy -Base $base)) {
-        Write-Host "  Browser did not open — visit: $base/" -ForegroundColor Yellow
+        Write-Host "  Browser did not open — visit: $($base.TrimEnd('/'))/lite/" -ForegroundColor Yellow
         return $false
     }
     return $true

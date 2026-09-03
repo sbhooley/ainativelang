@@ -861,7 +861,7 @@ ensure_daemon_stopped_for_install() {
 
 open_dashboard_url() {
     local base="$1"
-    local url="${base%/}/"
+    local url="${base%/}/lite/"
     if command -v xdg-open >/dev/null 2>&1; then
         xdg-open "$url" >/dev/null 2>&1 &
     elif command -v open >/dev/null 2>&1; then
@@ -1047,7 +1047,7 @@ open_armaraos_dashboard() {
         if open_dashboard_url "$base"; then
             return 0
         fi
-        echo "  Browser did not open — visit: ${base%/}/" >&2
+        echo "  Browser did not open — visit: ${base%/}/lite/" >&2
         return 1
     fi
 
@@ -1064,7 +1064,7 @@ open_armaraos_dashboard() {
     if daemon_healthy "$base"; then
         return 0
     fi
-    echo "  Browser did not open — visit: ${base%/}/" >&2
+    echo "  Browser did not open — visit: ${base%/}/lite/" >&2
     return 1
 }
 
