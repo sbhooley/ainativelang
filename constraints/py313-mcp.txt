@@ -12,6 +12,6 @@ pydantic==2.13.4
 pydantic-settings==2.14.0
 python-multipart==0.0.29
 sse-starlette==3.4.1
-starlette==1.0.0
+starlette==1.1.0
 typer==0.25.1
 uvicorn==0.47.0
