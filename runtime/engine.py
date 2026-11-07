@@ -6,7 +6,9 @@ import json
 import asyncio
 import logging
 import os
+import re
 import time
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Set
 
@@ -21,6 +23,7 @@ from compiler_v2 import (
 )
 from tooling.graph_normalize import normalize_labels
 from tooling.tool_surface import dispatch_registry_key, effective_tool_surface, narrow_allowed_adapters
+from runtime.decision_ops import read_env
 from runtime.values import compare, deep_get, deep_put, json_safe, stable_sort, truthy
 from runtime.adapters.base import AdapterRegistry, AdapterError
 from runtime.adapters.builtins import CoreBuiltinAdapter
@@ -76,7 +79,7 @@ def _norm_node_id(tok: Any) -> Optional[str]:
 
 
 SUPPORTED_IR_MAJOR = 1
-RUNTIME_VERSION = "1.8.0"
+RUNTIME_VERSION = "1.8.2"
 
 _LOG = logging.getLogger(__name__)
 
@@ -247,6 +250,23 @@ ERROR_CODE_GRAPH_EXEC_GUARD = "RUNTIME_GRAPH_EXEC_GUARD"
 ERROR_CODE_ADAPTER_ERROR = "RUNTIME_ADAPTER_ERROR"
 ERROR_CODE_RUNTIME_OP_ERROR = "RUNTIME_OP_ERROR"
 ERROR_CODE_TOOL_PATCH_DENY = "RUNTIME_TOOL_PATCH_DENY"
+ERROR_CODE_BREAK_OUTSIDE = "BREAK_OUTSIDE_LOOP"
+ERROR_CODE_DB_QUERY_LITERAL = "DB_QUERY_NOT_LITERAL"
+ERROR_CODE_DB_QUERY_PARAMS = "DB_QUERY_PARAMS"
+ERROR_CODE_DB_QUERY_PARTITION = "DB_QUERY_PARTITION"
+ERROR_CODE_DB_MERGE_ETAG = "DB_MERGE_ETAG"
+ERROR_CODE_LLM_BUDGET = "LLM_BUDGET"
+ERROR_CODE_PURE = "PURE_VIOLATION"
+ERROR_CODE_RETURN_UNION = "RETURN_UNION"
+_QUERY_PARAM = re.compile(r"@([A-Za-z_][A-Za-z0-9_]*)")
+_QUERY_INTERPOLATION = ("%s", "%(", "${", "{{")
+
+
+class LoopBreak(Exception):
+    """Stop the enclosing Loop or While. A body ``J`` does not raise this."""
+
+    def __init__(self, value: Any) -> None:
+        self.value = value
 
 
 class RuntimeEngine:
@@ -268,6 +288,8 @@ class RuntimeEngine:
         observability_jsonl_path: Optional[str] = None,
         host_adapter_allowlist: Optional[List[str]] = None,
         host_adapter_denylist: Optional[List[str]] = None,
+        source_path: Optional[str] = None,
+        safe_trace: bool = True,
     ):
         self.ir = ir
         self.labels = ir.get("labels", {})
@@ -283,6 +305,11 @@ class RuntimeEngine:
         self.trace_events: List[Dict[str, Any]] = []
         self.trace_sink = trace_sink
         self._trajectory_log_path: Optional[str] = trajectory_log_path
+        self._trajectory_include_values = False
+        self.source_path = source_path
+        self.safe_trace = bool(safe_trace)
+        self._call_depth = 0
+        self._llm_budget = {"calls": 0, "tokens": 0}
         # Optional AVM hook: append AVM hash when an AVM daemon shim is connected.
         self._avm_event_hasher = avm_event_hasher
         self._sandbox_metadata_provider = sandbox_metadata_provider
@@ -320,6 +347,8 @@ class RuntimeEngine:
         if effective_deny:
             deny_set = set(effective_deny)
             allowed = [a for a in allowed if a not in deny_set]
+        self.host_adapter_allowlist = effective_host
+        self.host_adapter_denylist = effective_deny
         _ts = (ir.get("services") or {}).get("tool_surface")
         _ts_eff = effective_tool_surface(_ts) if isinstance(_ts, dict) else None
         allowed, self._tool_surface_allow = narrow_allowed_adapters(allowed, _ts_eff if _ts_eff is not None else _ts)
@@ -430,6 +459,8 @@ class RuntimeEngine:
         host_adapter_allowlist: Optional[List[str]] = None,
         host_adapter_denylist: Optional[List[str]] = None,
         preserved_services: Optional[Dict[str, Any]] = None,
+        pure: bool = False,
+        safe_trace: bool = True,
     ) -> "RuntimeEngine":
         if source_path:
             try:
@@ -448,7 +479,7 @@ class RuntimeEngine:
                         os.environ["AINL_ALLOW_IR_DECLARED_ADAPTERS"] = "1"
             except Exception:
                 pass
-        c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability)
+        c = AICodeCompiler(strict_mode=strict, strict_reachability=strict_reachability, pure=pure)
         ir = c.compile(code, emit_graph=True, source_path=source_path, preserved_services=preserved_services)
         if ir.get("errors"):
             raise RuntimeError("compile failed: " + "; ".join(ir.get("errors", [])[:5]))
@@ -469,6 +500,8 @@ class RuntimeEngine:
             observability_jsonl_path=observability_jsonl_path,
             host_adapter_allowlist=host_adapter_allowlist,
             host_adapter_denylist=host_adapter_denylist,
+            source_path=source_path,
+            safe_trace=safe_trace,
         )
 
     @classmethod
@@ -642,12 +675,15 @@ class RuntimeEngine:
             if isinstance(messages, list):
                 self.observability.emit("reactive.events_per_batch", len(messages), labels=labels)
 
-    def _resolve(self, token: Any, frame: Dict[str, Any]) -> Any:
+    def _resolve(self, token: Any, frame: Dict[str, Any], *, literal: bool = False) -> Any:
         if isinstance(token, str):
-            if token.startswith("$"):
-                return frame.get(token[1:])
-            if token in frame:
-                return frame[token]
+            # Quoted literals never consult the frame. Bare words and $name do.
+            # Numeric and true/false/null coercion is unchanged, so EQ "1" 1 stays true.
+            if not literal:
+                if token.startswith("$"):
+                    return frame.get(token[1:])
+                if token in frame:
+                    return frame[token]
             if token == "true":
                 return True
             if token == "false":
@@ -673,6 +709,13 @@ class RuntimeEngine:
                 pass
         return token
 
+    def _resolve_many(self, tokens: List[Any], frame: Dict[str, Any], mask: Optional[List[bool]]) -> List[Any]:
+        flags = list(mask or [])
+        return [
+            self._resolve(tok, frame, literal=bool(flags[i]) if i < len(flags) else False)
+            for i, tok in enumerate(tokens)
+        ]
+
     def _eval_cond(self, cond: Any, frame: Dict[str, Any]) -> bool:
         """Match compiler_v2 condition token semantics: var, var?, var=value."""
         if cond is None:
@@ -696,7 +739,7 @@ class RuntimeEngine:
         if not dst:
             raise AinlRuntimeError("X missing destination variable", lid, idx, "X", stack, code=ERROR_CODE_X_MISSING_DST)
         fn = (step.get("fn") or "").strip()
-        args = [self._resolve(a, frame) for a in (step.get("args") or [])]
+        args = self._resolve_many(list(step.get("args") or []), frame, step.get("literal_args"))
         if fn == "add":
             frame[dst] = (args[0] if len(args) > 0 else 0) + (args[1] if len(args) > 1 else 0)
         elif fn == "sub":
@@ -827,10 +870,9 @@ class RuntimeEngine:
                 length = max(0, length)
                 frame[dst] = s[start : start + length]
             elif sub_fn == "env":
-                import os as _os
                 name = str(args[0]) if args else ""
                 default = None if len(args) < 2 else args[1]
-                frame[dst] = _os.environ.get(name, default) if name else None
+                frame[dst] = read_env(name, self.limits.get("env_allowlist"), default)
             else:
                 # Fall through to adapter call for any other core.* function
                 try:
@@ -874,12 +916,15 @@ class RuntimeEngine:
             "step_id": sid,
             "label": label,
             "operation": operation,
-            "inputs": self._trajectory_inputs_payload(trajectory_step, node_id),
-            "output": json_safe(output),
             "outcome": outcome,
             "timestamp": ts,
-            "user_reward": json_safe(frame.get("_trajectory_user_reward")),
         }
+        if self._trajectory_include_values:
+            rec["inputs"] = self._trajectory_inputs_payload(trajectory_step, node_id)
+            rec["output"] = json_safe(output)
+            rec["user_reward"] = json_safe(frame.get("_trajectory_user_reward"))
+        elif isinstance(output, dict) and isinstance(output.get("error"), str):
+            rec["error_code"] = output.get("type") or "error"
         if self._avm_event_hasher is not None:
             rec["avm_event_hash"] = self._avm_event_hasher(rec)
         if self._sandbox_metadata_provider is not None:
@@ -936,9 +981,10 @@ class RuntimeEngine:
                 "step": idx,
                 "lineno": self._trace_lineno,
                 "duration_ms": round((time.perf_counter() - start) * 1000, 3),
-                "out": json_safe(out),
-                "frame_keys": sorted(list(frame.keys())),
             }
+            if not self.safe_trace:
+                event["out"] = json_safe(out)
+                event["frame_keys"] = sorted(list(frame.keys()))
             if node_id is not None:
                 event["node_id"] = node_id
             if port_taken is not None:
@@ -1024,8 +1070,144 @@ class RuntimeEngine:
         raw = await self.adapters.call_async("ainl_graph_memory", "persona_load", [], call_ctx)
         return self._persona_apply_bridge_payload(frame, raw)
 
+    _PURE_CORE = frozenset({"NOW", "ISO", "ISO_TS", "ENV", "SLEEP", "UUID"})
+
+    def _assert_pure_label(self, label_id: str, seen: set) -> None:
+        lid = _norm_lid(label_id)
+        if not lid or lid in seen:
+            return
+        if self.limits.get("allow_effectful_map"):
+            return
+        seen.add(lid)
+        body = self.labels.get(lid) or {}
+        steps = ((body.get("legacy") or {}).get("steps") or [])
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            op = step.get("op")
+            if op == "R":
+                adapter = str(step.get("adapter") or "")
+                ns, _, verb = adapter.partition(".")
+                if ns.lower() != "core" or verb.upper() in self._PURE_CORE:
+                    raise AinlRuntimeError(
+                        "collection label must stay pure",
+                        lid,
+                        0,
+                        op or "R",
+                        [],
+                        code=ERROR_CODE_PURE,
+                    )
+            elif op == "Call" and not step.get("file"):
+                self._assert_pure_label(str(step.get("label") or ""), seen)
+            elif op in ("CacheGet", "CacheSet", "QueuePut"):
+                raise AinlRuntimeError(
+                    "collection label must stay pure",
+                    lid,
+                    0,
+                    str(op),
+                    [],
+                    code=ERROR_CODE_PURE,
+                )
+
+    def _eval_collection(self, verb: str, items: Any, args: List[Any], frame: Dict[str, Any], stack: List[str]) -> Any:
+        if not isinstance(items, list):
+            raise AinlRuntimeError("collection op expects a list", stack[-1] if stack else "", 0, verb, stack, code=ERROR_CODE_PURE)
+        cap = self._limit_int("max_loop_iters")
+        if cap is None:
+            cap = 10000
+        if len(items) > cap:
+            raise AinlRuntimeError("collection exceeds max_loop_iters", stack[-1] if stack else "", 0, verb, stack, code=ERROR_CODE_MAX_LOOP_ITERS)
+        label = _norm_lid(args[0] if args else "")
+        if not label:
+            raise AinlRuntimeError("collection op requires a label", stack[-1] if stack else "", 0, verb, stack, code=ERROR_CODE_PURE)
+        self._assert_pure_label(label, set())
+        if verb == "map":
+            item_name = str(args[1]) if len(args) > 1 else "item"
+            out: List[Any] = []
+            for it in items:
+                child = dict(frame)
+                child[item_name] = it
+                out.append(self._run_label(label, child, stack))
+            return out
+        if verb == "filter":
+            item_name = str(args[1]) if len(args) > 1 else "item"
+            kept: List[Any] = []
+            for it in items:
+                child = dict(frame)
+                child[item_name] = it
+                if truthy(self._run_label(label, child, stack)):
+                    kept.append(it)
+            return kept
+        acc = args[1] if len(args) > 1 else None
+        item_name = str(args[2]) if len(args) > 2 else "item"
+        acc_name = str(args[3]) if len(args) > 3 else "acc"
+        for it in items:
+            child = dict(frame)
+            child[item_name] = it
+            child[acc_name] = acc
+            acc = self._run_label(label, child, stack)
+        return acc
+
+    def _child_frame(self, step: Dict[str, Any], frame: Dict[str, Any]) -> Dict[str, Any]:
+        if step.get("fresh") or step.get("file"):
+            return {str(k): frame.get(k) for k in (step.get("inputs") or [])}
+        return frame
+
+    def _call_file(self, step: Dict[str, Any], frame: Dict[str, Any], stack: List[str]) -> Any:
+        rel = str(step.get("file") or "")
+        if not self.source_path:
+            raise AinlRuntimeError("Call file requires a source path", stack[-1] if stack else "", 0, "Call", stack, code=ERROR_CODE_PURE)
+        path = Path(rel)
+        if path.is_absolute() or ".." in path.parts:
+            raise AinlRuntimeError("Call file path must stay inside the source directory", stack[-1] if stack else "", 0, "Call", stack, code=ERROR_CODE_PURE)
+        base = Path(self.source_path).resolve().parent
+        target = (base / path).resolve()
+        if base != target and base not in target.parents:
+            raise AinlRuntimeError("Call file path must stay inside the source directory", stack[-1] if stack else "", 0, "Call", stack, code=ERROR_CODE_PURE)
+        if self._call_depth >= 8:
+            raise AinlRuntimeError("call depth exceeded", stack[-1] if stack else "", 0, "Call", stack, code=ERROR_CODE_PURE)
+        text = target.read_text(encoding="utf-8")
+        child = RuntimeEngine.from_code(
+            text,
+            strict=True,
+            pure=bool(self.ir.get("pure")),
+            adapters=self.adapters,
+            source_path=str(target),
+            limits=self.limits,
+            host_adapter_allowlist=self.host_adapter_allowlist,
+            host_adapter_denylist=self.host_adapter_denylist,
+            safe_trace=self.safe_trace,
+        )
+        child._call_depth = self._call_depth + 1
+        child._llm_budget = self._llm_budget
+        return child.run_label(_norm_lid(step.get("label") or "1"), self._child_frame(step, frame))
+
+    def _check_return_union(self, value: Any) -> None:
+        spec = self.ir.get("returns")
+        if not spec:
+            return
+        kind = spec.get("kind")
+        if kind == "number":
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise AinlRuntimeError("return is outside the declared union", "", 0, "J", [], code=ERROR_CODE_RETURN_UNION)
+            return
+        allowed = list(spec.get("values") or [])
+        if not any(value == item for item in allowed):
+            raise AinlRuntimeError("return is outside the declared union", "", 0, "J", [], code=ERROR_CODE_RETURN_UNION)
+
     def _exec_r_call(
-        self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
+        self,
+        adapter: str,
+        target: str,
+        args: List[Any],
+        frame: Dict[str, Any],
+        lid: str,
+        idx: int,
+        op: str,
+        stack: List[str],
+        *,
+        literal_target: bool = False,
+        literal_args: Optional[List[bool]] = None,
     ) -> Any:
         self._tool_patch_guard(adapter, lid, idx, op, stack)
         self._count_adapter_call(lid, idx, op, stack)
@@ -1035,7 +1217,7 @@ class RuntimeEngine:
             # Graph-mode R steps put the first operand in `target` without pre-resolving; step-mode
             # does the same via _exec_r_step. Resolve here so frame variables (e.g. core.PARSE var)
             # work consistently with JSON literals that pass through _resolve unchanged.
-            t0 = self._resolve(target, frame) if isinstance(target, str) else target
+            t0 = self._resolve(target, frame, literal=literal_target) if isinstance(target, str) else target
             call_ctx = dict(frame)
             call_ctx["_runtime_async"] = self.runtime_async
             call_ctx["_observability"] = self.observability
@@ -1043,6 +1225,10 @@ class RuntimeEngine:
             verb_l = str(verb).lower()
             emit_adp, emit_tgt = adp_name, verb
             try:
+                special = self._guard_r(adp_name, verb_l, t0, args, frame, stack, lid, idx, op, literal_args)
+                if special[0] == "handled":
+                    out = special[1]
+                    return out
                 if adp_name == "persona" and verb_l == "load":
                     out = self._persona_load_into_frame(frame, call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_load"
@@ -1146,9 +1332,13 @@ class RuntimeEngine:
                                 stack=stack,
                             )
                     else:
+                        self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
                         out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+                        out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 else:
+                    self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
                     out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+                    out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 return out
             finally:
                 duration_ms = round((time.perf_counter() - started) * 1000, 3)
@@ -1176,8 +1366,200 @@ class RuntimeEngine:
             if "out" in locals():
                 self._record_reactive_metrics(adapter, target, out)
 
+    def _host_limit(self, key: str, default: int) -> int:
+        raw = self.limits.get(key, default)
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return default
+
+    def _prepare_adapter_call(
+        self,
+        call_ctx: Dict[str, Any],
+        adp_name: str,
+        verb_l: str,
+        lid: str,
+        idx: int,
+        op: str,
+        stack: List[str],
+    ) -> None:
+        call_ctx["_env_allowlist"] = [str(item) for item in (self.limits.get("env_allowlist") or [])]
+        if adp_name != "llm" or verb_l not in {"completion", "embed"}:
+            return
+        cap = self._host_limit("max_completion_calls", 8)
+        if self._llm_budget["calls"] >= cap:
+            raise AinlRuntimeError(
+                "completion call cap exceeded",
+                lid,
+                idx,
+                op,
+                stack,
+                code=ERROR_CODE_LLM_BUDGET,
+            )
+        self._llm_budget["calls"] += 1
+
+    def _finish_adapter_call(
+        self,
+        adp_name: str,
+        verb_l: str,
+        out: Any,
+        lid: str,
+        idx: int,
+        op: str,
+        stack: List[str],
+    ) -> Any:
+        if adp_name == "db" and verb_l == "q":
+            return self._cap_query_result(out)
+        if adp_name == "llm" and verb_l in {"completion", "embed"}:
+            tokens = 0
+            # Tokens come only from this return value. Counts stored on the
+            # adapter object are invisible, so a host that has not moved to
+            # the completion object does not trip the token cap.
+            usage = out.get("usage") if isinstance(out, dict) else None
+            if isinstance(usage, dict):
+                try:
+                    tokens = int(usage.get("total_tokens") or 0)
+                except (TypeError, ValueError):
+                    tokens = 0
+            self._llm_budget["tokens"] += max(0, tokens)
+            if self._llm_budget["tokens"] > self._host_limit("max_completion_tokens", 32000):
+                raise AinlRuntimeError(
+                    "completion token cap exceeded",
+                    lid,
+                    idx,
+                    op,
+                    stack,
+                    code=ERROR_CODE_LLM_BUDGET,
+                )
+        return out
+
+    def _cap_query_result(self, rows: Any) -> Any:
+        """Keep a query result out of the frame when it exceeds the host cap.
+
+        The error value does not include the rows. A partial list would be a
+        silent decision change.
+        """
+        max_rows = self._host_limit("max_query_rows", 25)
+        max_bytes = self._host_limit("max_query_bytes", 262144)
+        if not isinstance(rows, list) or len(rows) > max_rows:
+            return {"error": {"code": "DB_QUERY_CAP", "message": "query exceeded the row cap"}}
+        try:
+            size = len(json.dumps(rows, default=str).encode("utf-8"))
+        except (TypeError, ValueError):
+            return {"error": {"code": "DB_QUERY_CAP", "message": "query exceeded the byte cap"}}
+        if size > max_bytes:
+            return {"error": {"code": "DB_QUERY_CAP", "message": "query exceeded the byte cap"}}
+        return rows
+
+    def _check_db_query(
+        self,
+        query: Any,
+        params: Any,
+        partition: Any,
+        mask: List[bool],
+        lid: str,
+        idx: int,
+        op: str,
+        stack: List[str],
+    ) -> None:
+        text = query if isinstance(query, str) else ""
+        if any(token in text for token in _QUERY_INTERPOLATION):
+            raise AinlRuntimeError(
+                "db.Q query must not interpolate parameters",
+                lid,
+                idx,
+                op,
+                stack,
+                code=ERROR_CODE_DB_QUERY_PARAMS,
+            )
+        if not isinstance(params, dict):
+            raise AinlRuntimeError(
+                "db.Q params must be a dict",
+                lid,
+                idx,
+                op,
+                stack,
+                code=ERROR_CODE_DB_QUERY_PARAMS,
+            )
+        for name in _QUERY_PARAM.findall(text):
+            if name not in params:
+                raise AinlRuntimeError(
+                    "db.Q parameter is not bound",
+                    lid,
+                    idx,
+                    op,
+                    stack,
+                    code=ERROR_CODE_DB_QUERY_PARAMS,
+                )
+        if partition is None or (isinstance(partition, str) and partition.strip() == ""):
+            raise AinlRuntimeError(
+                "db.Q requires a partition key or a literal *",
+                lid,
+                idx,
+                op,
+                stack,
+                code=ERROR_CODE_DB_QUERY_PARTITION,
+            )
+        if str(partition) == "*" and (len(mask) < 3 or not mask[2]):
+            raise AinlRuntimeError(
+                "db.Q cross-partition flag must be a source literal",
+                lid,
+                idx,
+                op,
+                stack,
+                code=ERROR_CODE_DB_QUERY_PARTITION,
+            )
+
+    def _guard_r(self, adp_name: str, verb_l: str, t0: Any, args: List[Any], frame: Dict[str, Any], stack: List[str], lid: str, idx: int, op: str, literal_args: Optional[List[bool]]) -> Any:
+        if adp_name == "db" and verb_l == "q":
+            mask = list(literal_args or [])
+            if not mask or not mask[0]:
+                raise AinlRuntimeError(
+                    "db.Q query must be a quoted literal",
+                    lid,
+                    idx,
+                    op,
+                    stack,
+                    code=ERROR_CODE_DB_QUERY_LITERAL,
+                )
+            self._check_db_query(
+                args[0] if args else "",
+                args[1] if len(args) > 1 else None,
+                args[2] if len(args) > 2 else None,
+                mask,
+                lid,
+                idx,
+                op,
+                stack,
+            )
+        if adp_name == "db" and verb_l == "m":
+            etag = args[2] if len(args) > 2 else None
+            if not isinstance(etag, str) or not etag.strip():
+                raise AinlRuntimeError(
+                    "db.M requires an etag",
+                    lid,
+                    idx,
+                    op,
+                    stack,
+                    code=ERROR_CODE_DB_MERGE_ETAG,
+                )
+        if adp_name == "core" and verb_l in ("map", "filter", "reduce"):
+            return ("handled", self._eval_collection(verb_l, t0, args, frame, stack))
+        return ("pass", None)
+
     async def _exec_r_call_async(
-        self, adapter: str, target: str, args: List[Any], frame: Dict[str, Any], lid: str, idx: int, op: str, stack: List[str]
+        self,
+        adapter: str,
+        target: str,
+        args: List[Any],
+        frame: Dict[str, Any],
+        lid: str,
+        idx: int,
+        op: str,
+        stack: List[str],
+        *,
+        literal_target: bool = False,
+        literal_args: Optional[List[bool]] = None,
     ) -> Any:
         self._tool_patch_guard(adapter, lid, idx, op, stack)
         self._count_adapter_call(lid, idx, op, stack)
@@ -1188,10 +1570,14 @@ class RuntimeEngine:
         call_ctx["_adapter_registry"] = self.adapters
         if "." in adapter:
             adp_name, verb = adapter.split(".", 1)
-            t0 = self._resolve(target, frame) if isinstance(target, str) else target
+            t0 = self._resolve(target, frame, literal=literal_target) if isinstance(target, str) else target
             verb_l = str(verb).lower()
             emit_adp, emit_tgt = adp_name, verb
             try:
+                special = self._guard_r(adp_name, verb_l, t0, args, frame, stack, lid, idx, op, literal_args)
+                if special[0] == "handled":
+                    out = special[1]
+                    return out
                 if adp_name == "persona" and verb_l == "load":
                     out = await self._persona_load_into_frame_async(frame, call_ctx)
                     emit_adp, emit_tgt = "ainl_graph_memory", "persona_load"
@@ -1297,9 +1683,13 @@ class RuntimeEngine:
                                 stack=stack,
                             )
                     else:
+                        self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
                         out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
+                        out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 else:
+                    self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
                     out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
+                    out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 return out
             finally:
                 duration_ms = round((time.perf_counter() - started) * 1000, 3)
@@ -1330,16 +1720,27 @@ class RuntimeEngine:
             raise RuntimeError("R step missing adapter")
         target = canon.get("target", "")
         raw_args = list(canon.get("args") or [])
-        args = [self._resolve(x, frame) for x in raw_args]
+        args = self._resolve_many(raw_args, frame, step.get("literal_args"))
         out_var = str(canon.get("out") or "res")
-        frame[out_var] = self._exec_r_call(adapter, target, args, frame, lid, idx, op, stack)
+        frame[out_var] = self._exec_r_call(
+            adapter,
+            target,
+            args,
+            frame,
+            lid,
+            idx,
+            op,
+            stack,
+            literal_target=bool(step.get("literal_target")),
+            literal_args=step.get("literal_args"),
+        )
         return out_var
 
     def _exec_set(self, step: Dict[str, Any], frame: Dict[str, Any]) -> Any:
         name = step.get("name")
         if not name:
             raise RuntimeError("Set missing destination variable")
-        frame[name] = self._resolve(step.get("ref"), frame)
+        frame[name] = self._resolve(step.get("ref"), frame, literal=bool(step.get("literal_ref")))
         return frame.get(name)
 
     def _exec_filt(self, step: Dict[str, Any], frame: Dict[str, Any]) -> Any:
@@ -1544,12 +1945,20 @@ class RuntimeEngine:
                 return {"action": "return", "out": out}
             return {"action": if_none_action, "out": out}
         if op == "J":
-            # Return the resolved value of the named variable (or literal).
-            out = self._resolve(step.get("var") or step.get("data"), frame)
+            # Return the resolved value of the named variable (or literal). J is return, not goto.
+            tok = step.get("var") if step.get("var") is not None else step.get("data")
+            out = self._resolve(tok, frame, literal=bool(step.get("literal_var")))
             return {"action": "return", "out": out}
+        if op == "Break":
+            tok = step.get("var")
+            val = None if tok is None else self._resolve(tok, frame, literal=bool(step.get("literal_var")))
+            raise LoopBreak(val)
         if op == "Call":
-            tgt = _norm_lid(step.get("label"))
-            out = self._run_label(tgt, frame, stack, force_steps=force_steps_for_call)
+            if step.get("file"):
+                out = self._call_file(step, frame, stack)
+            else:
+                tgt = _norm_lid(step.get("label"))
+                out = self._run_label(tgt, self._child_frame(step, frame), stack, force_steps=force_steps_for_call)
             self._store_call_result(step, frame, out)
             return {"action": "continue", "out": out}
         if op == "Set":
@@ -2009,15 +2418,22 @@ class RuntimeEngine:
                         raise AinlRuntimeError("max_loop_iters exceeded", lid, i, op, stack, code=ERROR_CODE_MAX_LOOP_ITERS)
                     sentinel = object()
                     prev_item = frame.get(item_var, sentinel)
+                    broken: Optional[LoopBreak] = None
                     for it in arr:
                         frame[item_var] = it
-                        out = self._run_label(body_lid, frame, stack)
+                        try:
+                            out = self._run_label(body_lid, frame, stack)
+                        except LoopBreak as br:
+                            broken = br
+                            break
                         if out is not None:
                             frame["_loop_last"] = out
                     if prev_item is sentinel:
                         frame.pop(item_var, None)
                     else:
                         frame[item_var] = prev_item
+                    if broken is not None:
+                        return broken.value
                     if after:
                         out = self._run_label(after, frame, stack)
                         if out is not None:
@@ -2036,7 +2452,10 @@ class RuntimeEngine:
                         limit = min(limit, max_loop_iters)
                     n = 0
                     while self._eval_cond(cond_tok, frame):
-                        out = self._run_label(body_lid, frame, stack)
+                        try:
+                            out = self._run_label(body_lid, frame, stack)
+                        except LoopBreak as br:
+                            return br.value
                         n += 1
                         if n > limit:
                             raise AinlRuntimeError(
@@ -2149,6 +2568,8 @@ class RuntimeEngine:
                     self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
                     return self._run_label(err_handler, frame, stack)
                 self._emit_trajectory_fail(lid, op, frame, s, e, node_id=None)
+                raise
+            except LoopBreak:
                 raise
             except Exception as e:
                 retry_cfg = retry_routes.get(i)
@@ -2287,7 +2708,7 @@ class RuntimeEngine:
                 if op == "R":
                     adapter = step.get("adapter", "")
                     target = step.get("target", "")
-                    args = [self._resolve(x, frame) for x in (step.get("args") or [])]
+                    args = self._resolve_many(list(step.get("args") or []), frame, step.get("literal_args"))
                     out_var = step.get("out", "res")
                     shared = self._exec_step(
                         step,
@@ -2296,7 +2717,18 @@ class RuntimeEngine:
                         idx,
                         stack,
                         force_steps_for_call=False,
-                        r_executor=lambda _s, _f: self._exec_r_call(adapter, target, args, frame, lid, idx, op, stack),
+                        r_executor=lambda _s, _f: self._exec_r_call(
+                            adapter,
+                            target,
+                            args,
+                            frame,
+                            lid,
+                            idx,
+                            op,
+                            stack,
+                            literal_target=bool(step.get("literal_target")),
+                            literal_args=step.get("literal_args"),
+                        ),
                     )
                     self._emit_trace(
                         lid,
@@ -2343,6 +2775,7 @@ class RuntimeEngine:
 
                 elif op in (
                     "J",
+                    "Break",
                     "Call",
                     "Set",
                     "Filt",
@@ -2385,16 +2818,23 @@ class RuntimeEngine:
                         )
                     sentinel = object()
                     prev_item = frame.get(item_var, sentinel)
+                    broken_g: Optional[LoopBreak] = None
                     for it in arr:
                         frame[item_var] = it
                         if body_edge:
-                            out = self._run_label(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            try:
+                                out = self._run_label(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            except LoopBreak as br:
+                                broken_g = br
+                                break
                             if out is not None:
                                 frame["_loop_last"] = out
                     if prev_item is sentinel:
                         frame.pop(item_var, None)
                     else:
                         frame[item_var] = prev_item
+                    if broken_g is not None:
+                        return broken_g.value
                     if after_edge:
                         out = self._run_label(_norm_lid(after_edge.get("to")), frame, stack, force_steps=False)
                         if out is not None:
@@ -2433,7 +2873,10 @@ class RuntimeEngine:
                                 code=ERROR_CODE_WHILE_LIMIT,
                             )
                         if body_edge:
-                            out = self._run_label(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            try:
+                                out = self._run_label(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            except LoopBreak as br:
+                                return br.value
                             if out is not None:
                                 frame["_while_last"] = out
                     if after_edge:
@@ -2679,6 +3122,8 @@ class RuntimeEngine:
                         continue
                 self._emit_trajectory_fail(lid, op, frame, step, e, node_id=cur)
                 raise
+            except LoopBreak:
+                raise
             except Exception as e:
                 retry_policy = self._retry_policy_from_graph(cur, edge_by_from_port_kind, node_by_id, frame)
                 if retry_policy and cur:
@@ -2723,7 +3168,12 @@ class RuntimeEngine:
         return None
 
     def run_label(self, label_id: str, frame: Optional[Dict[str, Any]] = None) -> Any:
-        return self._run_label(_norm_lid(label_id), dict(frame or {}), [], force_steps=False)
+        try:
+            out = self._run_label(_norm_lid(label_id), dict(frame or {}), [], force_steps=False)
+        except LoopBreak:
+            raise AinlRuntimeError("Break outside of a loop", _norm_lid(label_id), 0, "Break", [], code=ERROR_CODE_BREAK_OUTSIDE)
+        self._check_return_union(out)
+        return out
 
     async def _run_label_async(self, label_id: str, frame: Dict[str, Any], stack: List[str], force_steps: bool = False) -> Any:
         if not stack:
@@ -2763,9 +3213,20 @@ class RuntimeEngine:
                     canon = runtime_canonicalize_r_step(s)
                     adapter = str(canon.get("adapter") or "").strip()
                     target = canon.get("target", "")
-                    args = [self._resolve(x, frame) for x in list(canon.get("args") or [])]
+                    args = self._resolve_many(list(canon.get("args") or []), frame, s.get("literal_args"))
                     out_var = str(canon.get("out") or "res")
-                    frame[out_var] = await self._exec_r_call_async(adapter, target, args, frame, lid, i, op, stack)
+                    frame[out_var] = await self._exec_r_call_async(
+                        adapter,
+                        target,
+                        args,
+                        frame,
+                        lid,
+                        i,
+                        op,
+                        stack,
+                        literal_target=bool(s.get("literal_target")),
+                        literal_args=s.get("literal_args"),
+                    )
                     self._emit_trace(lid, op, i, t0, frame, frame.get(out_var), trajectory_step=s)
                     i += 1
                     continue
@@ -2779,14 +3240,17 @@ class RuntimeEngine:
                     i += 1
                     continue
                 if op == "Call":
-                    tgt = _norm_lid(s.get("label"))
-                    out = await self._run_label_async(tgt, frame, stack, force_steps=False)
+                    if s.get("file"):
+                        out = self._call_file(s, frame, stack)
+                    else:
+                        tgt = _norm_lid(s.get("label"))
+                        out = await self._run_label_async(tgt, self._child_frame(s, frame), stack, force_steps=False)
                     self._store_call_result(s, frame, out)
                     self._emit_trace(lid, op, i, t0, frame, out, trajectory_step=s)
                     i += 1
                     continue
                 if op == "J":
-                    out = self._resolve(s.get("var") or s.get("data"), frame)
+                    out = self._resolve(s.get("var") or s.get("data"), frame, literal=bool(s.get("literal_var")))
                     self._emit_trace(lid, op, i, t0, frame, out, trajectory_step=s)
                     return out
                 if op == "Loop":
@@ -2800,7 +3264,10 @@ class RuntimeEngine:
                         raise AinlRuntimeError("max_loop_iters exceeded", lid, i, op, stack, code=ERROR_CODE_MAX_LOOP_ITERS)
                     for it in arr:
                         frame[item_var] = it
-                        out = await self._run_label_async(body_l, frame, stack, force_steps=False)
+                        try:
+                            out = await self._run_label_async(body_l, frame, stack, force_steps=False)
+                        except LoopBreak as br:
+                            return br.value
                         if out is not None:
                             frame["_loop_last"] = out
                     if after:
@@ -2820,7 +3287,10 @@ class RuntimeEngine:
                         limit = min(limit, max_loop_iters)
                     n = 0
                     while self._eval_cond(cond_tok, frame):
-                        out = await self._run_label_async(body_l, frame, stack, force_steps=False)
+                        try:
+                            out = await self._run_label_async(body_l, frame, stack, force_steps=False)
+                        except LoopBreak as br:
+                            return br.value
                         n += 1
                         if n > limit:
                             raise AinlRuntimeError(
@@ -2861,6 +3331,8 @@ class RuntimeEngine:
                 # broad except below would otherwise rewrap as RUNTIME_OP_ERROR.
                 # See sync sibling at L2297.
                 self._emit_trajectory_fail(lid, op, frame, s, None)
+                raise
+            except LoopBreak:
                 raise
             except Exception as e:
                 self._raise_runtime_error(e, lid, i, op, stack, frame, s)
@@ -2904,9 +3376,20 @@ class RuntimeEngine:
                 if op == "R":
                     adapter = step.get("adapter", "")
                     target = step.get("target", "")
-                    args = [self._resolve(x, frame) for x in (step.get("args") or [])]
+                    args = self._resolve_many(list(step.get("args") or []), frame, step.get("literal_args"))
                     out_var = step.get("out", "res")
-                    frame[out_var] = await self._exec_r_call_async(adapter, target, args, frame, lid, idx, op, stack)
+                    frame[out_var] = await self._exec_r_call_async(
+                        adapter,
+                        target,
+                        args,
+                        frame,
+                        lid,
+                        idx,
+                        op,
+                        stack,
+                        literal_target=bool(step.get("literal_target")),
+                        literal_args=step.get("literal_args"),
+                    )
                     self._emit_trace(lid, op, idx, t0, frame, frame.get(out_var), node_id=cur, trajectory_step=step)
                 elif op == "If":
                     then_edge = edge_by_from_port_kind.get((cur, "then", "label"))
@@ -2917,8 +3400,11 @@ class RuntimeEngine:
                     self._emit_trace(lid, op, idx, t0, frame, out, node_id=cur, trajectory_step=step)
                     return out
                 elif op == "Call":
-                    tgt = _norm_lid(step.get("label"))
-                    out = await self._run_label_async(tgt, frame, stack, force_steps=False)
+                    if step.get("file"):
+                        out = self._call_file(step, frame, stack)
+                    else:
+                        tgt = _norm_lid(step.get("label"))
+                        out = await self._run_label_async(tgt, self._child_frame(step, frame), stack, force_steps=False)
                     self._store_call_result(step, frame, out)
                     self._emit_trace(lid, op, idx, t0, frame, out, node_id=cur, trajectory_step=step)
                 elif op == "Loop":
@@ -2933,7 +3419,10 @@ class RuntimeEngine:
                     for it in arr:
                         frame[item_var] = it
                         if body_edge:
-                            out = await self._run_label_async(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            try:
+                                out = await self._run_label_async(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            except LoopBreak as br:
+                                return br.value
                             if out is not None:
                                 frame["_loop_last"] = out
                     if after_edge:
@@ -2964,7 +3453,10 @@ class RuntimeEngine:
                                 code=ERROR_CODE_WHILE_LIMIT,
                             )
                         if body_edge:
-                            out = await self._run_label_async(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            try:
+                                out = await self._run_label_async(_norm_lid(body_edge.get("to")), frame, stack, force_steps=False)
+                            except LoopBreak as br:
+                                return br.value
                             if out is not None:
                                 frame["_while_last"] = out
                     if after_edge:
@@ -2975,7 +3467,7 @@ class RuntimeEngine:
                     cur = None
                     continue
                 elif op == "J":
-                    out = self._resolve(step.get("var") or step.get("data"), frame)
+                    out = self._resolve(step.get("var") or step.get("data"), frame, literal=bool(step.get("literal_var")))
                     self._emit_trace(lid, op, idx, t0, frame, out, node_id=cur, trajectory_step=step)
                     return out
                 else:
@@ -2993,12 +3485,19 @@ class RuntimeEngine:
                 # L2848.
                 self._emit_trajectory_fail(lid, op, frame, step, e, node_id=cur)
                 raise
+            except LoopBreak:
+                raise
             except Exception as e:
                 self._raise_runtime_error(e, lid, idx, op, stack, frame, step, node_id=cur)
         return None
 
     async def run_label_async(self, label_id: str, frame: Optional[Dict[str, Any]] = None) -> Any:
-        return await self._run_label_async(_norm_lid(label_id), dict(frame or {}), [], force_steps=False)
+        try:
+            out = await self._run_label_async(_norm_lid(label_id), dict(frame or {}), [], force_steps=False)
+        except LoopBreak:
+            raise AinlRuntimeError("Break outside of a loop", _norm_lid(label_id), 0, "Break", [], code=ERROR_CODE_BREAK_OUTSIDE)
+        self._check_return_union(out)
+        return out
 
     # ---- Public trace / step helpers for agents ----
 

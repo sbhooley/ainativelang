@@ -48,6 +48,8 @@ def _build_registry() -> AdapterRegistry:
             default_timeout_s=10.0,
             max_response_bytes=256_000,
             allow_hosts=["127.0.0.1"],
+            https_only=False,
+            allow_insecure_local=True,
             payment_profile="auto",
             max_payment_rounds=2,
         ),

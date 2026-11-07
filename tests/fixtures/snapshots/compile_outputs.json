@@ -45,7 +45,7 @@
     {
       "path": "examples/retry_error_resilience.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:830bb68c07a352e936201db857e8a3d6107611ae90bb54f23b012f9fd1a8565c",
+      "graph_semantic_checksum": "sha256:3508d96063ace0f5ec1c9cacb51575cca358a60193661cc610da1595aed03c21",
       "labels": [
         "1",
         "_fail"
@@ -58,7 +58,7 @@
     {
       "path": "examples/if_call_workflow.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:c7c80bfe7f15c4448c3e05dd1b5071461fe5d2712e95e1ee133a22bca0667fbf",
+      "graph_semantic_checksum": "sha256:0aca81dcd1cbc8f66ef708534499c161d1574ea618c1bbce969aeb5ff24d0c86",
       "labels": [
         "1",
         "2",
@@ -74,7 +74,7 @@
     {
       "path": "examples/webhook_automation.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:2ca00a86fcf7a6497e4a6ba7ccc497e7cb121a404ad941e7b012166706aeb6c7",
+      "graph_semantic_checksum": "sha256:f45aed7438a740f7037fb70793d3fbc816b31cd5e068efcaef846bcc60437cd4",
       "labels": [
         "1",
         "2",
@@ -88,7 +88,7 @@
     {
       "path": "examples/monitor_escalation.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:b66570662c02f8613c1dcd1fb0492d09e0a2967445a37c5cf2c3eb92a2181b5c",
+      "graph_semantic_checksum": "sha256:5386373c864eba215ebae29b8f526a3c34678b769d95ede2124c10251db37537",
       "labels": [
         "_escalate",
         "_noop",
@@ -118,7 +118,7 @@
     {
       "path": "examples/scraper/basic_scraper.ainl",
       "strict": true,
-      "graph_semantic_checksum": "sha256:a57df139ba695e2776c00854a2775f6bccc9241fb18f4ba5bf719e79f740cf9f",
+      "graph_semantic_checksum": "sha256:3a6efbb0b1e331f4017a89b977a17e5dd0e75c62be7fd0dd30c984a067e79d8b",
       "labels": [
         "_scrape"
       ],
@@ -164,7 +164,7 @@
     {
       "path": "examples/golden/01_web_server.ainl",
       "strict": false,
-      "graph_semantic_checksum": "sha256:079dd0bc35ba83582c152d5deffba5963ffe55a01295e4ab5d9b4d0f82e7728c",
+      "graph_semantic_checksum": "sha256:9c4f4d1b74e37ccce260565ae6eadb628c641fb295678a83f023bb61f2c91a2c",
       "labels": [
         "0",
         "1",

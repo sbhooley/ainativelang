@@ -23,7 +23,11 @@ L1:
   X v (core.env "AINL_TEST_NONEXISTENT_ENV_KEY_XYZ" "fallback")
   J v
 """
-    eng = RuntimeEngine.from_code(code, strict=False)
+    eng = RuntimeEngine.from_code(
+        code,
+        strict=False,
+        limits={"env_allowlist": ["AINL_TEST_NONEXISTENT_ENV_KEY_XYZ"]},
+    )
     assert eng.run_label("1", {}) == "fallback"
 
 

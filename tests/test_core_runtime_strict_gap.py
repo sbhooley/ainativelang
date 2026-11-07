@@ -7,8 +7,9 @@ Three guarantees:
    ``CoreBuiltinAdapter`` (never raises "unsupported core builtin target").
 2. Every verb in ``CORE_RUNTIME_UNIMPLEMENTED`` does raise that error, so the
    exclusion list cannot silently go stale in either direction.
-3. ``--strict`` compilation rejects programs that call an unimplemented verb
-   (``core.MAP`` / ``core.FILTER`` / ``core.REDUCE``).
+3. ``--strict`` compilation accepts ``core.MAP`` / ``core.FILTER`` / ``core.REDUCE``.
+   The engine evaluates them over a same-file label. The adapter alone raises
+   a distinct error (not the unsupported sentinel).
 """
 from __future__ import annotations
 
@@ -68,21 +69,18 @@ def test_every_contract_core_verb_is_implemented_or_excluded(core: CoreBuiltinAd
     assert not gaps, "\n".join(gaps)
 
 
-@pytest.mark.parametrize("key", sorted(CORE_RUNTIME_UNIMPLEMENTED))
-def test_unimplemented_verbs_raise_sentinel(core: CoreBuiltinAdapter, key: str):
-    verb = key.split(".", 1)[1].lower()
-    with pytest.raises(RuntimeError, match=UNSUPPORTED_MSG):
-        core.call(verb, [], {})
+def test_unimplemented_core_set_is_empty():
+    assert CORE_RUNTIME_UNIMPLEMENTED == frozenset()
 
 
 @pytest.mark.parametrize(
     "key,expected",
     [
-        ("core.MAP", False),
-        ("core.map", False),
-        ("CORE.MAP", False),
-        ("core.FILTER", False),
-        ("core.REDUCE", False),
+        ("core.MAP", True),
+        ("core.map", True),
+        ("CORE.MAP", True),
+        ("core.FILTER", True),
+        ("core.REDUCE", True),
         ("core.ADD", True),
         ("core.TYPE", True),
         ("core.ZIP", True),
@@ -95,12 +93,11 @@ def test_strict_core_runtime_implemented_normalizes_case(key: str, expected: boo
 
 
 @pytest.mark.parametrize("verb", ["MAP", "FILTER", "REDUCE"])
-def test_strict_compile_rejects_unimplemented_core_verbs(verb: str):
-    source = f"S app core noop\n\nL1:\n  R core.{verb} items ->out\n  J out\n"
+def test_strict_compile_accepts_collection_verbs(verb: str):
+    source = f"S app core noop\n\nL1:\n  R core.{verb} items L2 item ->out\n  J out\nL2:\n  J item\n"
     compiler = AICodeCompiler(strict_mode=True)
     ir = compiler.compile(source)
-    errors = ir.get("errors") or []
-    assert any("not implemented at runtime" in str(e) for e in errors), errors
+    assert ir.get("errors") == [], ir.get("errors")
 
 
 def test_non_strict_compile_warns_on_inline_dict_literal_r_line():

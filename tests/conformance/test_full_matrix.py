@@ -117,7 +117,13 @@ def _run_ir_with_adapter(
 
         reg.register("tools", ToolBridgeAdapter({"echo": _echo}))
 
-    eng = RuntimeEngine(ir=ir, adapters=reg, trace=True, step_fallback=False)
+    eng = RuntimeEngine(
+        ir=ir,
+        adapters=reg,
+        trace=True,
+        step_fallback=False,
+        safe_trace=False,
+    )
     entry = eng.default_entry_label()
     result = eng.run_label(entry, frame={})
     return {"result": result, "trace": _sanitize_trace_events(eng.get_trace())}

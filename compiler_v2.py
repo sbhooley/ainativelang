@@ -1068,10 +1068,13 @@ class AICodeCompiler:
         strict_reachability: bool = False,
         *,
         strict_literals: bool = False,
+        pure: bool = False,
     ) -> None:
         self.strict_mode = strict_mode
         self.strict_reachability = strict_reachability
         self.strict_literals = bool(strict_literals)
+        self.pure = bool(pure)
+        self.return_union: Optional[Dict[str, Any]] = None
         self._errors: List[str] = []
         self._label_decl_lines: Dict[str, int] = {}
         self.services: Dict[str, Dict] = {}
@@ -2285,6 +2288,7 @@ class AICodeCompiler:
             "X",
             "Loop",
             "While",
+            "Break",
             "CacheGet",
             "CacheSet",
             "QueuePut",
@@ -2409,6 +2413,10 @@ class AICodeCompiler:
                 return
             if field_name and bool(literal_fields.get(field_name)):
                 return
+            if field_name == "var" and s.get("literal_var"):
+                return
+            if field_name == "ref" and s.get("literal_ref"):
+                return
             if isinstance(tok, str) and tok.startswith("$"):
                 reads.append(tok[1:])
                 return
@@ -2431,6 +2439,18 @@ class AICodeCompiler:
             out_var = s.get("out", "res")
             if out_var:
                 writes.append(str(out_var))
+            adapter_name = str(s.get("adapter") or "").strip().lower()
+            rargs = list(s.get("args") or [])
+            if adapter_name in ("core.map", "core.filter") and len(rargs) > 1:
+                writes.append(str(rargs[1]))
+            elif adapter_name == "core.reduce":
+                for tok in rargs[1:]:
+                    if isinstance(tok, str) and tok[:1].isalpha():
+                        writes.append(tok)
+        elif op == "Loop":
+            item = s.get("item")
+            if item:
+                writes.append(str(item))
         elif op == "J":
             var = s.get("var", "data")
             if var:
@@ -2799,6 +2819,21 @@ class AICodeCompiler:
             else:
                 if last_nid:
                     edges.append({"from": last_nid, "to": nid, "to_kind": "node", "port": "next"})
+                if op == "R":
+                    ad_l = str(s.get("adapter") or "").strip().lower()
+                    if ad_l in ("core.map", "core.filter", "core.reduce"):
+                        label_tok = (s.get("args") or [None])[0]
+                        callee = self._norm_lid(label_tok) if label_tok else None
+                        if callee:
+                            edges.append(
+                                {
+                                    "from": nid,
+                                    "to": callee,
+                                    "port": "next",
+                                    "to_kind": "label",
+                                    "analysis_only": True,
+                                }
+                            )
                 # J L_label: when the var resolves to a known label, add an analysis-only
                 # inter-label edge so the inter-label dataflow propagation can follow the jump.
                 if op == "J":
@@ -3328,6 +3363,90 @@ class AICodeCompiler:
             "raw": slots,
         }
 
+    def _stamp_r_literals(
+        self,
+        step: Dict[str, Any],
+        slots: List[str],
+        slot_kinds: List[str],
+        lineno: int,
+    ) -> None:
+        """Record which R operands were quoted. Absent flags keep the old frame lookup."""
+        if step.get("op") != "R" or not slot_kinds:
+            return
+        kinds = list(slot_kinds)
+        content = list(slots)
+        if content and str(content[-1]).startswith("->") and not str(content[-1]).startswith("->L"):
+            content = content[:-1]
+            kinds = kinds[: len(content)]
+        if len(kinds) > 1 and kinds[1] == "string":
+            step["literal_target"] = True
+        arg_kinds = kinds[2:]
+        adapter = str(step.get("adapter") or "").strip().lower()
+        verb = adapter.split(".", 1)[-1] if adapter.startswith("core.") else ""
+        if verb in {"map", "filter"} and arg_kinds:
+            # The label and the item name are syntax, not frame values.
+            step["literal_args"] = [True] * len(arg_kinds)
+        elif verb == "reduce" and arg_kinds:
+            flags = [True] * len(arg_kinds)
+            if len(flags) > 1:
+                flags[1] = arg_kinds[1] == "string"
+            step["literal_args"] = flags
+        elif any(k == "string" for k in arg_kinds):
+            step["literal_args"] = [k == "string" for k in arg_kinds]
+        if adapter == "db.q":
+            query_is_literal = bool(arg_kinds) and arg_kinds[0] == "string"
+            if not query_is_literal:
+                self._errors.append(f"Line {lineno}: db.Q query must be a source literal")
+            if len(arg_kinds) < 3:
+                self._errors.append(
+                    f"Line {lineno}: db.Q requires params and a partition key or \"*\""
+                )
+        if adapter == "db.m" and len(arg_kinds) < 3:
+            self._errors.append(f"Line {lineno}: db.M requires an etag")
+
+    _PURE_CORE = frozenset({"NOW", "ISO", "ISO_TS", "ENV", "SLEEP", "UUID"})
+
+    def _enforce_decision_contracts(self) -> None:
+        """pure=True and a declared return union. Both are opt-in compile checks.
+
+        A cross-file Call is not rejected here. The callee is compiled with
+        the same pure flag, so purity follows the call.
+        """
+        if self.pure:
+            for step in self._iter_all_steps():
+                op = step.get("op")
+                if op in ("CacheGet", "CacheSet", "QueuePut"):
+                    self._errors.append(f"pure program rejects {op}")
+                    continue
+                if op == "R":
+                    adapter = str(step.get("adapter") or "")
+                    ns, _, verb = adapter.partition(".")
+                    if ns.lower() != "core" or verb.upper() in self._PURE_CORE:
+                        self._errors.append(f"pure program rejects {adapter or op}")
+                elif op == "X":
+                    fn = str(step.get("fn") or "")
+                    ns, _, verb = fn.partition(".")
+                    if ns.lower() == "core" and verb.upper() in self._PURE_CORE:
+                        self._errors.append(f"pure program rejects {fn}")
+                    elif fn and ns.lower() not in ("", "core"):
+                        self._errors.append(f"pure program rejects {fn}")
+        spec = self.return_union
+        if not spec:
+            return
+        for step in self._iter_all_steps():
+            if step.get("op") != "J" or not step.get("literal_var"):
+                continue
+            raw = step.get("var")
+            if spec.get("kind") == "number":
+                try:
+                    float(str(raw))
+                except (TypeError, ValueError):
+                    self._errors.append(f"Line {step.get('lineno')}: return {raw!r} is outside the declared union")
+            else:
+                allowed = list(spec.get("values") or [])
+                if raw not in allowed:
+                    self._errors.append(f"Line {step.get('lineno')}: return {raw!r} is outside the declared union")
+
     def _has_nonempty_rag(self) -> bool:
         rag = self.rag or {}
         if not isinstance(rag, dict):
@@ -3562,6 +3681,7 @@ class AICodeCompiler:
         self._errors = []
         self._warnings = []
         self.meta = []
+        self.return_union = None
         self._process_include_prelude(
             prelude_includes,
             source_lines,
@@ -4321,6 +4441,7 @@ class AICodeCompiler:
                     step_payload = {"op": "R", "lineno": lineno, **parsed}
                 else:
                     step_payload = {"op": "R", "lineno": lineno, "raw": slots}
+                self._stamp_r_literals(step_payload, slots, slot_kinds, lineno)
                 if self.current_label:
                     self._label_steps(self.current_label).append(step_payload)
                 else:
@@ -4340,6 +4461,7 @@ class AICodeCompiler:
                 step_j = {"op": "J", "lineno": lineno, "var": var}
                 if slots and slot_kinds and slot_kinds[0] == "string":
                     step_j["__literal_fields"] = {"var": True}
+                    step_j["literal_var"] = True
                 if self.current_label:
                     self._label_steps(self.current_label).append(step_j)
                 else:
@@ -4550,15 +4672,35 @@ class AICodeCompiler:
                         if strategy:
                             step_d["backoff_strategy"] = strategy
                         self._label_steps(self.current_label).append(step_d)
+            elif op == "Break":
+                if self.current_label:
+                    self._ensure_label(self.current_label)
+                    step_b: Dict[str, Any] = {"op": "Break", "lineno": lineno}
+                    if slots:
+                        step_b["var"] = slots[0]
+                        if slot_kinds and slot_kinds[0] == "string":
+                            step_b["literal_var"] = True
+                    self._label_steps(self.current_label).append(step_b)
             elif op == "Call":
                 if slots and self.current_label:
-                    lid = slots[0]
-                    if lid.startswith("L"):
+                    work = list(slots)
+                    file_name = None
+                    if str(work[0]).endswith(".ainl") or str(work[0]).endswith(".lang"):
+                        file_name = work.pop(0)
+                    lid = work.pop(0) if work else ""
+                    if isinstance(lid, str) and lid.startswith("L"):
                         lid = lid[1:]
-                    if ":" in lid:
+                    if isinstance(lid, str) and ":" in lid:
                         lid = lid.split(":")[-1]
-                    out_var = slots[1][2:] if len(slots) > 1 and slots[1].startswith("->") and not slots[1].startswith("->L") else None
-                    if len(slots) > 1 and out_var is None and self.strict_mode:
+                    fresh = bool(file_name)
+                    if work and work[0] == "isolate":
+                        fresh = True
+                        work.pop(0)
+                    out_var = None
+                    if work and str(work[-1]).startswith("->") and not str(work[-1]).startswith("->L"):
+                        out_var = str(work[-1])[2:]
+                        work = work[:-1]
+                    if work and not fresh and self.strict_mode:
                         msg_call = (
                             f"Line {lineno}: Call optional return binding must be -><var>, got {slots[1]!r}"
                         )
@@ -4586,6 +4728,12 @@ class AICodeCompiler:
                             )
                     self._ensure_label(self.current_label)
                     step = {"op": "Call", "lineno": lineno, "label": lid}
+                    if file_name:
+                        step["file"] = file_name
+                    if fresh:
+                        step["fresh"] = True
+                        if work:
+                            step["inputs"] = list(work)
                     if out_var:
                         step["out"] = out_var
                     self._label_steps(self.current_label).append(step)
@@ -4604,6 +4752,7 @@ class AICodeCompiler:
                     step = {"op": "Set", "lineno": lineno, "name": slots[0], "ref": slots[1]}
                     if len(slot_kinds) > 1 and slot_kinds[1] == "string":
                         step["__literal_fields"] = {"ref": True}
+                        step["literal_ref"] = True
                     self._label_steps(self.current_label).append(step)
             elif op == "Filt":
                 if len(slots) >= 5 and self.current_label:
@@ -4642,7 +4791,14 @@ class AICodeCompiler:
                     # If no args remain, strip trailing ')' from fn itself (e.g. "(core.now)" → "core.now")
                     if not x_args:
                         x_fn = x_fn.rstrip(")")
-                    self._label_steps(self.current_label).append({"op": "X", "lineno": lineno, "dst": slots[0], "fn": x_fn, "args": x_args})
+                    x_step: Dict[str, Any] = {"op": "X", "lineno": lineno, "dst": slots[0], "fn": x_fn, "args": x_args}
+                    arg_kinds = list(slot_kinds[2:]) if len(slot_kinds) > 2 else []
+                    if len(slots) > 2 and str(slots[-1]).strip() == ")":
+                        arg_kinds = arg_kinds[:-1]
+                    arg_kinds = arg_kinds[: len(x_args)]
+                    if any(k == "string" for k in arg_kinds):
+                        x_step["literal_args"] = [k == "string" for k in arg_kinds]
+                    self._label_steps(self.current_label).append(x_step)
             elif op == "Loop":
                 if len(slots) >= 4 and self.current_label:
                     body = self._parse_arrow_lbl(slots[2]) or slots[2].lstrip("L").split(":")[-1]
@@ -4959,6 +5115,12 @@ class AICodeCompiler:
             elif mod == "rag" and mop == "Pipe":
                 if len(slots) >= 4:
                     self.rag["pipelines"][slots[0]] = {"ret": slots[1], "aug": slots[2], "gen": slots[3]}
+            elif op == "Returns":
+                parts = [s for s in slots if s != "|"]
+                if len(parts) == 1 and parts[0] == "number":
+                    self.return_union = {"kind": "number"}
+                else:
+                    self.return_union = {"kind": "values", "values": parts}
 
             else:
                 # Lossless: preserve unknown ops in meta (spec §5). Module validation already done above.
@@ -5223,6 +5385,8 @@ class AICodeCompiler:
                 # If / Loop / While as last step: control transfers to branch/iteration targets;
                 # the label may not end with J (same idea as If).
                 if steps and steps[-1].get("op") in ("If", "Loop", "While"):
+                    continue
+                if steps and steps[-1].get("op") == "Break" and not any(s.get("op") == "J" for s in steps):
                     continue
                 if len(j_steps) != 1:
                     msg_jn = (
@@ -5494,6 +5658,7 @@ class AICodeCompiler:
         if self.api_opts.get("deprecate"):
             self._warnings.append(f"api deprecations declared: {len(self.api_opts.get('deprecate', []))}")
         self._append_canonical_lint_warnings(cst_lines)
+        self._enforce_decision_contracts()
 
         # Internal compile-time hints (__literal_fields on legacy steps) must stay on self.labels
         # until the final IR is built: included subgraphs are merged into the parent compiler
@@ -5574,6 +5739,8 @@ class AICodeCompiler:
             "meta": self.meta,
             "errors": self._errors,
             "warnings": self._warnings,
+            **({"returns": self.return_union} if self.return_union else {}),
+            **({"pure": True} if self.pure else {}),
             "diagnostics": self._build_structured_diagnostics(self.labels, cst_lines),
             "stats": {
                 "lines": len([l for l in lines if l.strip() and not l.strip().startswith("#")]),

@@ -273,6 +273,11 @@ def _build_registry(req: Dict[str, Any]) -> AdapterRegistry:
                 allow_hosts=h.get("allow_hosts") or [],
                 payment_profile=str(h.get("payment_profile", "none") or "none"),
                 max_payment_rounds=int(h.get("max_payment_rounds", 2) or 2),
+                block_private=True,
+                allow_insecure_local=bool(h.get("allow_insecure_local", False)),
+                https_only=bool(h.get("https_only", True)),
+                status_as_value=True,
+                check_redirects=True,
             ),
         )
     if "a2a" in enabled:

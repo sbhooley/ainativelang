@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional
+from urllib.parse import urlparse
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
 from runtime.adapters.http import SimpleHttpAdapter
+from runtime.net_guard import host_is_blocked
 
 
 class ExecutorBridgeAdapter(RuntimeAdapter):
@@ -29,10 +31,27 @@ class ExecutorBridgeAdapter(RuntimeAdapter):
         self._endpoints = {str(k).strip(): str(v).strip() for k, v in endpoints.items() if str(k).strip() and str(v).strip()}
         if not self._endpoints:
             raise AdapterError("ExecutorBridgeAdapter endpoints mapping is empty after normalization")
+        hosts = [str(item) for item in allow_hosts] if allow_hosts else []
+        https_only = True
+        insecure = False
+        if not hosts:
+            for endpoint in self._endpoints.values():
+                parsed = urlparse(endpoint)
+                if parsed.hostname:
+                    hosts.append(parsed.hostname)
+                if parsed.scheme != "https":
+                    https_only = False
+                if parsed.hostname and host_is_blocked(parsed.hostname):
+                    insecure = True
         self._http = SimpleHttpAdapter(
             default_timeout_s=float(default_timeout_s),
             max_response_bytes=int(max_response_bytes),
-            allow_hosts=set(allow_hosts) if allow_hosts else [],
+            allow_hosts=hosts,
+            https_only=https_only,
+            allow_insecure_local=insecure,
+            block_private=True,
+            check_redirects=True,
+            status_as_value=True,
         )
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:

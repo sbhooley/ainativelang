@@ -1,22 +1,22 @@
 # STATUS.yaml — What is real vs aspirational
-# stats_refreshed: 2026-06-10 (UTC) — run: python scripts/refresh_repo_stats.py
+# stats_refreshed: 2026-11-07 (UTC) — run: python scripts/refresh_repo_stats.py
 
 real_and_working:
   compiler:
     file: compiler_v2.py
-    lines: 7052
+    lines: 7219
     status: production
     notes: "Parses .ainl → IR. Multiple emitters. Fully tested."
 
   runtime:
     file: runtime/engine.py
-    lines: 3106
+    lines: 3605
     status: production
     notes: "Executes IR graphs. Async support. Observability."
 
   cli:
     file: cli/main.py
-    lines: 3766
+    lines: 3770
     status: production
     commands:
       - "ainl run"
@@ -54,12 +54,12 @@ real_and_working:
       test_named_py_files: "Files named test_*.py under tests/ (pytest test modules)."
       lines_python_under_tests: "Sum of lines of all *.py under tests/."
       pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
-    py_files_under_tests: 264
-    test_named_py_files: 234
-    lines_python_under_tests: 31962
-    lines_python_under_tests_rounded: "~32k"
-    pytest_collect_only_selected: 1636
-    pytest_collect_only_total: 1675
+    py_files_under_tests: 266
+    test_named_py_files: 236
+    lines_python_under_tests: 32942
+    lines_python_under_tests_rounded: "~33k"
+    pytest_collect_only_selected: 1671
+    pytest_collect_only_total: 1710
     pytest_deselected: 39
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 

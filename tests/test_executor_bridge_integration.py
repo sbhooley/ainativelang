@@ -76,7 +76,18 @@ def _start_bridge_server(*, status_code: int = 200):
 def _registry() -> AdapterRegistry:
     reg = AdapterRegistry(allowed=["core", "http"])
     reg.register("core", CoreBuiltinAdapter())
-    reg.register("http", SimpleHttpAdapter(default_timeout_s=5.0))
+    reg.register(
+        "http",
+        SimpleHttpAdapter(
+            default_timeout_s=5.0,
+            allow_hosts=["127.0.0.1"],
+            https_only=False,
+            allow_insecure_local=True,
+            block_private=False,
+            check_redirects=False,
+            status_as_value=False,
+        ),
+    )
     return reg
 
 

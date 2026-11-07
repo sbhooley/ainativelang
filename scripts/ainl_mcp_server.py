@@ -2656,6 +2656,11 @@ def ainl_run(
                     allow_hosts=[str(x) for x in allow_hosts],
                     payment_profile=str(h.get("payment_profile", "none") or "none"),
                     max_payment_rounds=int(h.get("max_payment_rounds", 2) or 2),
+                    block_private=True,
+                    allow_insecure_local=bool(h.get("allow_insecure_local", False)),
+                    https_only=bool(h.get("https_only", True)),
+                    status_as_value=True,
+                    check_redirects=True,
                 ),
             )
         if "fs" in enabled:

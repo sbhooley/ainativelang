@@ -215,6 +215,10 @@ def _make_http(args: argparse.Namespace) -> RuntimeAdapter:
         allow_hosts=args.http_allow_host or [],
         payment_profile=str(getattr(args, "http_payment_profile", "none") or "none"),
         max_payment_rounds=int(getattr(args, "http_max_payment_rounds", 2) or 2),
+        block_private=True,
+        https_only=bool(getattr(args, "http_https_only", True)),
+        status_as_value=True,
+        check_redirects=True,
     )
 
 

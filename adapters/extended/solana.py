@@ -1,7 +1,7 @@
 """
 Solana RPC adapter — first concrete member of the **blockchain.solana** family in policy/docs.
 
-DISCOVERABILITY / QUICK START (AINL v1.8.0)
+DISCOVERABILITY / QUICK START (AINL v1.8.2)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 AINL provides native Solana support for deterministic AI agent workflows in prediction markets, Pyth oracles, PDA

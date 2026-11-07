@@ -42,6 +42,22 @@ class _LegacyDbBridge(RuntimeAdapter):
             return self.db.create(entity, payload)
         if verb == "D":
             return self.db.delete(entity, arg)
+        if verb == "Q":
+            query = args[1] if len(args) > 1 else ""
+            params = args[2] if len(args) > 2 else None
+            partition = args[3] if len(args) > 3 else None
+            query_fn = getattr(self.db, "query", None)
+            if not callable(query_fn):
+                raise RuntimeError("db.Q unsupported by this adapter")
+            return query_fn(entity, query, params, partition)
+        if verb == "M":
+            doc_id = args[1] if len(args) > 1 else None
+            patch = args[2] if len(args) > 2 else None
+            etag = args[3] if len(args) > 3 else None
+            merge_fn = getattr(self.db, "merge", None)
+            if not callable(merge_fn):
+                raise RuntimeError("db.M unsupported by this adapter")
+            return merge_fn(entity, doc_id, patch if isinstance(patch, dict) else {}, etag)
         raise RuntimeError(f"unsupported db verb: {verb}")
 
 

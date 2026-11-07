@@ -16,6 +16,21 @@ from runtime.adapters.base import AdapterError
 from runtime.adapters.http import SimpleHttpAdapter
 
 
+def _lab(**kwargs):
+    """The pre-1.8.2 lab client. Production code uses _lab()."""
+    opts = dict(
+        https_only=False,
+        block_private=False,
+        check_redirects=False,
+        status_as_value=False,
+        allow_insecure_local=True,
+    )
+    opts.update(kwargs)
+    if "allow_hosts" not in kwargs:
+        opts["allow_hosts"] = ["example.com", "127.0.0.1", "localhost"]
+    return SimpleHttpAdapter(**opts)
+
+
 class _Handler(BaseHTTPRequestHandler):
     calls = 0
 
@@ -62,7 +77,7 @@ def test_http_adapter_get_json_and_idempotent_calls():
     srv = _start_server()
     try:
         base = f"http://127.0.0.1:{srv.server_port}"
-        adp = SimpleHttpAdapter(default_timeout_s=1.0)
+        adp = _lab(default_timeout_s=1.0)
         url = f"{base}/ok"
         r1 = adp.call("get", [url], {})
         r2 = adp.call("get", [url], {})
@@ -84,7 +99,7 @@ def test_http_adapter_post_json_body_roundtrip():
     srv = _start_server()
     try:
         base = f"http://127.0.0.1:{srv.server_port}"
-        adp = SimpleHttpAdapter(default_timeout_s=1.0)
+        adp = _lab(default_timeout_s=1.0)
         url = f"{base}/post"
         r = adp.call("post", [url, {"x": 1}], {})
         # Legacy fields.
@@ -100,7 +115,7 @@ def test_http_adapter_post_json_body_roundtrip():
 
 
 def test_http_adapter_input_validation_and_allowlist():
-    adp = SimpleHttpAdapter(allow_hosts=["example.com"])
+    adp = _lab(allow_hosts=["example.com"])
     try:
         adp.call("get", ["file:///tmp/x"], {})
         assert False, "expected scheme validation error"
@@ -117,7 +132,7 @@ def test_http_adapter_timeout_maps_to_adapter_error():
     srv = _start_server()
     try:
         base = f"http://127.0.0.1:{srv.server_port}"
-        adp = SimpleHttpAdapter(default_timeout_s=0.01)
+        adp = _lab(default_timeout_s=0.01)
         try:
             adp.call("get", [f"{base}/slow"], {})
             assert False, "expected timeout"
@@ -154,7 +169,7 @@ def test_http_adapter_retries_on_transport_error(monkeypatch):
     monkeypatch.setattr("runtime.adapters.http.urlopen", _fake_urlopen)
     monkeypatch.setattr("runtime.adapters.http.time.sleep", lambda s: None)
 
-    adp = SimpleHttpAdapter(default_timeout_s=1.0)
+    adp = _lab(default_timeout_s=1.0)
     # Host allowlist is empty by default; external URL is fine for this fake.
     res = adp.call("get", ["https://example.com"], {})
     assert res["ok"] is True
@@ -171,7 +186,7 @@ def test_http_adapter_retries_and_eventually_fails(monkeypatch):
     monkeypatch.setattr("runtime.adapters.http.urlopen", _always_fail)
     monkeypatch.setattr("runtime.adapters.http.time.sleep", lambda s: None)
 
-    adp = SimpleHttpAdapter(default_timeout_s=1.0)
+    adp = _lab(default_timeout_s=1.0)
     try:
         adp.call("get", ["https://example.com"], {})
         assert False, "expected transport error after retries"
@@ -192,7 +207,7 @@ def test_http_adapter_does_not_retry_on_4xx(monkeypatch):
     monkeypatch.setattr("runtime.adapters.http.urlopen", _fail_400)
     monkeypatch.setattr("runtime.adapters.http.time.sleep", lambda s: None)
 
-    adp = SimpleHttpAdapter(default_timeout_s=1.0)
+    adp = _lab(default_timeout_s=1.0)
     try:
         adp.call("get", ["https://example.com"], {})
         assert False, "expected 4xx error"
@@ -211,7 +226,7 @@ def test_http_adapter_402_raises_when_payment_disabled(monkeypatch):
         raise HTTPError("https://example.com", 402, "payment", hdr, fp)
 
     monkeypatch.setattr("runtime.adapters.http.urlopen", _fail_402)
-    adp = SimpleHttpAdapter(default_timeout_s=1.0, payment_profile="none")
+    adp = _lab(default_timeout_s=1.0, payment_profile="none")
     try:
         adp.call("get", ["https://example.com"], {})
         assert False, "expected 402 error"
@@ -227,7 +242,7 @@ def test_http_adapter_402_returns_envelope_when_payment_auto(monkeypatch):
         raise HTTPError("https://example.com/r", 402, "payment", hdr, fp)
 
     monkeypatch.setattr("runtime.adapters.http.urlopen", _fail_402)
-    adp = SimpleHttpAdapter(default_timeout_s=1.0, payment_profile="auto")
+    adp = _lab(default_timeout_s=1.0, payment_profile="auto")
     res = adp.call("get", ["https://example.com/r"], {})
     assert res["ok"] is False
     assert res["status"] == 402
@@ -257,7 +272,7 @@ def test_http_adapter_merges_http_payment_headers(monkeypatch):
         return _FakeResp()
 
     monkeypatch.setattr("runtime.adapters.http.urlopen", _cap)
-    adp = SimpleHttpAdapter(default_timeout_s=1.0)
+    adp = _lab(default_timeout_s=1.0)
     res = adp.call(
         "get",
         ["https://example.com"],
@@ -283,7 +298,7 @@ def test_http_adapter_success_includes_payment_response_meta(monkeypatch):
             return False
 
     monkeypatch.setattr("runtime.adapters.http.urlopen", lambda *a, **k: _FakeResp())
-    adp = SimpleHttpAdapter(default_timeout_s=1.0, payment_profile="auto")
+    adp = _lab(default_timeout_s=1.0, payment_profile="auto")
     res = adp.call("get", ["https://example.com"], {})
     assert res["ok"] is True
     assert res["payment"]["profile"] == "x402"
@@ -300,7 +315,7 @@ def test_http_adapter_retries_on_5xx_then_fails(monkeypatch):
     monkeypatch.setattr("runtime.adapters.http.urlopen", _fail_500)
     monkeypatch.setattr("runtime.adapters.http.time.sleep", lambda s: None)
 
-    adp = SimpleHttpAdapter(default_timeout_s=1.0)
+    adp = _lab(default_timeout_s=1.0)
     try:
         adp.call("get", ["https://example.com"], {})
         assert False, "expected 5xx error after retries"

@@ -30,6 +30,36 @@ class DBAdapter(ABC):
         """Delete one entity (e.g. db.D Order 1)."""
         raise NotImplementedError("db.D")
 
+    def query(
+        self,
+        entity: str,
+        query: str,
+        params: Any = None,
+        partition: Any = None,
+    ) -> List[Dict[str, Any]]:
+        """Parameterized read. The query text is a source literal.
+
+        ``params`` are bound by the host. Interpolating them into the query
+        string is a contract violation. ``partition`` is the partition key,
+        or the literal ``*`` when the graph asked for a cross-partition read.
+        The engine caps rows and bytes before the result enters the frame.
+        """
+        raise NotImplementedError("db.Q")
+
+    def merge(
+        self,
+        entity: str,
+        id_value: Any,
+        patch: Dict[str, Any],
+        etag: Any = None,
+    ) -> Dict[str, Any]:
+        """Shallow field merge. ``etag`` is the caller's If-Match token.
+
+        The host must not write when the token does not match. Two stages
+        that share a document otherwise clobber each other.
+        """
+        raise NotImplementedError("db.M")
+
 
 class APIAdapter(ABC):
     """Backend for api.G (GET), api.P (POST), etc."""

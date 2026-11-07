@@ -1,16 +1,50 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
-import os
 import re
 import time
 import uuid as uuid_mod
 from typing import Any, Dict, List
 
 from runtime.adapters.base import RuntimeAdapter
-from runtime.values import coerce_number, deep_get
+from runtime.decision_ops import (
+    add_days,
+    before,
+    bool_and,
+    bool_not,
+    bool_or,
+    casefold_text,
+    contains_word,
+    read_env,
+    has_text,
+    html_text,
+    in_collection,
+    is_error_value,
+    normalize_text,
+    parse_time,
+    regex_contains,
+    regex_findall,
+    regex_replace,
+    replace_chars,
+    safe_format,
+    strict_eq,
+)
+from runtime.bounded_regex import limit_error_value
+from runtime.values import coerce_number, deep_get, deep_put, stable_sort, truthy
+
+
+def _regex_value(fn: Any, *args: Any) -> Any:
+    """Size and step limits become error values. Syntax errors still raise."""
+    try:
+        return fn(*args)
+    except Exception as exc:
+        value = limit_error_value(exc)
+        if value is None:
+            raise
+        return value
 
 
 class CoreBuiltinAdapter(RuntimeAdapter):
@@ -35,14 +69,22 @@ class CoreBuiltinAdapter(RuntimeAdapter):
       id(value) — identity; returns first arg (used to materialize object literals in R lines)
       get(obj, key) — deep key/index read (objects and lists)
       abs/ceil/floor/round/pow/mod — numeric ops
-      and/or/not — boolean ops; noop — returns None
+      and/or/not — boolean ops using truthy(); noop — returns None
+      eqs — strict equality (True is not 1, "1" is not 1). eq still coerces.
+      has — substring, false when the needle is empty. contains stays true.
+      contains_word / replace_chars / in — word, charset, and exact membership
+      regex_contains / regex_replace / regex_findall — bounded, no backreferences
+      parse_time / add_days / before — UTC calendar helpers, no locale
+      casefold / normalize (NFC, NFKC) / html_text / is_error
+      if — value select, no control transfer
+      push / put — list append and nested field write (copy)
       hash(s, algo?) / uuid() — hashing and id generation
-      sort/reverse/flatten/unique — list ops
-      type(v) — type name; format(template, args...) — positional str.format
+      sort/reverse/flatten/unique — list ops. sort(list, key) is stable by field.
+      type(v) — type name; format — {0}, {}, {name}, {n:plural:a|b}; no attribute access
       range(stop|start,stop[,step]) — list of ints
       pick(dict, keys...) / omit(dict, keys...) — key projection
       zip(list...) — pairwise grouping truncated to shortest input
-    NOT implemented (strict mode rejects): map, filter, reduce (need callbacks).
+    map / filter / reduce run in the engine over a same-file label, not here.
     """
 
     def call(self, target: str, args: List[Any], context: Dict[str, Any]) -> Any:
@@ -134,12 +176,16 @@ class CoreBuiltinAdapter(RuntimeAdapter):
         if t in ("echo", "id"):
             return args[0] if args else None
         if t == "env":
-            # os.getenv(name, default=None); optional second arg is default string
+            # Default deny. The host allowlist is stamped on the call context
+            # by the engine. A frame key of the same name does not widen it.
             name = str(args[0]) if args else ""
-            if not name:
-                return None
             default = None if len(args) < 2 else args[1]
-            return os.environ.get(name, default)
+            allow: Any = []
+            if isinstance(context, dict):
+                raw_allow = context.get("_env_allowlist")
+                if isinstance(raw_allow, (list, tuple, set)):
+                    allow = raw_allow
+            return read_env(name, allow, default)
         if t == "substr":
             # substr(s, start, length) — slice s[start:start+length]; length required
             s = str(args[0]) if args else ""
@@ -182,11 +228,16 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             if not args:
                 return True
             a, b = args[0], args[1] if len(args) > 1 else None
-            # Numeric comparison when both sides look numeric, otherwise string/value equality.
+            # Numeric coercion is the 1.8.1 behavior. "1", 1, 1.0, and True compare
+            # equal. "yes" falls through to == when float() fails. Use eqs to opt out.
             try:
                 return _num(a) == _num(b)
             except Exception:
                 return a == b
+        if t == "eqs":
+            if len(args) < 2:
+                return False
+            return strict_eq(args[0], args[1])
         if t in ("neq", "ne", "notequal", "not_equal"):
             if not args:
                 return False
@@ -265,14 +316,19 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             return _num(args[0]) % _num(args[1])
         if t == "and":
             if len(args) >= 2:
-                return bool(args[0]) and bool(args[1])
-            return bool(args[0]) if args else False
+                return bool_and(args[0], args[1])
+            return bool_and(args[0], False) if args else False
         if t == "or":
             if len(args) >= 2:
-                return bool(args[0]) or bool(args[1])
-            return bool(args[0]) if args else False
+                return bool_or(args[0], args[1])
+            return bool_or(args[0], False) if args else False
         if t == "not":
-            return not bool(args[0]) if args else True
+            return bool_not(args[0]) if args else True
+        if t == "if":
+            cond = args[0] if args else False
+            then_v = args[1] if len(args) > 1 else None
+            else_v = args[2] if len(args) > 2 else None
+            return then_v if truthy(cond) else else_v
         if t == "noop":
             return None
         if t == "uuid":
@@ -285,6 +341,9 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             return h.hexdigest()
         if t == "sort":
             arr = args[0] if args else []
+            if len(args) > 1 and isinstance(arr, list):
+                desc = len(args) > 2 and args[2] is True
+                return stable_sort(list(arr), str(args[1]), desc=desc)
             if not isinstance(arr, list):
                 arr = list(str(arr))
             return sorted(arr, key=lambda x: str(x))
@@ -335,9 +394,10 @@ class CoreBuiltinAdapter(RuntimeAdapter):
                 return "dict"
             return type(v).__name__
         if t == "format":
-            # format(template, args...) — positional str.format ("{0} and {1}" or bare "{}").
-            template = str(args[0]) if args else ""
-            return template.format(*args[1:])
+            # {0}, {}, {name} on a single dict, and {n:plural:one|many}.
+            # Attribute access ({0.__class__}) is rejected.
+            template = args[0] if args else ""
+            return safe_format(template, args[1:])
         if t == "range":
             # range(stop) | range(start, stop) | range(start, stop, step) — returns a list of ints.
             nums = [int(_num(a)) for a in args[:3]]
@@ -370,5 +430,66 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             start = int(_num(args[1])) if len(args) > 1 else 0
             end = int(_num(args[2])) if len(args) > 2 else None
             return seq[start:end]
+        if t == "has":
+            return has_text(args[0] if args else "", args[1] if len(args) > 1 else "")
+        if t == "contains_word":
+            return contains_word(args[0] if args else "", args[1] if len(args) > 1 else "")
+        if t == "replace_chars":
+            return replace_chars(
+                args[0] if args else "",
+                args[1] if len(args) > 1 else "",
+                args[2] if len(args) > 2 else "",
+            )
+        if t == "in":
+            return in_collection(args[0] if args else None, args[1] if len(args) > 1 else None)
+        if t == "regex_contains":
+            return _regex_value(
+                regex_contains,
+                args[0] if args else "",
+                args[1] if len(args) > 1 else "",
+                args[2] if len(args) > 2 else None,
+            )
+        if t == "regex_replace":
+            return _regex_value(
+                regex_replace,
+                args[0] if args else "",
+                args[1] if len(args) > 1 else "",
+                args[2] if len(args) > 2 else "",
+                args[3] if len(args) > 3 else None,
+            )
+        if t == "regex_findall":
+            return _regex_value(
+                regex_findall,
+                args[0] if args else "",
+                args[1] if len(args) > 1 else "",
+                args[2] if len(args) > 2 else None,
+            )
+        if t == "parse_time":
+            return parse_time(args[0] if args else None, args[1] if len(args) > 1 else None)
+        if t == "add_days":
+            return add_days(args[0] if args else 0, args[1] if len(args) > 1 else 0)
+        if t == "before":
+            return before(args[0] if args else None, args[1] if len(args) > 1 else None)
+        if t == "casefold":
+            return casefold_text(args[0] if args else "")
+        if t == "normalize":
+            return normalize_text(args[0] if args else "", args[1] if len(args) > 1 else "NFC")
+        if t == "html_text":
+            return html_text(args[0] if args else "")
+        if t == "is_error":
+            return is_error_value(args[0] if args else None)
+        if t == "push":
+            arr = list(args[0]) if args and isinstance(args[0], list) else []
+            if len(args) > 1:
+                arr.append(args[1])
+            return arr
+        if t == "put":
+            src = args[0] if args and isinstance(args[0], dict) else {}
+            src = copy.deepcopy(src)
+            path = str(args[1]) if len(args) > 1 else ""
+            value = args[2] if len(args) > 2 else None
+            return deep_put(src, path, value)
+        if t in ("map", "filter", "reduce"):
+            raise RuntimeError(f"core.{t} is evaluated by the runtime over a label")
 
         raise RuntimeError(f"unsupported core builtin target: {t}")

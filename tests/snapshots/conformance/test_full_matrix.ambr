@@ -1568,7 +1568,7 @@
       'resource_profile': 'default',
     }),
     'graph_schema_version': '1.0',
-    'graph_semantic_checksum': 'sha256:bbff243bc2952b2a7374efa6f85d67c0ebc7b31562b8cb267e2a25b8ee904c14',
+    'graph_semantic_checksum': 'sha256:4aa6e34e10dc2d1a170a7ca9a4a511600f6d80249f4e0e18fb380ff55405f278',
     'ir_version': '1.0.0',
     'labels': dict({
       '1': dict({
@@ -2058,11 +2058,12 @@
             'var': 'err',
           }),
         ]),
-        'id_hash': 'sha256:d855ba2a958c6f009e82856a1ed58340e86e05dd2c5aa7ae371d6d2232744f96',
+        'id_hash': 'sha256:caeffc001d140250e7d7fd237c24ce154b8b507e912e8f3d4fdc72d0f5a2f5b1',
         'legacy': dict({
           'steps': list([
             dict({
               'lineno': 9,
+              'literal_var': True,
               'op': 'J',
               'var': 'err',
             }),
@@ -2072,6 +2073,7 @@
           dict({
             'data': dict({
               'lineno': 9,
+              'literal_var': True,
               'op': 'J',
               'var': 'err',
             }),
@@ -2079,7 +2081,7 @@
             'effect_kinds': list([
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:c8bd593b1e64bb13004e6531aa72a074851cbe495e191e7028185b8a87782335',
+            'hash': 'sha256:e38b6e16be29079cad2caa00cbb736bbf2660db54709753ee237a12c7ce675f9',
             'id': 'n1',
             'lineno': 9,
             'op': 'J',
@@ -2119,11 +2121,12 @@
             'var': 'ok',
           }),
         ]),
-        'id_hash': 'sha256:3dcd054a2acf9fb57d79155ac93631705ce3be23877a70e516eb7fe6b8fd3a43',
+        'id_hash': 'sha256:4ac0679092e9ab89d2f971602c17a0eda24c7f25ab97378b36cf8b78e48ad3df',
         'legacy': dict({
           'steps': list([
             dict({
               'lineno': 7,
+              'literal_var': True,
               'op': 'J',
               'var': 'ok',
             }),
@@ -2133,6 +2136,7 @@
           dict({
             'data': dict({
               'lineno': 7,
+              'literal_var': True,
               'op': 'J',
               'var': 'ok',
             }),
@@ -2140,7 +2144,7 @@
             'effect_kinds': list([
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:1b1552f99f60997246676657fc128f27de602b9fc730ee5083de27e727b1a636',
+            'hash': 'sha256:cad2e297a6373c4077feec1948a1ce429a9fcc40ba42137beebab5097ddacda4',
             'id': 'n1',
             'lineno': 7,
             'op': 'J',
@@ -2357,11 +2361,12 @@
             'var': 'ok',
           }),
         ]),
-        'id_hash': 'sha256:89f7fe1747802cb1553d0ccd10aaa5fe7604a130e092f5b50215464dc008b457',
+        'id_hash': 'sha256:881487718a648dc057155fea1675e2f60640ce746141e9c63a78f5c4108ec068',
         'legacy': dict({
           'steps': list([
             dict({
               'lineno': 34,
+              'literal_var': True,
               'op': 'J',
               'var': 'ok',
             }),
@@ -2371,6 +2376,7 @@
           dict({
             'data': dict({
               'lineno': 34,
+              'literal_var': True,
               'op': 'J',
               'var': 'ok',
             }),
@@ -2378,7 +2384,7 @@
             'effect_kinds': list([
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:4c5fb2e663383d9cd712b5907d805f29cb3c674a7126c89250c428eaf184fcae',
+            'hash': 'sha256:d6be2d9cea63e5c51ed82f741482841e429937375fbff6c0396075e13cb924aa',
             'id': 'n1',
             'lineno': 34,
             'op': 'J',
@@ -2418,11 +2424,12 @@
             'var': 'timeout',
           }),
         ]),
-        'id_hash': 'sha256:62d7c81ebd941bd31b2c70f136a77fcec21d74192f18bd5440755895430dd0d8',
+        'id_hash': 'sha256:3f5d29a9c76e4b85c9dde1dd2ca175ff6498d3c954ac5ba93ae63aabdc286346',
         'legacy': dict({
           'steps': list([
             dict({
               'lineno': 37,
+              'literal_var': True,
               'op': 'J',
               'var': 'timeout',
             }),
@@ -2432,6 +2439,7 @@
           dict({
             'data': dict({
               'lineno': 37,
+              'literal_var': True,
               'op': 'J',
               'var': 'timeout',
             }),
@@ -2439,7 +2447,7 @@
             'effect_kinds': list([
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:41285d402f9cbe448baab1850de80b19314acaf69d7fc78f400ea4b8fddbd6e0',
+            'hash': 'sha256:6bb8b0db8cd179de2f5c7342430063272ba810a1ed34d2971d158a498d691b63',
             'id': 'n1',
             'lineno': 37,
             'op': 'J',
@@ -2494,7 +2502,7 @@
             'var': 'error',
           }),
         ]),
-        'id_hash': 'sha256:8cc8dccdfacc9e6b44c05d49792de25d22b48d0f51e819d89c914e4c38e8f9af',
+        'id_hash': 'sha256:f3ebd6a3b08e01bc0aa7f05ae7684b4faf9fa926a20be17fb57219880d49b4fc',
         'legacy': dict({
           'steps': list([
             dict({
@@ -2504,6 +2512,7 @@
               'entity': 'timeout',
               'fields': '*',
               'lineno': 30,
+              'literal_target': True,
               'op': 'R',
               'out': 'error',
               'raw': list([
@@ -2536,6 +2545,7 @@
               'entity': 'timeout',
               'fields': '*',
               'lineno': 30,
+              'literal_target': True,
               'op': 'R',
               'out': 'error',
               'raw': list([
@@ -2552,7 +2562,7 @@
               'compute',
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:5e55f7b3aa15be77db1c32a47a0cca64e0ebb769ddfc10161e180dec48b93927',
+            'hash': 'sha256:f6cf22d645900b448ee148b9cf4ac100e6de492cb9a4bd275ee2f6e375a8f835',
             'id': 'n1',
             'lineno': 30,
             'op': 'R',
@@ -3989,7 +3999,7 @@
       'resource_profile': 'default',
     }),
     'graph_schema_version': '1.0',
-    'graph_semantic_checksum': 'sha256:a196abce44d1e9275b3daeb110eb79633ce2324acf8282e35108a88daab97d35',
+    'graph_semantic_checksum': 'sha256:a37a63ede25332e8ec28a9ff15dde2fc23fa572f7d76452f44aec4d0e2c96766',
     'ir_version': '1.0.0',
     'labels': dict({
       '1': dict({
@@ -4101,7 +4111,7 @@
             'var': 'hist',
           }),
         ]),
-        'id_hash': 'sha256:5e6c924bc134ac7e48e70224cf90d11010b140db942e260d4dafed3c2b0ab41f',
+        'id_hash': 'sha256:4c7f5630098a47723f2c3f4000c3d8a82fa09122676f065bf59cb60de4eb85d1',
         'legacy': dict({
           'steps': list([
             dict({
@@ -4111,6 +4121,7 @@
               'entity': '{"source":"conformance","confidence":1.0,"tags":["budget"],"valid_at":"2026-01-01T00:00:00Z"}',
               'fields': '*',
               'lineno': 5,
+              'literal_target': True,
               'op': 'R',
               'out': 'memory_meta',
               'raw': list([
@@ -4129,6 +4140,7 @@
               'entity': '{"tags_any":["budget"],"source":"conformance","limit":5}',
               'fields': '*',
               'lineno': 6,
+              'literal_target': True,
               'op': 'R',
               'out': 'memory_filters',
               'raw': list([
@@ -4147,6 +4159,7 @@
               'entity': '{"n":1}',
               'fields': '*',
               'lineno': 7,
+              'literal_target': True,
               'op': 'R',
               'out': 'record_payload',
               'raw': list([
@@ -4171,6 +4184,14 @@
               'entity': 'put',
               'fields': 'workflow',
               'lineno': 8,
+              'literal_args': list([
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+              ]),
               'op': 'R',
               'out': '_w',
               'raw': list([
@@ -4200,6 +4221,13 @@
               'entity': 'list',
               'fields': 'workflow',
               'lineno': 9,
+              'literal_args': list([
+                True,
+                True,
+                True,
+                True,
+                False,
+              ]),
               'op': 'R',
               'out': 'hist',
               'raw': list([
@@ -4224,6 +4252,9 @@
               'entity': 'prune',
               'fields': 'workflow',
               'lineno': 10,
+              'literal_args': list([
+                True,
+              ]),
               'op': 'R',
               'out': '_pr',
               'raw': list([
@@ -4257,6 +4288,7 @@
               'entity': '{"source":"conformance","confidence":1.0,"tags":["budget"],"valid_at":"2026-01-01T00:00:00Z"}',
               'fields': '*',
               'lineno': 5,
+              'literal_target': True,
               'op': 'R',
               'out': 'memory_meta',
               'raw': list([
@@ -4273,7 +4305,7 @@
               'compute',
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:30c2a4f42e93e26e353447fbbc4115c1eb622e88589d6a01950431c28cbc0d2f',
+            'hash': 'sha256:ae5ab74d514057ec3d3fe5d860ad84329f4b9f9222a9e68b78ccf8a8ea1773a0',
             'id': 'n1',
             'lineno': 5,
             'op': 'R',
@@ -4296,6 +4328,7 @@
               'entity': '{"tags_any":["budget"],"source":"conformance","limit":5}',
               'fields': '*',
               'lineno': 6,
+              'literal_target': True,
               'op': 'R',
               'out': 'memory_filters',
               'raw': list([
@@ -4312,7 +4345,7 @@
               'compute',
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:3d298a61c2a497839da56e0db05e851e0599d80e79040c32fbc281d7e2a971b3',
+            'hash': 'sha256:8c965ebe10c3c41294bd05e2847ade0f119378fe4410028376895e3489e9468e',
             'id': 'n2',
             'lineno': 6,
             'op': 'R',
@@ -4335,6 +4368,7 @@
               'entity': '{"n":1}',
               'fields': '*',
               'lineno': 7,
+              'literal_target': True,
               'op': 'R',
               'out': 'record_payload',
               'raw': list([
@@ -4351,7 +4385,7 @@
               'compute',
             ]),
             'effect_tier': 'pure',
-            'hash': 'sha256:f89dbe40e484133ea3f1db30d648aca6f02b9084d74781f4168876ae0c9e62d7',
+            'hash': 'sha256:2e0a35c513a76849c684b52741f44617632528d6990b56899d3339b6c83cffff',
             'id': 'n3',
             'lineno': 7,
             'op': 'R',
@@ -4375,6 +4409,14 @@
               'entity': 'put',
               'fields': 'workflow',
               'lineno': 8,
+              'literal_args': list([
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+              ]),
               'op': 'R',
               'out': '_w',
               'raw': list([
@@ -4397,7 +4439,7 @@
               'memory_write',
             ]),
             'effect_tier': 'io-write',
-            'hash': 'sha256:b24cb3296dd155eedd7f7227d38ea7751ac641262b619ee3e1735017e0707afb',
+            'hash': 'sha256:5458a592ff1f5ae9b5a8f1c5dec91bb102431475c14d72c3c2a8a4e79e4670a3',
             'id': 'n4',
             'lineno': 8,
             'op': 'R',
@@ -4420,6 +4462,13 @@
               'entity': 'list',
               'fields': 'workflow',
               'lineno': 9,
+              'literal_args': list([
+                True,
+                True,
+                True,
+                True,
+                False,
+              ]),
               'op': 'R',
               'out': 'hist',
               'raw': list([
@@ -4441,7 +4490,7 @@
               'memory_read',
             ]),
             'effect_tier': 'io-read',
-            'hash': 'sha256:f7978cc5bd7e27bcefd197e9a0547f0ebf11bf7296956dba9f70c64d7e6d15b2',
+            'hash': 'sha256:cf1eca467b997945b0bb4962e779004eae10eae382905ed1ee3837428fe77afe',
             'id': 'n5',
             'lineno': 9,
             'op': 'R',
@@ -4460,6 +4509,9 @@
               'entity': 'prune',
               'fields': 'workflow',
               'lineno': 10,
+              'literal_args': list([
+                True,
+              ]),
               'op': 'R',
               'out': '_pr',
               'raw': list([
@@ -4477,7 +4529,7 @@
               'memory_write',
             ]),
             'effect_tier': 'io-write',
-            'hash': 'sha256:ed7f9cc3e31f8d6ab8ad6c7f048500b0870a24772bc1d4bcc6e2fcf6d46f02b7',
+            'hash': 'sha256:0ff3a39cc31d798a776a4dd0f4ed6880c5e3094fed02230d6955ea8e9c081c7a',
             'id': 'n6',
             'lineno': 10,
             'op': 'R',

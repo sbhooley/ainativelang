@@ -74,6 +74,8 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "db.C": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_DB_WRITE),
     "db.U": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_DB_WRITE),
     "db.D": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_DB_WRITE),
+    "db.Q": (EFFECT_TIER_IO_READ, EFFECT_KIND_DB_READ),
+    "db.M": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_DB_WRITE),
     "api.G": (EFFECT_TIER_IO_READ, EFFECT_KIND_HTTP),
     "api.P": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "api.POST": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
@@ -257,6 +259,7 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "llm_query.QUERY": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "llm_query.RUN": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "llm.COMPLETION": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
+    "llm.EMBED": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_HTTP),
     "tools.CALL": (EFFECT_TIER_IO_WRITE, EFFECT_KIND_TOOL),
     # Solana RPC (network); reads vs writes follow HTTP effect kinds for planning compatibility.
     # Contract detail (docs-only; not enforced here): solana.GET_PYTH_PRICE may take optional
@@ -319,7 +322,25 @@ ADAPTER_EFFECT: Dict[str, Tuple[str, str]] = {
     "core.LTE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
     "core.GTE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
     "core.EQ": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.EQS": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
     "core.NEQ": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.IF": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.HAS": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.CONTAINS_WORD": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.REPLACE_CHARS": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.IN": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.REGEX_CONTAINS": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.REGEX_REPLACE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.REGEX_FINDALL": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.PARSE_TIME": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.ADD_DAYS": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.BEFORE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.CASEFOLD": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.NORMALIZE": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.HTML_TEXT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.IS_ERROR": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.PUSH": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
+    "core.PUT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
     "core.AND": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
     "core.OR": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
     "core.NOT": (EFFECT_TIER_PURE, EFFECT_KIND_COMPUTE),
@@ -402,16 +423,11 @@ def strict_adapter_is_allowed(key: str) -> bool:
     return bool(key) and key in ADAPTER_EFFECT
 
 
-# core.* verbs listed in ADAPTER_EFFECT but not implemented in runtime/adapters/builtins.py.
-# MAP/FILTER/REDUCE need per-item callbacks the adapter call model cannot express;
-# strict mode rejects them so "validates" implies "runs".
-CORE_RUNTIME_UNIMPLEMENTED: frozenset = frozenset(
-    {
-        "core.MAP",
-        "core.FILTER",
-        "core.REDUCE",
-    }
-)
+# core.* verbs listed in ADAPTER_EFFECT but not implemented.
+# MAP/FILTER/REDUCE run in the runtime engine over a same-file label. The
+# adapter raises a distinct error if it is called without that binding, which
+# still counts as implemented for the strict-contract parity check.
+CORE_RUNTIME_UNIMPLEMENTED: frozenset = frozenset()
 
 
 def strict_core_runtime_implemented(key: str) -> bool:
