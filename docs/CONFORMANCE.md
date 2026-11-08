@@ -304,6 +304,10 @@ These tests define “conformance in spirit”; implement as automated suite whe
   (see [INSTALL.md](INSTALL.md)). Pre-commit’s docs-contract hook prefers
   `./.venv-py310/bin/python` when present.
 
+## Decision graphs (1.8.2)
+
+The 1.0 grammar stays the normative core. `Uses` is an optional declaration (`AINL_SPEC.md` §2.3.2). Runtime additions in this tree (`EQS`, `HAS`, `Break`, `core.IF`, `ainl.re.1`, `UNTRUSTED_PROMPT`, `SHAPE`, queue idempotency, `limits["now"]`, the `firm` grant) do not change `EQ`, `CONTAINS`, `TRIM`, `If`, or `Loop`. Contract: `operations/DECISION_OPS_1_8_2.md`.
+
 ## CI conformance note (v1.8.0 / current `main`)
 
 - The CI `core-pr` profile installs `fastapi`/`uvicorn` through the `dev` extra so runtime-runner service tests import consistently across Linux/macOS/Windows.

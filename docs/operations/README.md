@@ -4,6 +4,7 @@ Use this section for real deployment-style operational docs: monitors, playbooks
 
 ## Key docs
 
+- [`DECISION_OPS_1_8_2.md`](DECISION_OPS_1_8_2.md) — **1.8.2 decision-graph contract** (`Uses`, `firm` profile, prompt/shape/queue/clock, HTTP and A2A deny-by-default, ENV, cloud-key literals)
 - [`AUDIT_AND_TELEMETRY_MAP.md`](AUDIT_AND_TELEMETRY_MAP.md) — **Audit and telemetry inventory** (HTTP runner audit vs CLI trajectory vs `audit_trail` vs observability JSONL; `STATUS.yaml`; compliance doc boundaries)
 - [`EMBEDDED_RUNNER_AUDIT_BRIDGE.md`](EMBEDDED_RUNNER_AUDIT_BRIDGE.md) — **RFC (design only):** optional runner-shaped audit from embedded `RuntimeEngine` / MCP
 - **Enterprise:** [`../enterprise/SHARED_RESPONSIBILITY.md`](../enterprise/SHARED_RESPONSIBILITY.md), [`../enterprise/EVIDENCE_BUNDLE_RECIPE.md`](../enterprise/EVIDENCE_BUNDLE_RECIPE.md)

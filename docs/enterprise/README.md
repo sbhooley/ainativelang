@@ -5,6 +5,7 @@ Curated entry points for security, procurement, and regulated-industry conversat
 | Document | Purpose |
 |----------|---------|
 | [`SHARED_RESPONSIBILITY.md`](SHARED_RESPONSIBILITY.md) | Canonical **AINL vs customer** split; boundaries; links to threat model and provenance. |
+| [`../operations/DECISION_OPS_1_8_2.md`](../operations/DECISION_OPS_1_8_2.md) | **1.8.2** decision-graph grant (`firm`), HTTP/A2A deny-by-default, ENV, and what stays on the cloud account. |
 | [`EVIDENCE_BUNDLE_RECIPE.md`](EVIDENCE_BUNDLE_RECIPE.md) | Copy-paste **artifact folder** recipe (strict check, trajectory, runner logs, optional `audit_trail`, `ainl audit verify-jsonl`). |
 | [`ENTERPRISE_FAQ.md`](ENTERPRISE_FAQ.md) | FAQ; align answers with [`../operations/AUDIT_AND_TELEMETRY_MAP.md`](../operations/AUDIT_AND_TELEMETRY_MAP.md) and [`../../STATUS.yaml`](../../STATUS.yaml). |
 | [`SOC2_CHECKLIST.md`](SOC2_CHECKLIST.md) | SOC 2 **mapping starter** (not certification). |

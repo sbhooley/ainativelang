@@ -2,7 +2,7 @@
 
 **Index:** sibling docs in **`docs/integrations/README.md`**.
 
-AINL keeps **one HTTP client** (`SimpleHttpAdapter` in `runtime/adapters/http.py`). **Native “payment profile” code** today targets **HTTP 402 + payment-shaped headers** (primarily **x402** and **MPP**). Everything else in the landscape below is either **ordinary `http` JSON/REST** (same adapter, no special 402 parser) or a **different transport** (call out explicitly so we do not pretend it is `R http.*` magic).
+AINL keeps **one HTTP client** (`SimpleHttpAdapter` in `runtime/adapters/http.py`). A constructor with no `allow_hosts` denies every host. `*` is not a wildcard. See [`../operations/DECISION_OPS_1_8_2.md`](../operations/DECISION_OPS_1_8_2.md). **Native “payment profile” code** today targets **HTTP 402 + payment-shaped headers** (primarily **x402** and **MPP**). Everything else in the landscape below is either **ordinary `http` JSON/REST** (same adapter, no special 402 parser) or a **different transport** (call out explicitly so we do not pretend it is `R http.*` magic).
 
 **Honest “can I ship this today?” matrix + backlog:** [`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`](./AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md) (end-to-end sufficiency, frame vs host crypto, AGTP gaps).
 

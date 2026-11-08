@@ -65,6 +65,7 @@ Use [`docs/README.md`](README.md) as the primary navigation hub, then use this f
 - Runtime/compiler execution contract: `docs/RUNTIME_COMPILER_CONTRACT.md` (includes **graph execution pitfalls**: `X {…}`, `J`, `Set` lists, `memory.list` `null` vs `""`)
 - Autonomous ops playbook: `docs/operations/AUTONOMOUS_OPS_PLAYBOOK.md`
 - Sandbox execution profiles: `docs/operations/SANDBOX_EXECUTION_PROFILE.md`
+- **Decision graphs (1.8.2):** `docs/operations/DECISION_OPS_1_8_2.md` — `Uses`, `AINL_SECURITY_PROFILE=firm`, `UNTRUSTED_PROMPT`, `SHAPE`, queue idempotency, injected clock, cloud-key literals, HTTP/A2A deny-by-default, ENV
 - Capability grant model: `docs/operations/CAPABILITY_GRANT_MODEL.md`
 - MCP agent tool contracts (`ainl_compile` **`frame_hints`**, `ainl_run` workspace limits + auto-cache): `docs/operations/MCP_RESEARCH_CONTRACT.md` · tests `tests/test_mcp_frame_hints.py`, `tests/test_mcp_workspace_limits.py`, `tests/test_mcp_auto_cache_adapter.py`
 - **MCP authoring wizard, `ainl://strict-valid-families`, contract alignment (`contract_validation_status` / `mismatched_calls`):** `docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md` · Python `tooling/ainl_get_started.py`, `tooling/corpus_mining.py`, `scripts/ainl_mcp_server.py` · ArmaraOS `mcp_ainl_wizard_state_hint` / `mcp:ainl:wizard_state` — `armaraos/docs/mcp-a2a.md`

@@ -9,6 +9,7 @@ Use this section to understand how compiled AINL graphs execute, what runtime gu
 - [`SAFE_OPTIMIZATION_POLICY.md`](SAFE_OPTIMIZATION_POLICY.md) — optimization guardrails
 - [`TARGETS_ROADMAP.md`](TARGETS_ROADMAP.md) — target/runtime support roadmap
 - [`../trajectory.md`](../trajectory.md) — optional CLI step trace (`<stem>.trajectory.jsonl`, `ainl run --log-trajectory` / `AINL_LOG_TRAJECTORY`)
+- [`../operations/DECISION_OPS_1_8_2.md`](../operations/DECISION_OPS_1_8_2.md) — 1.8.2 decision ops, firm grant, HTTP/A2A/ENV defaults
 
 ## Related sections
 

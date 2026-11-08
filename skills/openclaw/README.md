@@ -2,7 +2,7 @@
 
 Deterministic compiled graphs for [OpenClaw](https://openclaw.ai/): **importer**, **CLI**, **`ainl-mcp`** merged into **`~/.openclaw/openclaw.json`**, and a **`~/.openclaw/bin/ainl-run`** compile-then-run wrapper after bootstrap. **Operator quickstart:** [`docs/QUICKSTART_OPENCLAW.md`](../../docs/QUICKSTART_OPENCLAW.md) (`ainl install openclaw`, `ainl status`, `ainl doctor --ainl`). **Rolling budget / storage:** [`docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md`](../../docs/operations/OPENCLAW_AINL_GOLD_STANDARD.md) §c. <!-- AINL-OPENCLAW-TOP5-DOCS-ROLLUP -->
 
-**Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
+**Package:** `ainativelang` **v1.8.2** (this tree, unreleased; **PyPI** after publish — **`docs/RELEASING.md`**). Decision-graph contract: [`docs/operations/DECISION_OPS_1_8_2.md`](../../docs/operations/DECISION_OPS_1_8_2.md). Optional extras: `[mcp]`, `[solana]`.
 
 **Token economics (reproducible):** [`docs/CLAIMS_AND_EVIDENCE.md`](../../docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](../../BENCHMARK.md) · [`scripts/benchmark_compile_once_run_many.py`](../../scripts/benchmark_compile_once_run_many.py).
 

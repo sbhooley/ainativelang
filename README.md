@@ -181,6 +181,14 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 
 **Agentic HTTP payments & commerce (x402, MPP, AP2, ACP, AGTP):** integration hub **[docs/integrations/README.md](docs/integrations/README.md)** — HTTP-402 rails on the **`http`** adapter (**[HTTP_MACHINE_PAYMENTS.md](docs/integrations/HTTP_MACHINE_PAYMENTS.md)**), practitioner readiness (**[AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md](docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md)**), and **AGTP** options (**[AGTP.md](docs/integrations/AGTP.md)**).
 
+## New in v1.8.2
+
+Unreleased in this tree until a GitHub Release publishes it. `EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged.
+
+- **Decision graphs:** `Uses`, `AINL_SECURITY_PROFILE=firm`, `core.UNTRUSTED_PROMPT`, `core.SHAPE`, a `queue.PUT` idempotency key, `limits["now"]`, and a compile rejection of cloud-key literals. `X core.ENV` uses the host allowlist in any case. Platform names such as `AzureWebJobsStorage` stay unreadable.
+- **Deny by default:** `SimpleHttpAdapter()` and an empty A2A allowlist deny every host. Metadata addresses stay closed. The runner log records argument counts and types, not values.
+- **Contract:** [`docs/operations/DECISION_OPS_1_8_2.md`](docs/operations/DECISION_OPS_1_8_2.md). List: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) § Unreleased.
+
 ## New in v1.8.0
 
 - **MCP authoring & strict-valid corpus:** **`ainl_step_examples`**; **`ainl_get_started`** with **`wizard_state_json`** for session continuity; MCP resource **`ainl://strict-valid-families`** (mined **`corpus/strict_valid_family_index.json`**, **`tooling/corpus_mining.py`**); **`ainl_validate`** / **`ainl_compile`** responses include **`contract_validation_status`** and **`contract_alignment.mismatched_calls`** (lightweight drift vs `ADAPTER_CONTRACTS`); **`tooling/mcp_exposure_profiles.json`** registers the wizard tool + family resource on **`design_impact_first`**, **`inspect_only`**, **`safe_workflow`**, and **`full`**. Hub: **`docs/operations/MCP_AINL_WIZARD_AND_CORPUS.md`**. ArmaraOS pairs with **`mcp:ainl:wizard_state`** graph facts and **`mcp_ainl_wizard_state_hint`** in the system prompt (see **`armaraos/docs/mcp-a2a.md`**).
@@ -1113,10 +1121,10 @@ Current security and operator capabilities:
 - **Adapter capability gating** — explicit allowlists via `AdapterRegistry`; only adapters in the effective grant's allowlist can be called.
 - **Policy-gated execution** — the `/run` endpoint validates compiled IR against the effective policy (derived from the grant) before execution. Forbidden adapters, effects, privilege tiers, and destructive adapters trigger HTTP 403 with structured errors.
 - **Capability discovery** — `GET /capabilities` exposes available adapters, verbs, effect defaults, privilege tiers, and adapter metadata (`destructive`, `network_facing`, `sandbox_safe`) so orchestrators can make informed decisions before submitting workflows.
-- **Named security profiles** — `tooling/security_profiles.json` packages recommended adapter allowlists, privilege-tier restrictions, runtime limits, and orchestrator expectations for common deployment scenarios (`local_minimal`, `sandbox_compute_and_store`, `sandbox_network_restricted`, `operator_full`). Profiles are loaded as capability grants at startup.
+- **Named security profiles** — `tooling/security_profiles.json` packages recommended adapter allowlists, privilege-tier restrictions, runtime limits, and orchestrator expectations for common deployment scenarios (`local_minimal`, `sandbox_compute_and_store`, `sandbox_network_restricted`, `operator_full`, `firm`). `AINL_SECURITY_PROFILE=firm` is the decision-graph grant (`core`, `llm`, `db`, `queue`; no `db.D`; no `core.ENV`). Contract: `docs/operations/DECISION_OPS_1_8_2.md`.
 - **Mandatory default limits** — runner and MCP execution surfaces apply conservative resource ceilings (`max_steps`, `max_depth`, `max_adapter_calls`, etc.) by default. Callers can tighten limits but not widen them.
 - **Privilege-tier metadata** — each adapter carries a `privilege_tier` (`pure`, `local_state`, `network`, `operator_sensitive`) plus `destructive`, `network_facing`, and `sandbox_safe` boolean classification fields in `tooling/adapter_manifest.json`.
-- **Structured audit logging** — the runner service emits structured JSON log events (`run_start`, `adapter_call`, `run_complete`, `run_failed`, `policy_rejected`) with UTC timestamps, trace IDs, duration, result hashes (no raw payloads), and redacted arguments. See `docs/operations/AUDIT_LOGGING.md`.
+- **Structured audit logging** — the runner service emits structured JSON log events (`run_start`, `adapter_call`, `run_complete`, `run_failed`, `policy_rejected`) with UTC timestamps, trace IDs, duration, and result hashes. The `adapter_call` line records `arg_count` and `arg_types`, not argument values. See `docs/operations/AUDIT_LOGGING.md`.
 - **Security introspection** — `tooling/security_report.py` generates a per-label, per-graph privilege map showing which adapters, verbs, privilege tiers, and adapter metadata flags a workflow uses.
 
 AINL does **not** provide container isolation, process sandboxing, network policy enforcement, authentication/encryption, or multi-tenant isolation. These remain the responsibility of the hosting environment.

@@ -22,7 +22,8 @@ Canonical **wire + security** docs for outbound agent integrations live in this 
 | **[`HTTP_MACHINE_PAYMENTS.md`](./HTTP_MACHINE_PAYMENTS.md)** | **x402** + **MPP** on **`http`** (`payment_profile`, structured `402`, `http_payment` merges), landscape table (**AP2**, **ACP** checkout, **AGTP**), repo placement (“where to put other protocols”). |
 | **[`AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md`](./AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md)** | Honest **“can I ship today?”** matrix + **G1–G7** backlog (examples, AP2/ACP guides, signing helpers, education). |
 | **[`AGTP.md`](./AGTP.md)** | **AGTP** is not plain `http` — **HTTP gateway**, **MCP/daemon**, future **`agtp` adapter**, or **`shell_exec`** paths. |
-| **[`A2A_ADAPTER.md`](./A2A_ADAPTER.md)** | **A2A** (Agent-to-Agent) client adapter — **not** Stripe ACP checkout; SSRF/allowlist contract. |
+| **[`A2A_ADAPTER.md`](./A2A_ADAPTER.md)** | **A2A** (Agent-to-Agent) client adapter — **not** Stripe ACP checkout; SSRF/allowlist contract. An empty allowlist denies. |
+| **[`../operations/DECISION_OPS_1_8_2.md`](../operations/DECISION_OPS_1_8_2.md)** | **1.8.2** decision graphs: `Uses`, `firm`, HTTP deny-by-default, ENV, cloud-key literals. |
 
 ## Security
 

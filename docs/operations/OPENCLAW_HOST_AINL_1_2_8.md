@@ -1,5 +1,7 @@
 # OpenClaw host briefing — AINL **v1.2.8+ through v1.8.0** (install / update)
 
+This briefing stops at the **v1.8.0** host obligations. The **1.8.2** decision-graph contract (firm grant, HTTP and A2A deny-by-default, ENV, cloud-key literals) is [`DECISION_OPS_1_8_2.md`](DECISION_OPS_1_8_2.md).
+
 **Audience:** You are the **OpenClaw host** — the process that owns config, cron, workspace paths, and **what gets injected into the agent** at session start.
 
 **Companion docs:** [`OPENCLAW_AINL_GOLD_STANDARD.md`](OPENCLAW_AINL_GOLD_STANDARD.md) (schedules + checklist) · [`WORKSPACE_ISOLATION.md`](WORKSPACE_ISOLATION.md) · [`TOKEN_CAPS_STAGING.md`](TOKEN_CAPS_STAGING.md) · [`AGENT_AINL_OPERATING_MODEL.md`](AGENT_AINL_OPERATING_MODEL.md) · [`../INTELLIGENCE_PROGRAMS.md`](../INTELLIGENCE_PROGRAMS.md) · [`../OPENCLAW_INTEGRATION.md`](../OPENCLAW_INTEGRATION.md)

@@ -38,7 +38,8 @@ Emitted for every adapter invocation during execution.
 | `verb` | string | Adapter verb (e.g. `Get`, `ADD`) |
 | `duration_ms` | float | Call duration in milliseconds |
 | `status` | `"ok"` or `"error"` | Whether the call succeeded |
-| `args` | array | Redacted call arguments |
+| `arg_count` | int | Number of call arguments |
+| `arg_types` | array of strings | Python type name of each argument |
 | `result_hash` | string or null | SHA-256 of the JSON-serialised result |
 | `error_summary` | string | Redacted error message (only on failure) |
 
@@ -58,8 +59,8 @@ Includes `replay_artifact_id` for traceability.
 ## Safety properties
 
 - **No raw results in logs**: only `result_hash` (SHA-256) is logged.
-- **Args are redacted**: sensitive tokens (authorization, password, etc.)
-  are replaced with `[REDACTED]`.
+- **Argument values are not in this log.** Each `adapter_call` line has `arg_count` and `arg_types` only, so a query or a document id is not written to the logger.
+- **Recorded calls are a different field.** When the caller asks the runner to record calls, the HTTP response `adapter_calls` is the redacted call log (sensitive tokens such as `authorization` become `[REDACTED]`). Replay uses that log, not the JSON line above.
 - **Error messages are redacted and truncated** to 200 characters.
 - **Timestamps are UTC ISO 8601** for consistent cross-system correlation.
 

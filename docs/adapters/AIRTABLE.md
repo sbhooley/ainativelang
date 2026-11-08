@@ -119,7 +119,7 @@ Batch shape:
 - Mutating verbs require `allow_write=true`.
 - Table allow-list is enforced when configured.
 - Attachment and webhook verbs also respect table allow-list.
-- URL-based attachment flows can be constrained by `allow_attachment_hosts`.
+- URL-based attachment flows require `allow_attachment_hosts`. An empty list denies every host. The check is HTTPS-only and refuses metadata addresses even if a host is listed. See [`../operations/DECISION_OPS_1_8_2.md`](../operations/DECISION_OPS_1_8_2.md).
 - Adapter retries transient HTTP failures and rate-limit responses with bounded backoff.
 - Pass scope remains intentionally light (no schema ops, no deep webhook payload handling).
 

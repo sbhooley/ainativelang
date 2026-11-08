@@ -2,7 +2,7 @@
 
 This folder is the **Hermes Agent** companion skill pack for **AINL**.
 
-**Package:** `ainativelang` **v1.8.0** (this tree; **PyPI** after publish — **`docs/RELEASING.md`**). Optional extras: `[mcp]`, `[solana]`.
+**Package:** `ainativelang` **v1.8.2** (this tree, unreleased; **PyPI** after publish — **`docs/RELEASING.md`**). Decision-graph contract: [`docs/operations/DECISION_OPS_1_8_2.md`](../../docs/operations/DECISION_OPS_1_8_2.md). Optional extras: `[mcp]`, `[solana]`.
 
 **Token economics (reproducible):** [`docs/CLAIMS_AND_EVIDENCE.md`](../../docs/CLAIMS_AND_EVIDENCE.md) · [`BENCHMARK.md`](../../BENCHMARK.md).
 

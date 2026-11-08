@@ -2,6 +2,8 @@
 
 > Independent security review of the AINL (AI Native Language) compiler + runtime + adapters platform, version 1.8.0.
 > Date: 2026-04-22.
+>
+> **Status of this file:** a point-in-time audit. It is not rewritten when later releases close a finding. The 1.8.2 tree closed the HTTP SSRF default in **H3** / **P4**: `SimpleHttpAdapter()` denies an empty allowlist, blocks private and metadata addresses (including mapped IPv6, 6to4, NAT64, Azure Wire Server, and Oracle IMDS), re-checks redirects, and strips credential headers on a cross-host redirect. `ainl serve` still binds `0.0.0.0` with no auth. Current contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md).
 > Scope: Full audit covering malicious-code review, architecture/trust boundaries, `ainl serve` HTTP API, runtime runner service, MCP server, all major adapters, secrets/dependency supply chain, and compiler/IR/emitter injection surface.
 
 ## Top-line verdict per deployment mode

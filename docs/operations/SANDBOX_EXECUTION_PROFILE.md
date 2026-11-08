@@ -66,7 +66,7 @@ when deciding which adapters are appropriate for a given sandbox profile.
 The following profiles are recommended starting points. Operators should adjust
 based on their environment's requirements.
 
-Named profile suggestions are also captured in `tooling/security_profiles.json`
+Named profile suggestions are also captured in `tooling/security_profiles.json`, including the 1.8.2 `firm` decision-graph grant (`docs/operations/DECISION_OPS_1_8_2.md`).
 for use in CI or external policy tooling. That JSON is intentionally small and
 does not introduce a new policy language; it simply packages adapter
 allowlists, privilege tiers, and runtime limit suggestions under a few

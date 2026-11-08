@@ -2,7 +2,7 @@
 
 This is the primary navigation hub for the `docs/` tree.
 
-**Target `ainl` line:** **v1.8.0** — [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md) (**`RUNTIME_VERSION`** / citation metadata; **PyPI** after publish — [`RELEASING.md`](RELEASING.md)).
+**This tree:** **v1.8.2** (unreleased until a GitHub Release publishes it). Decision-graph contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Published notes: [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES.md`](RELEASE_NOTES.md). **PyPI** after publish — [`RELEASING.md`](RELEASING.md).
 
 AINL docs are organized by user intent and conceptual layer rather than by file creation history. Start here if you want the shortest path to the right section. Use [`DOCS_INDEX.md`](DOCS_INDEX.md) as the exhaustive reference map.
 

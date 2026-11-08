@@ -4,6 +4,7 @@
 
 **Formal grammar and conformance:** see [AINL_SPEC.md](../AINL_SPEC.md) and [CONFORMANCE.md](../CONFORMANCE.md).
 **Compiler/runtime decoding contract:** see [RUNTIME_COMPILER_CONTRACT.md](../RUNTIME_COMPILER_CONTRACT.md).
+**1.8.2 decision graphs** (`Uses`, firm grant, new `core` verbs, unchanged `EQ` / `CONTAINS` / `TRIM` / `If` / `Loop`): see [DECISION_OPS_1_8_2.md](../operations/DECISION_OPS_1_8_2.md).
 
 **Ownership split (for contributors):**
 - Grammar law and prefix transition helpers live in `compiler_v2.py`.

@@ -269,7 +269,7 @@ what AINL provides vs what the orchestrator must provide.
 
 Named security profiles in `tooling/security_profiles.json` (for example
 `local_minimal`, `sandbox_compute_and_store`, `sandbox_network_restricted`,
-`operator_full`) can be used by orchestrators as **inputs** when choosing:
+`operator_full`, `firm`) can be used by orchestrators as **inputs** when choosing:
 
 - which adapters to allow or forbid (`adapter_allowlist`, `forbidden_adapters`),
 - which privilege tiers to disallow (`forbidden_privilege_tiers`),
@@ -803,7 +803,8 @@ AINL_SECURITY_PROFILE=sandbox_compute_and_store uvicorn scripts.runtime_runner_s
 ```
 
 Available profiles: `local_minimal`, `sandbox_compute_and_store`,
-`sandbox_network_restricted`, `operator_full`.
+`sandbox_network_restricted`, `operator_full`, `firm`
+(`docs/operations/DECISION_OPS_1_8_2.md`).
 
 ### Caller restrictions
 

@@ -40,7 +40,8 @@ A grant is a JSON-compatible dict with these fields:
 | `forbidden_effects` | `list[str]` | union | Forbidden effect names |
 | `forbidden_effect_tiers` | `list[str]` | union | Forbidden effect tiers |
 | `forbidden_privilege_tiers` | `list[str]` | union | Forbidden privilege tiers |
-| `limits` | `dict[str, int]` | per-key min | Runtime execution limits |
+| `limits` | `dict[str, int]` | per-key min | Runtime execution limits. Runner and MCP floors include `max_completion_calls` (8), `max_completion_tokens` (32000), `max_query_rows` (25), and `max_query_bytes` (262144). A caller cannot raise those. |
+| `denied_verbs` | `list[str]` | union | Verb blocklist (`db.D`, `core.ENV` on the `firm` profile). A caller cannot remove an entry. |
 | `adapter_constraints` | `dict[str, dict]` | per-adapter restrictive merge | Per-adapter host/path/table restrictions |
 
 ## Restrictive-only merge
@@ -51,6 +52,7 @@ is always **at least as restricted** as either input:
 - **`allowed_adapters`**: intersection (narrows the allowlist)
 - **`forbidden_*` fields**: union (widens the blocklist)
 - **`limits`**: per-key minimum (more restrictive wins)
+- **`denied_verbs`**: union (a caller cannot drop `db.D` or `core.ENV` from the `firm` profile)
 - **`adapter_constraints`**: per-adapter, per-field intersection for lists,
   min for numbers, AND for booleans
 
@@ -199,7 +201,8 @@ use this to build valid requests.
 
 ## Related docs
 
-- [Security Profiles](../../tooling/security_profiles.json) — named profiles
+- [Security Profiles](../../tooling/security_profiles.json) — named profiles, including `firm`
+- [Decision ops 1.8.2](DECISION_OPS_1_8_2.md) — `Uses`, firm grant, HTTP/A2A/ENV, cloud-key literals
 - [External Orchestration Guide](EXTERNAL_ORCHESTRATION_GUIDE.md) — integration patterns
 - [Sandbox Execution Profile](SANDBOX_EXECUTION_PROFILE.md) — deployment postures
 - [Audit Logging](AUDIT_LOGGING.md) — structured event schema

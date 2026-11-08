@@ -21,7 +21,7 @@ Peers that use a different A2A binding may need adapter updates. Track breaking 
 
 | Default / recommendation | Why |
 |----------------------------|-----|
-| **Prefer a non-empty `allow_hosts` (or `AINL_A2A_ALLOW_HOSTS`) in production** | Limits outbound DNS/HTTP to known agent hosts. An **empty** allowlist still allows *public* hostnames (only literal loopback/private are blocked when `allow_insecure_local` is off). Wider than many deployments want. |
+| **`allow_hosts` (or `AINL_A2A_ALLOW_HOSTS`) is required for `discover` / `send` / `get_task`** | An **empty** allowlist denies every host (`a2a: empty allowlist denies every host`). |
 | **`allow_insecure_local` off in production** | Prevents direct use of `127.0.0.1`, `localhost`, and private/link-local **literals** without an explicit opt-in. |
 | **`strict_ssrf` (DNS check) for hostnames** | Resolves the hostname; if any resolved address is loopback/private/link-local, the call fails unless `allow_insecure_local` is on. Reduces some **hostname → private IP** SSRF and DNS-rebinding style issues. **Not a full substitute** for a network firewall or a dedicated SSRF filter (see limitations). |
 | **Redirects off by default** | HTTP 3xx are **not** followed unless `follow_redirects` is enabled. When enabled, **each** redirect target is re-validated with the same rules. |
@@ -55,7 +55,7 @@ Do **not** let end-users paste raw URLs into tools without allowlists in untrust
 **Implemented:**
 
 - `http` / `https` only; other schemes rejected.
-- Optional **hostname allowlist** (`allow_hosts`).
+- **Hostname allowlist** (`allow_hosts`). Empty denies every host on `discover` / `send` / `get_task`.
 - Block **literal** loopback/private/link-local in URL host when `allow_insecure_local` is false.
 - **Response size** cap.
 - **TLS** via default SSL context (and `certifi` when available).
@@ -66,7 +66,7 @@ Do **not** let end-users paste raw URLs into tools without allowlists in untrust
 
 - **IDNA / Unicode hostnames** — not specially normalized; treat as best-effort same as `urlparse`.
 - **TOCTOU / rebinding** — address checked at one point in time; a malicious resolver could still be a risk in pathological cases.
-- **Empty `allow_hosts`** — still allows arbitrary **public** DNS names (unless strict resolution catches private resolves). Tighten with non-empty allowlists in sensitive environments.
+- **Empty `allow_hosts`** — denies every host on the normal adapter path. Hermes `discover_hermes` / `send_hermes` may call a **public** host (DNS checked) or a **loopback literal** from the operator's `a2a.json` (`127.0.0.1`, `::1`). They still refuse private, link-local, and metadata. A non-loopback lab peer uses the normal allowlist plus `allow_insecure_local`.
 - **mTLS, pinning, OAuth** — not part of the adapter; use a reverse proxy or a higher trust layer if required.
 
 **Reporting vulnerabilities:** see [SECURITY.md](../../SECURITY.md) at the repository root.
@@ -83,12 +83,12 @@ Do **not** let end-users paste raw URLs into tools without allowlists in untrust
 
 ## Hermes local `a2a.json`
 
-When a Hermes-compatible host publishes **`HERMES_HOME/a2a.json`** (default **`~/.hermes/a2a.json`**) with `{"base_url":"http://127.0.0.1:<port>"}` (HTTP **origin** only) and optional **`send_binding`** (`auto` \| `armaraos_jsonrpc` \| `a2a_http`), AINL can call:
+When a Hermes-compatible host publishes **`HERMES_HOME/a2a.json`** (default **`~/.hermes/a2a.json`**) with a **public** `base_url` or a **loopback literal** such as `http://127.0.0.1:<port>` and optional **`send_binding`** (`auto` \| `armaraos_jsonrpc` \| `a2a_http`), AINL can call:
 
 - **`R a2a.discover_hermes ->card`** — optional first arg: Hermes root directory string
 - **`R a2a.send_hermes message [session] [timeout_s] [hermes_root] ->task`**
 
-**`send_hermes`** tries **ArmaraOS JSON-RPC** `tasks/send` to **`AgentCard.url`** when same-origin with `base_url`, then **Linux Foundation HTTP** `POST …/message:send` (see `skills/hermes/a2a.example.json`). These targets relax literal loopback/private URL checks for URLs implied by that **operator-controlled** file for discovery and HTTP sends.
+**`send_hermes`** tries **ArmaraOS JSON-RPC** `tasks/send` to **`AgentCard.url`** when same-origin with `base_url`, then **Linux Foundation HTTP** `POST …/message:send` (see `skills/hermes/a2a.example.json`). Those paths allow a **public** host or a **loopback literal** such as `http://127.0.0.1`. They refuse private, link-local, and metadata. A non-loopback lab peer uses the normal `allow_hosts` list plus `allow_insecure_local`.
 
 **Nous Hermes Agent** (`hermes-agent` on GitHub): A2A server mode is **not shipped yet** (open issue **#514**). Stock Hermes will not answer `a2a.json` until upstream implements A2A or you point `base_url` at a bridge. ArmaraOS built-ins: **`hermes_a2a_status`**, **`a2a_discover_hermes`**, **`a2a_send_hermes`**.
 

@@ -10,6 +10,7 @@ Use this section for the AINL language definition itself: spec, canonical core, 
 - **AINL → HTTP executor bridge (JSON envelope):** [`../integrations/EXTERNAL_EXECUTOR_BRIDGE.md`](../integrations/EXTERNAL_EXECUTOR_BRIDGE.md) — recommended body shape, [`../../schemas/executor_bridge_request.schema.json`](../../schemas/executor_bridge_request.schema.json), Python validator `schemas/executor_bridge_validate.py`, reusable include [`../../modules/common/executor_bridge_request.ainl`](../../modules/common/executor_bridge_request.ainl) (`ainl_bridge_request_json` + `Call …/bridge_req/ENTRY`; use `R core.ECHO` for JSON **text** before parsing)
 - [`AINL_EXTENSIONS.md`](AINL_EXTENSIONS.md) — extension lanes
 - [`grammar.md`](grammar.md) — grammar quick reference
+- [`../operations/DECISION_OPS_1_8_2.md`](../operations/DECISION_OPS_1_8_2.md) — `Uses`, the new `core` verbs, and the behaviors of `EQ` / `CONTAINS` / `TRIM` / `If` / `Loop` that did not change
 
 **Label header vs bare number:** Only `L1:` (letter **L** + digits + colon) starts a label block. A line like `1:` is **not** a label declaration; indented steps under it are stored on the compiler’s synthetic label `_anon`, not on label id `1`. If you call `RuntimeEngine.run(..., label="1")` (or any host that picks an entry label by id), use `L1:` in source so steps land under the real label `1` in IR.
 

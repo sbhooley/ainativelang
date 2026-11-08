@@ -71,7 +71,7 @@ R ptc_runner status ->health
 ## Security + gating
 
 - Adapter is disabled unless explicitly enabled (`--enable-adapter ptc_runner` or `AINL_ENABLE_PTC=true`).
-- Host allowlist restrictions from `--http-allow-host` are respected.
+- Host allowlist restrictions from `--http-allow-host` are required for the HTTP path. An empty allowlist denies the URL, including a public one. Metadata addresses stay closed even if listed. Mock mode and the subprocess path do not make that HTTP fetch. See [`../operations/DECISION_OPS_1_8_2.md`](../operations/DECISION_OPS_1_8_2.md).
 - Calls fail fast when endpoint/config is missing.
 - `_`-prefixed context keys are filtered before request serialization (context firewall).
 
@@ -298,6 +298,7 @@ J ptc_out
 
 Reminder:
 - `llm_query` filters `_`-prefixed context keys before request serialization (context firewall).
+- `llm_query` HTTP calls need an exact host on `--http-allow-host`. An empty allowlist denies the URL.
 
 ## LangGraph Emission with PTC
 

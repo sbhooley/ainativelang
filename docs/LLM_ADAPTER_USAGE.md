@@ -6,6 +6,8 @@ This guide covers how to configure and use the expanded LLM adapter ecosystem in
 
 The legacy **`llm_query`** runtime adapter remains available behind `--enable-adapter llm_query` or `AINL_ENABLE_LLM_QUERY=true`, but **instantiating it emits a `DeprecationWarning`**. Prefer the unified pipeline: register **`llm`** via `register_llm_adapters` and use **`R llm completion ...`** (or your graph’s equivalent) with `config.yaml` `llm:` / fallback chain as below. See `adapters/llm_runtime.py` and `adapters/__init__.py` for registration details.
 
+A run allows 8 completion calls and 32000 total tokens unless `limits` raises the cap. Any `completion` or `embed` verb counts, including a provider registered under its own name. The token count comes from `usage` on the return value. `llm_query` HTTP calls need `--http-allow-host` for that URL. An empty allowlist denies it. Contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md).
+
 ## Configuration
 
 Create a `config.yaml` in your project root:

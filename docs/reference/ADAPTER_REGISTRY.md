@@ -80,8 +80,12 @@ R http.Options /path_or_url [headers_var] [timeout_s] ->resp
 - `/path_or_url`: either an absolute URL or a service‑relative path.
 - `body_var`: frame var containing JSON‑serializable body (for `Post`/`Put`/`Patch`).
 - `headers_var`: optional frame var containing a string‑keyed dict of headers.
-- `timeout_s`: optional float seconds override; defaults come from the adapter config.
+- `timeout_s`: optional float seconds override; defaults come from the adapter config. It must be positive and finite.
 - `resp`: frame variable receiving the normalized response envelope.
+
+### 2.1.1 Constructor defaults (1.8.2)
+
+`SimpleHttpAdapter()` with no arguments denies every host. It is HTTPS-only, blocks private and metadata addresses, re-checks redirects, pins the connect to an address it already checked, and returns a non-200 as a value. An allowlist entry is one exact host. `*` is not every public host. A cross-host redirect drops `Authorization`, `Cookie`, `Proxy-Authorization`, `X-Api-Key`, `Api-Key`, and `X-Amz-Security-Token`. Timeout default 5 seconds. Response cap 1000000 bytes. Full contract: [DECISION_OPS_1_8_2.md](../operations/DECISION_OPS_1_8_2.md). CLI, MCP, and the runner force private-address blocking. A test helper may opt out. That opt-out is not the production factory.
 
 ### 2.2 Examples
 
@@ -140,7 +144,7 @@ R a2a.get_task a2a_endpoint_url task_id [timeout_s] ->task
 - **Runner / MCP** `ainl_run`: `adapters: { "enable": ["a2a"], "a2a": { "allow_hosts": ["127.0.0.1"], "allow_insecure_local": true, "strict_ssrf": true, "follow_redirects": false, "timeout_s": 30.0 } }`
 - **Engine lazy registration** (e.g. `ainl serve`): set `AINL_A2A_ALLOW_HOSTS` (comma-separated) and optional `AINL_A2A_ALLOW_INSECURE_LOCAL=1`, `AINL_A2A_STRICT_SSRF=1` (DNS checks), `AINL_A2A_FOLLOW_REDIRECTS=1` (each hop re-checked), `AINL_A2A_TIMEOUT_S`, `AINL_A2A_MAX_BYTES`
 - **Full security + wire contract:** [docs/integrations/A2A_ADAPTER.md](../integrations/A2A_ADAPTER.md) (A2A profile 1.0) and [SECURITY.md](../../SECURITY.md) for reporting issues
-- **Empty `allow_hosts`:** public internet hostnames are still allowed (literals in private/loopback ranges are blocked unless `allow_insecure_local`). Use explicit allowlists in production; enable `strict_ssrf` to reject hostnames that resolve to non-public addresses unless `allow_insecure_local` is on.
+- **Empty `allow_hosts`:** denies every host on `discover` / `send` / `get_task`. Hermes `discover_hermes` / `send_hermes` may call a public host (DNS checked) or a loopback literal from the operator file, and still refuse private and metadata. Full contract: [DECISION_OPS_1_8_2.md](../operations/DECISION_OPS_1_8_2.md).
 
 ---
 

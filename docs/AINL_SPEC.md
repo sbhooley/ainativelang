@@ -175,6 +175,10 @@ id            := [A-Za-z_][A-Za-z0-9_]*
 
 > **Note — `X` is not general assignment.** The `X` step is `X <dst> <fn> [args…]` where `<fn>` must be a built-in op or a `core.*` call. Lines such as `X memory_namespace "workflow"` are parsed with `<fn> = workflow` and fail at runtime (`unknown X fn: workflow`). For memory-contract and other **frame bindings** (literals or copies from variables), use **`Set`**: `Set memory_namespace "workflow"`, `Set memory_record_id rid`, … Keep **`X`** when the right-hand side is a real expression, e.g. `X memory_ttl (core.mul 30 86400)` or `X memory_tags (arr "a" "b")`. Caller contracts: `modules/common/generic_memory.ainl`, `modules/common/access_aware_memory.ainl`.
 >
+### 2.3.2 `Uses` (1.8.2, optional)
+
+`Uses core llm` (compact: `uses: core, llm`) is an opt-in adapter ceiling. It is a declaration, placed before the first label. A file without it is unchanged. When it is present, compile fails if a step calls an adapter the file did not name. The host allowlist still applies. Runtime behavior, including the `firm` profile, `core.UNTRUSTED_PROMPT`, `core.SHAPE`, queue idempotency, the injected clock, and cloud-key literals, is specified in [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). That document is the contract. This grammar section only records that `Uses` is a legal declaration.
+
 > **Graph execution (default):** JSON **object literals** in `X` (e.g. `X filters {"source":"…"}`) lower to **`fn: "{"`**, which **`RuntimeEngine._exec_x`** does not treat as a constructor — you get **`unknown X fn: {`**. Prefer **`core.parse` on a JSON string** for static shapes, or build dicts with **`obj` / `put`** (see `modules/common/generic_memory.ainl`). **`J`** returns the **resolved value** of a variable (or literal); it does **not** jump to another label. Use **`Call label/NAME`** for callees, or place the next steps in the **same label** so the graph falls through. **`Set name [a,b,c]`** only binds **one** token after the name — use **`X name (arr "a" "b" "c")`** for list values.
 
 ### 2.3.1 **S hybrid** (deployment hint / emit planning)

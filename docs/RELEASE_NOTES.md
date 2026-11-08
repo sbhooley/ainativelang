@@ -1,5 +1,13 @@
 # Release notes
 
+## Unreleased — 1.8.2 decision graphs
+
+**Package (`ainativelang`):** **1.8.2** in this tree (`pyproject.toml`, `RUNTIME_VERSION`). Not published until a GitHub Release runs the PyPI workflow. Citation, `uv.lock`, and the v1.8.0 section below still describe the last published line.
+
+Canonical contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Conventional list: [`CHANGELOG.md`](CHANGELOG.md) § **Unreleased**.
+
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged. New surface: `Uses`, `AINL_SECURITY_PROFILE=firm`, `core.UNTRUSTED_PROMPT`, `core.SHAPE`, a `queue.PUT` idempotency key, `limits["now"]`, and a compile rejection of cloud-key literals. `SimpleHttpAdapter()` and an empty A2A allowlist deny by default. `X core.ENV` uses the host allowlist in any case. Platform secret names stay unreadable.
+
 ## AINL v1.8.0 — MCP authoring wizard, strict-valid families, HTTP machine payments (2026-04-26)
 
 **Package (`ainativelang`):** **1.8.0** — **`RUNTIME_VERSION` `1.8.0`** (this tree; **PyPI** after upload — **`docs/RELEASING.md`**).

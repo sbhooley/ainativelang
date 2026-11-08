@@ -887,7 +887,7 @@ Prescriptive sandbox profiles are documented for:
 - **Network-restricted** — local + outbound HTTP, no agent coordination
 - **Operator-controlled** — full adapter access with operator governance
 
-These profiles are also packaged as machine-readable named security profiles in `tooling/security_profiles.json`, bundling recommended adapter allowlists, privilege-tier restrictions, runtime limits, and orchestrator expectations for each scenario.
+These profiles are also packaged as machine-readable named security profiles in `tooling/security_profiles.json`, bundling recommended adapter allowlists, privilege-tier restrictions, runtime limits, and orchestrator expectations for each scenario. The **`firm`** profile (1.8.2) is the decision-graph grant: `core`, `llm`, `db`, and `queue`, with `db.D` and `core.ENV` denied. Contract: `docs/operations/DECISION_OPS_1_8_2.md`.
 
 A security/privilege report tool (`tooling/security_report.py`) generates per-label, per-graph privilege maps showing which adapters, verbs, and privilege tiers a workflow uses. This supports pre-deployment review and audit without modifying the workflow itself.
 

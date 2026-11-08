@@ -128,6 +128,10 @@ without requiring a global `python` on `PATH`.
 - v1.4.3 **`core.*`** builtins (comparisons, trim/strip, predicates, coercions, dict keys/values): `tests/test_core_builtins_v143.py`
 - Malformed `S`+`cron` schedule lines (IR `services.path` drift): `tests/test_s_cron_schedule_lines.py`
 
+## Decision graphs (1.8.2)
+
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` keep their existing runtime meaning. New names, `Uses`, the `firm` grant, HTTP and A2A deny-by-default, ENV, and cloud-key literals are specified in `docs/operations/DECISION_OPS_1_8_2.md`. Tests: `tests/test_decision_ops_181.py`, `tests/test_firm_contract.py`.
+
 ## CI gate behavior note (v1.8.0 / current `main`)
 
 - The `dev` extra includes runtime-service test imports (`fastapi`, `uvicorn`) so `core-pr` collection succeeds on all CI operating systems.
