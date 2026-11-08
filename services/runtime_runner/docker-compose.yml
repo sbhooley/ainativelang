@@ -5,6 +5,10 @@ services:
     build:
       context: ../..
       dockerfile: services/runtime_runner/Dockerfile
+    mem_limit: 256m
+    memswap_limit: 320m
+    cpus: 0.25
+    pids_limit: 128
     ports:
       - "8770:8770"
     environment:
