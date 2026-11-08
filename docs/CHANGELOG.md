@@ -4,6 +4,10 @@
 
 <!-- Next release changes go here -->
 
+## v1.8.4 (November 7, 2026) — Decimal digits and iterative quantifiers
+
+- **fix(runtime)**: `\d` and `\D` are Unicode decimal digits, the same set as Python `re`. A superscript is not a digit. A single-character quantifier matches in a loop, so a long name token does not recurse once per character. The step counter still does not rewind. `REGEX_FINDALL` still returns the full match. The stored caption and a hashtag without `#` stay a replace of that one match. There is no new verb.
+
 ## v1.8.3 (November 7, 2026) — Certified caption and counsel, public fetch opt-in, extract
 
 - **feat(runtime)**: certify the worker caption and counsel expressions in `ainl.re.1`. The caption is case-sensitive: `Smith v. Jones` matches and `smith v. jones` does not. Counsel and both docket expressions are compared with the `i` flag, which is how the worker compiles them. Caption uses capturing groups. Counsel uses Unicode `\w` and is 311 characters, so the pattern cap is 512. `\uXXXX` and `\UXXXXXXXX` are one character, including inside a class. `REGEX_FINDALL` still returns the full match. `REGEX_REPLACE` can insert group 1 with `\1`. The short docket expression is a separate fixture and is not the worker's any-digit flag. Fixtures: `tests/fixtures/ainl_re_1.json`.

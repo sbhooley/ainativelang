@@ -10,8 +10,12 @@ Syntax errors still raise: a bad pattern is the author's mistake.
 the absolute end), ``\\d \\D \\w \\W \\s \\S``, ``\\b``, character classes and
 ranges, greedy ``* + ? {n} {n,} {n,m}``, alternation, capturing groups, and
 non-capturing ``(?:...)``. ``\\w`` is Unicode: a letter or number
-(``str.isalnum``) or ``_``. It is not ``[A-Za-z0-9_]``. ``\\uXXXX`` and
-``\\UXXXXXXXX`` are one character, including inside a class. Ignore-case is a
+(``str.isalnum``) or ``_``. It is not ``[A-Za-z0-9_]``. ``\\d`` and ``\\D``
+are Unicode decimal digits (``str.isdecimal``), the same set as Python
+``re``. A superscript is not a digit. ``\\uXXXX`` and ``\\UXXXXXXXX`` are
+one character, including inside a class. A single-character quantifier
+matches in a loop, so a long name token does not recurse once per
+character. The step counter still does not rewind. Ignore-case is a
 leading ``(?i)`` or a flags argument ``i``. A letter matches when both
 characters' ``casefold`` is one code point and those folds are equal. A fold
 that changes length is not promised. Replacement text may use ``\\1``. The
@@ -243,9 +247,9 @@ def compile_pattern(pattern: str) -> Any:
 
 def _class_hit(kind: str, ch: str) -> bool:
     if kind == "d":
-        return ch.isdigit()
+        return ch.isdecimal()
     if kind == "D":
-        return not ch.isdigit()
+        return not ch.isdecimal()
     if kind == "w":
         return _is_word(ch)
     if kind == "W":
@@ -414,7 +418,50 @@ class _Engine:
             return self._rep(node[1], node[2], node[3], i, 0, cont)
         raise RegexLimitError("regex syntax error")
 
+    def _one_char(self, atom: Any, i: int) -> bool:
+        if i >= len(self.text):
+            return False
+        ch = self.text[i]
+        kind = atom[0]
+        if kind == "lit":
+            want = atom[1]
+            if self.ignorecase:
+                left = ch.casefold()
+                right = want.casefold()
+                return len(left) == 1 and len(right) == 1 and left == right
+            return ch == want
+        if kind == "dot":
+            return ch != "\n"
+        if kind == "cls":
+            return _class_hit(atom[1], ch)
+        if kind == "set":
+            return _set_hit(atom[1], atom[2], atom[3], ch, ignorecase=self.ignorecase)
+        return False
+
+    def _rep_chars(self, atom: Any, lo: int, hi: Optional[int], i: int, cont) -> bool:
+        """Greedy repeat of one character, in a loop.
+
+        The recursive repeat walks one Python frame per character. A long
+        school-district token then dies on the stack before the step cap
+        can return an error value. The counter still only increases.
+        """
+        cap = len(self.text) if hi is None else min(len(self.text), i + hi)
+        end = i
+        while end < cap and self._one_char(atom, end):
+            _bump(self.steps)
+            end += 1
+        taken = end - i
+        n = taken
+        while n >= lo:
+            _bump(self.steps)
+            if cont(i + n):
+                return True
+            n -= 1
+        return False
+
     def _rep(self, atom: Any, lo: int, hi: Optional[int], i: int, taken: int, cont) -> bool:
+        if atom[0] in {"lit", "dot", "cls", "set"}:
+            return self._rep_chars(atom, lo, hi, i, cont)
         _bump(self.steps)
         if hi is None or taken < hi:
             saved = list(self.groups)

@@ -1,5 +1,15 @@
 # Release notes
 
+## AINL v1.8.4 — Decimal digits and iterative quantifiers (2026-11-07)
+
+**Package (`ainativelang`):** **1.8.4** — **`RUNTIME_VERSION` `1.8.4`**.
+
+Canonical contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Conventional list: [`CHANGELOG.md`](CHANGELOG.md) § **v1.8.4**.
+
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged. `\d` is a decimal digit. A single-character quantifier matches in a loop. `REGEX_FINDALL` still returns the full match. There is no new verb. The 42 graphs on **1.8.3** stay as they are.
+
+**Install regression:** the **Release Gates** workflow runs on the `v1.8.4` tag. Confirm that workflow is green before telling operators to upgrade. This worker stays on **1.8.3** until its own suite has been run against this wheel.
+
 ## AINL v1.8.3 — Certified patterns, public fetch opt-in, extract (2026-11-07)
 
 **Package (`ainativelang`):** **1.8.3** — **`RUNTIME_VERSION` `1.8.3`**.

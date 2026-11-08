@@ -181,6 +181,14 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 
 **Agentic HTTP payments & commerce (x402, MPP, AP2, ACP, AGTP):** integration hub **[docs/integrations/README.md](docs/integrations/README.md)** — HTTP-402 rails on the **`http`** adapter (**[HTTP_MACHINE_PAYMENTS.md](docs/integrations/HTTP_MACHINE_PAYMENTS.md)**), practitioner readiness (**[AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md](docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md)**), and **AGTP** options (**[AGTP.md](docs/integrations/AGTP.md)**).
 
+## New in v1.8.4
+
+The 42 graphs on **1.8.3** stay as they are. No new verb.
+
+- **`\d`:** a decimal digit, same as Python `re`. A superscript does not match.
+- **Long tokens:** a single-character quantifier matches in a loop.
+- **Caption and hashtag:** still `REGEX_FINDALL` for the whole match, then `REGEX_REPLACE` of that match. Replacing the whole filing keeps the words around the caption.
+
 ## New in v1.8.3
 
 `EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` stay as they are.

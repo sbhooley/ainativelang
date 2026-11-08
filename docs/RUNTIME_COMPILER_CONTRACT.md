@@ -130,7 +130,7 @@ without requiring a global `python` on `PATH`.
 
 ## Decision graphs (1.8.2)
 
-`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` keep their existing runtime meaning. New names, `Uses`, the `firm` grant, HTTP and A2A deny-by-default, ENV, and cloud-key literals are specified in `docs/operations/DECISION_OPS_1_8_2.md`. After the 1.8.2 publish, the same contract adds `allow_public`, `core.EXTRACT`, and the certified caption and counsel patterns. Tests: `tests/test_decision_ops_181.py`, `tests/test_firm_contract.py`, `tests/test_regex_dialect.py`, `tests/test_extract_doc.py`.
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` keep their existing runtime meaning. New names, `Uses`, the `firm` grant, HTTP and A2A deny-by-default, ENV, and cloud-key literals are specified in `docs/operations/DECISION_OPS_1_8_2.md`. After the 1.8.2 publish, the same contract adds `allow_public`, `core.EXTRACT`, and the certified caption and counsel patterns. After 1.8.3, `\d` is a decimal digit and a single-character quantifier matches in a loop. `REGEX_FINDALL` still returns the full match. Tests: `tests/test_decision_ops_181.py`, `tests/test_firm_contract.py`, `tests/test_regex_dialect.py`, `tests/test_extract_doc.py`.
 
 ## CI gate behavior note (v1.8.0 / current `main`)
 

@@ -113,6 +113,44 @@ def test_short_docket_is_not_the_any_digit_flag():
     assert regex_findall("1:26-cv-12", patterns["docket"], "i") == []
 
 
+def test_decimal_digit_matches_python_and_a_superscript_does_not():
+    superscript = "\u00b2"
+    arabic_indic = "\u0660"
+    assert regex_contains("5", r"\d") is True
+    assert regex_contains(superscript, r"\d") is False
+    assert regex_contains(superscript, r"\D") is True
+    assert regex_contains(arabic_indic, r"\d") is True
+    for text in ("5", superscript, arabic_indic, "²5"):
+        assert regex_findall(text, r"\d") == [m.group(0) for m in re.finditer(r"\d", text)]
+        assert regex_findall(text, r"\D") == [m.group(0) for m in re.finditer(r"\D", text)]
+
+
+def test_a_long_name_token_does_not_recurse_per_character():
+    token = "A" * 800
+    assert regex_findall(token, r"[A-Za-z]+") == [token]
+    district = token + " School District"
+    assert regex_contains(district, r"[A-Za-z]+ School District")
+    assert regex_findall(district, r"[A-Za-z]+") == [token, "School", "District"]
+
+
+def test_stored_caption_and_hashtag_are_per_match_replaces():
+    """No new verb. The match is one string. The filing around it stays."""
+    patterns = _fixture()["patterns"]
+    caption = patterns["caption"]
+    match = regex_findall("Smith  v.  Jones", caption)[0]
+    assert match == "Smith  v.  Jones"
+    assert regex_replace(match, caption, r"\1 v. \2") == "Smith v. Jones"
+    filing = "See Smith  v.  Jones today"
+    assert regex_replace(filing, caption, r"\1 v. \2") == "See Smith v. Jones today"
+    tag = patterns["hashtag"]
+    one = regex_findall("#ReligiousLiberty", tag)[0]
+    assert regex_replace(one, tag, r"\1") == "ReligiousLiberty"
+    assert (
+        regex_replace("see #ReligiousLiberty today", tag, r"\1")
+        == "see ReligiousLiberty today"
+    )
+
+
 def test_word_class_is_unicode():
     assert regex_contains("Я", r"\w")
     assert regex_contains("é", r"\w")

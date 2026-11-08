@@ -56,10 +56,10 @@ real_and_working:
       pytest_collect_only: "pytest --collect-only -q (selected vs total reflects default deselection)."
     py_files_under_tests: 268
     test_named_py_files: 238
-    lines_python_under_tests: 33400
+    lines_python_under_tests: 33451
     lines_python_under_tests_rounded: "~33k"
-    pytest_collect_only_selected: 1699
-    pytest_collect_only_total: 1738
+    pytest_collect_only_selected: 1702
+    pytest_collect_only_total: 1741
     pytest_deselected: 39
     status: "Pass/fail counts vary by optional deps; run CI or pytest locally. Collection counts above are machine-generated."
 
