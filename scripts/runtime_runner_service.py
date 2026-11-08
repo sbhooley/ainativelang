@@ -283,6 +283,7 @@ def _build_registry(req: Dict[str, Any]) -> AdapterRegistry:
                 https_only=bool(h.get("https_only", True)),
                 status_as_value=True,
                 check_redirects=True,
+                allow_public=bool(h.get("allow_public", False)),
             ),
         )
     if "a2a" in enabled:

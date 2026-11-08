@@ -2,7 +2,7 @@
 
 This is the primary navigation hub for the `docs/` tree.
 
-**This tree:** **v1.8.2**. Decision-graph contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Notes: [`CHANGELOG.md`](CHANGELOG.md) § **v1.8.2**, [`RELEASE_NOTES.md`](RELEASE_NOTES.md). **PyPI** after upload — [`RELEASING.md`](RELEASING.md).
+**This tree:** **v1.8.3**. Decision-graph contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Notes: [`CHANGELOG.md`](CHANGELOG.md) § **v1.8.3**, [`RELEASE_NOTES.md`](RELEASE_NOTES.md). **PyPI** — [`RELEASING.md`](RELEASING.md).
 
 AINL docs are organized by user intent and conceptual layer rather than by file creation history. Start here if you want the shortest path to the right section. Use [`DOCS_INDEX.md`](DOCS_INDEX.md) as the exhaustive reference map.
 

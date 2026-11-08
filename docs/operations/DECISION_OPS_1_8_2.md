@@ -27,11 +27,11 @@ Safe replacements, all on `core`:
 - `CONTAINS_WORD`, `REPLACE_CHARS`, `IN`.
 - `Break` — stops the loop. `J` does not.
 - `R core.IF` — value select. It does not jump.
-- `REGEX_CONTAINS`, `REGEX_REPLACE`, `REGEX_FINDALL` — dialect `ainl.re.1` in `runtime/bounded_regex.py`. This is not Python `re`. Pattern cap 256, haystack cap 100000, step cap 100000. A size or step limit returns `{error:{code,message}}` and does not fail the document. Syntax errors still raise. Fixtures: `tests/fixtures/ainl_re_1.json`.
+- `REGEX_CONTAINS`, `REGEX_REPLACE`, `REGEX_FINDALL` — dialect `ainl.re.1` in `runtime/bounded_regex.py`. This is not Python `re`. Pattern cap 512 (the certified counsel expression is 311 characters), haystack cap 100000, step cap 100000. `\w` is Unicode (`isalnum` or `_`), not `[A-Za-z0-9_]`. `\uXXXX` and `\UXXXXXXXX` are one character, including inside a class. `REGEX_FINDALL` returns the full match, not capturing groups. `REGEX_REPLACE` accepts `\1`. A size or step limit returns `{error:{code,message}}` and does not fail the document. Syntax errors still raise. Fixtures: `tests/fixtures/ainl_re_1.json`. The docket, caption, and counsel rows are the worker expressions. The short docket row is a separate check.
 - `PARSE_TIME` — offsets, truncated fractional seconds, naive values as UTC, and `Nov 7, 2026`. The string `"now"` reads the injected clock.
 - `ADD_DAYS` — `days * 86400` UTC. It is not a local civil calendar.
 - `BEFORE`, `CASEFOLD`, `NORMALIZE`, `HTML_TEXT`, `IS_ERROR`.
-- `HTML_TEXT` strips tags. It is not safe to render.
+- `HTML_TEXT` strips tags. It is not safe to render. `EXTRACT` returns `{text, links}` from HTML or RSS/Atom, with a 1000000-byte cap (`EXTRACT_LIMIT`). It does not fetch and does not run the document. A link may be relative. The host joins it to the document base. The op does not take that base.
 - `R`-path `PUT` and `PUSH`.
 
 `MAP`, `FILTER`, and `REDUCE` run over a same-file label. That label stays pure (`core` only, and not `NOW`, `ISO`, `ISO_TS`, `ENV`, `SLEEP`, or `UUID`) unless `limits.allow_effectful_map` is set.
@@ -103,7 +103,9 @@ A string literal that looks like a cloud key fails the compile. The diagnostic i
 
 Metadata stays closed even when private addresses are allowed: `169.254.169.254`, `169.254.170.23`, `168.63.129.16` (Azure Wire Server), `192.0.0.192` (Oracle), link-local, IPv4-mapped forms, 6to4, and NAT64 `64:ff9b::/96` of a metadata address. Loopback and RFC1918 can still open under `allow_insecure_local`. `100.64.0.0/10` is not blocked as a whole. Alibaba `100.100.100.200` is.
 
-CLI, MCP, and the runner force private-address blocking. A test helper may opt out. That opt-out is not the production factory. Collectors that need an open host list stay in Python. Do not add a wildcard allowlist.
+CLI, MCP, and the runner force private-address blocking. A test helper may opt out. That opt-out is not the production factory.
+
+`allow_public` is off by default. Set it on the adapter (`--http-allow-public`, or `adapters.http.allow_public`) to admit any public HTTPS host. The private-address check, redirect re-check, pinned connect, header strip, timeout, and byte cap still apply. `*` and `*.example.com` are still exact names, not every host. A host admitted only by this flag cannot be private, link-local, or metadata, and it cannot be plain HTTP. An exact allowlist entry is unchanged.
 
 These other fetchers use the same public-host check. An empty allowlist denies. A listed loopback or private host may be fetched. Metadata never is, even if listed.
 

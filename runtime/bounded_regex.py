@@ -9,22 +9,26 @@ Syntax errors still raise: a bad pattern is the author's mistake.
 ``ainl.re.1`` accepts literals, ``.`` (not newline), ``^`` and ``$`` (``$`` is
 the absolute end), ``\\d \\D \\w \\W \\s \\S``, ``\\b``, character classes and
 ranges, greedy ``* + ? {n} {n,} {n,m}``, alternation, capturing groups, and
-non-capturing ``(?:...)``. Ignore-case is a leading ``(?i)`` or a flags
-argument ``i``. A letter matches when both characters' ``casefold`` is one
-code point and those folds are equal. A fold that changes length is not
-promised. Replacement text may use ``\\1``. The pattern may not.
+non-capturing ``(?:...)``. ``\\w`` is Unicode: a letter or number
+(``str.isalnum``) or ``_``. It is not ``[A-Za-z0-9_]``. ``\\uXXXX`` and
+``\\UXXXXXXXX`` are one character, including inside a class. Ignore-case is a
+leading ``(?i)`` or a flags argument ``i``. A letter matches when both
+characters' ``casefold`` is one code point and those folds are equal. A fold
+that changes length is not promised. Replacement text may use ``\\1``. The
+pattern may not. ``regex_findall`` returns each full match. It does not
+return capturing groups.
 
 Rejected: backreferences, lookahead and lookbehind, named groups, comments,
 inline flags other than a leading ``(?i)``, and lazy quantifiers. Caps are
-256 pattern characters, 100_000 haystack characters, 100_000 steps, and a
-quantifier max of 10_000.
+512 pattern characters (the certified counsel expression is 311), 100_000
+haystack characters, 100_000 steps, and a quantifier max of 10_000.
 """
 
 from __future__ import annotations
 
 from typing import Any, List, Optional, Tuple
 
-MAX_PATTERN_CHARS = 256
+MAX_PATTERN_CHARS = 512
 MAX_HAYSTACK_CHARS = 100_000
 MAX_STEPS = 100_000
 MAX_QUANTIFIER = 10_000
@@ -148,14 +152,15 @@ class _Parser:
             esc = self.peek()
             if not esc:
                 raise RegexLimitError("regex trailing escape")
-            self.i += 1
             if esc in "dDwWsS":
+                self.i += 1
                 return ("cls", esc)
             if esc == "b":
+                self.i += 1
                 return ("anchor", "b")
             if esc.isdigit():
                 raise RegexLimitError("regex backreferences are not allowed")
-            return ("lit", esc)
+            return ("lit", self._after_backslash())
         if ch == ".":
             self.i += 1
             return ("dot",)
@@ -169,6 +174,29 @@ class _Parser:
             raise RegexLimitError("regex syntax error")
         self.i += 1
         return ("lit", ch)
+
+    def _after_backslash(self) -> str:
+        """One escaped character. The backslash is already consumed.
+
+        ``\\u`` plus four hex digits and ``\\U`` plus eight hex digits are
+        one code point. Any other letter is that letter, so ``\\-`` is a
+        hyphen and ``\\d`` inside a class stays the character ``d``.
+        """
+        esc = self.peek()
+        if not esc:
+            raise RegexLimitError("regex trailing escape")
+        self.i += 1
+        if esc not in ("u", "U"):
+            return esc
+        width = 4 if esc == "u" else 8
+        hexes = self.s[self.i : self.i + width]
+        if len(hexes) != width or any(c not in "0123456789abcdefABCDEF" for c in hexes):
+            raise RegexLimitError("regex unicode escape is incomplete")
+        self.i += width
+        code = int(hexes, 16)
+        if code > 0x10FFFF or 0xD800 <= code <= 0xDFFF:
+            raise RegexLimitError("regex unicode escape is out of range")
+        return chr(code)
 
     def _class(self) -> Any:
         self.i += 1
@@ -185,8 +213,7 @@ class _Parser:
             a = self.peek()
             self.i += 1
             if a == "\\" and self.peek():
-                a = self.peek()
-                self.i += 1
+                a = self._after_backslash()
             if self.peek() == "-" and self.s[self.i + 1 : self.i + 2] not in ("", "]"):
                 self.i += 1
                 b = self.peek()
@@ -194,8 +221,7 @@ class _Parser:
                     raise RegexLimitError("regex class is not closed")
                 self.i += 1
                 if b == "\\" and self.peek():
-                    b = self.peek()
-                    self.i += 1
+                    b = self._after_backslash()
                 ranges.append((a, b))
             else:
                 chars.append(a)
@@ -210,8 +236,8 @@ def compile_pattern(pattern: str) -> Any:
         pattern = "" if pattern is None else str(pattern)
     if pattern == "":
         raise RegexLimitError("regex pattern must not be empty")
-    if len(pattern) > MAX_PATTERN_CHARS:
-        raise RegexLimitError("regex pattern exceeds 256 characters")
+        if len(pattern) > MAX_PATTERN_CHARS:
+            raise RegexLimitError(f"regex pattern exceeds {MAX_PATTERN_CHARS} characters")
     return _Parser(pattern).parse()
 
 
@@ -411,7 +437,7 @@ def _search(
 ) -> List[Tuple[int, int, List[Tuple[int, int]]]]:
     raw = "" if pattern is None else str(pattern)
     if len(raw) > MAX_PATTERN_CHARS:
-        raise RegexLimitError("regex pattern exceeds 256 characters")
+        raise RegexLimitError(f"regex pattern exceeds {MAX_PATTERN_CHARS} characters")
     body, ignore = prepare_pattern(raw, flags)
     node = compile_pattern(body)
     eng = _Engine(text, ignorecase=ignore)

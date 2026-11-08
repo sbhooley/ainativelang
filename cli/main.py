@@ -219,6 +219,7 @@ def _make_http(args: argparse.Namespace) -> RuntimeAdapter:
         https_only=bool(getattr(args, "http_https_only", True)),
         status_as_value=True,
         check_redirects=True,
+        allow_public=bool(getattr(args, "http_allow_public", False)),
     )
 
 
@@ -2719,6 +2720,14 @@ def main() -> None:
         help="With --enable-adapter bridge: map executor key to POST URL (repeatable)",
     )
     runp.add_argument("--http-allow-host", action="append", default=[])
+    runp.add_argument(
+        "--http-allow-public",
+        action="store_true",
+        help=(
+            "Opt in to any public HTTPS host that already passed the private-address check. "
+            "Off by default. * is still one exact host name. Metadata stays refused."
+        ),
+    )
     runp.add_argument(
         "--http-timeout-s",
         type=float,

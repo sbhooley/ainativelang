@@ -116,6 +116,7 @@ class SimpleHttpAdapter(HttpAdapter):
         status_as_value: bool = True,
         max_redirects: int = 3,
         check_redirects: bool = True,
+        allow_public: bool = False,
     ):
         self.default_timeout_s = _positive_finite(default_timeout_s, "timeout")
         self.max_response_bytes = int(max_response_bytes)
@@ -128,6 +129,7 @@ class SimpleHttpAdapter(HttpAdapter):
         self.status_as_value = bool(status_as_value)
         self.max_redirects = max(0, int(max_redirects))
         self.check_redirects = bool(check_redirects)
+        self.allow_public = bool(allow_public)
         self.payment_profile = str(payment_profile or "none").strip().lower()
         if self.payment_profile not in {"none", "auto", "mpp", "x402"}:
             raise AdapterError("http adapter invalid payment_profile (use none|auto|mpp|x402)")
@@ -140,11 +142,14 @@ class SimpleHttpAdapter(HttpAdapter):
     def _validate_url(self, url: str) -> List[str]:
         """Return the addresses this request may connect to.
 
-        An empty allowlist denies every public host. An entry is one exact
-        host. ``*`` does not mean every public HTTPS host. ``allow_insecure_local``
-        opens loopback and private addresses only, and metadata stays closed.
-        The returned addresses were checked. The pinned reader connects to
-        the first of them.
+        An empty allowlist denies every public host unless ``allow_public``
+        is set. That flag is off by default. It admits any public HTTPS host
+        that already passed the private-address check. ``*`` and
+        ``*.example.com`` stay exact names. Metadata, link-local, and private
+        addresses stay closed when the host is admitted only by this flag.
+        ``allow_insecure_local`` opens loopback and private addresses only
+        for an exact allowlist entry, and metadata stays closed. The returned
+        addresses were checked. The pinned reader connects to the first of them.
         """
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
@@ -155,10 +160,13 @@ class SimpleHttpAdapter(HttpAdapter):
             raise AdapterError("http adapter requires https url")
         host = parsed.hostname.lower()
         allowed = {item.lower() for item in self.allow_hosts}
-        if allowed:
-            if host not in allowed:
+        exact = host in allowed
+        if exact:
+            pass
+        elif self.allow_public:
+            if parsed.scheme != "https":
                 raise AdapterError("http host blocked by allowlist")
-        elif self.allow_insecure_local:
+        elif self.allow_insecure_local and not allowed:
             from runtime.net_guard import host_is_blocked
 
             if not host_is_blocked(host):
@@ -169,12 +177,16 @@ class SimpleHttpAdapter(HttpAdapter):
             return []
         from runtime.net_guard import AddressRejected, check_fetch_url
 
+        # Admitted by the public flag: HTTPS only, and private stays closed.
+        # An exact allowlist entry keeps the adapter's own https and
+        # allow_insecure_local settings. Metadata stays closed either way.
+        admitted_by_public = self.allow_public and not exact
         try:
             return list(
                 check_fetch_url(
                     url,
-                    https_only=self.https_only,
-                    allow_private=self.allow_insecure_local,
+                    https_only=True if admitted_by_public else self.https_only,
+                    allow_private=self.allow_insecure_local and not admitted_by_public,
                     resolve=True,
                 )
             )

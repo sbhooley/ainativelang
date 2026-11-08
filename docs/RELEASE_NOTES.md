@@ -1,5 +1,15 @@
 # Release notes
 
+## AINL v1.8.3 — Certified patterns, public fetch opt-in, extract (2026-11-07)
+
+**Package (`ainativelang`):** **1.8.3** — **`RUNTIME_VERSION` `1.8.3`**.
+
+Canonical contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Conventional list: [`CHANGELOG.md`](CHANGELOG.md) § **v1.8.3**.
+
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged. The caption expression is case-sensitive. Counsel and both docket expressions use the `i` flag. `allow_public` defaults off. `core.EXTRACT` does not fetch. A relative link is joined to the document base by the host. `core.UNTRUSTED_PROMPT`, `core.SHAPE`, and the `queue.PUT` idempotency key stay the 1.8.2 ops.
+
+**Install regression:** the **Release Gates** workflow runs on the `v1.8.3` tag. Confirm that workflow is green before telling operators to upgrade. This worker stays on **1.8.2** until its own suite has been run against this wheel.
+
 ## AINL v1.8.2 — Decision graphs, firm grant, deny-by-default egress (2026-11-07)
 
 **Package (`ainativelang`):** **1.8.2** — **`RUNTIME_VERSION` `1.8.2`**.

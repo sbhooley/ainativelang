@@ -162,8 +162,7 @@ def html_text(value: Any) -> str:
     """Strip tags and collapse whitespace. This is not a sanitizer.
 
     A nested tag such as ``<scr<script>ipt>`` survives a stripper. Do not
-    render the result. Collectors that need feeds, links, or encodings stay
-    in Python with a real parser.
+    render the result. ``core.EXTRACT`` is the parser for text and links.
     """
     raw = "" if value is None else str(value)
     if len(raw) > 1_000_000:

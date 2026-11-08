@@ -4,6 +4,13 @@
 
 <!-- Next release changes go here -->
 
+## v1.8.3 (November 7, 2026) — Certified caption and counsel, public fetch opt-in, extract
+
+- **feat(runtime)**: certify the worker caption and counsel expressions in `ainl.re.1`. The caption is case-sensitive: `Smith v. Jones` matches and `smith v. jones` does not. Counsel and both docket expressions are compared with the `i` flag, which is how the worker compiles them. Caption uses capturing groups. Counsel uses Unicode `\w` and is 311 characters, so the pattern cap is 512. `\uXXXX` and `\UXXXXXXXX` are one character, including inside a class. `REGEX_FINDALL` still returns the full match. `REGEX_REPLACE` can insert group 1 with `\1`. The short docket expression is a separate fixture and is not the worker's any-digit flag. Fixtures: `tests/fixtures/ainl_re_1.json`.
+- **feat(http)**: `allow_public` (default off) admits any public HTTPS host that already passed the private-address check, the redirect re-check, the pinned connect, the header strip, the timeout, and the byte cap. `*` and `*.example.com` stay exact names. Private, link-local, and metadata addresses stay refused when the flag is what admitted the host. CLI: `--http-allow-public`. MCP and the runner: `adapters.http.allow_public`.
+- **feat(runtime)**: `core.EXTRACT` returns `{text, links}` from HTML or RSS/Atom. It does not fetch and does not run the document. A link may be relative. The host joins it to the document base. Script and style text is omitted. `javascript:`, `data:`, `vbscript:`, and `file:` links are dropped. Over 1000000 bytes returns `{error:{code:EXTRACT_LIMIT}}` and the document is not in the error. `HTML_TEXT` remains a tag stripper and is not safe to render.
+- `core.UNTRUSTED_PROMPT`, `core.SHAPE`, and the `queue.PUT` idempotency key are already in published **1.8.2**. This release does not add a second copy.
+
 ## v1.8.2 (November 7, 2026) — Decision graphs, firm grant, deny-by-default egress
 
 - **feat(runtime)**: firm profile and the decision-graph surface that sits on 1.8.2. `Uses core llm` is an opt-in adapter ceiling. `AINL_SECURITY_PROFILE=firm` allows `core`, `llm`, `db`, and `queue`, denies `db.D` and `core.ENV`, and caps completion calls, tokens, query rows, and frame bytes. `core.UNTRUSTED_PROMPT` keeps a document from closing the instruction block. `core.SHAPE` returns an error value when a declared field is missing. `queue.PUT` takes an optional idempotency key and stamps it on a dict message. `limits["now"]` freezes `NOW`, `ISO`, `ISO_TS`, and `PARSE_TIME "now"`. A string literal that looks like a cloud key does not compile. `X core.ENV` uses the same allowlist as `R` in any case, and platform names such as `AzureWebJobsStorage` stay unreadable.

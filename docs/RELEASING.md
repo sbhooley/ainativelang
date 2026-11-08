@@ -2,9 +2,9 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.8.2** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.8.3** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
-**PyPI lag:** Until the wheel/sdist is uploaded, **`pip index versions ainativelang`** (or the [PyPI project page](https://pypi.org/project/ainativelang/#history)) still shows the prior release. After publish, confirm **`1.8.2`** appears on PyPI before telling users to `pip install -U ainativelang` for this line.
+**PyPI:** After upload, confirm **`pip index versions ainativelang`** shows **1.8.3** before telling users to `pip install -U ainativelang` for this line.
 
 **Headline repo statistics:** Before tagging, run **`python scripts/refresh_repo_stats.py`** so **`STATUS.yaml`** and the **Repository Layout** block in **`AGENTS.md`** match current line counts, test inventory, and `pytest --collect-only` output. See **[`CONTRIBUTING.md`](../CONTRIBUTING.md)** (optional **`pre-commit install`** auto-runs the refresh on relevant commits). The **`repo-stats`** GitHub Actions workflow runs **`--check`** on **every** pull request and push to `main`.
 

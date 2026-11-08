@@ -181,6 +181,15 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 
 **Agentic HTTP payments & commerce (x402, MPP, AP2, ACP, AGTP):** integration hub **[docs/integrations/README.md](docs/integrations/README.md)** — HTTP-402 rails on the **`http`** adapter (**[HTTP_MACHINE_PAYMENTS.md](docs/integrations/HTTP_MACHINE_PAYMENTS.md)**), practitioner readiness (**[AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md](docs/integrations/AGENTIC_PROTOCOLS_PRACTITIONER_READINESS.md)**), and **AGTP** options (**[AGTP.md](docs/integrations/AGTP.md)**).
 
+## New in v1.8.3
+
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` stay as they are.
+
+- **Certified patterns:** caption, counsel, the short docket, hashtags, and a `\u` character class in [`tests/fixtures/ainl_re_1.json`](tests/fixtures/ainl_re_1.json). `REGEX_FINDALL` returns the full match. Counsel's Unicode `\w` matches Python `re`.
+- **Public fetch, opt-in:** `allow_public` / `--http-allow-public`. Default deny stays. `*` is not a wildcard. Metadata stays refused.
+- **Extract:** `core.EXTRACT` returns text and links from HTML or RSS/Atom. `HTML_TEXT` is still only a tag stripper.
+- **Already in published 1.8.2:** `core.UNTRUSTED_PROMPT`, `core.SHAPE`, and the `queue.PUT` idempotency key.
+
 ## New in v1.8.2
 
 `EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged.

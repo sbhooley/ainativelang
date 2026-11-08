@@ -1,17 +1,29 @@
 {
   "dialect": "ainl.re.1",
-  "note": "The docket expression is the worker's expression. Caption and counsel here are shapes with the same features, not the expressions in litigation_radar.py and competition_radar.py. Those stay in Python until the exact pattern is added to this file and the dialect test matches Python re.",
+  "note": "Docket, caption, and counsel are the worker expressions. Caption is from litigation_radar.py, case-sensitive, and uses capturing groups. Counsel is from competition_radar.py, compiled there with re.I, and uses Unicode \\w. Both docket expressions use the i flag. The flags object is how each row is compared to Python re. The short docket is a separate check and does not replace the worker's any-digit flag. REGEX_FINDALL returns the full match, the same span as finditer group(0), not the capturing groups. REGEX_REPLACE can insert group 1 with \\1, so a hashtag caller can drop the # mark that way. \\uXXXX and \\UXXXXXXXX are one character, including inside a class. Python re reads those escapes in the pattern; this dialect does too.",
   "caps": {
-    "pattern_chars": 256,
+    "pattern_chars": 512,
     "haystack_chars": 100000,
     "steps": 100000,
     "quantifier": 10000
   },
   "size_limit_is": "error_value",
+  "findall": "full match",
+  "flags": {
+    "docket": "i",
+    "docket_short": "i",
+    "caption": "",
+    "counsel": "i",
+    "hashtag": "",
+    "nonlatin": ""
+  },
   "patterns": {
     "docket": "\\b(?:\\d{1,2}:\\d{2}-(?:cv|cr|mc|md)-\\d{3,6}|No\\.\\s*\\d{2,4}-[A-Za-z0-9\\-]{2,12})\\b",
-    "caption": "\\b(?:[A-Za-z][A-Za-z.'-]{0,40}(?:\\s+[A-Za-z][A-Za-z.'-]{0,40}){0,4})\\s+v\\.?\\s+(?:[A-Za-z][A-Za-z.'-]{0,40}(?:\\s+[A-Za-z][A-Za-z.'-]{0,40}){0,4})\\b",
-    "counsel": "\\b(?:counsel(?:\\s+for\\s+the\\s+(?:plaintiff|defendant))?|attorney)\\b"
+    "docket_short": "\\b\\d:\\d{2}-cv-\\d+\\b",
+    "caption": "\\b([A-Z][A-Za-z0-9.&'\\-]+(?:\\s+[A-Z][A-Za-z0-9.&'\\-]+){0,4})\\s+v\\.\\s+([A-Z][A-Za-z0-9.&'\\-]+(?:\\s+[A-Z][A-Za-z0-9.&'\\-]+){0,5})\\b",
+    "counsel": "First\\s+Liberty(?:\\s+Institute)?(?:\\s+\\w+){0,8}\\s+(?:represented|represents|representing|filed|settled|counsel|attorneys|lawyers)|(?:represented|represents|representing|filed|settled)\\s+by\\s+First\\s+Liberty(?:\\s+Institute)?|(?:counsel|attorneys|lawyers)\\s+(?:with|from|at|for)\\s+First\\s+Liberty(?:\\s+Institute)?",
+    "hashtag": "#([A-Za-z][A-Za-z0-9_]{1,50})",
+    "nonlatin": "[\\u0400-\\u04FF\\u0600-\\u06FF\\u0590-\\u05FF\\u4E00-\\u9FFF\\u0900-\\u097F]"
   },
   "samples": [
     "See 1:26-cv-00412 today",
@@ -21,10 +33,16 @@
     "1:26-cv-12",
     "99:99-mc-123456",
     "Smith v. Jones",
+    "smith v. jones",
     "SMITH V JONES",
+    "First Liberty Institute lawyers filed the brief",
+    "first liberty represented the client",
+    "First Liberty naïve represented the client",
     "Counsel for the Plaintiff",
     "the attorney appeared",
     "no counsel here",
-    "pre-litigation counsel"
+    "see #ReligiousLiberty today",
+    "Я",
+    "Hello"
   ]
 }

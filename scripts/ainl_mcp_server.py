@@ -2640,14 +2640,15 @@ def ainl_run(
         if "http" in enabled:
             h = adapters.get("http") or {}
             allow_hosts = h.get("allow_hosts") or []
-            if not isinstance(allow_hosts, list) or not allow_hosts:
+            allow_public = bool(h.get("allow_public", False))
+            if not isinstance(allow_hosts, list) or (not allow_hosts and not allow_public):
                 return _wiz(
                     _annotate_run_return(
                         {
                             "ok": False,
                             "trace_id": trace_id,
                             "error": "adapter_config_error",
-                            "details": "http adapter enabled but adapters.http.allow_hosts must be a non-empty list",
+                            "details": "http adapter enabled but adapters.http.allow_hosts must be a non-empty list, or set allow_public",
                         },
                         strict,
                     )
@@ -2665,6 +2666,7 @@ def ainl_run(
                     https_only=bool(h.get("https_only", True)),
                     status_as_value=True,
                     check_redirects=True,
+                    allow_public=allow_public,
                 ),
             )
         if "fs" in enabled:

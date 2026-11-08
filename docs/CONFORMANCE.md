@@ -306,7 +306,7 @@ These tests define “conformance in spirit”; implement as automated suite whe
 
 ## Decision graphs (1.8.2)
 
-The 1.0 grammar stays the normative core. `Uses` is an optional declaration (`AINL_SPEC.md` §2.3.2). Runtime additions in this tree (`EQS`, `HAS`, `Break`, `core.IF`, `ainl.re.1`, `UNTRUSTED_PROMPT`, `SHAPE`, queue idempotency, `limits["now"]`, the `firm` grant) do not change `EQ`, `CONTAINS`, `TRIM`, `If`, or `Loop`. Contract: `operations/DECISION_OPS_1_8_2.md`.
+The 1.0 grammar stays the normative core. `Uses` is an optional declaration (`AINL_SPEC.md` §2.3.2). Runtime additions in this tree (`EQS`, `HAS`, `Break`, `core.IF`, `ainl.re.1`, `UNTRUSTED_PROMPT`, `SHAPE`, queue idempotency, `limits["now"]`, the `firm` grant, `allow_public`, `core.EXTRACT`) do not change `EQ`, `CONTAINS`, `TRIM`, `If`, or `Loop`. Contract: `operations/DECISION_OPS_1_8_2.md`.
 
 ## CI conformance note (v1.8.0 / current `main`)
 

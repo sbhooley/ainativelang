@@ -24,6 +24,7 @@
         "ENV",
         "EQ",
         "EQS",
+        "EXTRACT",
         "FILTER",
         "FILTER_HIGH_SCORE",
         "FLATTEN",

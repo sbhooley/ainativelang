@@ -33,6 +33,7 @@ from runtime.decision_ops import (
     strict_eq,
 )
 from runtime.bounded_regex import limit_error_value
+from runtime.extract_doc import extract_document
 from runtime.firm_contract import apply_shape, untrusted_prompt
 from runtime.values import coerce_number, deep_get, deep_put, stable_sort, truthy
 
@@ -490,6 +491,11 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             return normalize_text(args[0] if args else "", args[1] if len(args) > 1 else "NFC")
         if t == "html_text":
             return html_text(args[0] if args else "")
+        if t == "extract":
+            return extract_document(
+                args[0] if args else "",
+                args[1] if len(args) > 1 else "auto",
+            )
         if t == "is_error":
             return is_error_value(args[0] if args else None)
         if t == "push":

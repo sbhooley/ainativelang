@@ -324,3 +324,40 @@ def test_http_adapter_retries_on_5xx_then_fails(monkeypatch):
         assert "status error" in str(e)
         # 3 attempts total for retryable 5xx.
         assert calls["n"] == 3
+
+
+def test_allow_public_admits_a_public_https_address_and_refuses_the_rest():
+    public = SimpleHttpAdapter(allow_public=True)
+    assert public._validate_url("https://8.8.8.8/path") == ["8.8.8.8"]
+    star = SimpleHttpAdapter(allow_hosts=["*"])
+    for url in (
+        "https://8.8.8.8/",
+        "https://169.254.169.254/",
+        "https://10.1.2.3/",
+        "https://169.254.1.1/",
+        "http://8.8.8.8/",
+    ):
+        try:
+            star._validate_url(url)
+            raise AssertionError(url)
+        except AdapterError as exc:
+            assert "8.8.8.8" not in str(exc)
+            assert "169.254" not in str(exc)
+    opened = SimpleHttpAdapter(allow_public=True, https_only=False)
+    for url in (
+        "http://8.8.8.8/",
+        "https://10.1.2.3/",
+        "https://169.254.169.254/",
+        "https://169.254.1.1/",
+    ):
+        try:
+            opened._validate_url(url)
+            raise AssertionError(url)
+        except AdapterError:
+            pass
+    named = SimpleHttpAdapter(allow_hosts=["*.example.com"], allow_public=False)
+    try:
+        named._validate_url("https://8.8.8.8/")
+        raise AssertionError("a suffix is not a wildcard")
+    except AdapterError as exc:
+        assert "8.8.8.8" not in str(exc)
