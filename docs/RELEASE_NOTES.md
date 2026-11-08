@@ -1,12 +1,14 @@
 # Release notes
 
-## Unreleased — 1.8.2 decision graphs
+## AINL v1.8.2 — Decision graphs, firm grant, deny-by-default egress (2026-11-07)
 
-**Package (`ainativelang`):** **1.8.2** in this tree (`pyproject.toml`, `RUNTIME_VERSION`). Not published until a GitHub Release runs the PyPI workflow. Citation, `uv.lock`, and the v1.8.0 section below still describe the last published line.
+**Package (`ainativelang`):** **1.8.2** — **`RUNTIME_VERSION` `1.8.2`**.
 
-Canonical contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Conventional list: [`CHANGELOG.md`](CHANGELOG.md) § **Unreleased**.
+Canonical contract: [`operations/DECISION_OPS_1_8_2.md`](operations/DECISION_OPS_1_8_2.md). Conventional list: [`CHANGELOG.md`](CHANGELOG.md) § **v1.8.2**.
 
-`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged. New surface: `Uses`, `AINL_SECURITY_PROFILE=firm`, `core.UNTRUSTED_PROMPT`, `core.SHAPE`, a `queue.PUT` idempotency key, `limits["now"]`, and a compile rejection of cloud-key literals. `SimpleHttpAdapter()` and an empty A2A allowlist deny by default. `X core.ENV` uses the host allowlist in any case. Platform secret names stay unreadable.
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged. New surface: `Uses`, `AINL_SECURITY_PROFILE=firm`, `core.UNTRUSTED_PROMPT`, `core.SHAPE`, a `queue.PUT` idempotency key, `limits["now"]`, and a compile rejection of cloud-key literals. `SimpleHttpAdapter()` and an empty A2A allowlist deny by default. Hermes `discover_hermes` / `send_hermes` still accept a loopback literal from the operator file. `X core.ENV` uses the host allowlist in any case. Platform secret names stay unreadable.
+
+**Install regression:** the **Release Gates** workflow runs on the `v1.8.2` tag (wheel build, `twine check`, import smoke, `ainl --help`, `ainl-mcp --help`, `pip check`, and the OpenClaw / ZeroClaw MCP dry-run installs). Confirm that workflow is green before telling operators to upgrade.
 
 ## AINL v1.8.0 — MCP authoring wizard, strict-valid families, HTTP machine payments (2026-04-26)
 

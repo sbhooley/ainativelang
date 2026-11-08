@@ -2,22 +2,22 @@
 
 This document describes how to cut a **PyPI-ready** release of the **`ainl`** package defined in **[`pyproject.toml`](../pyproject.toml)**.
 
-**Latest version in this tree:** **1.8.0** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
+**Latest version in this tree:** **1.8.2** (see **`pyproject.toml`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`**). Older versions remain documented in **`docs/CHANGELOG.md`** and **`docs/RELEASE_NOTES.md`**.
 
-**PyPI lag:** Marketing and operator docs may name **`v1.8.0`** as the *current line* while **`pyproject.toml`** and **`RUNTIME_VERSION`** match that tag. Until the wheel/sdist is uploaded, **`pip index versions ainativelang`** (or the [PyPI project page](https://pypi.org/project/ainativelang/#history)) still shows the prior release. After publish, confirm **`1.8.0`** appears on PyPI before telling users to `pip install -U ainativelang` for this line.
+**PyPI lag:** Until the wheel/sdist is uploaded, **`pip index versions ainativelang`** (or the [PyPI project page](https://pypi.org/project/ainativelang/#history)) still shows the prior release. After publish, confirm **`1.8.2`** appears on PyPI before telling users to `pip install -U ainativelang` for this line.
 
 **Headline repo statistics:** Before tagging, run **`python scripts/refresh_repo_stats.py`** so **`STATUS.yaml`** and the **Repository Layout** block in **`AGENTS.md`** match current line counts, test inventory, and `pytest --collect-only` output. See **[`CONTRIBUTING.md`](../CONTRIBUTING.md)** (optional **`pre-commit install`** auto-runs the refresh on relevant commits). The **`repo-stats`** GitHub Actions workflow runs **`--check`** on **every** pull request and push to `main`.
 
-### v1.8.0 — publish checklist (this tree)
+### v1.8.2 — publish checklist (this tree)
 
 1. **Version surfaces aligned:** **`pyproject.toml`** **`version`**, **`runtime/engine.py`** **`RUNTIME_VERSION`**, **`CITATION.cff`** **`version`** + **`date-released`**, **`tooling/bot_bootstrap.json`**, **`tests/emits/server/runtime/engine.py`** **`RUNTIME_VERSION`**, **`aiNativeLang.yml`** **`version`** (if present).
 2. **Lockfile:** **`uv lock`** (editable **`ainativelang`** stanza in **`uv.lock`** matches **`pyproject.toml`**).
-3. **Notes:** **`docs/CHANGELOG.md`** § **v1.8.0**, **`docs/RELEASE_NOTES.md`** § **AINL v1.8.0**.
+3. **Notes:** **`docs/CHANGELOG.md`** § **v1.8.2**, **`docs/RELEASE_NOTES.md`** § **AINL v1.8.2**.
 4. **CI / local gates:** green **`main`** (especially **`parser-compat`** / wishlist); locally run **`make conformance`** (or project equivalent) and **`python -m pytest`** on **Python 3.10** minimum; optional **`Release Gates`** workflow on the release commit.
 5. **Pre-tag smoke (MCP + HTTP payments):** see **Pre-flight** block below (wishlist strict + two **`ainl run`** lines).
 6. **Build:** **`rm -rf dist/ && uv build && uvx twine check dist/`** (or **`python -m build`** + **`twine check`**).
 7. **Upload:** **`uv publish`** (token/OIDC per above) **or** publish a **GitHub Release** for tag **`v1.8.0`** so **`.github/workflows/publish-pypi.yml`** runs.
-8. **Tag (if not via GitHub Release):** **`git tag -a v1.8.0 -m "ainl 1.8.0"`** then **`git push origin v1.8.0`** — tag must match **`pyproject.toml`**.
+8. **Tag (if not via GitHub Release):** **`git tag -a v1.8.2 -m "ainl 1.8.2"`** then **`git push origin v1.8.2`** — tag must match **`pyproject.toml`**.
 
 ### Manual smoke: A2A adapter (before tagging)
 

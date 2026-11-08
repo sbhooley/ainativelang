@@ -1,6 +1,6 @@
 # Decision graphs and the firm grant (1.8.2)
 
-This is the current contract for strict decision graphs in this tree (`ainativelang` **1.8.2**, unreleased until a GitHub Release publishes it). `EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged. New names and host grants carry the safer behavior.
+This is the current contract for strict decision graphs in `ainativelang` **1.8.2**. `EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged. New names and host grants carry the safer behavior.
 
 Tests: `tests/test_firm_contract.py`, `tests/test_decision_ops_181.py`, `tests/test_regex_dialect.py`, `tests/test_http_adapter_contracts.py`.
 

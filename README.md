@@ -183,11 +183,11 @@ Vulnerability reporting and sensitive areas (outbound HTTP, the `a2a` adapter, s
 
 ## New in v1.8.2
 
-Unreleased in this tree until a GitHub Release publishes it. `EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged.
+`EQ`, `CONTAINS`, `TRIM`, `If`, and `Loop` are unchanged.
 
 - **Decision graphs:** `Uses`, `AINL_SECURITY_PROFILE=firm`, `core.UNTRUSTED_PROMPT`, `core.SHAPE`, a `queue.PUT` idempotency key, `limits["now"]`, and a compile rejection of cloud-key literals. `X core.ENV` uses the host allowlist in any case. Platform names such as `AzureWebJobsStorage` stay unreadable.
 - **Deny by default:** `SimpleHttpAdapter()` and an empty A2A allowlist deny every host. Metadata addresses stay closed. The runner log records argument counts and types, not values.
-- **Contract:** [`docs/operations/DECISION_OPS_1_8_2.md`](docs/operations/DECISION_OPS_1_8_2.md). List: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) § Unreleased.
+- **Contract:** [`docs/operations/DECISION_OPS_1_8_2.md`](docs/operations/DECISION_OPS_1_8_2.md). List: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) § **v1.8.2**.
 
 ## New in v1.8.0
 
