@@ -260,6 +260,10 @@ _MCP_DEFAULT_LIMITS: Dict[str, Any] = {
     "max_depth": 500,
     "max_adapter_calls": 50000,
     "max_time_ms": 900000,
+    "max_completion_calls": 8,
+    "max_completion_tokens": 32000,
+    "max_query_rows": 25,
+    "max_query_bytes": 262144,
 }
 # Back-compat for tests and introspection; same values as _MCP_DEFAULT_LIMITS.
 _DEFAULT_LIMITS: Dict[str, Any] = dict(_MCP_DEFAULT_LIMITS)
@@ -2843,6 +2847,7 @@ def ainl_run(
             execution_mode="graph-preferred",
             limits=merged_limits,
             host_adapter_allowlist=mcp_allowed,
+            denied_verbs=list(_MCP_SERVER_GRANT.get("denied_verbs") or []),
         )
         entry = label or eng.default_entry_label()
         out = eng.run_label(entry, frame=frame or {})
@@ -3032,6 +3037,7 @@ def ainl_fitness_report(file: str, runs: int = 5, strict: bool = True) -> dict:
                 execution_mode="graph-preferred",
                 limits=dict(merged_fitness_limits),
                 host_adapter_allowlist=fitness_allowed,
+                denied_verbs=list(_MCP_SERVER_GRANT.get("denied_verbs") or []),
             )
             entry = eng.default_entry_label()
             eng.run_label(entry, frame={})

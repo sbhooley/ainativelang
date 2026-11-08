@@ -37,6 +37,10 @@ GRANT_LIMIT_KEYS = (
     "max_time_ms",
     "max_frame_bytes",
     "max_loop_iters",
+    "max_completion_calls",
+    "max_completion_tokens",
+    "max_query_rows",
+    "max_query_bytes",
 )
 
 
@@ -56,6 +60,7 @@ def empty_grant() -> Dict[str, Any]:
         "forbidden_privilege_tiers": [],
         "limits": {},
         "adapter_constraints": {},
+        "denied_verbs": [],
     }
 
 
@@ -129,6 +134,11 @@ def merge_grants(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any
         ac[adapter] = merged_c
     merged["adapter_constraints"] = ac
 
+    # --- denied_verbs: union (a caller cannot put a verb back) -----------
+    base_dv = {str(item).strip() for item in (base.get("denied_verbs") or []) if str(item).strip()}
+    overlay_dv = {str(item).strip() for item in (overlay.get("denied_verbs") or []) if str(item).strip()}
+    merged["denied_verbs"] = sorted(base_dv | overlay_dv)
+
     return merged
 
 
@@ -200,6 +210,7 @@ def load_profile_as_grant(profile_name: str) -> Dict[str, Any]:
         "forbidden_privilege_tiers": list(profile.get("forbidden_privilege_tiers") or []),
         "limits": dict(profile.get("runtime_limits") or {}),
         "adapter_constraints": {},
+        "denied_verbs": list(profile.get("denied_verbs") or []),
     }
 
 

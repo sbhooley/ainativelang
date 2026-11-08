@@ -63,6 +63,10 @@ _SERVER_DEFAULT_LIMITS: Dict[str, int] = {
     "max_depth": 500,
     "max_adapter_calls": 50000,
     "max_time_ms": 900000,
+    "max_completion_calls": 8,
+    "max_completion_tokens": 32000,
+    "max_query_rows": 25,
+    "max_query_bytes": 262144,
 }
 
 
@@ -219,7 +223,8 @@ def _instrument_registry(reg: AdapterRegistry, trace_id: str, replay_artifact_id
                 "verb": target,
                 "duration_ms": dt,
                 "status": status,
-                "args": _redact_value(list(args or [])),
+                "arg_count": len(args or []),
+                "arg_types": [type(item).__name__ for item in (args or [])],
                 "result_hash": _result_hash(result) if status == "ok" else None,
             }
             if error_summary is not None:
@@ -428,6 +433,7 @@ def _run_once(req: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
         unknown_op_policy=req.get("unknown_op_policy"),
         limits=req["limits"],
         host_adapter_allowlist=req.get("allowed_adapters"),
+        denied_verbs=list(effective.get("denied_verbs") or []),
     )
     label = str(req.get("label") or eng.default_entry_label())
     frame = req.get("frame") or {}

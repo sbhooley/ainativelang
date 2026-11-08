@@ -38,6 +38,8 @@ _OPCODE_PREFIXES = frozenset([
     "Tst", "Mock", "Desc", "Rel", "Idx", "API", "Dep",
     "SLA", "Run", "Svc", "Contract",
     "include",
+    "Uses",
+    "uses",
 ])
 
 _LABEL_RE = re.compile(r'^L\w+:')
@@ -110,6 +112,11 @@ def _classify_line(line: str, lineno: int, is_first_content: bool) -> _CompactLi
     if stripped.startswith("in:"):
         fields = stripped[3:].strip().split()
         return _CompactLine(indent, line, "in", {"fields": fields}, lineno)
+
+    # Adapter ceiling: uses: core, llm
+    if stripped.startswith("uses:"):
+        names = [part.strip() for part in stripped[5:].split(",") if part.strip()]
+        return _CompactLine(indent, line, "uses", {"names": names}, lineno)
 
     # Config declaration: config name:type
     if stripped.startswith("config "):
@@ -236,7 +243,7 @@ class _Transpiler:
         decls: List[_CompactLine] = []
         exec_lines: List[_CompactLine] = []
         for cl in lines:
-            if cl.kind in ("config", "state"):
+            if cl.kind in ("config", "state", "uses"):
                 decls.append(cl)
             else:
                 exec_lines.append(cl)
@@ -247,6 +254,8 @@ class _Transpiler:
                 self._output.append(f'D Config {cl.data["decl"]}')
             elif cl.kind == "state":
                 self._output.append(f'D State {cl.data["decl"]}')
+            elif cl.kind == "uses":
+                self._output.append("Uses " + " ".join(cl.data["names"]))
 
         if decls:
             self._output.append("")

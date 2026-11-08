@@ -145,6 +145,41 @@
         "treat extension_openclaw adapters as operator-only"
       ]
     },
+    "firm": {
+      "description": "Decision graphs for a law firm, clinic, government office, or nonprofit. HTTPS-only egress, no core.ENV, no db.D, safe traces, and a completion cap. Turn this on with AINL_SECURITY_PROFILE=firm instead of reassembling flags.",
+      "intended_use": [
+        "Azure Functions, Lambda, Cloud Run, and a container that runs strict decision graphs",
+        "hosts that already inject identity into the client and do not want a graph to read it"
+      ],
+      "adapter_allowlist": ["core", "llm", "db", "queue"],
+      "forbidden_adapters": [
+        "http", "web", "fs", "ext", "extras", "a2a", "agent", "svc",
+        "sqlite", "postgres", "mysql", "redis", "dynamodb", "airtable",
+        "supabase", "email", "calendar", "social", "tiktok", "tools",
+        "llm_query", "embedding_memory", "ptc_runner", "browser"
+      ],
+      "denied_verbs": ["db.D", "core.ENV"],
+      "forbidden_effects": [],
+      "forbidden_effect_tiers": [],
+      "forbidden_privilege_tiers": ["operator_sensitive"],
+      "runtime_limits": {
+        "max_steps": 50000,
+        "max_depth": 50,
+        "max_adapter_calls": 500,
+        "max_time_ms": 120000,
+        "max_frame_bytes": 1048576,
+        "max_completion_calls": 8,
+        "max_completion_tokens": 32000,
+        "max_query_rows": 25,
+        "max_query_bytes": 262144
+      },
+      "orchestrator_expectations": [
+        "HTTPS only, private-address blocking, redirect re-check, and an exact host allowlist",
+        "safe traces on, and no prompt or response logging",
+        "short-lived identity on the host; the graph does not receive a key",
+        "db.D and core.ENV stay off even if a caller asks"
+      ]
+    },
     "ptc_sandbox_plus": {
       "description": "Sandboxed profile for optional PTC/LLM reliability adapters with strict limits.",
       "intended_use": [

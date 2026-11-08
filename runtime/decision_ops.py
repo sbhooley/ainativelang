@@ -181,8 +181,37 @@ def is_error_value(value: Any) -> bool:
     return isinstance(err, dict) and bool(err.get("code"))
 
 
+# Platform names that do not look like "KEY" and still hold a credential
+# or a metadata endpoint. Matched on the whole name, case-insensitive.
+_PLATFORM_SECRET_EXACT = frozenset(
+    {
+        "azurewebjobsstorage",
+        "appinsights_instrumentationkey",
+        "database_url",
+        "redis_url",
+        "mongo_uri",
+        "mongodb_uri",
+        "identity_header",
+        "aws_lambda_runtime_api",
+        "ainl_postgres_url",
+        "ainl_mysql_url",
+        "ainl_redis_url",
+    }
+)
+
+
 def env_name_is_secret(name: str) -> bool:
-    return bool(_SECRET_ENV.search(name or ""))
+    text = name or ""
+    folded = text.lower()
+    if folded in _PLATFORM_SECRET_EXACT:
+        return True
+    if "connstr" in folded or "instrumentationkey" in folded:
+        return True
+    if folded.endswith("_url") and any(
+        part in folded for part in ("database", "postgres", "mysql", "redis", "mongo", "storage", "azure")
+    ):
+        return True
+    return bool(_SECRET_ENV.search(text))
 
 
 def read_env(name: str, allowlist: Any, default: Any = None) -> Any:

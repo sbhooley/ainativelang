@@ -1075,6 +1075,8 @@ class AICodeCompiler:
         self.strict_literals = bool(strict_literals)
         self.pure = bool(pure)
         self.return_union: Optional[Dict[str, Any]] = None
+        self.uses: Optional[List[str]] = None
+        self._source_text = ""
         self._errors: List[str] = []
         self._label_decl_lines: Dict[str, int] = {}
         self.services: Dict[str, Dict] = {}
@@ -3406,12 +3408,42 @@ class AICodeCompiler:
 
     _PURE_CORE = frozenset({"NOW", "ISO", "ISO_TS", "ENV", "SLEEP", "UUID"})
 
-    def _enforce_decision_contracts(self) -> None:
-        """pure=True and a declared return union. Both are opt-in compile checks.
+    def _uses_namespace(self, adapter: str) -> str:
+        text = str(adapter or "").strip().lower()
+        if not text:
+            return ""
+        return text.split(".", 1)[0]
 
-        A cross-file Call is not rejected here. The callee is compiled with
-        the same pure flag, so purity follows the call.
+    def _enforce_decision_contracts(self) -> None:
+        """pure=True, Uses, cloud-key literals, and a declared return union.
+
+        Uses is opt-in. A file that does not declare it keeps the host
+        allowlist as its only adapter ceiling. A cross-file Call is not
+        rejected here. The callee is compiled with the same pure flag.
         """
+        from runtime.firm_contract import source_contains_cloud_key
+
+        if source_contains_cloud_key(self._source_text):
+            self._errors.append("string literal looks like a cloud key")
+        if self.uses is not None:
+            allowed = set(self.uses)
+            for step in self._iter_all_steps():
+                op_name = step.get("op")
+                if op_name == "R":
+                    ns = self._uses_namespace(str(step.get("adapter") or ""))
+                    if ns and ns not in allowed:
+                        self._errors.append(f"uses does not declare {ns}")
+                elif op_name == "QueuePut" and "queue" not in allowed:
+                    self._errors.append("uses does not declare queue")
+                elif op_name in ("CacheGet", "CacheSet") and "cache" not in allowed:
+                    self._errors.append("uses does not declare cache")
+                elif op_name == "X":
+                    fn = str(step.get("fn") or "")
+                    if "." not in fn:
+                        continue
+                    ns = self._uses_namespace(fn)
+                    if ns and ns not in allowed:
+                        self._errors.append(f"uses does not declare {ns}")
         if self.pure:
             for step in self._iter_all_steps():
                 op = step.get("op")
@@ -3635,6 +3667,7 @@ class AICodeCompiler:
         from ainl_preprocess import preprocess as _compact_preprocess
         code = _compact_preprocess(code)
         source_text = code
+        self._source_text = source_text
         lines = code.split("\n")
         source_lines = list(lines)
         if context is not None:
@@ -3682,6 +3715,7 @@ class AICodeCompiler:
         self._warnings = []
         self.meta = []
         self.return_union = None
+        self.uses = None
         self._process_include_prelude(
             prelude_includes,
             source_lines,
@@ -5115,6 +5149,19 @@ class AICodeCompiler:
             elif mod == "rag" and mop == "Pipe":
                 if len(slots) >= 4:
                     self.rag["pipelines"][slots[0]] = {"ret": slots[1], "aug": slots[2], "gen": slots[3]}
+            elif op in ("Uses", "uses"):
+                if self.uses is not None:
+                    self._errors.append(f"Line {lineno}: Uses is already declared")
+                names: List[str] = []
+                for slot in slots:
+                    for part in str(slot).split(","):
+                        cleaned = part.strip().lower()
+                        if cleaned:
+                            names.append(cleaned)
+                if not names:
+                    self._errors.append(f"Line {lineno}: Uses needs at least one adapter name")
+                else:
+                    self.uses = names
             elif op == "Returns":
                 parts = [s for s in slots if s != "|"]
                 if len(parts) == 1 and parts[0] == "number":
@@ -5740,6 +5787,7 @@ class AICodeCompiler:
             "errors": self._errors,
             "warnings": self._warnings,
             **({"returns": self.return_union} if self.return_union else {}),
+            **({"uses": list(self.uses)} if self.uses else {}),
             **({"pure": True} if self.pure else {}),
             "diagnostics": self._build_structured_diagnostics(self.labels, cst_lines),
             "stats": {

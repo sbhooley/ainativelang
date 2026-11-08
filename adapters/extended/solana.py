@@ -524,6 +524,14 @@ def _hermes_latest_price_dict(feed_hex: str) -> Dict[str, Any]:
         raise ValueError("feed_id_hex must be 64 hex characters (32-byte Pyth feed id)")
     base = _hermes_api_base()
     url = f"{base.rstrip('/')}/v2/updates/price/latest?ids%5B%5D={fh}"
+    from runtime.net_guard import AddressRejected, require_allowed_public_url
+    from urllib.parse import urlparse as _hermes_parse
+
+    hermes_host = (_hermes_parse(base).hostname or "").strip().lower()
+    try:
+        require_allowed_public_url(url, allow_hosts=[hermes_host], https_only=True)
+    except AddressRejected as exc:
+        raise ValueError("Hermes URL is not an allowlisted public host") from exc
     req = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:

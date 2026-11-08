@@ -63,11 +63,25 @@ def _is_ip_literal(host: str) -> bool:
         return False
 
 
+def _is_loopback_host(host: str) -> bool:
+    h = (host or "").strip()
+    if h.startswith("[") and h.endswith("]"):
+        h = h[1:-1]
+    if h.lower() in ("localhost", "ip6-localhost", "ip6-loopback"):
+        return True
+    try:
+        return bool(ipaddress.ip_address(h).is_loopback)
+    except ValueError:
+        return False
+
+
 def _a2a_url_guard(
     url: str,
     *,
     allow_hosts: Set[str],
     allow_insecure_local: bool,
+    public_only: bool = False,
+    allow_loopback: bool = False,
 ) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -75,12 +89,15 @@ def _a2a_url_guard(
     host = (parsed.hostname or "").strip()
     if not host:
         raise AdapterError("a2a url missing host")
+    if not allow_hosts and not public_only:
+        raise AdapterError("a2a: empty allowlist denies every host")
     if not allow_insecure_local and _host_limited(host):
-        raise AdapterError(
-            "a2a: blocked private or local host; set allow_insecure_local to talk to same-host/lab peers"
-        )
+        if not (allow_loopback and _is_loopback_host(host)):
+            raise AdapterError(
+                "a2a: blocked private or local host; set allow_insecure_local to talk to same-host/lab peers"
+            )
     if allow_hosts and host not in allow_hosts:
-        raise AdapterError(f"a2a: host not in allowlist: {host!r}")
+        raise AdapterError("a2a: host not in allowlist")
 
 
 def _strict_resolve_url(
@@ -122,13 +139,17 @@ def _a2a_url_full_check(
     allow_hosts: Set[str],
     allow_insecure_local: bool,
     strict_ssrf: bool,
+    public_only: bool = False,
+    allow_loopback: bool = False,
 ) -> None:
     _a2a_url_guard(
         url,
         allow_hosts=allow_hosts,
         allow_insecure_local=allow_insecure_local,
+        public_only=public_only,
+        allow_loopback=allow_loopback,
     )
-    if strict_ssrf:
+    if strict_ssrf or public_only:
         _strict_resolve_url(url, allow_insecure_local=allow_insecure_local)
 
 
@@ -171,7 +192,11 @@ def _opener_for(adapter: "A2aAdapter"):
     https = HTTPSHandler(context=ctx)
     hhttp = HTTPHandler()
     if not adapter.follow_redirects:
-        return build_opener(hhttp, https)
+        class _NoRedirect(HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                return None
+
+        return build_opener(_NoRedirect, hhttp, https)
     a = adapter
 
     class _A2aRedirect(HTTPRedirectHandler):
@@ -182,6 +207,7 @@ def _opener_for(adapter: "A2aAdapter"):
                 allow_hosts=a.allow_hosts,
                 allow_insecure_local=a.allow_insecure_local,
                 strict_ssrf=a.strict_ssrf,
+                public_only=False,
             )
             return super().redirect_request(req, fp, code, msg, headers, newurl)
 
@@ -436,8 +462,10 @@ class A2aAdapter(HttpAdapter):
             _a2a_url_full_check(
                 url,
                 allow_hosts=set(),
-                allow_insecure_local=True,
-                strict_ssrf=False,
+                allow_insecure_local=False,
+                strict_ssrf=True,
+                public_only=True,
+                allow_loopback=True,
             )
         else:
             self._check_url(url)
@@ -467,8 +495,10 @@ class A2aAdapter(HttpAdapter):
         _a2a_url_full_check(
             endpoint,
             allow_hosts=set(),
-            allow_insecure_local=True,
-            strict_ssrf=False,
+            allow_insecure_local=False,
+            strict_ssrf=True,
+            public_only=True,
+            allow_loopback=True,
         )
         payload = json.dumps(
             {
@@ -514,8 +544,10 @@ class A2aAdapter(HttpAdapter):
             _a2a_url_full_check(
                 url,
                 allow_hosts=set(),
-                allow_insecure_local=True,
-                strict_ssrf=False,
+                allow_insecure_local=False,
+                strict_ssrf=True,
+                public_only=True,
+                allow_loopback=True,
             )
         else:
             self._check_url(url)

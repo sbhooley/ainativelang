@@ -24,6 +24,7 @@ from compiler_v2 import (
 from tooling.graph_normalize import normalize_labels
 from tooling.tool_surface import dispatch_registry_key, effective_tool_surface, narrow_allowed_adapters
 from runtime.decision_ops import read_env
+from runtime.firm_contract import clock_unix, spends_completion, stamp_idempotency
 from runtime.values import compare, deep_get, deep_put, json_safe, stable_sort, truthy
 from runtime.adapters.base import AdapterRegistry, AdapterError
 from runtime.adapters.builtins import CoreBuiltinAdapter
@@ -258,6 +259,9 @@ ERROR_CODE_DB_MERGE_ETAG = "DB_MERGE_ETAG"
 ERROR_CODE_LLM_BUDGET = "LLM_BUDGET"
 ERROR_CODE_PURE = "PURE_VIOLATION"
 ERROR_CODE_RETURN_UNION = "RETURN_UNION"
+ERROR_CODE_FIRM_VERB = "FIRM_VERB"
+ERROR_CODE_USES = "USES"
+ERROR_CODE_QUEUE_IDEMPOTENCY = "QUEUE_IDEMPOTENCY"
 _QUERY_PARAM = re.compile(r"@([A-Za-z_][A-Za-z0-9_]*)")
 _QUERY_INTERPOLATION = ("%s", "%(", "${", "{{")
 
@@ -290,6 +294,7 @@ class RuntimeEngine:
         host_adapter_denylist: Optional[List[str]] = None,
         source_path: Optional[str] = None,
         safe_trace: bool = True,
+        denied_verbs: Optional[List[str]] = None,
     ):
         self.ir = ir
         self.labels = ir.get("labels", {})
@@ -320,6 +325,11 @@ class RuntimeEngine:
         self.runtime_async = bool(runtime_async or env_async)
         self.observability = RuntimeObservability.from_env_or_flag(observability, jsonl_path=observability_jsonl_path)
         self.limits = limits or {}
+        self._denied_verbs = {
+            str(item).strip().lower()
+            for item in (denied_verbs or [])
+            if str(item).strip()
+        }
         self._run_started_at: float = 0.0
         self._steps_executed: int = 0
         self._adapter_calls: int = 0
@@ -461,6 +471,7 @@ class RuntimeEngine:
         preserved_services: Optional[Dict[str, Any]] = None,
         pure: bool = False,
         safe_trace: bool = True,
+        denied_verbs: Optional[List[str]] = None,
     ) -> "RuntimeEngine":
         if source_path:
             try:
@@ -502,6 +513,7 @@ class RuntimeEngine:
             host_adapter_denylist=host_adapter_denylist,
             source_path=source_path,
             safe_trace=safe_trace,
+            denied_verbs=denied_verbs,
         )
 
     @classmethod
@@ -856,12 +868,16 @@ class RuntimeEngine:
                 frame[dst] = str(args[0]).replace(str(args[1]), str(args[2])) if len(args) > 2 else str(args[0])
             elif sub_fn == "contains":
                 frame[dst] = str(args[1]) in str(args[0]) if len(args) > 1 else False
-            elif sub_fn == "now":
+            elif sub_fn.lower() == "now":
+                frame[dst] = self._now_unix()
+            elif sub_fn.lower() == "iso":
                 import time as _time
-                frame[dst] = int(_time.time())
-            elif sub_fn == "iso":
-                import time as _time
-                frame[dst] = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+                frame[dst] = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime(self._now_unix()))
+            elif sub_fn.lower() == "iso_ts":
+                if args and args[0] is not None:
+                    frame[dst] = int(float(args[0]))
+                else:
+                    frame[dst] = self._now_unix()
             elif sub_fn == "substr":
                 s = str(args[0]) if args else ""
                 start = int(args[1]) if len(args) > 1 and args[1] is not None else 0
@@ -869,7 +885,16 @@ class RuntimeEngine:
                 start = max(0, start)
                 length = max(0, length)
                 frame[dst] = s[start : start + length]
-            elif sub_fn == "env":
+            elif sub_fn.lower() == "env":
+                if "core.env" in self._denied_verbs:
+                    raise AinlRuntimeError(
+                        "core.ENV is denied",
+                        lid,
+                        idx,
+                        "X",
+                        stack,
+                        code=ERROR_CODE_FIRM_VERB,
+                    )
                 name = str(args[0]) if args else ""
                 default = None if len(args) < 2 else args[1]
                 frame[dst] = read_env(name, self.limits.get("env_allowlist"), default)
@@ -1177,6 +1202,7 @@ class RuntimeEngine:
             host_adapter_allowlist=self.host_adapter_allowlist,
             host_adapter_denylist=self.host_adapter_denylist,
             safe_trace=self.safe_trace,
+            denied_verbs=sorted(self._denied_verbs),
         )
         child._call_depth = self._call_depth + 1
         child._llm_budget = self._llm_budget
@@ -1332,12 +1358,14 @@ class RuntimeEngine:
                                 stack=stack,
                             )
                     else:
-                        self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
-                        out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+                        sent = [t0] + list(args)
+                        self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack, sent)
+                        out = self.adapters.call(adp_name, verb, sent, call_ctx)
                         out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 else:
-                    self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
-                    out = self.adapters.call(adp_name, verb, [t0] + args, call_ctx)
+                    sent = [t0] + list(args)
+                    self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack, sent)
+                    out = self.adapters.call(adp_name, verb, sent, call_ctx)
                     out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 return out
             finally:
@@ -1366,6 +1394,41 @@ class RuntimeEngine:
             if "out" in locals():
                 self._record_reactive_metrics(adapter, target, out)
 
+    def _now_unix(self) -> int:
+        return clock_unix(self.limits, int(time.time()))
+
+    def _reject_denied_verb(
+        self, adapter: str, verb: str, lid: str, idx: int, op: str, stack: List[str]
+    ) -> None:
+        if f"{adapter}.{verb}" not in self._denied_verbs:
+            return
+        raise AinlRuntimeError(
+            f"{adapter}.{verb} is denied",
+            lid,
+            idx,
+            op,
+            stack,
+            code=ERROR_CODE_FIRM_VERB,
+        )
+
+    def _reject_undeclared_adapter(
+        self, adapter: str, lid: str, idx: int, op: str, stack: List[str]
+    ) -> None:
+        declared = self.ir.get("uses")
+        if not isinstance(declared, list) or not declared:
+            return
+        allowed = {str(item).strip().lower() for item in declared}
+        if adapter in allowed:
+            return
+        raise AinlRuntimeError(
+            f"uses does not declare {adapter}",
+            lid,
+            idx,
+            op,
+            stack,
+            code=ERROR_CODE_USES,
+        )
+
     def _host_limit(self, key: str, default: int) -> int:
         raw = self.limits.get(key, default)
         try:
@@ -1382,9 +1445,25 @@ class RuntimeEngine:
         idx: int,
         op: str,
         stack: List[str],
+        call_args: List[Any],
     ) -> None:
+        call_ctx["_now"] = self._now_unix()
         call_ctx["_env_allowlist"] = [str(item) for item in (self.limits.get("env_allowlist") or [])]
-        if adp_name != "llm" or verb_l not in {"completion", "embed"}:
+        self._reject_denied_verb(adp_name, verb_l, lid, idx, op, stack)
+        self._reject_undeclared_adapter(adp_name, lid, idx, op, stack)
+        if adp_name == "queue" and verb_l == "put" and len(call_args) >= 3:
+            key = call_args[2]
+            if not isinstance(key, str) or not key.strip():
+                raise AinlRuntimeError(
+                    "queue.PUT idempotency key must be a non-empty string",
+                    lid,
+                    idx,
+                    op,
+                    stack,
+                    code=ERROR_CODE_QUEUE_IDEMPOTENCY,
+                )
+            call_args[1] = stamp_idempotency(call_args[1], key.strip())
+        if not spends_completion(adp_name, verb_l):
             return
         cap = self._host_limit("max_completion_calls", 8)
         if self._llm_budget["calls"] >= cap:
@@ -1410,7 +1489,7 @@ class RuntimeEngine:
     ) -> Any:
         if adp_name == "db" and verb_l == "q":
             return self._cap_query_result(out)
-        if adp_name == "llm" and verb_l in {"completion", "embed"}:
+        if spends_completion(adp_name, verb_l):
             tokens = 0
             # Tokens come only from this return value. Counts stored on the
             # adapter object are invisible, so a host that has not moved to
@@ -1683,12 +1762,14 @@ class RuntimeEngine:
                                 stack=stack,
                             )
                     else:
-                        self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
-                        out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
+                        sent = [t0] + list(args)
+                        self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack, sent)
+                        out = await self.adapters.call_async(adp_name, verb, sent, call_ctx)
                         out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 else:
-                    self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack)
-                    out = await self.adapters.call_async(adp_name, verb, [t0] + args, call_ctx)
+                    sent = [t0] + list(args)
+                    self._prepare_adapter_call(call_ctx, adp_name, verb_l, lid, idx, op, stack, sent)
+                    out = await self.adapters.call_async(adp_name, verb, sent, call_ctx)
                     out = self._finish_adapter_call(adp_name, verb_l, out, lid, idx, op, stack)
                 return out
             finally:

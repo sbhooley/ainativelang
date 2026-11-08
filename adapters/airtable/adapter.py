@@ -97,11 +97,16 @@ class AirtableAdapter(RuntimeAdapter):
             raise AdapterError(f"airtable table blocked by allowlist: {table}")
 
     def _check_attachment_url_allowed(self, url: str) -> None:
-        if not self.allow_attachment_hosts:
-            return
-        host = (urlparse(url).hostname or "").strip().lower()
-        if host not in self.allow_attachment_hosts:
-            raise AdapterError(f"airtable attachment url host blocked by allowlist: {host}")
+        from runtime.net_guard import AddressRejected, require_allowed_public_url
+
+        try:
+            require_allowed_public_url(
+                url,
+                allow_hosts=self.allow_attachment_hosts,
+                https_only=True,
+            )
+        except AddressRejected as exc:
+            raise AdapterError("airtable attachment url host blocked by allowlist") from exc
 
     def _tbl_path(self, table: str) -> str:
         return f"/v0/{self.base_id}/{quote(str(table), safe='')}"

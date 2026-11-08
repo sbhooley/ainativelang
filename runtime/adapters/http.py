@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import math
 import socket
 import ssl
 import time
@@ -30,7 +31,23 @@ def _default_ssl_context() -> ssl.SSLContext:
         return ssl.create_default_context()
 
 
-_HOP_STRIP = frozenset({"authorization", "cookie", "proxy-authorization"})
+_HOP_STRIP = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "proxy-authorization",
+        "x-api-key",
+        "api-key",
+        "x-amz-security-token",
+    }
+)
+
+
+def _positive_finite(value: float, label: str) -> float:
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise AdapterError(f"http {label} must be a positive finite number")
+    return number
 
 
 class _PinnedHTTPConnection(http.client.HTTPConnection):
@@ -100,9 +117,9 @@ class SimpleHttpAdapter(HttpAdapter):
         max_redirects: int = 3,
         check_redirects: bool = True,
     ):
-        self.default_timeout_s = float(default_timeout_s)
+        self.default_timeout_s = _positive_finite(default_timeout_s, "timeout")
         self.max_response_bytes = int(max_response_bytes)
-        if self.default_timeout_s <= 0 or self.max_response_bytes <= 0:
+        if not math.isfinite(self.max_response_bytes) or self.max_response_bytes <= 0:
             raise AdapterError("http timeout and response cap must be positive")
         self.allow_hosts = set(allow_hosts or [])
         self.block_private = bool(block_private)
@@ -427,8 +444,7 @@ class SimpleHttpAdapter(HttpAdapter):
                 headers = {str(k): str(v) for k, v in args[1].items()}
             if len(args) > 2:
                 timeout_s = float(args[2])
-        if timeout_s <= 0:
-            raise AdapterError("http timeout and response cap must be positive")
+        timeout_s = _positive_finite(timeout_s, "timeout")
 
         data: Optional[bytes] = None
         if body_obj is not None and method in {"POST", "PUT", "PATCH"}:

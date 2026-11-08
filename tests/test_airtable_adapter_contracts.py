@@ -138,8 +138,18 @@ def test_airtable_allowlist(monkeypatch):
         assert "allowlist" in str(e)
 
 
+def _public_dns(monkeypatch):
+    import socket
+
+    def _fake(*_args, **_kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", _fake)
+
+
 def test_airtable_attachment_and_webhook_contract(monkeypatch):
     _install_fake_httpx(monkeypatch)
+    _public_dns(monkeypatch)
     adp = AirtableAdapter(
         api_key="k",
         base_id="app1",

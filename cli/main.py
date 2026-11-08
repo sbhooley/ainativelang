@@ -839,6 +839,34 @@ def cmd_run(args: argparse.Namespace) -> int:
     raw_d = str(getattr(args, "host_adapter_denylist", "") or "").strip()
     if raw_d:
         host_deny = [x.strip() for x in raw_d.split(",") if x.strip()]
+    run_limits = _limits_from_args(args)
+    denied_verbs: Optional[List[str]] = None
+    profile_name = str(os.environ.get("AINL_SECURITY_PROFILE") or "").strip()
+    if profile_name:
+        from tooling.capability_grant import load_profile_as_grant, merge_grants
+
+        profile_grant = load_profile_as_grant(profile_name)
+        caller_grant = {
+            "allowed_adapters": host_allow,
+            "forbidden_adapters": list(host_deny or []),
+            "forbidden_effects": [],
+            "forbidden_effect_tiers": [],
+            "forbidden_privilege_tiers": [],
+            "limits": {
+                key: int(value)
+                for key, value in (run_limits or {}).items()
+                if isinstance(value, (int, float)) and not isinstance(value, bool)
+            },
+            "adapter_constraints": {},
+            "denied_verbs": [],
+        }
+        effective_grant = merge_grants(profile_grant, caller_grant)
+        host_allow = effective_grant.get("allowed_adapters")
+        extra_deny = [str(item) for item in (effective_grant.get("forbidden_adapters") or [])]
+        if extra_deny:
+            host_deny = sorted(set(host_deny or []) | set(extra_deny))
+        run_limits = dict(effective_grant.get("limits") or {})
+        denied_verbs = list(effective_grant.get("denied_verbs") or [])
     eng = RuntimeEngine.from_code(
         code,
         strict=args.strict,
@@ -847,7 +875,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         step_fallback=not args.no_step_fallback,
         execution_mode=args.execution_mode,
         unknown_op_policy=args.unknown_op_policy,
-        limits=_limits_from_args(args),
+        limits=run_limits,
         adapters=reg,
         source_path=src_path,
         trajectory_log_path=trajectory_path,
@@ -858,6 +886,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         observability_jsonl_path=str(getattr(args, "observability_jsonl", "") or "").strip() or None,
         host_adapter_allowlist=host_allow,
         host_adapter_denylist=host_deny,
+        denied_verbs=denied_verbs,
     )
     frame = _parse_frame_json_arg(getattr(args, "frame_json", "") or "")
     try:

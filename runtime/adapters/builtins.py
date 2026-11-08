@@ -33,7 +33,14 @@ from runtime.decision_ops import (
     strict_eq,
 )
 from runtime.bounded_regex import limit_error_value
+from runtime.firm_contract import apply_shape, untrusted_prompt
 from runtime.values import coerce_number, deep_get, deep_put, stable_sort, truthy
+
+
+def _stamped_now(context: Any) -> int:
+    if isinstance(context, dict) and context.get("_now") is not None:
+        return int(context["_now"])
+    return int(time.time())
 
 
 def _regex_value(fn: Any, *args: Any) -> Any:
@@ -167,11 +174,11 @@ class CoreBuiltinAdapter(RuntimeAdapter):
             except Exception:
                 return len(str(x))
         if t == "now":
-            return int(time.time())
+            return _stamped_now(context)
         if t == "iso":
-            return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(_stamped_now(context)))
         if t == "iso_ts":
-            ts = int(_num(args[0])) if args else int(time.time())
+            ts = int(_num(args[0])) if args else _stamped_now(context)
             return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
         if t in ("echo", "id"):
             return args[0] if args else None
@@ -465,7 +472,14 @@ class CoreBuiltinAdapter(RuntimeAdapter):
                 args[2] if len(args) > 2 else None,
             )
         if t == "parse_time":
-            return parse_time(args[0] if args else None, args[1] if len(args) > 1 else None)
+            raw = args[0] if args else None
+            if isinstance(raw, str) and raw.strip().lower() == "now":
+                return _stamped_now(context)
+            return parse_time(raw, args[1] if len(args) > 1 else None)
+        if t == "untrusted_prompt":
+            return untrusted_prompt(args[0] if args else "", args[1] if len(args) > 1 else "")
+        if t == "shape":
+            return apply_shape(args[0] if args else None, args[1:])
         if t == "add_days":
             return add_days(args[0] if args else 0, args[1] if len(args) > 1 else 0)
         if t == "before":

@@ -27,27 +27,47 @@ METADATA_IPS = frozenset(
     {
         "169.254.169.254",  # AWS, Azure, GCP, Oracle IMDS
         "169.254.170.2",  # ECS task role
+        "169.254.170.23",  # EKS Pod Identity
         "100.100.100.200",  # Alibaba
         "fd00:ec2::254",  # AWS IPv6 IMDS
+        "168.63.129.16",  # Azure Wire Server
+        "192.0.0.192",  # Oracle IMDS
     }
 )
+_NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
 
 
 class AddressRejected(ValueError):
     """The URL is not an acceptable public HTTPS/HTTP target."""
 
 
+def _is_metadata_ip(ip: ipaddress._BaseAddress) -> bool:
+    """Metadata stays closed, including mapped, 6to4, NAT64, and link-local."""
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None and _is_metadata_ip(mapped):
+        return True
+    six = getattr(ip, "sixtofour", None)
+    if six is not None and _is_metadata_ip(six):
+        return True
+    if isinstance(ip, ipaddress.IPv6Address) and ip in _NAT64:
+        embedded = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+        if _is_metadata_ip(embedded):
+            return True
+    if ip.is_link_local:
+        return True
+    text = ip.compressed
+    return text in METADATA_IPS or str(ip) in METADATA_IPS
+
+
 def _ip_blocked(ip: ipaddress._BaseAddress) -> bool:
     mapped = getattr(ip, "ipv4_mapped", None)
     if mapped is not None and _ip_blocked(mapped):
         return True
-    text = ip.compressed
-    if text in METADATA_IPS or str(ip) in METADATA_IPS:
+    if _is_metadata_ip(ip):
         return True
     return bool(
         ip.is_loopback
         or ip.is_private
-        or ip.is_link_local
         or ip.is_reserved
         or ip.is_multicast
         or ip.is_unspecified
@@ -64,7 +84,7 @@ def _is_metadata_host(host: str) -> bool:
         ip = ipaddress.ip_address(name)
     except ValueError:
         return False
-    return ip.compressed in METADATA_IPS or str(ip) in METADATA_IPS
+    return _is_metadata_ip(ip)
 
 
 def host_is_blocked(host: str) -> bool:
@@ -162,6 +182,39 @@ def approved_ips(host: str, *, allow_private: bool = False) -> List[str]:
     if not found:
         raise AddressRejected("dns lookup returned no addresses")
     return found
+
+
+def require_allowed_public_url(
+    url: str,
+    *,
+    allow_hosts: Iterable[str],
+    https_only: bool = True,
+    allow_private: bool = False,
+) -> List[str]:
+    """Deny unless the host is one exact allowlist entry.
+
+    An empty list denies every host. ``*`` is not an entry. A listed
+    loopback or private host may be fetched. A metadata address may not,
+    even when it is written in the allowlist.
+    """
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").strip().lower()
+    allowed = {
+        str(item).strip().lower()
+        for item in allow_hosts
+        if str(item).strip() and str(item).strip() != "*"
+    }
+    if not host or host not in allowed:
+        raise AddressRejected("host blocked by allowlist")
+    private_ok = bool(allow_private) or (
+        host_is_blocked(host) and not _is_metadata_host(host)
+    )
+    return check_fetch_url(
+        url,
+        https_only=https_only,
+        allow_private=private_ok,
+        resolve=True,
+    )
 
 
 def check_fetch_url(

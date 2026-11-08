@@ -29,18 +29,30 @@ class ExtrasAdapter(RuntimeAdapter):
         elif target == 'http_status':
             if len(args) < 1:
                 raise AdapterError('http_status requires url')
-            url = args[0]
+            url = str(args[0])
+            hosts = [
+                part.strip()
+                for part in str(os.environ.get("AINL_EXTRAS_HTTP_ALLOW_HOSTS") or "").split(",")
+                if part.strip()
+            ]
+            from runtime.adapters.http import SimpleHttpAdapter
+            from runtime.net_guard import AddressRejected, require_allowed_public_url
+
             try:
-                out = subprocess.check_output(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], text=True, timeout=5)
-                code = int(out.strip())
-                return code
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                try:
-                    import urllib.request
-                    with urllib.request.urlopen(url, timeout=5) as resp:
-                        return resp.status
-                except Exception:
-                    return 0
+                require_allowed_public_url(url, allow_hosts=hosts, https_only=True)
+            except AddressRejected as exc:
+                raise AdapterError("extras http_status host blocked by allowlist") from exc
+            client = SimpleHttpAdapter(
+                allow_hosts=hosts,
+                https_only=True,
+                status_as_value=True,
+                block_private=True,
+                check_redirects=True,
+            )
+            envelope = client.call("GET", [url], {})
+            if isinstance(envelope, dict):
+                return int(envelope.get("status_code") or envelope.get("status") or 0)
+            return 0
         elif target == 'newest_backup_mtime':
             if len(args) < 1:
                 raise AdapterError('newest_backup_mtime requires backup directory')

@@ -25,6 +25,7 @@ from urllib.parse import urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 from runtime.adapters.base import AdapterError, RuntimeAdapter
+from runtime.net_guard import AddressRejected, require_allowed_public_url
 
 
 def _is_truthy_env(value: Optional[str]) -> bool:
@@ -90,8 +91,14 @@ class PtcRunnerAdapter(RuntimeAdapter):
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"}:
             raise AdapterError("ptc_runner requires http/https AINL_PTC_RUNNER_URL")
-        if self._allow_hosts and parsed.hostname not in self._allow_hosts:
-            raise AdapterError(f"ptc_runner host blocked by allowlist: {parsed.hostname}")
+        try:
+            require_allowed_public_url(
+                url,
+                allow_hosts=self._allow_hosts,
+                https_only=parsed.scheme == "https",
+            )
+        except AddressRejected as exc:
+            raise AdapterError("ptc_runner host blocked by allowlist") from exc
 
     def _post_http(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         if not self._runner_url:
